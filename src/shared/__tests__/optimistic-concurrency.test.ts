@@ -134,7 +134,7 @@ describe('updateWithVersion', () => {
         { name: 'Test' },
       )
 
-      const setArg = mockSet.mock.calls[0]![0] as Record<string, unknown>
+      const setArg = ((mockSet.mock.calls[0] as unknown as unknown[][])[0] as unknown) as Record<string, unknown>
       expect(setArg.version).toBe(VERSION + 1)
     })
 
@@ -147,7 +147,7 @@ describe('updateWithVersion', () => {
         { name: 'Merged', extraField: 'extra' },
       )
 
-      const setArg = mockSet.mock.calls[0]![0] as Record<string, unknown>
+      const setArg = ((mockSet.mock.calls[0] as unknown as unknown[][])[0] as unknown) as Record<string, unknown>
       expect(setArg.name).toBe('Merged')
       expect(setArg.extraField).toBe('extra')
     })
@@ -163,7 +163,7 @@ describe('updateWithVersion', () => {
         {},
       )
 
-      const setArg = mockSet.mock.calls[0]![0] as Record<string, unknown>
+      const setArg = ((mockSet.mock.calls[0] as unknown as unknown[][])[0] as unknown) as Record<string, unknown>
       expect(setArg.updatedAt).toBeInstanceOf(Date)
       expect((setArg.updatedAt as Date).getTime()).toBeGreaterThanOrEqual(
         before.getTime(),
