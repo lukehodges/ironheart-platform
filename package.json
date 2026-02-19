@@ -30,6 +30,7 @@
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "drizzle-orm": "^0.45.1",
+    "expr-eval": "^2.0.2",
     "googleapis": "^171.4.0",
     "inngest": "^3.52.1",
     "lucide-react": "^0.574.0",
@@ -49,6 +50,7 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/async-retry": "^1.4.9",
+    "@types/expr-eval": "^1.0.2",
     "@types/node": "^20.19.33",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
