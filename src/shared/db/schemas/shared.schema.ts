@@ -317,7 +317,7 @@ export const projectMembers = pgTable("project_members", {
 	projectId: uuid().notNull(),
 	userId: uuid().notNull(),
 	role: projectRole().default('MEMBER').notNull(),
-	responsibilities: text().array().default(["RAY"]),
+	responsibilities: text().array().default([]),
 	weeklyHours: integer(),
 	hourlyRate: numeric({ precision: 10, scale: 2 }),
 	status: projectMemberStatus().default('ACTIVE').notNull(),

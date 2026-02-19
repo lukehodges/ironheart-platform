@@ -67,7 +67,7 @@ export const users = pgTable("users", {
 	maxConcurrentBookings: integer().default(1),
 	maxDailyBookings: integer(),
 	mileageRate: numeric({ precision: 10, scale: 4 }),
-	serviceIds: uuid().array().default(["RAY"]),
+	serviceIds: uuid().array().default([]),
 	staffStatus: staffStatus(),
 	startDate: timestamp({ precision: 3, mode: 'date' }),
 	isPlatformAdmin: boolean().default(false).notNull(),
