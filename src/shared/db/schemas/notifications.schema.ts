@@ -80,6 +80,7 @@ export const sentMessages = pgTable("sent_messages", {
 }, (table) => [
 	index("sent_messages_bookingId_idx").using("btree", table.bookingId.asc().nullsLast().op("uuid_ops")),
 	index("sent_messages_tenantId_createdAt_idx").using("btree", table.tenantId.asc().nullsLast().op("timestamp_ops"), table.createdAt.asc().nullsLast().op("timestamp_ops")),
+	index("sentMessages_tenantId_bookingId_idx").using("btree", table.tenantId.asc().nullsLast().op("uuid_ops"), table.bookingId.asc().nullsLast().op("uuid_ops")),
 	foreignKey({
 		columns: [table.tenantId],
 		foreignColumns: [tenants.id],
