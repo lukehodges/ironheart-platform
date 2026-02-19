@@ -9,6 +9,12 @@ import {
   ValidationError,
 } from "@/shared/errors";
 import { bookingRepository } from "./booking.repository";
+import { assertValidBookingTransition } from "./lib/booking-state-machine";
+import type { BookingStatus as StateMachineBookingStatus } from "./lib/booking-state-machine";
+import { withSlotLock } from "./lib/slot-lock";
+import { createBookingConfirmationSaga } from "./lib/booking-saga";
+import { updateWithVersion } from "@/shared/optimistic-concurrency";
+import { bookings } from "@/shared/db/schemas/booking.schema";
 import type {
   CreateBookingInput,
   UpdateBookingInput,
@@ -152,9 +158,11 @@ export const bookingService = {
   async confirmReservation(bookingId: string, customerEmail: string, token?: string) {
     const booking = await bookingRepository.findByIdPublic(bookingId);
     if (!booking) throw new NotFoundError("Booking", bookingId);
-    if (booking.status !== "RESERVED") {
-      throw new ConflictError(`Booking ${bookingId} is not in RESERVED status (current: ${booking.status})`);
-    }
+
+    // State machine guard: RESERVED → PENDING or CONFIRMED
+    const targetStatus: BookingStatus = booking.requiresApproval ? "PENDING" : "CONFIRMED";
+    assertValidBookingTransition(booking.status as StateMachineBookingStatus, targetStatus as StateMachineBookingStatus);
+
     if (booking.reservationExpiresAt && new Date() > booking.reservationExpiresAt) {
       throw new ValidationError("Reservation has expired");
     }
@@ -176,8 +184,94 @@ export const bookingService = {
       }
     }
 
-    const targetStatus: BookingStatus = booking.requiresApproval ? "PENDING" : "CONFIRMED";
+    if (targetStatus === "CONFIRMED") {
+      // Wrap the confirmation path in slot lock + saga for correctness guarantees
+      const staffId = booking.staffId ?? "";
+      const scheduledDate = booking.scheduledDate instanceof Date
+        ? booking.scheduledDate.toISOString().split("T")[0]!
+        : String(booking.scheduledDate);
+      const scheduledTime = booking.scheduledTime;
 
+      return withSlotLock(
+        booking.tenantId,
+        staffId,
+        scheduledDate,
+        scheduledTime,
+        async (_tx) => {
+          // Re-read inside the lock to get latest version
+          const locked = await bookingRepository.findByIdPublic(bookingId);
+          if (!locked) throw new NotFoundError("Booking", bookingId);
+
+          // Guard again inside lock (status may have changed while waiting)
+          assertValidBookingTransition(locked.status as StateMachineBookingStatus, "CONFIRMED");
+
+          const saga = createBookingConfirmationSaga({
+            bookingId,
+            tenantId: locked.tenantId,
+            staffId,
+            updateBookingStatus: async (id, status) => {
+              await updateWithVersion(
+                bookings,
+                id,
+                locked.tenantId,
+                locked.version ?? 1,
+                {
+                  status,
+                  statusChangedAt: new Date(),
+                  reservedAt: null,
+                  reservationExpiresAt: null,
+                }
+              );
+            },
+            createInvoiceForBooking: async (bId) => {
+              // Stub: return a placeholder invoice ID
+              // Full implementation will be wired to payment.service once that module is complete
+              return { id: `invoice-stub-${bId}` };
+            },
+            voidInvoice: async (_invoiceId) => {
+              // Stub: no-op until payment module is fully wired
+            },
+            sendInngestEvent: async (name, data) => {
+              await (inngest.send as unknown as (event: { name: string; data: Record<string, unknown> }) => Promise<void>)(
+                { name, data }
+              );
+            },
+          });
+
+          await saga.run();
+
+          await bookingRepository.recordStatusChange(
+            bookingId,
+            "RESERVED",
+            "CONFIRMED",
+            "Customer confirmed reservation"
+          );
+
+          // Notification for customer (outside saga — informational, not transactional)
+          if (!storedEmail) {
+            log.warn({ bookingId }, "No customer email found for notification, email will be skipped");
+          }
+          await inngest.send({
+            name: "notification/send.email",
+            data: {
+              to: storedEmail ?? "",
+              subject: "Your booking has been confirmed",
+              html: "",
+              tenantId: locked.tenantId,
+              templateId: "booking_confirmed",
+              bookingId,
+              trigger: "BOOKING_CONFIRMED",
+            },
+          });
+
+          log.info({ bookingId, status: "CONFIRMED" }, "Reservation confirmed via saga");
+          return bookingRepository.findByIdPublic(bookingId);
+        }
+      );
+    }
+
+    // PENDING path (requiresApproval=true): simpler — no saga, no slot lock needed
+    // State machine already validated RESERVED → PENDING above
     const updated = await bookingRepository.updateStatus(
       booking.tenantId,
       bookingId,
@@ -193,28 +287,7 @@ export const bookingService = {
       "Customer confirmed reservation"
     );
 
-    if (targetStatus === "CONFIRMED") {
-      await inngest.send({ name: "booking/confirmed", data: { bookingId, tenantId: booking.tenantId } });
-      await inngest.send({ name: "calendar/sync.push", data: { bookingId, userId: booking.staffId ?? "", tenantId: booking.tenantId } });
-      // storedEmail was already resolved above for identity verification — reuse it
-      if (!storedEmail) {
-        log.warn({ bookingId }, "No customer email found for notification, email will be skipped");
-      }
-      await inngest.send({
-        name: "notification/send.email",
-        data: {
-          to: storedEmail ?? "",
-          subject: "Your booking has been confirmed",
-          html: "",
-          tenantId: booking.tenantId,
-          templateId: "booking_confirmed",
-          bookingId,
-          trigger: "BOOKING_CONFIRMED",
-        },
-      });
-    }
-
-    log.info({ bookingId, status: targetStatus }, "Reservation confirmed");
+    log.info({ bookingId, status: targetStatus }, "Reservation confirmed (awaiting approval)");
     return updated;
   },
 
@@ -266,16 +339,22 @@ export const bookingService = {
     const booking = await bookingRepository.findById(tenantId, bookingId);
     if (!booking) throw new NotFoundError("Booking", bookingId);
 
+    // State machine guard: validate the transition before any side effects
+    assertValidBookingTransition(booking.status as StateMachineBookingStatus, "CANCELLED");
+
     // Increment slot capacity when cancelling a reserved/confirmed slot-based booking
     if (booking.slotId && ["RESERVED", "CONFIRMED", "PENDING", "APPROVED"].includes(booking.status)) {
       await bookingRepository.incrementSlotCapacity(tenantId, booking.slotId);
     }
 
-    const updated = await bookingRepository.updateStatus(tenantId, bookingId, "CANCELLED", {
-      cancelledBy: cancelledById,
-      cancellationReason: reason,
+    // Optimistic concurrency: update only if version matches
+    await updateWithVersion(bookings, bookingId, tenantId, booking.version ?? 1, {
+      status: "CANCELLED",
+      statusChangedAt: new Date(),
+      cancelledAt: new Date(),
+      cancelledBy: cancelledById ?? null,
+      cancellationReason: reason ?? null,
     });
-    if (!updated) throw new NotFoundError("Booking", bookingId);
 
     await bookingRepository.recordStatusChange(bookingId, booking.status as BookingStatus, "CANCELLED", reason, cancelledById);
 
@@ -301,7 +380,7 @@ export const bookingService = {
     });
 
     log.info({ bookingId, tenantId, reason }, "Booking cancelled");
-    return updated;
+    return bookingRepository.findById(tenantId, bookingId);
   },
 
   // ---------------------------------------------------------------------------
@@ -311,38 +390,88 @@ export const bookingService = {
   async approveBooking(tenantId: string, bookingId: string, approvedById: string, notes?: string) {
     const booking = await bookingRepository.findById(tenantId, bookingId);
     if (!booking) throw new NotFoundError("Booking", bookingId);
-    if (booking.status !== "PENDING") {
-      throw new ConflictError(`Booking must be PENDING to approve (current: ${booking.status})`);
-    }
 
-    const updated = await bookingRepository.updateStatus(tenantId, bookingId, "CONFIRMED", { approvedById });
-    if (!updated) throw new NotFoundError("Booking", bookingId);
+    // State machine guard: validates PENDING → CONFIRMED (throws ValidationError if invalid)
+    assertValidBookingTransition(booking.status as StateMachineBookingStatus, "CONFIRMED");
 
-    await bookingRepository.recordStatusChange(bookingId, "PENDING", "CONFIRMED", notes ?? "Booking approved", approvedById);
+    // Run confirmation saga: status update + invoice + notification + calendar sync
+    const staffId = booking.staffId ?? "";
+    const scheduledDate = booking.scheduledDate instanceof Date
+      ? booking.scheduledDate.toISOString().split("T")[0]!
+      : String(booking.scheduledDate);
+    const scheduledTime = booking.scheduledTime;
 
-    await inngest.send({ name: "booking/confirmed", data: { bookingId, tenantId } });
-    const approvedEmailTo = await bookingRepository.findCustomerEmailForBooking(bookingId);
-    if (!approvedEmailTo) {
-      log.warn({ bookingId }, "No customer email found for notification, email will be skipped");
-    }
-    await inngest.send({
-      name: "notification/send.email",
-      data: {
-        to: approvedEmailTo ?? "",
-        subject: "Your booking has been approved",
-        html: "",
-        tenantId,
-        templateId: "booking_approved",
-        bookingId,
-        trigger: "BOOKING_APPROVED",
-      },
-    });
-    if (updated.staffId) {
-      await inngest.send({ name: "calendar/sync.push", data: { bookingId, userId: updated.staffId, tenantId } });
-    }
+    return withSlotLock(
+      tenantId,
+      staffId,
+      scheduledDate,
+      scheduledTime,
+      async (_tx) => {
+        // Re-read inside the lock to get latest version
+        const locked = await bookingRepository.findById(tenantId, bookingId);
+        if (!locked) throw new NotFoundError("Booking", bookingId);
 
-    log.info({ bookingId, tenantId, approvedById }, "Booking approved");
-    return updated;
+        // Guard again inside lock (status may have changed while waiting)
+        assertValidBookingTransition(locked.status as StateMachineBookingStatus, "CONFIRMED");
+
+        const saga = createBookingConfirmationSaga({
+          bookingId,
+          tenantId,
+          staffId,
+          updateBookingStatus: async (id, status) => {
+            await updateWithVersion(
+              bookings,
+              id,
+              tenantId,
+              locked.version ?? 1,
+              {
+                status,
+                statusChangedAt: new Date(),
+                approvedAt: new Date(),
+                approvedById,
+              }
+            );
+          },
+          createInvoiceForBooking: async (bId) => {
+            // Stub: return a placeholder invoice ID
+            // Full implementation will be wired to payment.service once that module is complete
+            return { id: `invoice-stub-${bId}` };
+          },
+          voidInvoice: async (_invoiceId) => {
+            // Stub: no-op until payment module is fully wired
+          },
+          sendInngestEvent: async (name, data) => {
+            await (inngest.send as unknown as (event: { name: string; data: Record<string, unknown> }) => Promise<void>)(
+              { name, data }
+            );
+          },
+        });
+
+        await saga.run();
+
+        await bookingRepository.recordStatusChange(bookingId, "PENDING", "CONFIRMED", notes ?? "Booking approved", approvedById);
+
+        const approvedEmailTo = await bookingRepository.findCustomerEmailForBooking(bookingId);
+        if (!approvedEmailTo) {
+          log.warn({ bookingId }, "No customer email found for notification, email will be skipped");
+        }
+        await inngest.send({
+          name: "notification/send.email",
+          data: {
+            to: approvedEmailTo ?? "",
+            subject: "Your booking has been approved",
+            html: "",
+            tenantId,
+            templateId: "booking_approved",
+            bookingId,
+            trigger: "BOOKING_APPROVED",
+          },
+        });
+
+        log.info({ bookingId, tenantId, approvedById }, "Booking approved via saga");
+        return bookingRepository.findById(tenantId, bookingId);
+      }
+    );
   },
 
   // ---------------------------------------------------------------------------
@@ -353,13 +482,20 @@ export const bookingService = {
     const booking = await bookingRepository.findById(tenantId, bookingId);
     if (!booking) throw new NotFoundError("Booking", bookingId);
 
+    // State machine guard: validates current status → REJECTED
+    assertValidBookingTransition(booking.status as StateMachineBookingStatus, "REJECTED");
+
     // Return slot capacity
     if (booking.slotId) {
       await bookingRepository.incrementSlotCapacity(tenantId, booking.slotId);
     }
 
-    const updated = await bookingRepository.updateStatus(tenantId, bookingId, "REJECTED", { rejectionReason: reason, changedById: rejectedById });
-    if (!updated) throw new NotFoundError("Booking", bookingId);
+    // Optimistic concurrency: update only if version matches
+    await updateWithVersion(bookings, bookingId, tenantId, booking.version ?? 1, {
+      status: "REJECTED",
+      statusChangedAt: new Date(),
+      rejectionReason: reason,
+    });
 
     await bookingRepository.recordStatusChange(bookingId, booking.status as BookingStatus, "REJECTED", reason, rejectedById);
 
@@ -381,7 +517,7 @@ export const bookingService = {
     });
 
     log.info({ bookingId, tenantId, reason }, "Booking rejected");
-    return updated;
+    return bookingRepository.findById(tenantId, bookingId);
   },
 
   // ---------------------------------------------------------------------------
@@ -405,12 +541,20 @@ export const bookingService = {
       return;
     }
 
+    // State machine guard: RESERVED → RELEASED
+    assertValidBookingTransition(booking.status as StateMachineBookingStatus, "RELEASED");
+
     // Increment slot capacity
     if (booking.slotId) {
       await bookingRepository.incrementSlotCapacity(booking.tenantId, booking.slotId);
     }
 
-    await bookingRepository.updateStatus(booking.tenantId, bookingId, "RELEASED", {});
+    // Optimistic concurrency: update only if version matches
+    await updateWithVersion(bookings, bookingId, booking.tenantId, booking.version ?? 1, {
+      status: "RELEASED",
+      statusChangedAt: new Date(),
+    });
+
     await bookingRepository.recordStatusChange(bookingId, "RESERVED", "RELEASED", "Reservation expired — 15-minute timeout reached");
 
     log.info({ bookingId, tenantId: booking.tenantId }, "Reservation released by Inngest");
@@ -437,12 +581,16 @@ export const bookingService = {
   ) {
     const booking = await bookingRepository.findById(tenantId, input.bookingId);
     if (!booking) throw new NotFoundError("Booking", input.bookingId);
-    if (!["CONFIRMED", "IN_PROGRESS", "APPROVED"].includes(booking.status)) {
-      throw new ConflictError(`Booking must be CONFIRMED or IN_PROGRESS to complete (current: ${booking.status})`);
-    }
 
-    const updated = await bookingRepository.updateStatus(tenantId, input.bookingId, "COMPLETED", {});
-    if (!updated) throw new NotFoundError("Booking", input.bookingId);
+    // State machine guard: validates current status → COMPLETED
+    assertValidBookingTransition(booking.status as StateMachineBookingStatus, "COMPLETED");
+
+    // Optimistic concurrency: update only if version matches
+    await updateWithVersion(bookings, input.bookingId, tenantId, booking.version ?? 1, {
+      status: "COMPLETED",
+      statusChangedAt: new Date(),
+      completedAt: new Date(),
+    });
 
     await bookingRepository.recordStatusChange(input.bookingId, booking.status as BookingStatus, "COMPLETED", input.notes);
 
@@ -453,7 +601,7 @@ export const bookingService = {
     });
 
     log.info({ bookingId: input.bookingId, tenantId }, "Booking completed");
-    return updated;
+    return bookingRepository.findById(tenantId, input.bookingId);
   },
 
   // ---------------------------------------------------------------------------
