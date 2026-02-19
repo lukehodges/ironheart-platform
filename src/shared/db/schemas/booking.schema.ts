@@ -85,6 +85,7 @@ export const bookings = pgTable("bookings", {
 	index("bookings_staffId_scheduledDate_idx").using("btree", table.staffId.asc().nullsLast().op("uuid_ops"), table.scheduledDate.asc().nullsLast().op("date_ops")),
 	index("bookings_tenantId_scheduledDate_idx").using("btree", table.tenantId.asc().nullsLast().op("uuid_ops"), table.scheduledDate.asc().nullsLast().op("date_ops")),
 	index("bookings_tenantId_status_idx").using("btree", table.tenantId.asc().nullsLast().op("enum_ops"), table.status.asc().nullsLast().op("enum_ops")),
+	index("bookings_tenantId_createdAt_idx").using("btree", table.tenantId.asc().nullsLast().op("uuid_ops"), table.createdAt.asc().nullsLast().op("timestamp_ops")),
 	foreignKey({
 		columns: [table.tenantId],
 		foreignColumns: [tenants.id],
