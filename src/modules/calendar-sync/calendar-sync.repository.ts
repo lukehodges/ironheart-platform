@@ -77,6 +77,19 @@ export const calendarSyncRepository = {
   },
 
   /**
+   * Find a user integration by its primary key.
+   */
+  async findUserIntegrationById(id: string): Promise<UserIntegrationRecord | null> {
+    const rows = await db
+      .select()
+      .from(userIntegrations)
+      .where(eq(userIntegrations.id, id))
+      .limit(1)
+
+    return rows[0] ? mapIntegrationRow(rows[0]) : null
+  },
+
+  /**
    * Find a user integration by its watch channel ID (used in webhook handler).
    */
   async findByWatchChannelId(channelId: string): Promise<UserIntegrationRecord | null> {

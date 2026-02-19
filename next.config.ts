@@ -5,6 +5,8 @@ import "./src/env"; // Validate env vars at build time
 const nextConfig: NextConfig = {
   reactStrictMode: true,
 
+  serverExternalPackages: ['@react-email/render', '@react-email/components'],
+
   logging: {
     fetches: {
       fullUrl: false,

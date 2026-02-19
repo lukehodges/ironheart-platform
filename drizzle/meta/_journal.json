@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1771507940201,
+      "tag": "0000_loving_secret_warriors",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1771600000000,
+      "tag": "0001_add_confirmation_token",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1771517304623,
+      "tag": "0002_add_workos_user_id",
+      "breakpoints": true
+    }
+  ]
+}

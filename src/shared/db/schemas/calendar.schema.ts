@@ -104,6 +104,7 @@ export const userIntegrations = pgTable("user_integrations", {
 	blockTimeOnCalendar: boolean().default(true).notNull(),
 	importCalendarEvents: boolean().default(false).notNull(),
 	twoWaySync: boolean().default(false).notNull(),
+	syncToken: text(),
 	watchChannelId: text(),
 	watchChannelToken: text(),
 	watchChannelExpiration: timestamp({ precision: 3, mode: 'date' }),
@@ -124,6 +125,7 @@ export const userIntegrations = pgTable("user_integrations", {
 	uniqueIndex("user_integrations_tenantId_userId_provider_key").using("btree", table.tenantId.asc().nullsLast().op("enum_ops"), table.userId.asc().nullsLast().op("uuid_ops"), table.provider.asc().nullsLast().op("enum_ops")),
 	index("user_integrations_userId_idx").using("btree", table.userId.asc().nullsLast().op("uuid_ops")),
 	index("user_integrations_watchChannelExpiration_idx").using("btree", table.watchChannelExpiration.asc().nullsLast().op("timestamp_ops")),
+	index("user_integrations_watchChannelId_idx").using("btree", table.watchChannelId.asc().nullsLast().op("text_ops")),
 	foreignKey({
 		columns: [table.connectedBy],
 		foreignColumns: [users.id],
@@ -192,7 +194,7 @@ export const userExternalEvents = pgTable("user_external_events", {
 	index("user_external_events_tenantId_idx").using("btree", table.tenantId.asc().nullsLast().op("uuid_ops")),
 	index("user_external_events_userId_endTime_idx").using("btree", table.userId.asc().nullsLast().op("uuid_ops"), table.endTime.asc().nullsLast().op("timestamp_ops")),
 	index("user_external_events_userId_startTime_idx").using("btree", table.userId.asc().nullsLast().op("uuid_ops"), table.startTime.asc().nullsLast().op("timestamp_ops")),
-	uniqueIndex("user_external_events_userIntegrationId_externalEventId_key").using("btree", table.userIntegrationId.asc().nullsLast().op("uuid_ops"), table.externalEventId.asc().nullsLast().op("uuid_ops")),
+	uniqueIndex("user_external_events_userIntegrationId_externalEventId_key").using("btree", table.userIntegrationId.asc().nullsLast().op("uuid_ops"), table.externalEventId.asc().nullsLast().op("text_ops")),
 	foreignKey({
 		columns: [table.userIntegrationId],
 		foreignColumns: [userIntegrations.id],

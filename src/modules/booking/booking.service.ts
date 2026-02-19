@@ -195,7 +195,7 @@ export const bookingService = {
 
     if (targetStatus === "CONFIRMED") {
       await inngest.send({ name: "booking/confirmed", data: { bookingId, tenantId: booking.tenantId } });
-      await inngest.send({ name: "calendar/sync.push", data: { bookingId, userId: booking.staffId ?? "" } });
+      await inngest.send({ name: "calendar/sync.push", data: { bookingId, userId: booking.staffId ?? "", tenantId: booking.tenantId } });
       // storedEmail was already resolved above for identity verification — reuse it
       if (!storedEmail) {
         log.warn({ bookingId }, "No customer email found for notification, email will be skipped");
@@ -204,8 +204,12 @@ export const bookingService = {
         name: "notification/send.email",
         data: {
           to: storedEmail ?? "",
+          subject: "Your booking has been confirmed",
+          html: "",
+          tenantId: booking.tenantId,
           templateId: "booking_confirmed",
-          variables: { bookingId, bookingNumber: updated.bookingNumber },
+          bookingId,
+          trigger: "BOOKING_CONFIRMED",
         },
       });
     }
@@ -234,7 +238,7 @@ export const bookingService = {
 
     // Handle staff change — emit calendar sync for old staff
     if (input.staffIds !== undefined && existing.staffId) {
-      await inngest.send({ name: "calendar/sync.push", data: { bookingId, userId: existing.staffId } });
+      await inngest.send({ name: "calendar/sync.push", data: { bookingId, userId: existing.staffId, tenantId } });
     }
 
     const updated = await bookingRepository.update(tenantId, bookingId, input);
@@ -247,7 +251,7 @@ export const bookingService = {
 
     // Emit calendar sync for new staff
     if (updated.staffId) {
-      await inngest.send({ name: "calendar/sync.push", data: { bookingId, userId: updated.staffId } });
+      await inngest.send({ name: "calendar/sync.push", data: { bookingId, userId: updated.staffId, tenantId } });
     }
 
     log.info({ bookingId, tenantId }, "Booking updated");
@@ -287,8 +291,12 @@ export const bookingService = {
       name: "notification/send.email",
       data: {
         to: cancelledEmailTo ?? "",
+        subject: "Your booking has been cancelled",
+        html: "",
+        tenantId,
         templateId: "booking_cancelled",
-        variables: { bookingId, bookingNumber: updated.bookingNumber, reason: reason ?? "" },
+        bookingId,
+        trigger: "BOOKING_CANCELLED",
       },
     });
 
@@ -321,12 +329,16 @@ export const bookingService = {
       name: "notification/send.email",
       data: {
         to: approvedEmailTo ?? "",
+        subject: "Your booking has been approved",
+        html: "",
+        tenantId,
         templateId: "booking_approved",
-        variables: { bookingId, bookingNumber: updated.bookingNumber },
+        bookingId,
+        trigger: "BOOKING_APPROVED",
       },
     });
     if (updated.staffId) {
-      await inngest.send({ name: "calendar/sync.push", data: { bookingId, userId: updated.staffId } });
+      await inngest.send({ name: "calendar/sync.push", data: { bookingId, userId: updated.staffId, tenantId } });
     }
 
     log.info({ bookingId, tenantId, approvedById }, "Booking approved");
@@ -359,8 +371,12 @@ export const bookingService = {
       name: "notification/send.email",
       data: {
         to: rejectedEmailTo ?? "",
+        subject: "Your booking request was not approved",
+        html: "",
+        tenantId,
         templateId: "booking_rejected",
-        variables: { bookingId, bookingNumber: updated.bookingNumber, reason },
+        bookingId,
+        trigger: "BOOKING_REJECTED",
       },
     });
 
