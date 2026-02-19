@@ -1,2196 +1,1929 @@
-# Phase 6: Hardening — Executable Plan
+# Phase 6: Platform Completeness & Mathematical Correctness
 
-**Written:** 2026-02-19
-**Status:** Ready to execute (after Phase 5 completes)
-**Depends on:** All previous phases — the platform is functionally complete after Phase 5
+**Goal:** Transform Ironheart from an operational tool into a guaranteed-correct platform. Phase 6 delivers five formal pillars: financial completeness (money flows end-to-end with invariants enforced at the DB layer), analytics intelligence (operational data surfaces as actionable insight), a developer API platform (REST + webhooks), distributed correctness (saga, idempotency, optimistic concurrency, safe expressions), and observability (OTel traces, full-text search, expanded health checks).
 
----
+**Architecture reference:** `.planning/PHASE6_ARCHITECTURE.md`
 
-## Overview
-
-**Phase goal:** Make the functionally-complete Ironheart platform production-ready at scale. Phase 6 adds no new features. Every task in this phase either prevents something from breaking at scale, makes failures observable, eliminates known security gaps, or replaces mock data with real data.
-
-When Phase 6 is done, the platform can be handed to an SRE team with confidence.
-
-### What gets built
-
-| File | Purpose |
-|------|---------|
-| `src/shared/trpc.ts` (updated) | Request ID middleware + rate limit middleware wired in |
-| `src/shared/redis.ts` (updated) | `acquireDistributedLock` / `releaseDistributedLock` helpers added |
-| `src/modules/booking/booking.service.ts` (updated) | Distributed lock wrapping slot capacity check |
-| `src/modules/tenant/analytics.repository.ts` | Real Drizzle analytics queries |
-| `src/modules/tenant/analytics.router.ts` | tRPC analytics procedures |
-| `src/modules/tenant/index.ts` (updated) | Export analytics router |
-| `src/server/root.ts` (updated) | Mount analytics router |
-| `src/app/admin/analytics/page.tsx` (updated) | Wire to real tRPC queries instead of mock data |
-| `src/shared/__tests__/booking.service.test.ts` | Integration tests for BookingService |
-| `src/shared/__tests__/booking.service.confirm.test.ts` | confirmReservation tests |
-| `vitest.config.ts` | Vitest configuration |
-| `.env.example` (updated) | All Phase 6 environment variables documented |
-
-### Inngest function count at end of Phase 6
-
-All 9+ Inngest functions from Phases 1–5 remain registered and healthy. Phase 6 adds no new Inngest functions but verifies they all work end-to-end.
-
-### Success Criteria
-
-Phase 6 is complete when ALL of the following are true:
-
-- [ ] Zero `console.log`, `console.error`, or `console.warn` calls in any `src/modules/` or `src/shared/` file — only `logger.*` calls
-- [ ] Every tRPC request has a `requestId` field in every log line for that request
-- [ ] `redis.acquireDistributedLock('lock:slot:{slotId}', 5000)` used in `BookingService.createBooking()` around the slot capacity check
-- [ ] Concurrent portal bookings for the same slot return HTTP 409 (`ConflictError('slot_locked')`) for the second request instead of both succeeding
-- [ ] `publicProcedure` portal endpoints return TRPC error code `TOO_MANY_REQUESTS` after 30 requests/minute from the same IP
-- [ ] `booking.confirmReservation` returns `TOO_MANY_REQUESTS` after 10 requests/minute from the same IP
-- [ ] Outgoing webhooks carry `X-Ironheart-Signature: sha256=<hmac>` header
-- [ ] Inbound Google Calendar webhooks are rejected with 401 if signature missing or invalid
-- [ ] `/admin/analytics` page shows real data from the test tenant's bookings
-- [ ] `tsc --noEmit` passes with 0 errors
-- [ ] `npm run build` exits clean with 0 errors
-- [ ] `npx vitest run` — all tests pass
-- [ ] BookingService integration tests: `createBooking` slot capacity enforcement, `confirmReservation` expiry rejection
-- [ ] All 9+ Inngest functions listed and healthy in dashboard
-- [ ] Full E2E: customer books portal → Resend email arrives → Google Calendar event created
-
----
-
-## Architectural Notes
-
-### Logging strategy
-
-Every module file already uses `logger.child({ module: '...' })`. The gap is two-fold:
-
-1. **Request ID is not threaded.** Each log line is isolated — you cannot trace all log lines for a single request. Fix: generate a `requestId` UUID in tRPC middleware and pass it through context. Every child logger call appends `{ requestId }`.
-
-2. **`console.log` calls remain in some files.** These bypass Pino entirely — they don't appear in production structured logs. Fix: grep every module file, replace each call with the appropriate `log.*` call using the module's child logger.
-
-The key insight: Pino's `logger.child()` creates a derived logger that inherits parent fields. Use it at two levels:
-
-- **Module level:** `const log = logger.child({ module: 'booking.service' })` — identifies which file the log came from
-- **Request level:** `log.child({ requestId })` — identifies which request this log line belongs to
-
-For tRPC, inject `requestId` into the context at middleware time, then pass it as a parameter to service methods that need to log it. Do not store the child logger in context — loggers are not serialisable and break SuperJSON. Store the `requestId` string and call `log.child({ requestId })` inside the service method.
-
-### Distributed locking for slot reservation
-
-The slot capacity check + decrement in `BookingService.createBooking()` has a race condition: two concurrent portal requests can both read `bookedCount < capacity`, both pass the check, and both decrement — resulting in overbooking.
-
-The fix uses a Redis distributed lock with a 5-second TTL:
-
-```
-acquire lock:slot:{slotId} with TTL=5000ms
-  → if lock busy: throw ConflictError('slot_locked') → tRPC returns 409 CONFLICT
-  → if lock acquired:
-      check capacity (bookedCount < capacity)
-      decrement capacity inside Drizzle transaction
-      release lock
-```
-
-The `@upstash/redis` client is already instantiated at `src/shared/redis.ts`. Add the lock helpers directly to that file — no new package needed. Upstash Redis supports `SET key value NX PX ttl` which is the standard distributed lock acquisition pattern.
-
-**Why not use `@upstash/redis`'s Ratelimit package for this?** The Ratelimit package is designed for rate limiting, not mutual exclusion. For a critical section (capacity check + decrement), you need a lock that either succeeds or fails immediately, not a sliding window counter.
-
-### Rate limiting on public endpoints
-
-Public portal endpoints (`createBookingFromSlot`, `getSlotsForDate`, `confirmReservation`) need protection against abuse. The rate limiter uses the Upstash Redis sliding window algorithm via `@upstash/ratelimit`.
-
-Key: `rate:{ip}:{procedure}` — one counter per IP per procedure.
-Limits:
-- Portal booking endpoints: 30 requests/minute
-- Confirmation endpoint: 10 requests/minute
-
-The rate limiter runs in a tRPC middleware that wraps `publicProcedure` only. Admin procedures (already authenticated) are exempt.
-
-IP extraction: read `x-forwarded-for` header (set by Vercel/proxy). Fall back to `::1` for local dev — rate limiting is effectively disabled for localhost.
-
-**Install:** `npm install @upstash/ratelimit`
-
-### HMAC webhook signing
-
-Any outbound webhook call from Ironheart must be signed so receiving services can verify authenticity. Any inbound webhook (specifically Google Calendar push notifications) must have its signature verified before processing.
-
-Pattern for outbound signing:
-```
-const payload = JSON.stringify(body)
-const signature = createHmac('sha256', secret).update(payload).digest('hex')
-headers['X-Ironheart-Signature'] = `sha256=${signature}`
-```
-
-The `secret` is the tenant's webhook secret from the `TenantSettings` table. If no secret is stored, generate one on first use and persist it.
-
-For inbound Google Calendar webhooks: the existing `calendar/webhook.received` Inngest handler (Phase 4) already processes inbound events but the signature check may be incomplete. Phase 6 adds a verification step before the Inngest event is emitted.
-
-### Real analytics
-
-The legacy analytics page at `src/app/admin/analytics/page.tsx` is 100% mock data. The refactor will have inherited the same problem until this phase.
-
-The analytics data layer is thin: one repository file with pure SQL aggregation queries, one router with `tenantProcedure` queries. No analytics module — just add to the existing tenant module which already has tenant configuration queries.
-
-**Drizzle query patterns for analytics (all use `where tenantId = ?`):**
-
-```sql
--- Bookings by status this week vs last week
-SELECT status, COUNT(*) FROM bookings
-WHERE tenantId = ? AND scheduledDate >= ? AND scheduledDate < ?
-GROUP BY status
-
--- Revenue by month (last 12 months)
-SELECT DATE_TRUNC('month', scheduledDate) AS month, SUM(totalAmount) AS revenue
-FROM bookings
-WHERE tenantId = ? AND status IN ('CONFIRMED', 'COMPLETED')
-  AND scheduledDate >= NOW() - INTERVAL '12 months'
-GROUP BY month ORDER BY month
-
--- Top services
-SELECT serviceId, COUNT(*) AS bookingCount
-FROM bookings WHERE tenantId = ? GROUP BY serviceId ORDER BY bookingCount DESC LIMIT 10
-
--- Staff utilisation (bookings per staff member as % of max daily)
--- Customer retention (% with 2+ bookings)
--- Portal vs admin split
--- Average booking value trend
-```
-
-### TypeScript error fixes
-
-The 5 pre-existing errors from the legacy codebase are in files that carry over into the refactor. Fix them definitively in Phase 6.
-
-Known errors (from legacy grep):
-
-1. **`review.ts` — `resolvedBy` field:** The `Review` model has a `resolvedBy` relation. The update call sets `resolvedByUser: { connect: { id: ... } }` but Prisma/Drizzle type says the field is `resolvedById` (a string). Fix: use `resolvedById: userId` directly instead of the relation connect syntax.
-
-2. **`settings.ts` — `tenantId` type:** The settings mutation receives `tenantId` from context which is typed as `string`, but the Drizzle schema column may be typed as `UUID`. Fix: ensure the `tenantId` column type in Drizzle schema matches the value being passed.
-
-3. **`workflow.ts` — `JsonArray` cast:** Three places cast `workflow.actions as any`. Fix: define a proper `WorkflowAction` type that matches the JSON schema stored in the column, and use `workflow.actions as WorkflowAction[]`.
-
-### Service layer tests
-
-Tests focus on the two highest-risk paths in `BookingService`:
-
-1. **`createBooking`** — Tests the distributed lock, slot capacity enforcement, RESERVED status creation, and Inngest event emission.
-2. **`confirmReservation`** — Tests the expired reservation rejection, status transition, and Inngest event emission.
-
-Use Vitest (faster than Jest, native ESM, zero config for TypeScript). Tests run against a real PostgreSQL database — the same `DATABASE_URL` from `.env.local`. Use a test-specific tenant (`tenantId: 'test-tenant-phase6'`) and clean up after each test.
-
-Mock Inngest with a spy — do not fire real events in tests. Inngest provides a mock client for this purpose.
-
----
-
-## Task Breakdown
-
----
-
-### PHASE6-T01: Replace all `console.*` calls with Pino child loggers
-
-**Goal:** Zero `console.log`, `console.error`, or `console.warn` in any module or shared file. Every log goes through Pino so it appears in structured production logs.
-
-**Step 1 — Find all occurrences:**
-
-```bash
-grep -rn "console\.log\|console\.error\|console\.warn" \
-  /Users/lukehodges/Documents/ironheart-refactor/src/modules/ \
-  /Users/lukehodges/Documents/ironheart-refactor/src/shared/ \
-  --include="*.ts" --include="*.tsx"
-```
-
-**Step 2 — Replacement rules:**
-
-For each file that has a `console.*` call:
-
-1. If the file does not already have a module logger, add one at the top:
-```typescript
-import { logger } from '@/shared/logger'
-const log = logger.child({ module: 'MODULE_NAME' })
-```
-The module name convention: `{module}.{layer}` — e.g., `booking.service`, `booking.repository`, `scheduling.events`, `notification.service`.
-
-2. Replace each `console.*` call:
-```typescript
-// Before
-console.log('Slot released', { bookingId, slotId })
-console.error('Failed to release slot', err)
-console.warn('Slot already released')
-
-// After
-log.info('Slot released', { bookingId, slotId })
-log.error('Failed to release slot', err)
-log.warn('Slot already released')
-```
-
-3. For `console.error` that receives an `Error` object as the second argument, use the Pino error convention:
-```typescript
-// Pino serialises the error object under the `err` key
-log.error('Failed to release slot', err)
-// Which in the logger.ts wrapper maps to: logger.error({ err: error }, msg)
-```
-
-**Step 3 — Verify:**
-
-```bash
-# Must return 0
-grep -rn "console\.log\|console\.error\|console\.warn" \
-  /Users/lukehodges/Documents/ironheart-refactor/src/modules/ \
-  /Users/lukehodges/Documents/ironheart-refactor/src/shared/ \
-  --include="*.ts" --include="*.tsx" | wc -l
-```
-
-**Note on `src/app/` files:** React component files in `src/app/` are allowed to use `console.error` for dev-time debugging (e.g., in error boundaries). The zero-console rule applies only to `src/modules/` and `src/shared/`.
-
-**Verification:** `grep` returns 0. `tsc --noEmit` still passes.
-
----
-
-### PHASE6-T02: Add request ID tracing to tRPC middleware
-
-**Goal:** Every log line for a single request shares a `requestId` so you can grep production logs for one ID and see the full trace.
-
-**Step 1 — Update `src/shared/trpc.ts`:**
-
-Add `requestId` to the `Context` type and generate it in `createContext`:
-
-```typescript
-import { randomUUID } from 'crypto'
-
-export type Context = {
-  db: typeof db
-  session: { ... } | null
-  tenantId: string
-  tenantSlug: string
-  user: UserWithRoles | null
-  requestId: string  // ← ADD THIS
-}
-
-export async function createContext({ req }: { req: Request }): Promise<Context> {
-  // ... existing session/tenant resolution ...
-
-  // Generate a unique ID for this request.
-  // Respect X-Request-ID if an upstream proxy already set one (e.g. Vercel Edge).
-  const requestId = req.headers.get('x-request-id') ?? randomUUID()
-
-  return {
-    db,
-    session,
-    tenantId,
-    tenantSlug,
-    user: null,
-    requestId,  // ← ADD THIS
-  }
-}
-```
-
-**Step 2 — Add request logging middleware:**
-
-Add this middleware to `src/shared/trpc.ts` and apply it to all procedures via the base `t.procedure`:
-
-```typescript
-const requestLogger = middleware(async ({ ctx, path, type, next }) => {
-  const start = Date.now()
-  const log = logger.child({
-    requestId: ctx.requestId,
-    tenantId: ctx.tenantId,
-    path,
-    type,
-  })
-
-  log.info('tRPC request started')
-
-  const result = await next({ ctx })
-
-  const durationMs = Date.now() - start
-
-  if (result.ok) {
-    log.info({ durationMs }, 'tRPC request completed')
-  } else {
-    log.warn({ durationMs, error: result.error.message }, 'tRPC request failed')
-  }
-
-  return result
-})
-
-// Apply to ALL procedures (before the existing auth middleware)
-// Update the t.procedure export:
-export const baseProcedure = t.procedure.use(requestLogger)
-export const publicProcedure = baseProcedure
-// protectedProcedure, tenantProcedure, permissionProcedure all extend baseProcedure
-// via their existing chain, so they automatically inherit requestLogger
-```
-
-**Step 3 — Pass `requestId` to service methods that need it:**
-
-Service methods that call the repository and log intermediate steps should receive `requestId` as an optional parameter:
-
-```typescript
-// In booking.service.ts
-async createBooking(
-  tenantId: string,
-  input: CreateBookingInput,
-  createdById?: string,
-  requestId?: string  // ← ADD THIS
-) {
-  const log = moduleLog.child({ requestId, tenantId })
-  log.info('Creating booking', { slotId: input.slotId, source: input.source })
-  // ... rest of method
-}
-```
-
-Router passes `ctx.requestId` through:
-```typescript
-create: tenantProcedure
-  .input(createBookingSchema)
-  .mutation(({ ctx, input }) =>
-    bookingService.createBooking(ctx.tenantId, input, ctx.user.id, ctx.requestId)
-  ),
-```
-
-**Verification:** Start `npm run dev`. Make a booking request. In the terminal output (pino-pretty), every log line for that request shows the same `requestId` UUID.
-
----
-
-### PHASE6-T02b: Inngest failure alerting
-
-**Goal:** Silent Inngest function failures are invisible in production. When a function fails after all retries, log it at ERROR level and optionally forward to Slack. Configure the URL in the Inngest dashboard as a failure webhook.
-
-**File: `src/app/api/inngest-alerts/route.ts`**
-
-Configure this URL in the Inngest dashboard: Settings → Webhooks → On function failure.
-
-```typescript
-import { NextRequest, NextResponse } from 'next/server'
-import { logger } from '@/shared/logger'
-
-export async function POST(request: NextRequest) {
-  const body = await request.json()
-  const log = logger.child({ module: 'inngest-alert' })
-
-  log.error({
-    functionId: body.function?.id,
-    eventName: body.event?.name,
-    error: body.error,
-    runId: body.run?.id,
-    retryCount: body.retry?.count,
-  }, 'Inngest function failure')
-
-  // If Slack webhook configured, forward alert
-  if (process.env.SLACK_ALERT_WEBHOOK_URL) {
-    await fetch(process.env.SLACK_ALERT_WEBHOOK_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        text: `Inngest failure: \`${body.function?.id}\` — ${body.error?.message ?? 'unknown error'}\nRun ID: ${body.run?.id}`,
-      }),
-    })
-  }
-
-  return NextResponse.json({ ok: true })
-}
-```
-
-**Add to `.env.example`:**
-
-```
-# Slack webhook URL for Inngest failure alerts (optional)
-SLACK_ALERT_WEBHOOK_URL=
-```
-
-**Success Criteria:**
-
-- [ ] A forced Inngest function failure triggers a log entry at ERROR level
-- [ ] If `SLACK_ALERT_WEBHOOK_URL` is set, failure notification arrives in Slack
-
----
-
-### PHASE6-T03: Implement distributed locking for slot reservation
-
-**Goal:** Two concurrent portal booking requests for the same slot cannot both pass the capacity check. The second request gets a 409 CONFLICT, not a double-booking.
-
-**Step 1 — Add lock helpers to `src/shared/redis.ts`:**
-
-```typescript
-/**
- * Acquire a distributed lock using Redis SET NX PX pattern.
- *
- * Returns the lock token (UUID) if acquired, null if the lock is held by another process.
- *
- * @param key - Lock key, e.g. 'lock:slot:abc-123'
- * @param ttlMs - Time-to-live in milliseconds. The lock auto-expires if not released.
- *                Set this to the maximum time your critical section could take.
- *                For slot reservation: 5000ms (5 seconds) is sufficient.
- *
- * @example
- * const token = await acquireDistributedLock('lock:slot:abc', 5000)
- * if (!token) throw new ConflictError('slot_locked')
- * try {
- *   // critical section
- * } finally {
- *   await releaseDistributedLock('lock:slot:abc', token)
- * }
- */
-export async function acquireDistributedLock(
-  key: string,
-  ttlMs: number
-): Promise<string | null> {
-  const token = randomUUID()
-  // SET key token NX PX ttlMs
-  // NX = only set if key does not exist (atomic acquisition)
-  // PX = TTL in milliseconds
-  const result = await redis.set(key, token, { nx: true, px: ttlMs })
-  return result === 'OK' ? token : null
-}
-
-/**
- * Release a distributed lock.
- * Only releases if the token matches — prevents releasing another process's lock.
- *
- * Uses a Lua script for atomic compare-and-delete.
- */
-export async function releaseDistributedLock(
-  key: string,
-  token: string
-): Promise<void> {
-  // Lua script: only delete if value matches token
-  // This is atomic — prevents a race where the lock expired and was re-acquired
-  // by another process between our token check and our delete.
-  const script = `
-    if redis.call("get", KEYS[1]) == ARGV[1] then
-      return redis.call("del", KEYS[1])
-    else
-      return 0
-    end
-  `
-  await redis.eval(script, [key], [token])
-}
-```
-
-Add `import { randomUUID } from 'crypto'` at the top of `redis.ts`.
-
-**Step 2 — Apply lock in `BookingService.createBooking()`:**
-
-In `src/modules/booking/booking.service.ts`, wrap the slot capacity check + decrement:
-
-```typescript
-import { acquireDistributedLock, releaseDistributedLock } from '@/shared/redis'
-import { ConflictError } from '@/shared/errors'
-
-async createBooking(
-  tenantId: string,
-  input: CreateBookingInput,
-  createdById?: string,
-  requestId?: string
-) {
-  const log = moduleLog.child({ requestId, tenantId })
-
-  // Distributed lock for slot reservation — prevents race condition where
-  // two concurrent requests both pass the capacity check.
-  // Only needed when a slotId is provided (portal bookings).
-  let lockToken: string | null = null
-  const lockKey = input.slotId ? `lock:slot:${input.slotId}` : null
-
-  if (lockKey) {
-    lockToken = await acquireDistributedLock(lockKey, 5000)
-    if (!lockToken) {
-      log.warn({ slotId: input.slotId }, 'Slot lock contention — concurrent booking attempt')
-      throw new ConflictError('slot_locked')
-    }
-    log.debug({ slotId: input.slotId }, 'Slot lock acquired')
-  }
-
-  try {
-    // 1. Validate slot is still available
-    if (input.slotId) {
-      const slot = await bookingRepository.findSlotById(tenantId, input.slotId)
-      if (!slot) throw new NotFoundError('Slot', input.slotId)
-      if (slot.bookedCount >= slot.capacity) {
-        throw new ConflictError('slot_full')
-      }
-    }
-
-    // 2. Create booking + decrement capacity (in transaction)
-    const booking = await bookingRepository.create(tenantId, input, createdById)
-
-    // 3. Emit Inngest events
-    // ... (existing logic)
-
-    log.info({ bookingId: booking.id, status: booking.status }, 'Booking created')
-    return booking
-
-  } finally {
-    // Always release the lock, even if an error occurred
-    if (lockKey && lockToken) {
-      await releaseDistributedLock(lockKey, lockToken)
-      log.debug({ slotId: input.slotId }, 'Slot lock released')
-    }
-  }
-}
-```
-
-**Step 3 — Update `toTRPCError()` to handle slot-locked ConflictError:**
-
-In `src/shared/errors.ts`, the existing `ConflictError` maps to `CONFLICT` (HTTP 409). No change needed — the tRPC `CONFLICT` code is correct for this case. The client should display "Slot just became unavailable — please choose another time" when it receives a 409.
-
-**Verification:**
-
-Run two concurrent requests in parallel (e.g., using a small test script or `Promise.all`) for the same slot. One should succeed, the other should receive `TRPCClientError` with code `CONFLICT`. Check Redis in Upstash console — the lock key should appear momentarily during the request and then disappear after release.
-
----
-
-### PHASE6-T04: Add sliding window rate limiting to public endpoints
-
-**Goal:** Public portal endpoints return `TOO_MANY_REQUESTS` after exceeding per-IP limits. Prevents portal scraping and booking spam.
-
-**Step 1 — Install `@upstash/ratelimit`:**
-
-```bash
-npm install @upstash/ratelimit
-```
-
-**Step 2 — Create layered rate limiter instances in `src/shared/redis.ts`:**
-
-Three layers are applied to defend against distinct failure modes. IP-only limiting breaks for corporate customers where all staff share one egress IP. Per-tenant limiting prevents one high-traffic tenant from exhausting resources for all others.
-
-```typescript
-import { Ratelimit } from '@upstash/ratelimit'
-
-// Layer 1: per-IP (abuse protection)
-// Defends against individual bad actors and portal scrapers.
-export const ipRateLimit = new Ratelimit({
-  redis,
-  limiter: Ratelimit.slidingWindow(30, '1 m'),
-  prefix: 'rate:ip',
-})
-
-// Layer 2: per-tenant (noisy-tenant isolation)
-// Prevents one tenant's traffic spike from impacting other tenants.
-// Higher limit because this aggregates all users of a tenant.
-export const tenantRateLimit = new Ratelimit({
-  redis,
-  limiter: Ratelimit.slidingWindow(500, '1 m'),
-  prefix: 'rate:tenant',
-})
-
-// Layer 3: per-user for authenticated routes
-export const userRateLimit = new Ratelimit({
-  redis,
-  limiter: Ratelimit.slidingWindow(60, '1 m'),
-  prefix: 'rate:user',
-})
-
-/**
- * Rate limiter for portal booking endpoints (per-IP).
- * Limit: 30 requests per minute per IP.
- * Applies to: createBookingFromSlot, getSlotsForDate, getSlotsForDateRange, getPortalConfig
- */
-export const portalRateLimit = ipRateLimit
-
-/**
- * Rate limiter for the confirmation endpoint (per-IP).
- * Limit: 10 requests per minute per IP.
- * Applies to: confirmReservation
- */
-export const confirmationRateLimit = new Ratelimit({
-  redis,
-  limiter: Ratelimit.slidingWindow(10, '1 m'),
-  prefix: 'rate:confirm',
-  analytics: false,
-})
-```
-
-**Step 3 — Add `TooManyRequestsError` to `src/shared/errors.ts`:**
-
-```typescript
-/** Rate limit exceeded. */
-export class TooManyRequestsError extends IronheartError {
-  constructor(message = 'Too many requests — please slow down') {
-    super(message, 'TOO_MANY_REQUESTS')
-    this.name = 'TooManyRequestsError'
-  }
-}
-```
-
-Add the mapping in `toTRPCError()`:
-```typescript
-if (error instanceof TooManyRequestsError) {
-  return new TRPCError({ code: 'TOO_MANY_REQUESTS', message: error.message })
-}
-```
-
-**Step 4 — Create rate limiting middleware factory in `src/shared/trpc.ts`:**
-
-```typescript
-import type { Ratelimit } from '@upstash/ratelimit'
-import { TooManyRequestsError } from '@/shared/errors'
-
-/**
- * Create a tRPC middleware that applies the given Ratelimit instance.
- * Extracts the caller IP from x-forwarded-for header.
- * In local dev (IP = ::1 or 127.0.0.1), rate limiting is skipped.
- *
- * @example
- * // In a sub-router:
- * const rateLimitedPortalProcedure = publicProcedure.use(
- *   createRateLimitMiddleware(portalRateLimit)
- * )
- */
-export function createRateLimitMiddleware(limiter: Ratelimit) {
-  return middleware(async ({ ctx, next }) => {
-    const ip =
-      (ctx as unknown as { req?: Request }).req?.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
-      ?? '::1'
-
-    // Skip rate limiting for localhost (development)
-    if (ip === '::1' || ip === '127.0.0.1') {
-      return next({ ctx })
-    }
-
-    const { success, limit, remaining, reset } = await limiter.limit(ip)
-
-    if (!success) {
-      logger.warn(
-        { ip, limit, remaining, reset, requestId: ctx.requestId },
-        'Rate limit exceeded'
-      )
-      throw new TooManyRequestsError()
-    }
-
-    return next({ ctx })
-  })
-}
-```
-
-**Note:** The `ctx` object needs access to the raw `Request` for IP extraction. The tRPC context already has the request available via `createContext({ req })`. Pass the `req` object through to the context:
-
-```typescript
-// Add to Context type
-export type Context = {
-  // ...existing fields...
-  req: Request  // ← ADD THIS
-}
-
-// Add to createContext return value
-return {
-  db, session, tenantId, tenantSlug, user: null, requestId,
-  req,  // ← ADD THIS
-}
-```
-
-**Step 5 — Apply rate limiters to public sub-routers:**
-
-In `src/modules/booking/sub-routers/slot.router.ts`:
-
-```typescript
-import { createRateLimitMiddleware } from '@/shared/trpc'
-import { portalRateLimit, confirmationRateLimit } from '@/shared/redis'
-
-const rateLimitedPublicProcedure = publicProcedure.use(
-  createRateLimitMiddleware(portalRateLimit)
-)
-
-const rateLimitedConfirmProcedure = publicProcedure.use(
-  createRateLimitMiddleware(confirmationRateLimit)
-)
-
-export const slotRouter = router({
-  getSlotsForDate: rateLimitedPublicProcedure
-    .input(getSlotsForDateSchema)
-    .query(...),
-
-  getSlotsForDateRange: rateLimitedPublicProcedure
-    .input(getSlotsForDateRangeSchema)
-    .query(...),
-
-  createBookingFromSlot: rateLimitedPublicProcedure
-    .input(createPortalBookingSchema)
-    .mutation(...),
-})
-
-// In booking.router.ts:
-confirmReservation: rateLimitedConfirmProcedure
-  .input(confirmReservationSchema)
-  .mutation(({ input }) => bookingService.confirmReservation(input.bookingId)),
-```
-
-**Verification:**
-
-```bash
-# Using curl, fire 35 requests in quick succession to the same portal endpoint
-for i in $(seq 1 35); do
-  curl -s -o /dev/null -w "%{http_code}\n" \
-    -X POST http://localhost:3000/api/trpc/slotAvailability.getSlotsForDate \
-    -H "Content-Type: application/json" \
-    -d '{"0":{"json":{"slug":"test","date":"2026-03-01"}}}' &
-done
-wait
-```
-
-Expected: First 30 return 200. Requests 31–35 return 429 (tRPC maps `TOO_MANY_REQUESTS` to HTTP 429).
-
----
-
-### PHASE6-T05: HMAC webhook signing
-
-**Goal:** All outgoing webhooks from Ironheart carry a verifiable signature. Inbound Google Calendar webhooks are rejected if the signature is missing or invalid.
-
-**Step 1 — Add webhook signing helpers:**
-
-Create `src/shared/webhook.ts`:
-
-```typescript
-import { createHmac, timingSafeEqual } from 'crypto'
-
-/**
- * Sign a webhook payload with HMAC-SHA256.
- *
- * Returns the header value to set on the outgoing request:
- *   X-Ironheart-Signature: sha256=<hex-digest>
- *
- * @param payload - The request body as a JSON string. Always stringify the body
- *                  object before calling this function to ensure consistent serialisation.
- * @param secret  - The tenant's webhook secret from TenantSettings.webhookSecret
- */
-export function signWebhookPayload(payload: string, secret: string): string {
-  const hmac = createHmac('sha256', secret)
-  hmac.update(payload)
-  return `sha256=${hmac.digest('hex')}`
-}
-
-/**
- * Verify an inbound webhook signature.
- *
- * Uses timingSafeEqual to prevent timing attacks.
- * Returns true if the signature matches, false otherwise.
- *
- * @param payload   - The raw request body as a string (do NOT JSON.parse first)
- * @param signature - The X-Ironheart-Signature header value from the request
- * @param secret    - The tenant's stored webhook secret
- */
-export function verifyWebhookSignature(
-  payload: string,
-  signature: string,
-  secret: string
-): boolean {
-  if (!signature.startsWith('sha256=')) return false
-  const expected = signWebhookPayload(payload, secret)
-  const expectedBuffer = Buffer.from(expected)
-  const receivedBuffer = Buffer.from(signature)
-  if (expectedBuffer.length !== receivedBuffer.length) return false
-  return timingSafeEqual(expectedBuffer, receivedBuffer)
-}
-
-/**
- * Generate a cryptographically random webhook secret.
- * Store this in TenantSettings.webhookSecret on first use.
- */
-export function generateWebhookSecret(): string {
-  return require('crypto').randomBytes(32).toString('hex')
-}
-```
-
-**Step 2 — Add `webhookSecret` to tenant settings schema:**
-
-Check whether the Drizzle schema already has a `webhookSecret` column on the `TenantSettings` or `Tenant` table:
-
-```bash
-grep -n "webhookSecret\|webhook_secret" \
-  /Users/lukehodges/Documents/ironheart-refactor/src/shared/db/schema.ts
-```
-
-If not present, add a Drizzle migration:
-```typescript
-// In src/shared/db/schema.ts — add to the tenants table definition:
-webhookSecret: text('webhook_secret'),
-// Then run: npx drizzle-kit generate --name=add_webhook_secret
-// Then: npx drizzle-kit migrate
-```
-
-**Step 3 — Apply signing to outgoing webhooks in calendar-sync module:**
-
-In `src/modules/calendar-sync/calendar-sync.service.ts`, wherever the service makes outgoing HTTP calls to external webhook endpoints (not Google Calendar — those use OAuth, not HMAC):
-
-```typescript
-import { signWebhookPayload } from '@/shared/webhook'
-
-// When sending an outgoing webhook to a tenant-configured endpoint:
-const payload = JSON.stringify(body)
-const signature = signWebhookPayload(payload, tenant.webhookSecret)
-
-const response = await fetch(webhookUrl, {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-    'X-Ironheart-Signature': signature,
-  },
-  body: payload,
-})
-```
-
-**Step 4 — Verify inbound Google Calendar webhook signatures:**
-
-In `src/app/api/integrations/google-calendar/webhook/route.ts` (created in Phase 4):
-
-```typescript
-import { verifyWebhookSignature } from '@/shared/webhook'
-
-export async function POST(req: Request) {
-  // Google Calendar push notifications use a channel token, not HMAC.
-  // The channel token is set when creating the watch subscription and
-  // returned in the X-Goog-Channel-Token header.
-  // Verify it matches the stored channel token before emitting the Inngest event.
-
-  const channelToken = req.headers.get('x-goog-channel-token')
-  const channelId = req.headers.get('x-goog-channel-id')
-  const resourceId = req.headers.get('x-goog-resource-id')
-
-  if (!channelToken || !channelId || !resourceId) {
-    return new Response('Missing required headers', { status: 401 })
-  }
-
-  // Look up the stored channel token for this channelId
-  const storedToken = await getChannelToken(channelId) // query UserIntegration table
-  if (!storedToken || storedToken !== channelToken) {
-    log.warn({ channelId }, 'Google Calendar webhook: invalid channel token')
-    return new Response('Invalid channel token', { status: 401 })
-  }
-
-  // Token valid — emit the Inngest event
-  await inngest.send({
-    name: 'calendar/webhook.received',
-    data: { channelId, resourceId },
-  })
-
-  return new Response(null, { status: 200 })
-}
-```
-
-**Verification:**
-
-1. Send a POST to the calendar webhook route without headers → expect 401
-2. Send with a valid channel token → expect 200 and Inngest event in dev dashboard
-3. Outgoing webhook calls in the calendar-sync module carry `X-Ironheart-Signature` header
-
----
-
-### PHASE6-T06: Write `analytics.repository.ts`
-
-**Goal:** Replace all mock data in the analytics page with real Drizzle queries. All queries are tenant-scoped, read-only, and fast (use indexed columns only).
-
-**File: `src/modules/tenant/analytics.repository.ts`**
-
-```typescript
-import { db } from '@/shared/db'
-import { logger } from '@/shared/logger'
-import { bookings, customers } from '@/shared/db/schema'
-import { sql, eq, gte, lt, and, inArray, count, sum, desc } from 'drizzle-orm'
-import { subMonths, startOfMonth, endOfMonth, startOfWeek, endOfWeek, subWeeks } from 'date-fns'
-
-const log = logger.child({ module: 'analytics.repository' })
-
-export const analyticsRepository = {
-
-  /**
-   * Bookings by status for the current week and previous week.
-   * Used for the status breakdown cards with week-over-week change.
-   */
-  async getBookingsByStatus(tenantId: string): Promise<BookingsByStatusResult> {
-    const now = new Date()
-    const thisWeekStart = startOfWeek(now, { weekStartsOn: 1 })
-    const lastWeekStart = subWeeks(thisWeekStart, 1)
-    const lastWeekEnd = thisWeekStart
-
-    const [thisWeek, lastWeek] = await Promise.all([
-      db
-        .select({ status: bookings.status, count: count() })
-        .from(bookings)
-        .where(
-          and(
-            eq(bookings.tenantId, tenantId),
-            gte(bookings.scheduledDate, thisWeekStart)
-          )
-        )
-        .groupBy(bookings.status),
-
-      db
-        .select({ status: bookings.status, count: count() })
-        .from(bookings)
-        .where(
-          and(
-            eq(bookings.tenantId, tenantId),
-            gte(bookings.scheduledDate, lastWeekStart),
-            lt(bookings.scheduledDate, lastWeekEnd)
-          )
-        )
-        .groupBy(bookings.status),
-    ])
-
-    return { thisWeek, lastWeek }
-  },
-
-  /**
-   * Revenue by month for the last 12 months.
-   * Only counts CONFIRMED and COMPLETED bookings.
-   * Returns an array of { month: Date, revenue: number } sorted ascending.
-   */
-  async getRevenueByMonth(tenantId: string): Promise<RevenueByMonthResult[]> {
-    const twelveMonthsAgo = subMonths(new Date(), 12)
-
-    const rows = await db
-      .select({
-        month: sql<string>`DATE_TRUNC('month', ${bookings.scheduledDate})`.as('month'),
-        revenue: sum(bookings.totalAmount).as('revenue'),
-      })
-      .from(bookings)
-      .where(
-        and(
-          eq(bookings.tenantId, tenantId),
-          inArray(bookings.status, ['CONFIRMED', 'COMPLETED']),
-          gte(bookings.scheduledDate, twelveMonthsAgo)
-        )
-      )
-      .groupBy(sql`DATE_TRUNC('month', ${bookings.scheduledDate})`)
-      .orderBy(sql`DATE_TRUNC('month', ${bookings.scheduledDate}) ASC`)
-
-    return rows.map(row => ({
-      month: new Date(row.month),
-      revenue: Number(row.revenue ?? 0),
-    }))
-  },
-
-  /**
-   * Top 10 services by booking count.
-   * Returns serviceId + count, sorted descending.
-   * The analytics page resolves service names client-side using the
-   * services list which is already loaded.
-   */
-  async getTopServices(tenantId: string): Promise<TopServicesResult[]> {
-    return db
-      .select({
-        serviceId: bookings.serviceId,
-        bookingCount: count(),
-      })
-      .from(bookings)
-      .where(eq(bookings.tenantId, tenantId))
-      .groupBy(bookings.serviceId)
-      .orderBy(desc(count()))
-      .limit(10)
-  },
-
-  /**
-   * Staff utilisation: number of CONFIRMED+COMPLETED bookings per staff member.
-   * Does not calculate a % utilisation — the analytics page does that using
-   * staff.maxDailyBookings from the staff list already loaded on the page.
-   */
-  async getStaffUtilisation(tenantId: string): Promise<StaffUtilisationResult[]> {
-    // Join through bookingAssignments to get per-staff booking counts
-    const rows = await db.execute(sql`
-      SELECT
-        ba.user_id AS "userId",
-        COUNT(DISTINCT b.id) AS "bookingCount"
-      FROM booking_assignments ba
-      JOIN bookings b ON b.id = ba.booking_id
-      WHERE b.tenant_id = ${tenantId}
-        AND b.status IN ('CONFIRMED', 'COMPLETED')
-        AND b.scheduled_date >= NOW() - INTERVAL '30 days'
-      GROUP BY ba.user_id
-      ORDER BY "bookingCount" DESC
-    `)
-    return rows.rows as StaffUtilisationResult[]
-  },
-
-  /**
-   * Customer retention: percentage of customers with 2 or more bookings.
-   */
-  async getCustomerRetentionRate(tenantId: string): Promise<number> {
-    const result = await db.execute(sql`
-      SELECT
-        COUNT(*) FILTER (WHERE booking_count >= 2) AS returning_customers,
-        COUNT(*) AS total_customers
-      FROM (
-        SELECT customer_id, COUNT(*) AS booking_count
-        FROM bookings
-        WHERE tenant_id = ${tenantId}
-          AND status NOT IN ('CANCELLED', 'REJECTED', 'RELEASED')
-        GROUP BY customer_id
-      ) customer_counts
-    `)
-    const row = result.rows[0] as { returning_customers: string; total_customers: string }
-    if (!row || Number(row.total_customers) === 0) return 0
-    return Math.round((Number(row.returning_customers) / Number(row.total_customers)) * 100)
-  },
-
-  /**
-   * Portal vs admin booking split.
-   */
-  async getBookingSourceSplit(tenantId: string): Promise<BookingSourceSplitResult[]> {
-    return db
-      .select({
-        source: bookings.source,
-        count: count(),
-      })
-      .from(bookings)
-      .where(eq(bookings.tenantId, tenantId))
-      .groupBy(bookings.source)
-  },
-
-  /**
-   * Average booking value (totalAmount) by month for the last 6 months.
-   */
-  async getAverageBookingValue(tenantId: string): Promise<AverageBookingValueResult[]> {
-    const sixMonthsAgo = subMonths(new Date(), 6)
-
-    const rows = await db.execute(sql`
-      SELECT
-        DATE_TRUNC('month', scheduled_date) AS month,
-        AVG(total_amount) AS avg_value,
-        COUNT(*) AS booking_count
-      FROM bookings
-      WHERE tenant_id = ${tenantId}
-        AND status IN ('CONFIRMED', 'COMPLETED')
-        AND total_amount IS NOT NULL
-        AND scheduled_date >= ${sixMonthsAgo}
-      GROUP BY DATE_TRUNC('month', scheduled_date)
-      ORDER BY month ASC
-    `)
-
-    return (rows.rows as Array<{ month: string; avg_value: string; booking_count: string }>).map(row => ({
-      month: new Date(row.month),
-      avgValue: Math.round(Number(row.avg_value ?? 0)),
-      bookingCount: Number(row.booking_count),
-    }))
-  },
-}
-
-// Result types
-export type BookingsByStatusResult = {
-  thisWeek: Array<{ status: string; count: number }>
-  lastWeek: Array<{ status: string; count: number }>
-}
-export type RevenueByMonthResult = { month: Date; revenue: number }
-export type TopServicesResult = { serviceId: string | null; bookingCount: number }
-export type StaffUtilisationResult = { userId: string; bookingCount: number }
-export type BookingSourceSplitResult = { source: string | null; count: number }
-export type AverageBookingValueResult = { month: Date; avgValue: number; bookingCount: number }
-```
-
-**Verification:** File compiles. Run `tsc --noEmit`.
-
----
-
-### PHASE6-T07: Wire analytics into tRPC and replace the mock page
-
-**Goal:** Add `analytics` procedures to the tRPC router and update the analytics page to use real data.
-
-**Step 1 — Create `src/modules/tenant/analytics.router.ts`:**
-
-```typescript
-import { router } from '@/shared/trpc'
-import { tenantProcedure } from '@/shared/trpc'
-import { analyticsRepository } from './analytics.repository'
-
-/**
- * Analytics router — read-only queries for the analytics dashboard.
- * All procedures use tenantProcedure (requires auth + tenant context).
- * No mutations — analytics is read-only.
- */
-export const analyticsRouter = router({
-
-  getBookingsByStatus: tenantProcedure
-    .query(({ ctx }) => analyticsRepository.getBookingsByStatus(ctx.tenantId)),
-
-  getRevenueByMonth: tenantProcedure
-    .query(({ ctx }) => analyticsRepository.getRevenueByMonth(ctx.tenantId)),
-
-  getTopServices: tenantProcedure
-    .query(({ ctx }) => analyticsRepository.getTopServices(ctx.tenantId)),
-
-  getStaffUtilisation: tenantProcedure
-    .query(({ ctx }) => analyticsRepository.getStaffUtilisation(ctx.tenantId)),
-
-  getCustomerRetentionRate: tenantProcedure
-    .query(({ ctx }) => analyticsRepository.getCustomerRetentionRate(ctx.tenantId)),
-
-  getBookingSourceSplit: tenantProcedure
-    .query(({ ctx }) => analyticsRepository.getBookingSourceSplit(ctx.tenantId)),
-
-  getAverageBookingValue: tenantProcedure
-    .query(({ ctx }) => analyticsRepository.getAverageBookingValue(ctx.tenantId)),
-})
-```
-
-**Step 2 — Update `src/modules/tenant/index.ts`:**
-
-```typescript
-export { analyticsRouter } from './analytics.router'
-```
-
-**Step 3 — Mount in `src/server/root.ts`:**
-
-```typescript
-import { analyticsRouter } from '@/modules/tenant'
-
-export const appRouter = router({
-  // ... existing routers
-  analytics: analyticsRouter,
-})
-```
-
-**Step 4 — Update the analytics page:**
-
-The analytics page at `src/app/admin/analytics/page.tsx` is currently server-rendered with hardcoded mock data. Replace the mock data objects with tRPC query calls.
-
-The page is a client component (`'use client'`). Use the tRPC React Query hooks:
-
-```typescript
-// Replace hardcoded mock data arrays with:
-const { data: bookingsByStatus, isLoading: statusLoading } =
-  trpc.analytics.getBookingsByStatus.useQuery()
-
-const { data: revenueByMonth, isLoading: revenueLoading } =
-  trpc.analytics.getRevenueByMonth.useQuery()
-
-const { data: topServices } = trpc.analytics.getTopServices.useQuery()
-
-const { data: retentionRate } = trpc.analytics.getCustomerRetentionRate.useQuery()
-
-const { data: sourceSplit } = trpc.analytics.getBookingSourceSplit.useQuery()
-
-const { data: avgBookingValue } = trpc.analytics.getAverageBookingValue.useQuery()
-```
-
-Replace each hardcoded data array passed to Recharts components with the real data:
-- `data={revenueByMonth ?? []}` instead of `data={mockRevenueData}`
-- `data={topServices ?? []}` instead of `data={mockServicesData}`
-- etc.
-
-Add loading states: when `isLoading` is true, show skeleton cards instead of charts.
-
-**Verification:**
-
-1. Start `npm run dev` with a real `DATABASE_URL` pointing to the test tenant
-2. Navigate to `/admin/analytics`
-3. Charts should show real data (or empty state if no bookings exist) rather than the hardcoded demo values
-4. Open Network tab — confirm tRPC queries are being made to `/api/trpc/analytics.*`
-
----
-
-### PHASE6-T08: Fix all remaining TypeScript errors
-
-**Goal:** `tsc --noEmit` passes with zero errors. No pre-existing errors carried forward.
-
-**Step 1 — Find all current errors:**
-
-```bash
-cd /Users/lukehodges/Documents/ironheart-refactor
-npx tsc --noEmit 2>&1 | head -60
-```
-
-**Step 2 — Fix by category:**
-
-**Category A: `resolvedBy` field in review module**
-
-Location: `src/modules/review/review.router.ts` or `review.service.ts`
-
-The error is a field name or type mismatch on the `Review` model's `resolvedBy` relation. Check the Drizzle schema:
-
-```bash
-grep -n "resolvedBy\|resolved_by" \
-  /Users/lukehodges/Documents/ironheart-refactor/src/shared/db/schema.ts
-```
-
-Fix: match the exact column name in the Drizzle schema. If the column is `resolvedById: text(...)`, use `resolvedById: userId` in the update call, not the relation syntax.
-
-**Category B: `tenantId` type in settings/tenant module**
-
-Location: `src/modules/tenant/` or any module router
-
-The `tenantId` in context is typed as `string` but the Drizzle column may be `uuid`. In Drizzle with `postgres.js`, UUID columns come back as strings — this is usually fine. Check if the error is:
-
-- A Drizzle `where` clause: `eq(table.tenantId, ctx.tenantId)` — this is fine, `eq` accepts `string`
-- A type assertion issue: if Drizzle schema has `tenantId: uuid(...)`, ensure the type resolves to `string` not `UUID` (Drizzle's UUID type resolves to `string` by default — this should not be an error)
-
-Fix: check the exact error message from `tsc --noEmit` and correct the type at the call site.
-
-**Category C: `JsonArray` cast in workflow module**
-
-Location: `src/modules/workflow/workflow.service.ts` or `workflow.repository.ts`
-
-The `workflow.actions` column stores JSON in the database. Drizzle returns this as `unknown` for `json()` columns, or `JsonValue` (which is `string | number | boolean | null | JsonArray | JsonObject`).
-
-Define a proper type:
-
-```typescript
-// In src/modules/workflow/workflow.types.ts
-export interface WorkflowAction {
-  type: string
-  config: Record<string, unknown>
-  order: number
-  // Add fields matching the actual JSON structure stored in the DB
-  // Reference: src/server/routers/workflow.ts in the legacy codebase for the exact shape
-}
-
-// In the service/repository:
-// Instead of: workflow.actions as any
-// Use:
-import type { WorkflowAction } from './workflow.types'
-
-const actions = workflow.actions as WorkflowAction[]
-```
-
-**Step 3 — Run `tsc --noEmit` after each fix:**
-
-```bash
-npx tsc --noEmit
-```
-
-Iterate until the output is:
-
-```
-# No output = zero errors
-```
-
-**Verification:** `npx tsc --noEmit` produces no output and exits with code 0.
-
----
-
-### PHASE6-T09: Install Vitest and configure the test environment
-
-**Goal:** Set up the integration test infrastructure before writing tests.
-
-**Step 1 — Install Vitest:**
-
-```bash
-npm install --save-dev vitest @vitest/coverage-v8 vite-tsconfig-paths
-```
-
-**Step 2 — Create `vitest.config.ts`:**
-
-```typescript
-import { defineConfig } from 'vitest/config'
-import tsconfigPaths from 'vite-tsconfig-paths'
-
-export default defineConfig({
-  plugins: [tsconfigPaths()],
-  test: {
-    globals: true,
-    environment: 'node',
-    setupFiles: ['./src/shared/__tests__/setup.ts'],
-    // Run tests sequentially — integration tests share a database
-    pool: 'forks',
-    poolOptions: {
-      forks: {
-        singleFork: true,
-      },
-    },
-    coverage: {
-      provider: 'v8',
-      reporter: ['text', 'json'],
-      include: [
-        'src/modules/booking/booking.service.ts',
-        'src/modules/scheduling/scheduling.service.ts',
-      ],
-      thresholds: {
-        lines: 60,
-        functions: 60,
-      },
-    },
-  },
-})
-```
-
-**Step 3 — Create `src/shared/__tests__/setup.ts`:**
-
-This file runs before every test file. It sets environment variables and cleans up the test tenant.
-
-```typescript
-import { config } from 'dotenv'
-import { db } from '@/shared/db'
-import { bookings, availableSlots, customers, bookingAssignments, bookingStatusHistory } from '@/shared/db/schema'
-import { eq } from 'drizzle-orm'
-
-// Load .env.local before tests run
-config({ path: '.env.local' })
-
-export const TEST_TENANT_ID = 'test-tenant-phase6'
-
-/**
- * Clean up all test data created during tests.
- * Called in afterEach to leave the database in a clean state.
- */
-export async function cleanTestData() {
-  // Delete in dependency order (FK constraints)
-  await db.delete(bookingAssignments).where(
-    // Delete assignments for test tenant's bookings
-    // Use a subquery or join if the schema doesn't have tenantId on assignments
-  )
-  await db.delete(bookingStatusHistory)
-    // Only delete history for test bookings
-  await db.delete(bookings).where(eq(bookings.tenantId, TEST_TENANT_ID))
-  await db.delete(availableSlots).where(eq(availableSlots.tenantId, TEST_TENANT_ID))
-}
-
-// Global cleanup after all tests
-afterAll(async () => {
-  await cleanTestData()
-})
-```
-
-**Step 4 — Add test scripts to `package.json`:**
-
-```json
-{
-  "scripts": {
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
-  }
-}
-```
-
-**Verification:**
-
-```bash
-npx vitest run
-# Expected: "No test files found" — that's correct at this stage, tests are added in T10
-```
-
----
-
-### PHASE6-T10: Write BookingService integration tests
-
-**Goal:** Integration tests for the two highest-risk paths in `BookingService`. Tests run against the real test database. Inngest is mocked — no real events fired.
-
-**File: `src/shared/__tests__/booking.service.test.ts`**
-
-```typescript
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { bookingService } from '@/modules/booking/booking.service'
-import { bookingRepository } from '@/modules/booking/booking.repository'
-import { schedulingRepository } from '@/modules/scheduling/scheduling.repository'
-import { db } from '@/shared/db'
-import { availableSlots, bookings } from '@/shared/db/schema'
-import { TEST_TENANT_ID, cleanTestData } from './setup'
-import { ConflictError, NotFoundError } from '@/shared/errors'
-
-// Mock Inngest — do NOT fire real events in tests
-vi.mock('@/shared/inngest', () => ({
-  inngest: {
-    send: vi.fn().mockResolvedValue(undefined),
-  },
-}))
-
-// Import the mocked inngest for assertions
-import { inngest } from '@/shared/inngest'
-
-const TEST_CUSTOMER_ID = 'test-customer-00000000-0000-0000-0000-000000000001'
-const TEST_SERVICE_ID = 'test-service-00000000-0000-0000-0000-000000000001'
-
-describe('BookingService.createBooking', () => {
-
-  let testSlotId: string
-
-  beforeEach(async () => {
-    await cleanTestData()
-    vi.clearAllMocks()
-
-    // Create a test slot with capacity 1
-    const [slot] = await db
-      .insert(availableSlots)
-      .values({
-        tenantId: TEST_TENANT_ID,
-        date: new Date('2026-06-01'),
-        time: '10:00',
-        endTime: '11:00',
-        available: true,
-        staffIds: [],
-        serviceIds: [TEST_SERVICE_ID],
-        capacity: 1,
-        bookedCount: 0,
-        requiresApproval: false,
-        sortOrder: 0,
-      })
-      .returning({ id: availableSlots.id })
-
-    testSlotId = slot.id
-  })
-
-  afterEach(async () => {
-    await cleanTestData()
-  })
-
-  it('creates a RESERVED booking when slotId is provided from portal', async () => {
-    const booking = await bookingService.createBooking(TEST_TENANT_ID, {
-      customerId: TEST_CUSTOMER_ID,
-      serviceId: TEST_SERVICE_ID,
-      scheduledDate: new Date('2026-06-01'),
-      scheduledTime: '10:00',
-      durationMinutes: 60,
-      slotId: testSlotId,
-      source: 'PORTAL',
-      skipReservation: false,
-    })
-
-    expect(booking.status).toBe('RESERVED')
-    expect(booking.reservedAt).not.toBeNull()
-    expect(booking.reservationExpiresAt).not.toBeNull()
-    expect(booking.slotId).toBe(testSlotId)
-
-    // Verify slot capacity was decremented
-    const slot = await db.query.availableSlots.findFirst({
-      where: (s, { eq }) => eq(s.id, testSlotId),
-    })
-    expect(slot?.bookedCount).toBe(1)
-  })
-
-  it('emits slot/reserved Inngest event when booking is RESERVED', async () => {
-    await bookingService.createBooking(TEST_TENANT_ID, {
-      customerId: TEST_CUSTOMER_ID,
-      serviceId: TEST_SERVICE_ID,
-      scheduledDate: new Date('2026-06-01'),
-      scheduledTime: '10:00',
-      durationMinutes: 60,
-      slotId: testSlotId,
-      source: 'PORTAL',
-    })
-
-    expect(inngest.send).toHaveBeenCalledWith(
-      expect.objectContaining({
-        name: 'slot/reserved',
-        data: expect.objectContaining({
-          slotId: testSlotId,
-          tenantId: TEST_TENANT_ID,
-        }),
-      })
-    )
-  })
-
-  it('creates a PENDING booking for admin source (no reservation)', async () => {
-    const booking = await bookingService.createBooking(TEST_TENANT_ID, {
-      customerId: TEST_CUSTOMER_ID,
-      serviceId: TEST_SERVICE_ID,
-      scheduledDate: new Date('2026-06-01'),
-      scheduledTime: '10:00',
-      durationMinutes: 60,
-      source: 'ADMIN',
-    })
-
-    expect(booking.status).toBe('PENDING')
-    expect(booking.reservedAt).toBeNull()
-    expect(booking.reservationExpiresAt).toBeNull()
-  })
-
-  it('throws ConflictError when slot is at full capacity', async () => {
-    // First booking takes the slot
-    await bookingService.createBooking(TEST_TENANT_ID, {
-      customerId: TEST_CUSTOMER_ID,
-      serviceId: TEST_SERVICE_ID,
-      scheduledDate: new Date('2026-06-01'),
-      scheduledTime: '10:00',
-      durationMinutes: 60,
-      slotId: testSlotId,
-      source: 'PORTAL',
-    })
-
-    // Second booking should fail — slot is full
-    await expect(
-      bookingService.createBooking(TEST_TENANT_ID, {
-        customerId: 'test-customer-00000000-0000-0000-0000-000000000002',
-        serviceId: TEST_SERVICE_ID,
-        scheduledDate: new Date('2026-06-01'),
-        scheduledTime: '10:00',
-        durationMinutes: 60,
-        slotId: testSlotId,
-        source: 'PORTAL',
-      })
-    ).rejects.toThrow(ConflictError)
-  })
-
-  it('releases distributed lock even when booking fails', async () => {
-    // Fill the slot to trigger an error
-    await db
-      .update(availableSlots)
-      .set({ bookedCount: 1 }) // already at capacity
-      .where((s, { eq }) => eq(s.id, testSlotId))
-
-    await expect(
-      bookingService.createBooking(TEST_TENANT_ID, {
-        customerId: TEST_CUSTOMER_ID,
-        serviceId: TEST_SERVICE_ID,
-        scheduledDate: new Date('2026-06-01'),
-        scheduledTime: '10:00',
-        durationMinutes: 60,
-        slotId: testSlotId,
-        source: 'PORTAL',
-      })
-    ).rejects.toThrow(ConflictError)
-
-    // Verify: a second request can now acquire the lock (it was released)
-    // If the lock was not released, this would hang or return slot_locked
-    // We test this by checking the lock key doesn't exist in Redis
-    const { redis } = await import('@/shared/redis')
-    const lockValue = await redis.get(`lock:slot:${testSlotId}`)
-    expect(lockValue).toBeNull()
-  })
-
-})
-```
-
-**File: `src/shared/__tests__/booking.service.confirm.test.ts`**
-
-```typescript
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { bookingService } from '@/modules/booking/booking.service'
-import { db } from '@/shared/db'
-import { bookings, availableSlots } from '@/shared/db/schema'
-import { TEST_TENANT_ID, cleanTestData } from './setup'
-import { ValidationError } from '@/shared/errors'
-import { addMinutes, subMinutes } from 'date-fns'
-
-vi.mock('@/shared/inngest', () => ({
-  inngest: { send: vi.fn().mockResolvedValue(undefined) },
-}))
-
-import { inngest } from '@/shared/inngest'
-
-describe('BookingService.confirmReservation', () => {
-
-  let testBookingId: string
-
-  beforeEach(async () => {
-    await cleanTestData()
-    vi.clearAllMocks()
-
-    // Create a RESERVED booking
-    const [booking] = await db
-      .insert(bookings)
-      .values({
-        tenantId: TEST_TENANT_ID,
-        bookingNumber: 'BK-TEST-20260601-001',
-        customerId: 'test-customer-00000000-0000-0000-0000-000000000001',
-        serviceId: 'test-service-00000000-0000-0000-0000-000000000001',
-        scheduledDate: new Date('2026-06-01'),
-        scheduledTime: '10:00',
-        durationMinutes: 60,
-        status: 'RESERVED',
-        statusChangedAt: new Date(),
-        reservedAt: new Date(),
-        reservationExpiresAt: addMinutes(new Date(), 15), // expires in 15 minutes
-        source: 'PORTAL',
-        requiresApproval: false,
-        depositPaid: 0,
-      })
-      .returning({ id: bookings.id })
-
-    testBookingId = booking.id
-  })
-
-  afterEach(async () => {
-    await cleanTestData()
-  })
-
-  it('transitions booking from RESERVED to CONFIRMED', async () => {
-    const confirmed = await bookingService.confirmReservation(testBookingId)
-
-    expect(confirmed.status).toBe('CONFIRMED')
-    expect(confirmed.reservedAt).not.toBeNull()       // preserved
-    expect(confirmed.reservationExpiresAt).toBeNull() // cleared on confirm
-  })
-
-  it('emits booking/confirmed Inngest event', async () => {
-    await bookingService.confirmReservation(testBookingId)
-
-    expect(inngest.send).toHaveBeenCalledWith(
-      expect.objectContaining({
-        name: 'booking/confirmed',
-        data: expect.objectContaining({
-          bookingId: testBookingId,
-          tenantId: TEST_TENANT_ID,
-        }),
-      })
-    )
-  })
-
-  it('emits calendar/sync.push event after confirmation', async () => {
-    await bookingService.confirmReservation(testBookingId)
-
-    expect(inngest.send).toHaveBeenCalledWith(
-      expect.objectContaining({ name: 'calendar/sync.push' })
-    )
-  })
-
-  it('throws ValidationError when reservation has expired', async () => {
-    // Update the booking to have an expired reservation
-    await db
-      .update(bookings)
-      .set({ reservationExpiresAt: subMinutes(new Date(), 1) }) // expired 1 minute ago
-      .where((b, { eq }) => eq(b.id, testBookingId))
-
-    await expect(
-      bookingService.confirmReservation(testBookingId)
-    ).rejects.toThrow(ValidationError)
-  })
-
-  it('throws ValidationError when booking is not in RESERVED status', async () => {
-    // Set booking to CONFIRMED already
-    await db
-      .update(bookings)
-      .set({ status: 'CONFIRMED', reservationExpiresAt: null })
-      .where((b, { eq }) => eq(b.id, testBookingId))
-
-    await expect(
-      bookingService.confirmReservation(testBookingId)
-    ).rejects.toThrow(ValidationError)
-  })
-
-  it('throws NotFoundError for non-existent bookingId', async () => {
-    const { NotFoundError } = await import('@/shared/errors')
-
-    await expect(
-      bookingService.confirmReservation('00000000-0000-0000-0000-000000000000')
-    ).rejects.toThrow(NotFoundError)
-  })
-
-})
-```
-
-**Verification:**
-
-```bash
-npx vitest run
-```
-
-Expected output:
-```
-PASS  src/shared/__tests__/booking.service.test.ts
-PASS  src/shared/__tests__/booking.service.confirm.test.ts
-
-Test Files   2 passed (2)
-Tests        10 passed (10)
-```
-
-If tests fail because test data (tenant, customer, service) doesn't exist in the database, add seed data creation to `setup.ts` in a `beforeAll` block.
-
----
-
-### PHASE6-T10b: Implement audit log
-
-**Goal:** Enterprise customers require an audit trail for compliance. All permission-sensitive operations must be logged to an append-only `audit_logs` table. This also satisfies the audit trail requirement for GDPR erasure requests.
-
-**Schema addition (add to Drizzle schema):**
-
-```typescript
-// src/shared/db/schemas/audit.schema.ts
-export const auditLogs = pgTable('audit_logs', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  tenantId: uuid('tenant_id').notNull().references(() => tenants.id),
-  entityType: text('entity_type').notNull(),   // 'booking', 'user', 'permission', etc.
-  entityId: uuid('entity_id').notNull(),
-  action: text('action').notNull(),            // 'created', 'updated', 'deleted', 'status_changed', 'permission_granted'
-  changedById: uuid('changed_by_id'),          // null for system actions
-  diff: jsonb('diff'),                         // { before: {...}, after: {...} }
-  ipAddress: text('ip_address'),
-  userAgent: text('user_agent'),
-  timestamp: timestamp('timestamp').notNull().defaultNow(),
-})
-```
-
-**Audit logger utility:**
-
-```typescript
-// src/shared/audit.ts
-import { db } from '@/shared/db'
-import { auditLogs } from '@/shared/db/schema'
-
-export async function auditLog(params: {
-  tenantId: string
-  entityType: string
-  entityId: string
-  action: string
-  changedById?: string
-  diff?: { before?: unknown; after?: unknown }
-  ipAddress?: string
-}) {
-  await db.insert(auditLogs).values({
-    id: crypto.randomUUID(),
-    ...params,
-    timestamp: new Date(),
-  })
-}
-```
-
-**Where to call it:**
-
-- `booking.service.ts`: all status changes (`createBooking`, `cancelBooking`, `approveBooking`, `rejectBooking`)
-- `auth module`: permission grants/revocations
-- `team module`: role changes, staff activation/deactivation
-- `tenant module`: settings changes
-- `gdpr.service.ts` (T10c below): erasure requests
-
-**tRPC procedure (admin query):**
-
-```typescript
-// In the tenant router or a dedicated audit.router.ts
-getAuditLog: permissionProcedure('bookings:read')
-  .input(z.object({
-    entityType: z.string().optional(),
-    from: z.date().optional(),
-    to: z.date().optional(),
-    limit: z.number().min(1).max(200).default(50),
-  }))
-  .query(({ ctx, input }) =>
-    db.select().from(auditLogs)
-      .where(
-        and(
-          eq(auditLogs.tenantId, ctx.tenantId),
-          input.entityType ? eq(auditLogs.entityType, input.entityType) : undefined,
-          input.from ? gte(auditLogs.timestamp, input.from) : undefined,
-          input.to ? lt(auditLogs.timestamp, input.to) : undefined,
-        )
-      )
-      .orderBy(desc(auditLogs.timestamp))
-      .limit(input.limit)
-  ),
-```
-
-**Success Criteria:**
-
-- [ ] Status change on a booking creates an `audit_logs` row
-- [ ] Permission grant creates an `audit_logs` row with before/after diff
-- [ ] Admin can query audit log by entity type and date range via tRPC
-
----
-
-### PHASE6-T10c: GDPR compliance — right to erasure and data export
-
-**Why:** UK GDPR (the post-Brexit equivalent of EU GDPR) is a legal requirement for any UK-based SaaS platform processing personal data. Failure to provide right to erasure (Article 17) and right to data portability (Article 20) is a regulatory violation.
-
-**File: `src/modules/customer/gdpr.service.ts`**
-
-```typescript
-export const gdprService = {
-  /**
-   * Right to Erasure (GDPR Article 17)
-   * Anonymises all personal data for a customer by email address.
-   * Does NOT delete booking records (required for business/tax records).
-   * Replaces PII with anonymised values.
-   */
-  async eraseCustomer(tenantId: string, email: string, requestedById: string) {
-    // 1. Find customer by email + tenantId
-    // 2. Anonymise customer record:
-    //    firstName → 'ERASED', lastName → 'ERASED'
-    //    email → `erased-{customerId}@erased.invalid`
-    //    phone → null, address → null, notes → null
-    // 3. Anonymise CustomerNote records
-    // 4. Remove from any marketing lists (SentMessage etc.)
-    // 5. Log the erasure request to AuditLog
-    // 6. Does NOT touch Booking records (legal retention requirement)
-    // Returns: { customerId, anonymisedAt, recordsAffected }
-  },
-
-  /**
-   * Right to Data Portability (GDPR Article 20)
-   * Generates a ZIP containing all data held for a customer.
-   */
-  async exportCustomerData(tenantId: string, email: string): Promise<Buffer> {
-    // 1. Find customer
-    // 2. Collect: customer profile, all bookings, all forms, all notes, all communications
-    // 3. Generate CSV files (one per entity type)
-    // 4. Package into ZIP
-    // 5. Return ZIP buffer (caller emails it to customer or returns as download)
-  },
-}
-```
-
-**tRPC procedures (add to customer router or a new `gdpr.router.ts`):**
-
-```typescript
-eraseCustomer: permissionProcedure('customers:delete')
-  .input(z.object({ email: z.string().email(), confirmEmail: z.string().email() }))
-  .mutation(({ ctx, input }) => {
-    if (input.email !== input.confirmEmail) throw new ValidationError('Email confirmation does not match')
-    return gdprService.eraseCustomer(ctx.tenantId, input.email, ctx.user.id)
-  }),
-
-exportCustomerData: permissionProcedure('customers:read')
-  .input(z.object({ email: z.string().email() }))
-  .mutation(({ ctx, input }) =>
-    gdprService.exportCustomerData(ctx.tenantId, input.email)
-  ),
-```
-
-**Success Criteria:**
-
-- [ ] `eraseCustomer` anonymises all PII fields without deleting booking records
-- [ ] `exportCustomerData` generates a downloadable ZIP with all customer data
-
----
-
-### PHASE6-T10d: Move platform admin to database-backed flag
-
-**Goal:** Replace the `PLATFORM_ADMIN_EMAILS` environment variable with a database-backed `isPlatformAdmin` flag on the `users` table. The env var becomes a bootstrap-only fallback that auto-promotes on first use and should then be removed.
-
-**Why:** The env var approach is not auditable, cannot be changed without a redeployment, and cannot be revoked without touching infrastructure. A database flag is auditable (every grant/revoke goes through `auditLog`), can be changed at runtime, and survives deployments.
-
-**Step 1 — Migration: add `isPlatformAdmin` to the users table:**
-
-```typescript
-// New migration: add isPlatformAdmin to users table
-// src/shared/db/schemas/auth.schema.ts — add column:
-isPlatformAdmin: boolean('is_platform_admin').notNull().default(false)
-```
-
-**Step 2 — Update `platformAdminProcedure` in `src/shared/trpc.ts`:**
-
-```typescript
-export const platformAdminProcedure = protectedProcedure.use(async ({ ctx, next }) => {
-  // Primary check: database flag (fast, auditable)
-  if (ctx.user?.isPlatformAdmin) {
-    return next({ ctx })
-  }
-
-  // Bootstrap fallback: PLATFORM_ADMIN_EMAILS can grant first admin access.
-  // This env var should be REMOVED after the first admin is provisioned via the DB flag.
-  const bootstrapEmails = (process.env.PLATFORM_ADMIN_EMAILS ?? '').split(',').map(e => e.trim())
-  if (bootstrapEmails.includes(ctx.user?.email ?? '')) {
-    // Auto-promote to DB flag on first bootstrap login
-    await db.update(users)
-      .set({ isPlatformAdmin: true })
-      .where(eq(users.id, ctx.user.id))
-    return next({ ctx })
-  }
-
-  throw new TRPCError({ code: 'FORBIDDEN', message: 'Platform admin access required' })
-})
-```
-
-**Step 3 — Add grant/revoke procedures (platform admin only):**
-
-```typescript
-// Only callable by existing platform admins
-grantPlatformAdmin: platformAdminProcedure
-  .input(z.object({ userId: z.string().uuid() }))
-  .mutation(async ({ input, ctx }) => {
-    await db.update(users).set({ isPlatformAdmin: true }).where(eq(users.id, input.userId))
-    await auditLog({
-      tenantId: ctx.tenantId,
-      entityType: 'user',
-      entityId: input.userId,
-      action: 'platform_admin_granted',
-      changedById: ctx.user.id,
-    })
-  }),
-
-revokePlatformAdmin: platformAdminProcedure
-  .input(z.object({ userId: z.string().uuid() }))
-  .mutation(async ({ input, ctx }) => {
-    await db.update(users).set({ isPlatformAdmin: false }).where(eq(users.id, input.userId))
-    await auditLog({
-      tenantId: ctx.tenantId,
-      entityType: 'user',
-      entityId: input.userId,
-      action: 'platform_admin_revoked',
-      changedById: ctx.user.id,
-    })
-  }),
-```
-
-**Step 4 — Update `.env.example` with deprecation note:**
-
-```
-# DEPRECATED after Phase 6: Use DB isPlatformAdmin flag instead.
-# Keep only for initial bootstrap. Remove after the first admin is provisioned via the DB.
-# PLATFORM_ADMIN_EMAILS=admin@yourdomain.com
-```
-
-**Verification:**
-
-1. Run the migration. Confirm `is_platform_admin` column exists on `users` table.
-2. Set `PLATFORM_ADMIN_EMAILS` to a test email and log in — verify the user is auto-promoted (`isPlatformAdmin = true` in DB).
-3. Remove the env var. Log in again — verify platform admin access still works via the DB flag.
-4. Call `revokePlatformAdmin` — verify the DB flag is cleared and access is denied on next request.
-
----
-
-### PHASE6-T11: Security audit
-
-**Goal:** Systematic review of every security concern listed in the phase requirements. Document findings and fix any issues found.
-
-**Audit checklist — work through each item:**
-
-**1. Public procedures — tenant data leakage:**
-
-```bash
-grep -rn "publicProcedure" \
-  /Users/lukehodges/Documents/ironheart-refactor/src/modules/ \
-  --include="*.ts"
-```
-
-For each `publicProcedure` found, verify:
-- Does it return any data without filtering by `tenantId` or requiring a `slug`?
-- `getPortalConfig` queries by `slug` — tenant-scoped. OK.
-- `getSlotsForDate` queries by `slug` — tenant-scoped. OK.
-- `confirmReservation` queries by `bookingId` only — this is intentional (public confirmation link). OK but verify it does not return other tenant's data.
-- `getPublicById` (booking) — verify it returns only the specific booking's fields needed for the confirmation page, not sensitive admin fields.
-
-Fix any procedure that returns data without tenant scoping.
-
-**2. Drizzle repository `tenantId` audit:**
-
-```bash
-# Find all repository files
-ls /Users/lukehodges/Documents/ironheart-refactor/src/modules/*/
-
-# For each *.repository.ts file, check that every db query includes tenantId
-grep -n "db\." \
-  /Users/lukehodges/Documents/ironheart-refactor/src/modules/booking/booking.repository.ts \
-  | grep -v "tenantId"
-```
-
-Review every Drizzle query in every `*.repository.ts` file. Every query against a tenant-scoped table must have `eq(table.tenantId, tenantId)` in the WHERE clause. Cross-tenant queries (e.g., analytics cron operations) are intentional exceptions — mark them with a comment:
-
-```typescript
-// intentionally cross-tenant — reads from all tenants for cron operation
-```
-
-**3. Google Calendar webhook signature validation:**
-
-Verify the fix from T05 is in place. Check `src/app/api/integrations/google-calendar/webhook/route.ts`:
-- Returns 401 without valid channel token
-- Does not process the webhook payload before validation
-
-**4. Hardcoded secrets and API keys:**
-
-```bash
-grep -rn "sk_\|pk_\|AKIA\|password.*=.*['\"][a-zA-Z0-9]\{20,\}" \
-  /Users/lukehodges/Documents/ironheart-refactor/src/ \
-  --include="*.ts" --include="*.tsx" | grep -v ".env" | grep -v "example"
-```
-
-Also check:
-```bash
-grep -rn "process\.env\." \
-  /Users/lukehodges/Documents/ironheart-refactor/src/ \
-  --include="*.ts" | awk -F'process.env.' '{print $2}' | awk -F'[^A-Z_]' '{print $1}' | sort -u
-```
-
-This lists every environment variable referenced in source code. Cross-reference with `.env.example` — any variable used in code but missing from `.env.example` must be added.
-
-**5. `.env.example` completeness check:**
-
-The complete list of environment variables across all phases (add any missing ones to `.env.example`):
-
-```bash
-# Phase 0
-DATABASE_URL
-WORKOS_CLIENT_ID, WORKOS_API_KEY, WORKOS_REDIRECT_URI, WORKOS_COOKIE_PASSWORD
-INNGEST_EVENT_KEY, INNGEST_SIGNING_KEY
-UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN
-NEXT_PUBLIC_SENTRY_DSN, SENTRY_ORG, SENTRY_PROJECT, SENTRY_AUTH_TOKEN
-DEFAULT_TENANT_SLUG, LOG_LEVEL, PLATFORM_ADMIN_EMAILS
-
-# Phase 2
-MAPBOX_ACCESS_TOKEN (travel time)
-
-# Phase 4
-RESEND_API_KEY (email sending)
-RESEND_FROM_EMAIL
-TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM_NUMBER (SMS)
-GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET (Calendar OAuth)
-
-# Phase 6 (new)
-# None — uses existing Redis client for rate limiting
-```
-
-**6. Fix any issues found:**
-
-Document each issue as a comment in this audit section, then fix it. Common issues to look for:
-- A `publicProcedure` that returns booking counts without tenant filtering
-- A repository method that was added quickly without the `tenantId` WHERE clause
-- A hardcoded test credential in a seed file that was accidentally committed
-
-**Verification:** All checklist items reviewed. Any issues found are documented and fixed. `tsc --noEmit` still passes.
-
----
-
-### PHASE6-T12: Final end-to-end verification
-
-**Goal:** Full system works end-to-end. This is the acceptance gate for Phase 6 and the entire project.
-
-**Prerequisite environment variables (must be set in `.env.local`):**
-
-```bash
-DATABASE_URL=postgresql://...       # Test database with data
-WORKOS_CLIENT_ID=...                # Phase 3 auth
-WORKOS_API_KEY=...
-WORKOS_REDIRECT_URI=http://localhost:3000/api/auth/callback
-WORKOS_COOKIE_PASSWORD=...
-INNGEST_EVENT_KEY=...               # Or use dev server (no key needed locally)
-UPSTASH_REDIS_REST_URL=...
-UPSTASH_REDIS_REST_TOKEN=...
-RESEND_API_KEY=...                  # Phase 4 email
-GOOGLE_CLIENT_ID=...                # Phase 4 calendar
-GOOGLE_CLIENT_SECRET=...
-```
-
-**Verification checklist — work through each item in order:**
-
-**TypeScript:**
-```bash
-cd /Users/lukehodges/Documents/ironheart-refactor
-npx tsc --noEmit
-# Expected: no output, exit code 0
-```
-
-**Build:**
-```bash
-npm run build
-# Expected: exit code 0, no "Error:" lines
-```
-
-**Tests:**
-```bash
-npx vitest run
-# Expected: all tests pass
-```
-
-**Inngest dashboard:**
-```bash
-npm run dev &
-npx inngest-cli@latest dev
-# Visit http://localhost:8288
-# Expected: 9+ functions registered:
-#   Phase 1: release-expired-reservation, send-booking-confirmation-email, push-booking-to-calendar
-#   Phase 2: schedule-booking-reminders, send-reminders-cron, sync-calendars-cron,
-#            pull-calendar-events-cron, refresh-calendar-tokens-cron, renew-watch-channels-cron
-#   Phase 4+: notification functions, calendar sync functions (as added)
-```
-
-**Auth flow:**
-1. Navigate to `http://localhost:3000/sign-in`
-2. Sign in with a test WorkOS user (tenant OWNER)
-3. Verify redirect to admin dashboard
-4. Verify the session contains `tenantId` and permissions
-5. Sign in as a MEMBER user — verify RBAC filtering works (only their bookings visible)
-
-**Full booking E2E:**
-1. Navigate to the portal (`/portal/[test-tenant-slug]`)
-2. Select a service, date, and time slot
-3. Fill in customer details and submit
-4. Verify: booking created with RESERVED status in the database
-5. Verify: Inngest dev server shows `slot/reserved` event fired
-6. Click "Confirm Booking" on the confirmation page
-7. Verify: booking transitions to CONFIRMED
-8. Verify: Inngest shows `booking/confirmed` event, `slot/reserved` expiry event cancelled
-9. Verify: Resend dashboard (https://resend.com/emails) shows the confirmation email delivered
-10. Verify: Google Calendar shows the new event in the test staff member's calendar
-
-**Rate limiting:**
-```bash
-# Run 35 concurrent requests to the slot endpoint
-# (requires jq: brew install jq)
-for i in $(seq 1 35); do
-  curl -s -X POST http://localhost:3000/api/trpc/slotAvailability.getSlotsForDate \
-    -H "Content-Type: application/json" \
-    -d '{"0":{"json":{"slug":"test","date":"2026-06-01"}}}' | jq -r '.[] | .error.json.code // "ok"'
-done
-# Expected: first 30 return "ok", last 5 return "TOO_MANY_REQUESTS"
-```
-
-**Analytics:**
-1. Navigate to `/admin/analytics` while authenticated as tenant OWNER
-2. Verify charts show data (not the old hardcoded mock values)
-3. Verify the tRPC calls appear in the Network tab
-
-**Distributed lock (concurrent booking):**
-Open two browser tabs simultaneously. In both tabs, navigate to the portal and select the LAST available slot (capacity = 1). Submit both booking forms at exactly the same time (use two browser tabs with forms pre-filled, click submit in both tabs quickly).
-
-Expected: one booking succeeds (RESERVED), the other tab shows "Slot just became unavailable" error.
-
-**Console.log audit (final):**
-```bash
-grep -rn "console\.log\|console\.error\|console\.warn" \
-  /Users/lukehodges/Documents/ironheart-refactor/src/modules/ \
-  /Users/lukehodges/Documents/ironheart-refactor/src/shared/ \
-  --include="*.ts" --include="*.tsx" | wc -l
-# Expected: 0
-```
+**Duration:** 4–6 days
+**Depends on:** Phase 5 complete (224/224 tests, 0 tsc errors)
+**Test target:** 250+ tests (from ~224 after Phase 5)
 
 ---
 
 ## Key Design Decisions
 
-### 1. Request ID in context, not in child logger
+### KDD-1: Invoice & Booking State Machines Are Formally Specified
+Every status transition for `invoices` and `bookings` is declared in an adjacency list (`VALID_INVOICE_TRANSITIONS`, `BOOKING_TRANSITIONS`). No code may update status without calling the corresponding `assertValid*Transition()` guard. Terminal states (`VOID`, `REFUNDED`, `COMPLETED`, `CANCELLED`, `NO_SHOW`, `REJECTED`) accept zero outgoing transitions. Violations throw `BadRequestError` immediately — they never reach the DB.
 
-The `requestId` is stored as a `string` in the tRPC context, not as a pre-built child logger. This is because:
-- SuperJSON (used by tRPC) serialises the context — loggers are not serialisable
-- Storing the string means each module creates its own child logger as needed: `moduleLog.child({ requestId })`
-- The request ID flows as a parameter to service methods that need it, keeping the dependency explicit
+### KDD-2: Invariants Are Enforced at DB Layer, Not Application Layer
+Application code lies; constraints do not. The 12 formal invariants (I1–I12) listed in the architecture document each have a specified enforcement layer (DB CHECK constraint, advisory lock, Redis idempotency, tRPC middleware, or Inngest step). Tests verify each invariant directly.
 
-### 2. Distributed lock TTL of 5000ms
+### KDD-3: Stripe Webhook → Inngest Bridge Pattern
+Stripe webhooks are received at `/api/webhooks/stripe/route.ts`, validated with `stripe.webhooks.constructEvent()` (HMAC on raw body), then immediately re-emitted as `"stripe/webhook.received"` Inngest event. All payment business logic lives in the Inngest handler, never in the HTTP handler. This gives durability, retry semantics, and auditability.
 
-The lock TTL must be:
-- Long enough for the critical section to complete (capacity check + Drizzle transaction ≈ 50–200ms)
-- Short enough to not block legitimate retries if the process crashes mid-lock
+### KDD-4: REST API Is tRPC Exposed via `trpc-openapi`
+No separate REST server. The tRPC router is exposed as OpenAPI 3.0 via `trpc-openapi` at `/api/v1/[...path]`. This guarantees REST and the web app share 100% of the same validation, error handling, and business logic. OpenAPI spec is auto-generated and cached.
 
-5000ms (5 seconds) gives 25x safety margin over the expected 200ms critical section. If the Vercel function crashes while holding the lock, it auto-expires in 5 seconds — a brief window where the slot appears locked to other requests, then becomes available again.
+### KDD-5: Analytics Uses PostgreSQL + Redis, Not a Separate OLAP
+`metric_snapshots` is an append-only Postgres table. Redis holds real-time counters for today (48h TTL). Dashboard reads Redis for live data, `metric_snapshots` for history. No ClickHouse, no BigQuery — the data volume does not warrant another database at this stage.
 
-### 3. Rate limiting only on public procedures
+### KDD-6: Saga Compensation Failure Is a CRITICAL Alert
+If a saga compensation step itself throws, the system logs at CRITICAL level, sets `saga_log.requires_manual_intervention = true`, and sends an ops alert. It does not retry compensation automatically (risk of infinite loop). Ops resolves manually via the admin dashboard.
 
-Admin procedures are already authenticated via WorkOS — an attacker cannot spam them without a valid session token (which requires real authentication). Rate limiting on authenticated endpoints adds latency without meaningful security benefit. Apply rate limiting only to `publicProcedure` endpoints.
+### KDD-7: All Schema Migrations Use CONCURRENTLY
+Every new index in Phase 6 uses `CREATE INDEX CONCURRENTLY`. Table changes (ADD COLUMN) are purely additive — no renames, no type changes, no dropping existing columns. This ensures zero-downtime migration on a live production database.
 
-### 4. Layered rate limiting: per-IP + per-tenant + per-user
-
-IP-only rate limiting has a known failure mode for corporate customers behind a shared egress proxy — all staff share one IP address. If a tenant has 50 staff using the admin portal simultaneously, a per-IP limit of 30/min would block legitimate users.
-
-Three layers are applied:
-
-- **Per-IP (30/min):** Protects against individual abuse and portal scraping. Applied to all `publicProcedure` endpoints.
-- **Per-tenant (500/min):** Prevents one high-traffic tenant from starving resources for all others. Applied using `ctx.tenantId` as the key. A noisy tenant hits this ceiling before they can impact system-wide throughput.
-- **Per-user (60/min):** Applied to authenticated routes where the `userId` is available from the session. Allows corporate environments (many users, one IP) to operate normally while still capping individual accounts.
-
-The per-tenant and per-user limiters use Upstash sliding windows with separate Redis key prefixes (`rate:tenant:*`, `rate:user:*`) so they can be monitored and tuned independently.
-
-### 5. Analytics as a single repository, not a full module
-
-Adding an `analytics` module would require a full module directory with schema, types, service, repository, router — for what is essentially 7 read-only SQL queries. Instead:
-- One `analytics.repository.ts` in the existing `tenant` module
-- One `analytics.router.ts` in the `tenant` module
-- Both exported from `src/modules/tenant/index.ts`
-
-This avoids module sprawl. The tenant module is the correct home for cross-cutting admin queries about the tenant's data.
-
-### 6. Integration tests use the real database, not mocks
-
-The booking service is not meaningfully testable with a mocked database. The service's value is in the interaction between business logic and actual SQL — capacity checks, transaction atomicity, FK constraints. Mocking the repository removes what you actually need to test.
-
-Trade-off: tests require a running PostgreSQL instance with the correct schema. Solution: use `DATABASE_URL` from `.env.local` (the same database as development), test against a `test-tenant-phase6` tenant ID, and clean up after each test. This is the same approach used by the Prisma team and most production-grade Node.js teams.
-
-The Inngest client IS mocked — real Inngest events should not fire during tests. `vi.mock('@/shared/inngest', () => ({ inngest: { send: vi.fn() } }))` intercepts all `inngest.send()` calls and records them for assertion without sending anything to Inngest.
-
-### 7. HMAC signing for outgoing webhooks, channel token for Google Calendar
-
-Google Calendar push notifications use their own security mechanism: a channel token set when creating the watch subscription (`X-Goog-Channel-Token` header). This is Google's equivalent of HMAC — it's a pre-shared token per channel. Use this for inbound Google Calendar webhooks.
-
-For outgoing webhooks (Ironheart → tenant-configured external endpoints), use HMAC-SHA256 signing. This is the industry standard (Stripe, GitHub, and most SaaS platforms use this pattern). The `X-Ironheart-Signature: sha256=<hex>` header format matches the Stripe webhook signature format, which is familiar to most developers.
+### KDD-8: `expr-eval` Replaces `Function()` Constructor
+The `expressions.ts` `Function()` constructor is replaced with the `expr-eval` library (AST-based, zero dependencies, 8KB minified). `allowMemberAccess: false` blocks property traversal. Post-Phase 6, `grep -r "new Function" src/` must return zero results.
 
 ---
 
-## Environment Variables Added in Phase 6
+## New Modules & File Structure
 
-No new environment variables are added in Phase 6. All infrastructure (Redis for locks and rate limiting, Sentry for monitoring) was already configured in earlier phases.
+```
+src/modules/payment/
+  payment.types.ts
+  payment.schemas.ts
+  payment.repository.ts
+  payment.service.ts
+  payment.router.ts
+  payment.events.ts
+  providers/
+    stripe.provider.ts
+    gocardless.provider.ts
+    cash.provider.ts
+    provider.factory.ts
+  lib/
+    invoice-pdf.ts
+    pricing-engine.ts
+    tax-engine.ts
+    reconciliation.ts
+    state-machine.ts
+  index.ts
+  __tests__/
+    pricing-engine.test.ts
+    tax-engine.test.ts
+    state-machine.test.ts
+    payment.service.test.ts
 
-The `.env.example` audit in T11 may identify variables added in Phases 3–5 that were not yet documented. Add any missing ones in T11.
+src/modules/analytics/
+  analytics.types.ts
+  analytics.schemas.ts
+  analytics.repository.ts
+  analytics.service.ts
+  analytics.router.ts
+  analytics.events.ts          # Inngest cron: computeMetricSnapshots
+  lib/
+    metrics-aggregator.ts
+    customer-intelligence.ts   # LTV, churn RFM
+    forecasting.ts
+  index.ts
+  __tests__/
+    analytics.test.ts
+
+src/modules/scheduling/
+  scheduling.types.ts
+  scheduling.service.ts        # smart assignment + waitlist
+  scheduling.events.ts         # waitlist slot-available trigger
+  lib/
+    smart-assignment.ts
+    waitlist.ts
+  index.ts
+  __tests__/
+    smart-assignment.test.ts
+    waitlist.test.ts
+
+src/modules/developer/
+  developer.types.ts
+  developer.schemas.ts
+  developer.repository.ts      # apiKeys + webhookEndpoints
+  developer.service.ts
+  developer.router.ts          # API key CRUD + webhook endpoint CRUD
+  developer.events.ts          # dispatchWebhooks Inngest function
+  lib/
+    webhook-delivery.ts        # deliver(), HMAC, retry
+  index.ts
+  __tests__/
+    webhook-delivery.test.ts
+
+src/modules/search/
+  search.types.ts
+  search.repository.ts
+  search.router.ts
+  index.ts
+  __tests__/
+    search.test.ts
+
+src/modules/booking/lib/
+  booking-saga.ts              # BookingConfirmationSaga
+  booking-state-machine.ts     # assertValidBookingTransition
+  slot-lock.ts                 # withSlotLock (pg_advisory_xact_lock)
+
+src/shared/
+  idempotency.ts               # withIdempotency()
+  optimistic-concurrency.ts    # updateWithVersion()
+  telemetry.ts                 # OpenTelemetry SDK setup
+  rate-limiter.ts              # Upstash ratelimit tiers
+
+src/modules/workflow/engine/
+  expressions.ts               # REPLACE Function() with expr-eval
+  migrations/
+    node-config.migrations.ts  # schema evolution migration registry
+
+src/app/api/
+  v1/[...path]/route.ts        # trpc-openapi REST adapter
+  openapi.json/route.ts        # OpenAPI 3.0 spec endpoint
+  webhooks/stripe/route.ts     # Stripe webhook bridge
+  health/
+    route.ts                   # expanded: /api/health/deep + /api/ready
+```
 
 ---
 
-## Files to Read in Legacy Codebase (reference only)
-
-| File | What to read for |
-|------|-----------------|
-| `src/app/admin/analytics/page.tsx` | Full mock data structure to understand what charts need to be replaced |
-| `src/server/routers/review.ts` lines 315–360 | `resolvedBy` field — understand the relation before fixing the type error |
-| `src/server/routers/workflow.ts` lines 380–410 | `actions as any` casts — understand the JSON shape |
-| `src/server/routers/settings.ts` lines 130–145 | `tenantId` usage in settings mutations |
-| `src/lib/cron/release-slots.ts` | Transaction pattern for the capacity check — now moved to distributed lock |
+## Phase 6 Tasks
 
 ---
 
-*Phase 6 Plan — Ironheart Refactor*
-*Written: 2026-02-19*
+### PHASE6-T01: Database Migrations — New Tables & Column Additions
+
+**Files to create:**
+```
+src/shared/db/migrations/0006_phase6_schema.sql
+```
+
+**Migration content:**
+```sql
+-- ─── Optimistic concurrency ────────────────────────────────────────────────
+ALTER TABLE bookings  ADD COLUMN IF NOT EXISTS version INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE invoices  ADD COLUMN IF NOT EXISTS version INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS version INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE workflows ADD COLUMN IF NOT EXISTS version INTEGER NOT NULL DEFAULT 1;
+
+-- ─── Smart scheduling ──────────────────────────────────────────────────────
+ALTER TABLE users ADD COLUMN IF NOT EXISTS last_assigned_at TIMESTAMPTZ;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS home_latitude    NUMERIC(9,6);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS home_longitude   NUMERIC(9,6);
+
+-- ─── GDPR anonymisation ────────────────────────────────────────────────────
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS anonymised_at TIMESTAMPTZ;
+
+-- ─── Payment linkage ───────────────────────────────────────────────────────
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS stripe_payment_intent_id TEXT UNIQUE;
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS stripe_charge_id          TEXT;
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS stripe_transfer_id        TEXT;
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS platform_fee_amount       NUMERIC(10,2);
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS idempotency_key           TEXT UNIQUE;
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS gocardless_payment_id     TEXT;
+
+-- ─── Stripe Connect accounts ───────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS stripe_connect_accounts (
+  id                UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id         UUID        NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  stripe_account_id TEXT        NOT NULL UNIQUE,
+  status            TEXT        NOT NULL DEFAULT 'pending',
+  charges_enabled   BOOLEAN     NOT NULL DEFAULT FALSE,
+  payouts_enabled   BOOLEAN     NOT NULL DEFAULT FALSE,
+  requirements      JSONB,
+  capabilities      JSONB,
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(tenant_id)
+);
+
+-- ─── Pricing rules ─────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS pricing_rules (
+  id              UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id       UUID          NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  name            TEXT          NOT NULL,
+  enabled         BOOLEAN       NOT NULL DEFAULT TRUE,
+  sort_order      INTEGER       NOT NULL DEFAULT 0,
+  conditions      JSONB         NOT NULL DEFAULT '{"logic":"AND","conditions":[]}',
+  modifier_type   TEXT          NOT NULL,
+  modifier_value  NUMERIC(10,4) NOT NULL,
+  service_ids     UUID[],
+  staff_ids       UUID[],
+  valid_from      TIMESTAMPTZ,
+  valid_until     TIMESTAMPTZ,
+  max_uses        INTEGER,
+  current_uses    INTEGER       NOT NULL DEFAULT 0,
+  created_at      TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
+  updated_at      TIMESTAMPTZ   NOT NULL DEFAULT NOW()
+);
+
+-- ─── Discount codes ────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS discount_codes (
+  id              UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id       UUID        NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  code            TEXT        NOT NULL,
+  UNIQUE(tenant_id, code),
+  pricing_rule_id UUID        REFERENCES pricing_rules(id) ON DELETE SET NULL,
+  expires_at      TIMESTAMPTZ,
+  max_uses        INTEGER,
+  current_uses    INTEGER     NOT NULL DEFAULT 0,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- ─── Tax rules ─────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS tax_rules (
+  id                UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id         UUID         NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  name              TEXT         NOT NULL,
+  rate              NUMERIC(6,4) NOT NULL,
+  country           TEXT         NOT NULL,
+  tax_code          TEXT,
+  applies_to        TEXT         NOT NULL DEFAULT 'ALL',
+  is_default        BOOLEAN      NOT NULL DEFAULT FALSE,
+  is_reverse_charge BOOLEAN      NOT NULL DEFAULT FALSE,
+  created_at        TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+
+-- ─── Booking waitlist ──────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS booking_waitlist (
+  id                   UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id            UUID        NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  customer_id          UUID        NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+  service_id           UUID        NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+  staff_id             UUID        REFERENCES users(id) ON DELETE SET NULL,
+  preferred_date       DATE,
+  preferred_time_start TIME,
+  preferred_time_end   TIME,
+  flexibility_days     INTEGER     NOT NULL DEFAULT 3,
+  status               TEXT        NOT NULL DEFAULT 'WAITING',
+  notified_at          TIMESTAMPTZ,
+  expires_at           TIMESTAMPTZ NOT NULL,
+  created_at           TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- ─── Webhook endpoints ─────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS webhook_endpoints (
+  id                   UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id            UUID        NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  url                  TEXT        NOT NULL,
+  secret               TEXT        NOT NULL,
+  description          TEXT,
+  events               TEXT[]      NOT NULL,
+  status               TEXT        NOT NULL DEFAULT 'ACTIVE',
+  failure_count        INTEGER     NOT NULL DEFAULT 0,
+  last_success_at      TIMESTAMPTZ,
+  last_failure_at      TIMESTAMPTZ,
+  last_failure_reason  TEXT,
+  created_at           TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at           TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- ─── Webhook deliveries ────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS webhook_deliveries (
+  id              UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  endpoint_id     UUID        NOT NULL REFERENCES webhook_endpoints(id) ON DELETE CASCADE,
+  event_type      TEXT        NOT NULL,
+  event_id        TEXT        NOT NULL,
+  payload         JSONB       NOT NULL,
+  attempt         INTEGER     NOT NULL DEFAULT 1,
+  status          TEXT        NOT NULL,
+  response_status INTEGER,
+  response_body   TEXT,
+  duration_ms     INTEGER,
+  delivered_at    TIMESTAMPTZ,
+  next_retry_at   TIMESTAMPTZ,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- ─── Metric snapshots (append-only) ───────────────────────────────────────
+CREATE TABLE IF NOT EXISTS metric_snapshots (
+  id           UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id    UUID        NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  metric_key   TEXT        NOT NULL,
+  dimensions   JSONB       NOT NULL DEFAULT '{}',
+  period_type  TEXT        NOT NULL,
+  period_start TIMESTAMPTZ NOT NULL,
+  value        NUMERIC     NOT NULL,
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- ─── Saga log ──────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS saga_log (
+  id                           UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id                    UUID        NOT NULL,
+  saga_type                    TEXT        NOT NULL,
+  entity_id                    UUID        NOT NULL,
+  status                       TEXT        NOT NULL,
+  steps                        JSONB       NOT NULL DEFAULT '[]',
+  started_at                   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  completed_at                 TIMESTAMPTZ,
+  error_message                TEXT,
+  requires_manual_intervention BOOLEAN     NOT NULL DEFAULT FALSE
+);
+
+-- ─── Full-text search generated columns ───────────────────────────────────
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS search_vector tsvector
+  GENERATED ALWAYS AS (
+    to_tsvector('english',
+      coalesce(first_name, '') || ' ' ||
+      coalesce(last_name,  '') || ' ' ||
+      coalesce(email,      '') || ' ' ||
+      coalesce(phone,      '') || ' ' ||
+      coalesce(notes,      '')
+    )
+  ) STORED;
+
+ALTER TABLE bookings ADD COLUMN IF NOT EXISTS search_vector tsvector
+  GENERATED ALWAYS AS (
+    to_tsvector('english',
+      coalesce(customer_notes,      '') || ' ' ||
+      coalesce(admin_notes,         '') || ' ' ||
+      coalesce(custom_service_name, '') || ' ' ||
+      coalesce(booking_number,      '')
+    )
+  ) STORED;
+
+-- ─── DB CHECK invariants (I1) ──────────────────────────────────────────────
+ALTER TABLE invoices ADD CONSTRAINT IF NOT EXISTS payments_cannot_exceed_total
+  CHECK (amount_paid <= total_amount);
+
+-- ─── Indexes (all CONCURRENTLY — zero table lock) ─────────────────────────
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_bookings_tenant_status_date
+  ON bookings(tenant_id, status, scheduled_date) WHERE deleted_at IS NULL;
+
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_bookings_customer_status
+  ON bookings(customer_id, status, scheduled_date DESC);
+
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_customers_search
+  ON customers USING GIN(search_vector) WHERE deleted_at IS NULL;
+
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_bookings_search
+  ON bookings USING GIN(search_vector);
+
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_metric_snapshots_lookup
+  ON metric_snapshots(tenant_id, metric_key, period_type, period_start DESC);
+
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_workflow_executions_workflow_status
+  ON workflow_executions(workflow_id, status, started_at DESC);
+
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_webhook_deliveries_endpoint
+  ON webhook_deliveries(endpoint_id, created_at DESC);
+
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_waitlist_service_date
+  ON booking_waitlist(tenant_id, service_id, preferred_date, status);
+
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_saga_log_entity
+  ON saga_log(tenant_id, entity_id, saga_type);
+```
+
+**Also update Drizzle schema** (`src/shared/db/schemas/`) — add Drizzle table definitions matching each SQL block above, plus column additions with proper Drizzle column types. Export from schema index.
+
+**Verification:**
+```bash
+npx tsc --noEmit  # 0 errors after schema additions
+```
+
+---
+
+### PHASE6-T02: Shared Utilities — Idempotency, Optimistic Concurrency, Rate Limiting
+
+**Files to create:**
+```
+src/shared/idempotency.ts
+src/shared/optimistic-concurrency.ts
+src/shared/rate-limiter.ts
+```
+
+**`src/shared/idempotency.ts`:**
+```typescript
+import { redis }        from '@/shared/redis'
+import { ConflictError } from '@/shared/errors'
+import { logger }       from '@/shared/logger'
+
+const log = logger.child({ module: 'shared.idempotency' })
+
+export async function withIdempotency<T>(
+  key: string,
+  ttlSeconds: number,
+  operation: () => Promise<T>
+): Promise<T> {
+  const cacheKey = `idempotency:${key}`
+  const lockKey  = `idempotency:lock:${key}`
+
+  const cached = await redis.get(cacheKey)
+  if (cached) {
+    log.info({ key }, 'Idempotency cache hit — returning cached result')
+    return JSON.parse(cached as string) as T
+  }
+
+  const acquired = await redis.set(lockKey, '1', { nx: true, ex: 30 })
+  if (!acquired) throw new ConflictError('Duplicate request in flight — retry in 30 seconds')
+
+  try {
+    const result = await operation()
+    await redis.set(cacheKey, JSON.stringify(result), { ex: ttlSeconds })
+    return result
+  } finally {
+    await redis.del(lockKey)
+  }
+}
+```
+
+**`src/shared/optimistic-concurrency.ts`:**
+```typescript
+import { db }           from '@/shared/db'
+import { and, eq }      from 'drizzle-orm'
+import { ConflictError } from '@/shared/errors'
+
+export async function updateWithVersion<T>(
+  table: any,
+  id: string,
+  tenantId: string,
+  expectedVersion: number,
+  values: Record<string, unknown>
+): Promise<T> {
+  const [updated] = await db
+    .update(table)
+    .set({ ...values, version: expectedVersion + 1, updatedAt: new Date() })
+    .where(and(
+      eq(table.id, id),
+      eq(table.tenantId, tenantId),
+      eq(table.version, expectedVersion)
+    ))
+    .returning()
+
+  if (!updated) {
+    throw new ConflictError('Concurrent modification detected — refresh and try again')
+  }
+  return updated as T
+}
+```
+
+**`src/shared/rate-limiter.ts`:**
+```typescript
+import { Ratelimit } from '@upstash/ratelimit'
+import { redis }     from '@/shared/redis'
+
+// Sliding window — more accurate than token bucket for API rate limiting
+export const apiRateLimits = {
+  STARTER:      new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(100,    '1 m') }),
+  PROFESSIONAL: new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(500,    '1 m') }),
+  BUSINESS:     new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(2_000,  '1 m') }),
+  ENTERPRISE:   new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(10_000, '1 m') }),
+} as const
+
+export const tRPCRateLimits = {
+  public:   new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(60,  '1 m') }),
+  tenant:   new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(300, '1 m') }),
+  mutation: new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(60,  '1 m') }),
+} as const
+```
+
+**Verification:**
+```bash
+npx tsc --noEmit
+```
+
+---
+
+### PHASE6-T03: Booking State Machine & Slot Lock
+
+**Files to create:**
+```
+src/modules/booking/lib/booking-state-machine.ts
+src/modules/booking/lib/slot-lock.ts
+```
+
+**`src/modules/booking/lib/booking-state-machine.ts`:**
+```typescript
+import { BadRequestError } from '@/shared/errors'
+
+export type BookingStatus =
+  | 'PENDING' | 'RESERVED' | 'APPROVED' | 'CONFIRMED'
+  | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW'
+  | 'REJECTED' | 'RELEASED'
+
+const BOOKING_TRANSITIONS: Record<BookingStatus, BookingStatus[]> = {
+  PENDING:     ['RESERVED', 'REJECTED', 'CANCELLED'],
+  RESERVED:    ['APPROVED', 'CONFIRMED', 'RELEASED', 'CANCELLED'],
+  APPROVED:    ['CONFIRMED', 'CANCELLED'],
+  CONFIRMED:   ['IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'NO_SHOW'],
+  IN_PROGRESS: ['COMPLETED', 'CANCELLED', 'NO_SHOW'],
+  COMPLETED:   [],
+  CANCELLED:   [],
+  NO_SHOW:     [],
+  REJECTED:    [],
+  RELEASED:    ['PENDING'],
+}
+
+export function assertValidBookingTransition(from: BookingStatus, to: BookingStatus): void {
+  const allowed = BOOKING_TRANSITIONS[from]
+  if (!allowed.includes(to)) {
+    throw new BadRequestError(
+      `Invalid booking transition: ${from} → ${to}. ` +
+      `Valid from ${from}: ${allowed.join(', ') || 'none (terminal state)'}`
+    )
+  }
+}
+
+export function isTerminalBookingStatus(status: BookingStatus): boolean {
+  return BOOKING_TRANSITIONS[status].length === 0
+}
+```
+
+**`src/modules/booking/lib/slot-lock.ts`:**
+```typescript
+import { db }  from '@/shared/db'
+import { sql } from 'drizzle-orm'
+
+// FNV-1a 32-bit — maps slot tuple to positive integer for pg_advisory_xact_lock
+function hashSlot(tenantId: string, staffId: string, date: string, time: string): number {
+  const input = `${tenantId}:${staffId}:${date}:${time}`
+  let hash = 2_166_136_261
+  for (let i = 0; i < input.length; i++) {
+    hash ^= input.charCodeAt(i)
+    hash = (hash * 16_777_619) >>> 0
+  }
+  return hash
+}
+
+export async function withSlotLock<T>(
+  tenantId: string,
+  staffId: string,
+  date: string,
+  time: string,
+  operation: () => Promise<T>
+): Promise<T> {
+  // Canonical order: sort keys to prevent deadlocks between concurrent sagas
+  const key = hashSlot(tenantId, staffId, date, time)
+  return db.transaction(async (tx) => {
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(${key})`)
+    return operation()
+  })
+}
+```
+
+**Integration:** Update `booking.service.ts` to wrap `confirmBooking` in `withSlotLock`, and call `assertValidBookingTransition(booking.status, 'CONFIRMED')` before every status update.
+
+**Verification:**
+```bash
+npx tsc --noEmit
+```
+
+---
+
+### PHASE6-T04: Booking Confirmation Saga
+
+**Files to create:**
+```
+src/modules/booking/lib/booking-saga.ts
+```
+
+```typescript
+import { logger }          from '@/shared/logger'
+import type { BookingRepository } from '../booking.repository'
+import type { PaymentService }    from '@/modules/payment/payment.service'
+import type { InngestClient }     from '@/shared/inngest'
+
+const log = logger.child({ module: 'booking.saga' })
+
+export interface SagaStep<T = unknown> {
+  name: string
+  execute: () => Promise<T>
+  compensate: (result: T) => Promise<void>
+}
+
+export class Saga {
+  private completed: Array<{ step: SagaStep; result: unknown }> = []
+
+  constructor(
+    private readonly sagaType: string,
+    private readonly entityId: string,
+    private readonly tenantId: string,
+    private readonly steps: SagaStep[]
+  ) {}
+
+  async run(): Promise<void> {
+    for (const step of this.steps) {
+      try {
+        const result = await step.execute()
+        this.completed.push({ step, result })
+        log.info({ sagaType: this.sagaType, stepName: step.name }, 'Saga step completed')
+      } catch (err) {
+        log.error({ sagaType: this.sagaType, stepName: step.name, err }, 'Saga step failed — compensating')
+        await this.compensate()
+        throw err
+      }
+    }
+  }
+
+  private async compensate(): Promise<void> {
+    for (const { step, result } of [...this.completed].reverse()) {
+      try {
+        await step.compensate(result)
+        log.info({ sagaType: this.sagaType, stepName: step.name }, 'Saga compensation completed')
+      } catch (compensationErr) {
+        // CRITICAL: log, flag for manual ops intervention — do NOT retry
+        log.error(
+          { sagaType: this.sagaType, stepName: step.name, compensationErr },
+          'SAGA COMPENSATION FAILED — manual intervention required'
+        )
+      }
+    }
+  }
+}
+
+export function createBookingConfirmationSaga(deps: {
+  bookingId: string
+  tenantId: string
+  staffId: string
+  bookingRepository: Pick<BookingRepository, 'updateStatus'>
+  paymentService: Pick<PaymentService, 'createInvoiceForBooking' | 'voidInvoice'>
+  inngest: Pick<InngestClient, 'send'>
+}): Saga {
+  return new Saga('BOOKING_CONFIRMATION', deps.bookingId, deps.tenantId, [
+    {
+      name: 'update-booking-status',
+      execute:    () => deps.bookingRepository.updateStatus(deps.bookingId, 'CONFIRMED'),
+      compensate: () => deps.bookingRepository.updateStatus(deps.bookingId, 'PENDING'),
+    },
+    {
+      name: 'create-invoice',
+      execute:    () => deps.paymentService.createInvoiceForBooking(deps.bookingId),
+      compensate: (invoice) => deps.paymentService.voidInvoice((invoice as { id: string }).id),
+    },
+    {
+      name: 'send-notification',
+      execute:    () => deps.inngest.send('booking/confirmed', { bookingId: deps.bookingId, tenantId: deps.tenantId }),
+      compensate: () => Promise.resolve(), // not reversible — acceptable
+    },
+    {
+      name: 'sync-calendar',
+      execute:    () => deps.inngest.send('calendar/sync.push',   { bookingId: deps.bookingId, userId: deps.staffId, tenantId: deps.tenantId }),
+      compensate: () => deps.inngest.send('calendar/sync.delete', { bookingId: deps.bookingId, userId: deps.staffId, tenantId: deps.tenantId }),
+    },
+  ])
+}
+```
+
+**Verification:**
+```bash
+npx tsc --noEmit
+```
+
+---
+
+### PHASE6-T05: Invoice State Machine & Payment Module Types
+
+**Files to create:**
+```
+src/modules/payment/lib/state-machine.ts
+src/modules/payment/payment.types.ts
+src/modules/payment/payment.schemas.ts
+```
+
+**`src/modules/payment/lib/state-machine.ts`:**
+```typescript
+import { BadRequestError } from '@/shared/errors'
+
+export type InvoiceStatus =
+  | 'DRAFT' | 'SENT' | 'VIEWED' | 'PARTIALLY_PAID' | 'OVERDUE'
+  | 'PAID' | 'VOID' | 'REFUNDED'
+
+const VALID_INVOICE_TRANSITIONS: Record<InvoiceStatus, InvoiceStatus[]> = {
+  DRAFT:          ['SENT'],
+  SENT:           ['VIEWED', 'PAID', 'PARTIALLY_PAID', 'OVERDUE', 'VOID'],
+  VIEWED:         ['PAID', 'PARTIALLY_PAID', 'OVERDUE', 'VOID'],
+  PARTIALLY_PAID: ['PAID', 'OVERDUE'],
+  OVERDUE:        ['PAID', 'PARTIALLY_PAID', 'VOID'],
+  PAID:           ['REFUNDED'],
+  VOID:           [],
+  REFUNDED:       [],
+}
+
+export function assertValidInvoiceTransition(from: InvoiceStatus, to: InvoiceStatus): void {
+  const allowed = VALID_INVOICE_TRANSITIONS[from]
+  if (!allowed.includes(to)) {
+    throw new BadRequestError(
+      `Invalid invoice transition: ${from} → ${to}. ` +
+      `Valid from ${from}: ${allowed.join(', ') || 'none (terminal state)'}`
+    )
+  }
+}
+
+export function isTerminalInvoiceStatus(status: InvoiceStatus): boolean {
+  return VALID_INVOICE_TRANSITIONS[status].length === 0
+}
+```
+
+**`payment.types.ts`** — Declare interfaces: `InvoiceRecord`, `PaymentRecord`, `PricingRule`, `TaxRule`, `StripeConnectAccount`, `CreateInvoiceInput`, `RecordPaymentInput`, `RefundInput`, `PricingConditionGroup`.
+
+**`payment.schemas.ts`** — Zod schemas: `createInvoiceSchema`, `sendInvoiceSchema`, `recordPaymentSchema`, `refundPaymentSchema`, `voidInvoiceSchema`, `createPricingRuleSchema`, `updatePricingRuleSchema`, `applyDiscountCodeSchema`, `createTaxRuleSchema`.
+
+**Verification:**
+```bash
+npx tsc --noEmit
+```
+
+---
+
+### PHASE6-T06: Payment Repository & Service
+
+**Files to create:**
+```
+src/modules/payment/payment.repository.ts
+src/modules/payment/payment.service.ts
+```
+
+**`payment.repository.ts`** — Drizzle queries (no business logic):
+- `createInvoice(input)` → insert into invoices; return created record
+- `findInvoiceById(id, tenantId)` → `[0] ?? null`
+- `listInvoices(tenantId, filters)` → paginated with `limit + 1` pattern
+- `updateInvoiceStatus(id, tenantId, version, status)` → `updateWithVersion()`
+- `recordPayment(input)` → insert into payments
+- `findPaymentsByInvoice(invoiceId)` → sum for total-paid check
+- `listPricingRules(tenantId)` → ordered by sortOrder ASC
+- `createPricingRule(input)` → insert
+- `findDiscountCode(tenantId, code)` → `[0] ?? null`
+- `incrementDiscountCodeUse(id)` → atomic increment
+
+**`payment.service.ts`** — Business logic, every status update calls state machine:
+```typescript
+async createInvoice(tenantId: string, input: CreateInvoiceInput): Promise<InvoiceRecord>
+async sendInvoice(tenantId: string, invoiceId: string, version: number): Promise<InvoiceRecord>
+  // assertValidInvoiceTransition(invoice.status, 'SENT')
+  // generate PDF, send via Resend, updateInvoiceStatus
+async recordPayment(tenantId: string, input: RecordPaymentInput, idempotencyKey: string): Promise<PaymentRecord>
+  // withIdempotency(`payment:${idempotencyKey}`, 86_400, ...)
+  // getPaymentProvider(input.method).processPayment(...)
+  // assertValidInvoiceTransition(invoice.status, newStatus)
+async processRefund(tenantId: string, input: RefundInput): Promise<PaymentRecord>
+  // assertValidInvoiceTransition(invoice.status, 'REFUNDED')
+async voidInvoice(id: string): Promise<void>
+  // assertValidInvoiceTransition(invoice.status, 'VOID')
+async createInvoiceForBooking(bookingId: string): Promise<{ id: string }>
+  // called by booking confirmation saga
+```
+
+**Verification:**
+```bash
+npx tsc --noEmit
+```
+
+---
+
+### PHASE6-T07: Pricing Engine & Tax Engine
+
+**Files to create:**
+```
+src/modules/payment/lib/pricing-engine.ts
+src/modules/payment/lib/tax-engine.ts
+```
+
+**`pricing-engine.ts`** — Evaluates rules in `sortOrder ASC`; first match wins:
+```typescript
+// Conditions reuse WorkflowConditionGroup evaluator
+// Modifier types: FIXED_PRICE | FIXED_DISCOUNT | PERCENT_DISCOUNT | FIXED_SURCHARGE | PERCENT_SURCHARGE
+// Context fields available to conditions:
+//   booking.dayOfWeek (0–6), booking.timeOfDay (minutes), booking.advanceDays
+//   booking.serviceId, customer.bookingCount
+export function applyPricingRules(rules: PricingRule[], ctx: PricingContext): number
+```
+
+**`tax-engine.ts`** — Pure calculation, no DB access:
+```typescript
+// Invariant: taxAmount = round(subtotal * rate, 2) ALWAYS
+// Invariant: totalAmount = subtotal + taxAmount ALWAYS (not derived from total)
+// This prevents floating-point rounding drift on read-back
+export function calculateTax(subtotal: number, rule: TaxRule): TaxCalculation
+function round2(n: number): number { return Math.round((n + Number.EPSILON) * 100) / 100 }
+```
+
+**Verification:**
+```bash
+npx tsc --noEmit
+```
+
+---
+
+### PHASE6-T08: Stripe & GoCardless Providers
+
+**Files to create:**
+```
+src/modules/payment/providers/stripe.provider.ts
+src/modules/payment/providers/gocardless.provider.ts
+src/modules/payment/providers/cash.provider.ts
+src/modules/payment/providers/provider.factory.ts
+```
+
+**Key patterns for all providers:**
+- **Lazy init only** — never construct `new Stripe()` or `new GoCardlessClient()` at module load time
+- Pattern: `let _client: T | null = null; export function getClient() { _client ??= new T(env.KEY); return _client }`
+- All provider methods wrap external calls in try/catch; throw `BadRequestError` on provider-level errors
+- Stripe Connect: every `paymentIntents.create` includes `transfer_data.destination` (tenant `stripeAccountId`) + `application_fee_amount`
+
+**`provider.factory.ts`:**
+```typescript
+export function getPaymentProvider(method: PaymentMethod) {
+  switch (method) {
+    case 'CARD':          return stripeProvider
+    case 'DIRECT_DEBIT':  return goCardlessProvider
+    case 'CASH':          return cashProvider
+    default:              throw new BadRequestError(`No provider for: ${method}`)
+  }
+}
+```
+
+**Verification:**
+```bash
+npx tsc --noEmit
+```
+
+---
+
+### PHASE6-T09: Stripe Webhook Bridge
+
+**Files to create:**
+```
+src/app/api/webhooks/stripe/route.ts
+```
+
+```typescript
+import { type NextRequest, NextResponse } from 'next/server'
+import { inngest } from '@/shared/inngest'
+import { env }     from '@/env'
+
+export async function POST(req: NextRequest) {
+  const rawBody = await req.text()
+  const sig     = req.headers.get('stripe-signature')
+  if (!sig) return NextResponse.json({ error: 'Missing signature' }, { status: 400 })
+
+  // Lazy import — never construct Stripe at module load time
+  const { getStripe } = await import('@/modules/payment/providers/stripe.provider')
+  let event: Stripe.Event
+  try {
+    event = getStripe().webhooks.constructEvent(rawBody, sig, env.STRIPE_WEBHOOK_SECRET)
+  } catch {
+    return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
+  }
+
+  // Bridge to Inngest — all business logic lives in the durable handler
+  await inngest.send({
+    name: 'stripe/webhook.received',
+    data: { eventType: event.type, stripeEventId: event.id, payload: event.data.object as Record<string, unknown> },
+  })
+
+  return NextResponse.json({ received: true })
+}
+```
+
+**Verification:**
+```bash
+npx tsc --noEmit
+```
+
+---
+
+### PHASE6-T10: Payment Router & Inngest Events
+
+**Files to create:**
+```
+src/modules/payment/payment.router.ts
+src/modules/payment/payment.events.ts
+src/modules/payment/index.ts
+```
+
+**`payment.router.ts`** — tRPC procedures:
+- `createInvoice` — `permissionProcedure('payments:write')`
+- `listInvoices` — `permissionProcedure('payments:read')`
+- `getInvoice` — `permissionProcedure('payments:read')`
+- `sendInvoice` — `permissionProcedure('payments:write')`
+- `voidInvoice` — `permissionProcedure('payments:write')`
+- `recordPayment` — `permissionProcedure('payments:write')` (accepts `X-Idempotency-Key` header via ctx)
+- `processRefund` — `permissionProcedure('payments:write')`
+- `listPricingRules` — `tenantProcedure`
+- `createPricingRule` — `permissionProcedure('payments:write')`
+- `updatePricingRule` — `permissionProcedure('payments:write')`
+- `deletePricingRule` — `permissionProcedure('payments:write')`
+- `validateDiscountCode` — `publicProcedure` (for booking widget)
+- `getStripeConnectOnboardingUrl` — `permissionProcedure('payments:write')`
+
+**`payment.events.ts`** — Inngest functions:
+- `handleStripeWebhook` — listens `stripe/webhook.received`; routes on `eventType`: `payment_intent.succeeded`, `payment_intent.payment_failed`, `charge.dispute.created`, `account.updated`
+- `overdueInvoiceCron` — `cron: '0 9 * * *'`; scans invoices with `dueDate < NOW()` in `SENT|VIEWED|PARTIALLY_PAID`; transitions to `OVERDUE`
+
+**Verification:**
+```bash
+npx tsc --noEmit
+```
+
+---
+
+### PHASE6-T11: Analytics Types, Repository & Service
+
+**Files to create:**
+```
+src/modules/analytics/analytics.types.ts
+src/modules/analytics/analytics.schemas.ts
+src/modules/analytics/analytics.repository.ts
+src/modules/analytics/analytics.service.ts
+```
+
+**`analytics.types.ts`:**
+```typescript
+export type MetricKey =
+  | 'bookings.created' | 'bookings.confirmed' | 'bookings.cancelled'
+  | 'bookings.completed' | 'bookings.no_show' | 'bookings.lead_time_avg'
+  | 'revenue.gross' | 'revenue.net' | 'revenue.outstanding' | 'revenue.refunded'
+  | 'customers.new' | 'customers.returning' | 'customers.ltv_avg'
+  | 'reviews.rating_avg' | 'reviews.response_rate' | 'forms.completion_rate'
+  | 'workflows.executions' | 'staff.utilisation'
+
+export type PeriodType = 'HOUR' | 'DAY' | 'WEEK' | 'MONTH'
+
+export interface CustomerInsights {
+  customerId: string
+  ltv: number
+  avgBookingValue: number
+  bookingFrequencyDays: number
+  lastBookingDaysAgo: number
+  noShowRate: number
+  churnRiskScore: number          // 0–1 (RFM model)
+  churnRiskLabel: 'LOW' | 'MEDIUM' | 'HIGH'
+  nextPredictedBookingDate: Date | null
+}
+
+export interface RevenueForecast {
+  date: string
+  predictedRevenue: number
+  lowerBound: number
+  upperBound: number
+  basisPoints: number             // # historical data points used
+}
+```
+
+**`analytics.repository.ts`** — Drizzle queries:
+- `getTimeSeriesMetric(tenantId, metricKey, periodType, from, to, dimensions?)` → MetricSnapshot[]
+- `upsertSnapshot(snapshot)` → upsert on (tenantId, metricKey, periodType, periodStart, dimensions)
+- `getRawBookingData(tenantId, from, to)` → for metric aggregation
+- `getCustomerRawData(tenantId, customerId)` → bookings + payments for RFM scoring
+
+**`analytics.service.ts`:**
+- `computeHourlyMetrics(tenantId)` → computes and upserts all 18 metric keys for current hour
+- `getCustomerInsights(tenantId, customerId)` → RFM churn score computation
+- `getRevenueForecast(tenantId, weeks)` → time-series decomposition
+
+**Verification:**
+```bash
+npx tsc --noEmit
+```
+
+---
+
+### PHASE6-T12: Analytics Intelligence Libraries
+
+**Files to create:**
+```
+src/modules/analytics/lib/metrics-aggregator.ts
+src/modules/analytics/lib/customer-intelligence.ts
+src/modules/analytics/lib/forecasting.ts
+```
+
+**`customer-intelligence.ts`** — RFM model:
+```typescript
+// R = days since last booking (lower = better recency)
+// F = bookings per 90 days (higher = better frequency)
+// M = avg booking value (higher = better monetary)
+// churnRiskScore = normalize(R)*0.5 + (1-normalize(F))*0.3 + (1-normalize(M))*0.2
+// normalize(x) maps x from [cohortMin, cohortMax] → [0, 1], clamped
+// Label: HIGH if score > 0.7 AND lastBookingDaysAgo > 2 * avgFrequency
+//        MEDIUM if score > 0.4, LOW otherwise
+
+export function computeChurnScore(r: number, f: number, m: number, cohortStats: CohortStats): number
+export function computeChurnLabel(score: number, r: number, avgFrequency: number): 'LOW' | 'MEDIUM' | 'HIGH'
+```
+
+**`forecasting.ts`** — Pure math time-series decomposition (no ML dependency):
+1. Compute 4-week moving average (trend)
+2. Compute 7 seasonal indices (day-of-week from 12-week history)
+3. Forecast = trend * seasonal_index
+4. Confidence interval = ±1 standard deviation of historical residuals
+
+```typescript
+export function forecastRevenue(history: DailyRevenue[], forecastDays: number): RevenueForecast[]
+```
+
+**Verification:**
+```bash
+npx tsc --noEmit
+```
+
+---
+
+### PHASE6-T13: Analytics Router & Inngest Cron
+
+**Files to create:**
+```
+src/modules/analytics/analytics.router.ts
+src/modules/analytics/analytics.events.ts
+src/modules/analytics/index.ts
+```
+
+**`analytics.router.ts`** — tRPC procedures:
+```typescript
+export const analyticsRouter = router({
+  getSummary:          tenantProcedure.input(summarySchema).query(...)
+  getTimeSeries:       tenantProcedure.input(timeSeriesSchema).query(...)
+  getStaffPerformance: permissionProcedure('analytics:read').input(staffSchema).query(...)
+  getRevenueBreakdown: permissionProcedure('analytics:read').input(revenueSchema).query(...)
+  getCustomerInsights: permissionProcedure('analytics:read').input(z.object({ customerId: z.string() })).query(...)
+  getBookingFunnel:    permissionProcedure('analytics:read').input(funnelSchema).query(...)
+  getRevenueForecast:  permissionProcedure('analytics:read').input(z.object({ weeks: z.number().int().min(1).max(52).default(12) })).query(...)
+})
+```
+
+**`analytics.events.ts`** — Hourly Inngest cron:
+```typescript
+export const computeMetricSnapshots = inngest.createFunction(
+  { id: 'compute-metric-snapshots', retries: 2 },
+  { cron: '0 * * * *' },
+  async ({ step }) => {
+    const active = await step.run('load-tenants', () =>
+      db.select({ id: tenants.id }).from(tenants).where(eq(tenants.status, 'ACTIVE'))
+    )
+    await Promise.all(active.map(t =>
+      step.run(`compute-${t.id}`, () => analyticsService.computeHourlyMetrics(t.id))
+    ))
+  }
+)
+```
+
+**Redis real-time counters** — Update `booking.events.ts` to `incr` / `incrbyfloat` on `booking/created`, `booking/confirmed`, `booking/cancelled`, `booking/completed`:
+```typescript
+// Key pattern: metrics:{tenantId}:{metricKey}:{YYYY-MM-DD}  TTL: 48h
+await redis.incr(`metrics:${tenantId}:bookings.created:${today}`)
+await redis.incrbyfloat(`metrics:${tenantId}:revenue.gross:${today}`, amount)
+```
+
+**Verification:**
+```bash
+npx tsc --noEmit
+```
+
+---
+
+### PHASE6-T14: Smart Scheduling & Waitlist
+
+**Files to create:**
+```
+src/modules/scheduling/scheduling.types.ts
+src/modules/scheduling/lib/smart-assignment.ts
+src/modules/scheduling/lib/waitlist.ts
+src/modules/scheduling/scheduling.service.ts
+src/modules/scheduling/scheduling.events.ts
+src/modules/scheduling/index.ts
+```
+
+**`smart-assignment.ts`** — Strategy implementations:
+- `ROUND_ROBIN` — select available staff with earliest `lastAssignedAt`; update on assignment
+- `LEAST_LOADED` — count confirmed bookings on that date; select minimum
+- `SKILL_MATCH` — `users.metadata.skills ⊇ service.metadata.requiredSkills`
+- `GEOGRAPHIC` — Haversine distance from `users.homeLatitude/Longitude` to `venues.latitude/longitude`
+- `PREFERRED` — prefer `booking.preferredStaffId` if available; fall back to ROUND_ROBIN
+
+**`waitlist.ts`:**
+```typescript
+export async function addToWaitlist(tenantId: string, input: WaitlistInput): Promise<WaitlistEntry>
+export async function checkAndNotifyWaitlist(tenantId: string, serviceId: string, date: string): Promise<void>
+  // Query WAITING entries for service+date ±flexibilityDays
+  // Notify first match via inngest.send('waitlist/slot.available', ...)
+  // Update status to NOTIFIED
+```
+
+**`scheduling.events.ts`:**
+```typescript
+// Listens for booking/cancelled → trigger waitlist check for freed slot
+export const onBookingCancelled = inngest.createFunction(
+  { id: 'waitlist-check-on-cancellation', retries: 2 },
+  { event: 'booking/cancelled' },
+  async ({ event, step }) => {
+    const { serviceId, scheduledDate, tenantId } = event.data
+    await step.run('check-waitlist', () =>
+      waitlistService.checkAndNotifyWaitlist(tenantId, serviceId, scheduledDate)
+    )
+  }
+)
+```
+
+**Verification:**
+```bash
+npx tsc --noEmit
+```
+
+---
+
+### PHASE6-T15: Developer Module — API Keys & Webhook Platform
+
+**Files to create:**
+```
+src/modules/developer/developer.types.ts
+src/modules/developer/developer.schemas.ts
+src/modules/developer/developer.repository.ts
+src/modules/developer/developer.service.ts
+src/modules/developer/developer.router.ts
+src/modules/developer/developer.events.ts
+src/modules/developer/lib/webhook-delivery.ts
+src/modules/developer/index.ts
+```
+
+**`webhook-delivery.ts`** — Core delivery with HMAC + retry:
+```typescript
+import crypto from 'crypto'
+
+export function createHmacSignature(body: string, secret: string): string {
+  return crypto.createHmac('sha256', secret).update(body, 'utf8').digest('hex')
+}
+
+export function verifyHmacSignature(body: string, secret: string, received: string): boolean {
+  const expected = Buffer.from(createHmacSignature(body, secret))
+  const actual   = Buffer.from(received)
+  if (expected.length !== actual.length) return false
+  return crypto.timingSafeEqual(expected, actual)   // timing-safe (invariant I11)
+}
+
+// Retry schedule: 10s, 60s, 5m, 30m, 2h
+const RETRY_DELAYS_MS = [10_000, 60_000, 300_000, 1_800_000, 7_200_000]
+
+export async function deliverWebhook(
+  endpoint: WebhookEndpoint,
+  event: { name: string; id: string; data: unknown }
+): Promise<DeliveryResult>
+```
+
+**`developer.events.ts`** — Inngest dispatch function (observes all business events):
+```typescript
+export const dispatchWebhooks = inngest.createFunction(
+  { id: 'dispatch-webhooks', retries: 0 },   // retries handled in deliverWebhook
+  [
+    { event: 'booking/created' }, { event: 'booking/confirmed' },
+    { event: 'booking/cancelled' }, { event: 'booking/completed' },
+    { event: 'payment/intent.succeeded' },
+    { event: 'review/submitted' }, { event: 'forms/submitted' },
+  ],
+  async ({ event, step }) => {
+    const { tenantId } = event.data as { tenantId: string }
+    const endpoints = await step.run('load-endpoints', () =>
+      developerRepository.findActiveEndpoints(tenantId, event.name)
+    )
+    await Promise.all(endpoints.map(ep =>
+      step.run(`deliver-${ep.id}`, () => deliverWebhook(ep, event))
+    ))
+  }
+)
+```
+
+**`developer.router.ts`** — procedures:
+- `listApiKeys`, `createApiKey`, `revokeApiKey`, `rotateApiKey`
+- `listWebhookEndpoints`, `createWebhookEndpoint`, `updateWebhookEndpoint`, `deleteWebhookEndpoint`, `testWebhookEndpoint`
+- `listWebhookDeliveries` — for debugging recent deliveries
+
+All protected by `permissionProcedure('developer:write')` or `'developer:read'`.
+
+**Verification:**
+```bash
+npx tsc --noEmit
+```
+
+---
+
+### PHASE6-T16: REST API & OpenAPI Spec
+
+**Files to create:**
+```
+src/app/api/v1/[...path]/route.ts
+src/app/api/openapi.json/route.ts
+src/shared/api-key-middleware.ts
+```
+
+**`src/shared/api-key-middleware.ts`:**
+```typescript
+// 1. Extract key from: Authorization: Bearer {key} OR X-API-Key: {key}
+// 2. SHA-256 hash → lookup by keyHash in apiKeys table
+// 3. Validate: not revoked, not expired, allowedIps ⊇ request IP, scopes ⊇ required scope
+// 4. Apply per-key rate limit: apiRateLimits[tier].limit(apiKey.id)
+//    → 429 Too Many Requests with Retry-After header if exceeded
+// 5. Fire-and-forget: increment usageCount + update lastUsedAt (non-blocking)
+// 6. Return tRPC context extension: { apiKeyId, tenantId, scopes }
+```
+
+**`src/app/api/v1/[...path]/route.ts`:**
+```typescript
+import { fetchRequestHandler } from '@trpc/server/adapters/fetch'
+import { appRouter }           from '@/server/root'
+import { apiKeyMiddleware }    from '@/shared/api-key-middleware'
+
+export async function GET(req: Request) {
+  const apiCtx = await apiKeyMiddleware(req)
+  return fetchRequestHandler({
+    endpoint: '/api/v1',
+    req,
+    router: appRouter,
+    createContext: () => ({ ...baseContext, ...apiCtx }),
+  })
+}
+export { GET as POST, GET as PUT, GET as PATCH, GET as DELETE }
+```
+
+**`src/app/api/openapi.json/route.ts`:**
+```typescript
+// Generates OpenAPI 3.0 spec from tRPC router
+// Cached 1h in Redis (key: 'openapi:spec:v1')
+// Includes: tenantProcedure + publicProcedure + permissionProcedure
+// Excludes: platformAdminProcedure (internal)
+export async function GET(): Promise<Response>
+```
+
+**Install dependency:**
+```bash
+npm install trpc-openapi
+```
+
+**Verification:**
+```bash
+npx tsc --noEmit
+curl http://localhost:3000/api/openapi.json | jq '.info.version'   # "1.0.0"
+```
+
+---
+
+### PHASE6-T17: Safe Expression Evaluator
+
+**Files to modify:**
+```
+src/modules/workflow/engine/expressions.ts
+```
+
+**Install dependency:**
+```bash
+npm install expr-eval
+```
+
+**Replace entire file:**
+```typescript
+// ──────────────────────────────────────────────────────────────────────────────
+// Expression evaluator — AST-based safe parser (invariant I9)
+// No eval(), no Function() constructor — uses expr-eval library
+// ──────────────────────────────────────────────────────────────────────────────
+
+import { Parser } from 'expr-eval'
+import type { WorkflowExecutionContext } from '../workflow.types'
+import { substituteVariables } from './context'
+
+const parser = new Parser({
+  allowMemberAccess: false,  // blocks obj.prop traversal — security hardening
+})
+
+export function evaluateExpression(
+  expression: string,
+  ctx: WorkflowExecutionContext
+): string | number | boolean {
+  const substituted = substituteVariables(expression, ctx)
+
+  try {
+    const result = parser.evaluate(substituted)
+    if (typeof result === 'number' && !isNaN(result) && isFinite(result)) return result
+    if (typeof result === 'boolean') return result
+  } catch {
+    // Not a parseable expression — return as string literal
+  }
+
+  return substituted
+}
+```
+
+**Verification:**
+```bash
+grep -rn "new Function\|Function(" src/   # must return 0 results
+npx tsc --noEmit
+```
+
+---
+
+### PHASE6-T18: Workflow Node Config Migrations
+
+**Files to create:**
+```
+src/modules/workflow/engine/migrations/node-config.migrations.ts
+```
+
+```typescript
+import type { WorkflowNodeType } from '../../workflow.types'
+
+// Each array entry = migration from version N to N+1 (0-indexed)
+const nodeConfigMigrations: Partial<Record<WorkflowNodeType, Array<(config: Record<string, unknown>) => Record<string, unknown>>>> = {
+  IF: [
+    // v1 → v2: wrap flat conditions array in ConditionGroup shape
+    (config) => ({
+      ...config,
+      conditions: Array.isArray(config.conditions)
+        ? { logic: 'AND', conditions: config.conditions, groups: [] }
+        : config.conditions,
+    }),
+  ],
+}
+
+export function migrateNodeConfig(node: {
+  type: WorkflowNodeType
+  configVersion?: number
+  config: unknown
+}): { config: unknown; configVersion: number } {
+  const migrations   = nodeConfigMigrations[node.type] ?? []
+  const startVersion = (node.configVersion ?? 1) - 1   // 0-indexed into migrations array
+  let config = node.config as Record<string, unknown>
+
+  for (let i = startVersion; i < migrations.length; i++) {
+    config = migrations[i](config)
+  }
+
+  return { config, configVersion: migrations.length + 1 }
+}
+```
+
+**Integration:** Call `migrateNodeConfig(node)` in `GraphEngine.executeNode()` before processing each node's config.
+
+**Verification:**
+```bash
+npx tsc --noEmit
+```
+
+---
+
+### PHASE6-T19: OpenTelemetry & Expanded Health Checks
+
+**Files to create:**
+```
+src/shared/telemetry.ts
+```
+**Files to modify:**
+```
+src/app/api/health/route.ts
+```
+
+**`src/shared/telemetry.ts`:**
+```typescript
+// Only init OTel in runtime — skip during Next.js build phase
+if (
+  process.env.NEXT_PHASE !== 'phase-production-build' &&
+  process.env.OTEL_EXPORTER_OTLP_ENDPOINT
+) {
+  // Dynamic imports to avoid affecting cold-start in build context
+  void (async () => {
+    const { NodeSDK }                    = await import('@opentelemetry/sdk-node')
+    const { getNodeAutoInstrumentations } = await import('@opentelemetry/auto-instrumentations-node')
+    const { OTLPTraceExporter }          = await import('@opentelemetry/exporter-trace-otlp-http')
+    new NodeSDK({
+      traceExporter: new OTLPTraceExporter(),
+      instrumentations: [getNodeAutoInstrumentations()],
+    }).start()
+  })()
+}
+```
+
+**Install dependencies:**
+```bash
+npm install @opentelemetry/sdk-node @opentelemetry/auto-instrumentations-node @opentelemetry/exporter-trace-otlp-http
+```
+
+**Expand `src/app/api/health/route.ts`:**
+```typescript
+// GET /api/health        → lightweight (DB ping) — load balancer probe
+// GET /api/health?deep   → full check (DB + Redis) — monitoring systems
+// GET /api/ready         → startup readiness check
+
+export async function GET(req: Request): Promise<Response> {
+  const { searchParams } = new URL(req.url)
+  const deep = searchParams.has('deep')
+
+  const dbStart = Date.now()
+  try { await db.execute(sql`SELECT 1`) } catch {
+    return Response.json({ status: 'unhealthy', error: 'Database unreachable' }, { status: 503 })
+  }
+  const dbLatency = Date.now() - dbStart
+
+  if (!deep) return Response.json({ status: 'healthy', db: { latencyMs: dbLatency } })
+
+  const redisStart = Date.now()
+  await redis.ping()
+  const redisLatency = Date.now() - redisStart
+
+  return Response.json({
+    status: 'healthy',
+    checks: {
+      database: { status: 'ok', latencyMs: dbLatency },
+      redis:    { status: 'ok', latencyMs: redisLatency },
+    },
+    version: process.env.npm_package_version ?? 'unknown',
+    uptime:  process.uptime(),
+  })
+}
+```
+
+**Verification:**
+```bash
+npx tsc --noEmit
+curl http://localhost:3000/api/health        # {"status":"healthy"}
+curl http://localhost:3000/api/health?deep   # full check with latencies
+```
+
+---
+
+### PHASE6-T20: Full-Text Search Module
+
+**Files to create:**
+```
+src/modules/search/search.types.ts
+src/modules/search/search.repository.ts
+src/modules/search/search.router.ts
+src/modules/search/index.ts
+```
+
+**`search.repository.ts`:**
+```typescript
+import { sql, and, eq } from 'drizzle-orm'
+import { db }           from '@/shared/db'
+import { customers, bookings } from '@/shared/db/schemas'
+
+export async function fullTextSearchCustomers(tenantId: string, query: string, limit: number) {
+  return db.select().from(customers)
+    .where(and(
+      eq(customers.tenantId, tenantId),
+      sql`${customers.searchVector} @@ plainto_tsquery('english', ${query})`,
+      sql`${customers.deletedAt} IS NULL`
+    ))
+    .orderBy(sql`ts_rank(${customers.searchVector}, plainto_tsquery('english', ${query})) DESC`)
+    .limit(limit)
+}
+
+export async function fullTextSearchBookings(tenantId: string, query: string, limit: number) {
+  return db.select().from(bookings)
+    .where(and(
+      eq(bookings.tenantId, tenantId),
+      sql`${bookings.searchVector} @@ plainto_tsquery('english', ${query})`
+    ))
+    .orderBy(sql`ts_rank(${bookings.searchVector}, plainto_tsquery('english', ${query})) DESC`)
+    .limit(limit)
+}
+```
+
+**`search.router.ts`:**
+```typescript
+export const searchRouter = router({
+  globalSearch: tenantProcedure.input(z.object({
+    query: z.string().min(2).max(100),
+    types: z.array(z.enum(['customers', 'bookings'])).optional(),
+    limit: z.number().int().min(1).max(50).default(20),
+  })).query(async ({ ctx, input }) => {
+    const [customerResults, bookingResults] = await Promise.all([
+      searchRepository.fullTextSearchCustomers(ctx.tenantId, input.query, 5),
+      searchRepository.fullTextSearchBookings(ctx.tenantId, input.query, 5),
+    ])
+    return {
+      results: [
+        ...customerResults.map(c => ({ type: 'customer' as const, id: c.id, label: `${c.firstName} ${c.lastName}`, secondary: c.email })),
+        ...bookingResults.map(b => ({ type: 'booking'  as const, id: b.id, label: b.bookingNumber ?? b.id, secondary: b.scheduledDate?.toISOString() ?? null })),
+      ].slice(0, input.limit)
+    }
+  })
+})
+```
+
+**Verification:**
+```bash
+npx tsc --noEmit
+```
+
+---
+
+### PHASE6-T21: Wire All Modules into Root Router & Inngest
+
+**Files to modify:**
+```
+src/server/root.ts
+src/app/api/inngest/route.ts
+src/shared/inngest.ts
+```
+
+**`src/server/root.ts`** — Append new routers:
+```typescript
+import { paymentRouter }   from '@/modules/payment'
+import { analyticsRouter } from '@/modules/analytics'
+import { developerRouter } from '@/modules/developer'
+import { searchRouter }    from '@/modules/search'
+
+export const appRouter = router({
+  // Phase 1–4
+  booking, notification, calendarSync,
+  // Phase 5
+  team, customer, forms, review, workflow, tenant, platform,
+  // Phase 6
+  payment: paymentRouter, analytics: analyticsRouter,
+  developer: developerRouter, search: searchRouter,
+})
+```
+
+**`src/shared/inngest.ts`** — Add new typed events:
+```typescript
+"payment/intent.created":       { paymentIntentId: string; bookingId: string; tenantId: string; amount: number; currency: string }
+"payment/intent.succeeded":     { paymentIntentId: string; bookingId: string; tenantId: string; amount: number }
+"payment/intent.failed":        { paymentIntentId: string; bookingId: string; tenantId: string; error: string }
+"payment/refund.requested":     { paymentId: string; bookingId: string; tenantId: string; amount: number; reason: string }
+"payment/refund.completed":     { refundId: string; paymentId: string; tenantId: string }
+"payment/dispute.created":      { disputeId: string; paymentId: string; tenantId: string; amount: number }
+"stripe/webhook.received":      { eventType: string; stripeEventId: string; payload: Record<string, unknown> }
+"webhook/delivery.failed":      { endpointId: string; tenantId: string; eventType: string; reason: string; failureCount: number }
+"waitlist/slot.available":      { waitlistEntryId: string; bookingId: string; tenantId: string; customerId: string }
+"analytics/snapshot.compute":   { tenantId: string; periodType: string; periodStart: string }
+"saga/compensation.required":   { sagaId: string; sagaType: string; entityId: string; tenantId: string }
+"calendar/sync.delete":         { bookingId: string; userId: string; tenantId: string }
+```
+
+**`src/app/api/inngest/route.ts`** — Register all new Inngest functions:
+```typescript
+serve({
+  client: inngest,
+  functions: [
+    // existing Phase 5 functions...
+    // Phase 6 additions:
+    handleStripeWebhook,
+    overdueInvoiceCron,
+    computeMetricSnapshots,
+    onBookingCancelled,    // waitlist trigger
+    dispatchWebhooks,      // developer webhook platform
+  ]
+})
+```
+
+**Verification:**
+```bash
+npx tsc --noEmit
+npm run build
+```
+
+---
+
+### PHASE6-T22: Update Booking Service — Saga, State Machine, Concurrency
+
+**Files to modify:**
+```
+src/modules/booking/booking.service.ts
+```
+
+**Changes required:**
+1. Import `assertValidBookingTransition` — call before EVERY status mutation
+2. Wrap `confirmBooking` in `withSlotLock` — DB advisory lock prevents double-booking
+3. Replace direct `db.update(bookings, { status })` with `updateWithVersion()` — optimistic concurrency
+4. Replace chained `inngest.send()` calls in `confirmBooking` with `BookingConfirmationSaga.run()`
+
+**Pattern for every status update (replicate for all mutations):**
+```typescript
+// Before (unsound):
+await bookingRepository.updateStatus(bookingId, newStatus)
+
+// After (sound):
+const booking = await bookingRepository.findById(bookingId, tenantId)
+if (!booking) throw new NotFoundError('Booking not found')
+assertValidBookingTransition(booking.status as BookingStatus, newStatus)
+await updateWithVersion(bookingsTable, bookingId, tenantId, booking.version, { status: newStatus })
+```
+
+**Verification:**
+```bash
+npx tsc --noEmit
+npm test src/modules/booking   # all existing booking tests still pass
+```
+
+---
+
+### PHASE6-T23: Tests — Financial Completeness
+
+**Files to create:**
+```
+src/modules/payment/__tests__/state-machine.test.ts
+src/modules/payment/__tests__/pricing-engine.test.ts
+src/modules/payment/__tests__/tax-engine.test.ts
+src/modules/payment/__tests__/payment.service.test.ts
+```
+
+**`state-machine.test.ts`** — All valid + invalid transitions:
+- 14 valid invoice transitions all pass `assertValidInvoiceTransition`
+- Invalid: `VOID → SENT` throws `BadRequestError`
+- Invalid: `REFUNDED → DRAFT` throws `BadRequestError`
+- Terminal: `VOID → []`, `REFUNDED → []` (no valid targets)
+- Error message contains both states and valid alternatives
+
+**`pricing-engine.test.ts`:**
+- Rule ordering: two matching rules; verify sortOrder=0 wins over sortOrder=1
+- All 5 modifier types: FIXED_PRICE, FIXED_DISCOUNT, PERCENT_DISCOUNT, FIXED_SURCHARGE, PERCENT_SURCHARGE
+- `PERCENT_DISCOUNT 20% on $100 = $80.00` (not float drift)
+- `serviceIds` filter: rule with `[serviceA]` does not apply to `serviceB`
+- `maxUses` enforcement: `currentUses >= maxUses` → rule skipped
+- `validUntil` past → rule skipped; `validFrom` future → rule skipped
+- Empty rules array → returns basePrice unchanged
+
+**`tax-engine.test.ts`:**
+- UK 20% VAT: `calculateTax(100, { rate: 0.2 })` → `{ subtotal: 100, taxAmount: 20, totalAmount: 120 }`
+- Rounding: `calculateTax(33.33, { rate: 0.2 })` → `taxAmount: 6.67` (not 6.666)
+- Zero rate: `calculateTax(50, { rate: 0 })` → `taxAmount: 0, totalAmount: 50`
+- Invariant: `totalAmount === subtotal + taxAmount` for every test case (no accumulation drift)
+
+**`payment.service.test.ts`** — Mock providers; Stripe not called:
+- `createInvoice` → status DRAFT
+- `sendInvoice` on DRAFT → status SENT; on SENT → `BadRequestError`
+- `voidInvoice` on SENT → VOID; on PAID → `BadRequestError` (terminal-adjacent)
+- `recordPayment` calls idempotency layer (mock Redis); duplicate key → cached result
+
+**Verification:**
+```bash
+npm test src/modules/payment/__tests__
+```
+
+---
+
+### PHASE6-T24: Tests — Booking State Machine, Saga & Slot Lock
+
+**Files to create:**
+```
+src/modules/booking/__tests__/booking-state-machine.test.ts
+src/modules/booking/__tests__/booking-saga.test.ts
+src/modules/booking/__tests__/slot-lock.test.ts
+```
+
+**`booking-state-machine.test.ts`:**
+- All 14 valid transitions pass without throwing
+- All terminal states (COMPLETED, CANCELLED, NO_SHOW, REJECTED) throw for any target
+- `RELEASED → PENDING` (the only self-recovery path) succeeds
+- Error message includes both from/to states and valid alternatives
+
+**`booking-saga.test.ts`:**
+- Success path: all 4 steps execute in order; all 4 mocks called once
+- Failure at step 3 (send-notification): steps 1+2 compensate in reverse order; step 3 compensate not called (failed before completing)
+- Failure at step 4 (sync-calendar): steps 1+2+3 compensate in reverse; notifications compensate is no-op
+- Compensation step itself throws: error logged at CRITICAL; original step error still re-thrown
+
+**`slot-lock.test.ts`:**
+- Sequential calls with same slot key succeed; second runs after first commits
+- Concurrent calls with DIFFERENT keys execute concurrently (no unnecessary blocking)
+
+**Verification:**
+```bash
+npm test src/modules/booking/__tests__
+```
+
+---
+
+### PHASE6-T25: Tests — Shared Correctness Utilities
+
+**Files to create:**
+```
+src/shared/__tests__/idempotency.test.ts
+src/shared/__tests__/optimistic-concurrency.test.ts
+```
+
+**`idempotency.test.ts`:**
+- First call: operation executes, result cached
+- Second call with same key: operation NOT called; cached result returned (mock Redis `get` returns value)
+- Concurrent duplicate: second call gets `ConflictError` (lock already held)
+- Different keys: both operations execute independently
+
+**`optimistic-concurrency.test.ts`:**
+- `expectedVersion` matches DB: update succeeds, version becomes N+1
+- `expectedVersion` is stale (N-1): mock returns 0 rows → `ConflictError`
+- Verify: DB update WHERE clause includes `version = $expectedVersion` (SQL inspection)
+
+**Verification:**
+```bash
+npm test src/shared/__tests__
+```
+
+---
+
+### PHASE6-T26: Tests — Expression Evaluator (Updated for expr-eval)
+
+**Files to modify:**
+```
+src/modules/workflow/__tests__/workflow.test.ts
+```
+
+**Add expression evaluator tests:**
+- Math: `evaluateExpression("{{price}} * 1.2", ctx)` with `price=100` → `120`
+- Boolean: `evaluateExpression("{{count}} > 5", ctx)` with `count=6` → `true`
+- String concat: `"{{first}} {{last}}"` → `"John Smith"`
+- Safe injection: `"1; process.exit()"` → returns as string literal, does NOT exit
+- No function calls: `"Math.random()"` → returns as string literal (not executed)
+- grep check: `grep -rn "new Function" src/` → 0 results
+
+**Verification:**
+```bash
+grep -rn "new Function\|Function(" src/modules/workflow/engine/expressions.ts   # 0 results
+npm test src/modules/workflow/__tests__
+```
+
+---
+
+### PHASE6-T27: Tests — Webhook Delivery & Analytics
+
+**Files to create:**
+```
+src/modules/developer/__tests__/webhook-delivery.test.ts
+src/modules/analytics/__tests__/analytics.test.ts
+src/modules/search/__tests__/search.test.ts
+```
+
+**`webhook-delivery.test.ts`:**
+- Success: `fetch` returns 200 → status `SUCCESS`, `deliveredAt` set
+- Retry: first attempt returns 503, second returns 200 → status `SUCCESS` after retry
+- HMAC: verify `X-Webhook-Signature` header = `sha256=${expected}`
+- Timing-safe: `verifyHmacSignature` uses `timingSafeEqual` — passes for correct, fails for tampered
+- Failure tracking: endpoint `failure_count` incremented; at 10 failures → status `DISABLED`
+
+**`analytics.test.ts`:**
+- RFM HIGH: `lastBookingDaysAgo=180, frequency=0.1, avgValue=20` → `churnRiskLabel='HIGH'`
+- RFM LOW: `lastBookingDaysAgo=3, frequency=8, avgValue=200` → `churnRiskLabel='LOW'`
+- Forecasting: 84 days of mock history → 7-day forecast; each point within ±50% of history mean
+- Metric aggregation: `computeHourlyMetrics` upserts all 18 metric keys (count 18 upsert calls)
+
+**`search.test.ts`:**
+- Customer FTS: mock DB returns customer when `searchVector @@ plainto_tsquery('english', 'john')` matches
+- Booking FTS: booking number search returns booking result
+- Global search: combined results from both entities, limited to `input.limit`
+
+**Verification:**
+```bash
+npm test src/modules/developer/__tests__ src/modules/analytics/__tests__ src/modules/search/__tests__
+```
+
+---
+
+### PHASE6-T28: Tests — Scheduling & Invariant Verification
+
+**Files to create:**
+```
+src/modules/scheduling/__tests__/smart-assignment.test.ts
+src/modules/scheduling/__tests__/waitlist.test.ts
+src/__tests__/invariants.test.ts
+```
+
+**`smart-assignment.test.ts`:**
+- ROUND_ROBIN: 3 staff available, 6 bookings assigned → each staff assigned exactly twice
+- LEAST_LOADED: staff A has 0 bookings, staff B has 3 → A selected
+- SKILL_MATCH: service requires `['pediatrics']`; only staff with that skill returned
+- GEOGRAPHIC: customer 1km from A, 10km from B → A selected (Haversine calculation verified)
+- PREFERRED: `preferredStaffId` set and available → returned as first choice
+
+**`waitlist.test.ts`:**
+- `addToWaitlist` creates entry with `status='WAITING'`, `expiresAt` 30 days ahead
+- `checkAndNotifyWaitlist` finds matching entry → sends `waitlist/slot.available` event → status `NOTIFIED`
+- No matching entry → no error, no event sent
+
+**`src/__tests__/invariants.test.ts`** — All 12 formal invariants:
+```typescript
+describe('Formal Invariants (I1–I12)', () => {
+  it('I1: invoice total constraint enforced')
+  it('I2: terminal booking states reject all transitions', () => {
+    for (const s of ['COMPLETED', 'CANCELLED', 'NO_SHOW', 'REJECTED']) {
+      expect(() => assertValidBookingTransition(s as BookingStatus, 'PENDING')).toThrow(BadRequestError)
+    }
+  })
+  it('I5: idempotency key returns same result on duplicate call')
+  it('I6: validateWorkflowGraph rejects graph with cycle')
+  it('I6: validateWorkflowGraph rejects graph with 0 TRIGGER nodes')
+  it('I6: validateWorkflowGraph rejects graph with 2 TRIGGER nodes')
+  it('I9: expressions.ts contains no Function() constructor', () => {
+    const src = fs.readFileSync('./src/modules/workflow/engine/expressions.ts', 'utf8')
+    expect(src).not.toContain('new Function')
+    expect(src).not.toContain('Function(')
+  })
+  it('I11: webhook delivery HMAC signature is timing-safe')
+  it('I12: stale version update throws ConflictError and makes no DB change')
+  // I3, I4, I7, I8, I10: verified via integration coverage in respective module tests
+})
+```
+
+**Verification:**
+```bash
+npm test src/__tests__/invariants.test.ts
+npm test src/modules/scheduling/__tests__
+```
+
+---
+
+### PHASE6-T29: Final Verification
+
+```bash
+# 1. Type check — zero tolerance
+npx tsc --noEmit
+# Expected: 0 errors
+
+# 2. Production build
+npm run build
+# Expected: Build succeeded (no warnings about missing env vars in modules)
+
+# 3. Full test suite
+npm test
+# Expected: 250+ tests passing, 0 failing
+
+# 4. Invariant I9 — no Function() constructor
+grep -rn "new Function\|eval(" src/modules/workflow/engine/expressions.ts
+# Expected: 0 results
+
+# 5. No console.log in modules (all logging via pino)
+grep -r "console\.log" src/modules/
+# Expected: 0 results
+
+# 6. Test count verification
+npm test -- --reporter=verbose 2>&1 | grep "tests passed"
+# Expected: 250 or higher
+```
+
+---
+
+## New Inngest Events Summary
+
+| Event | Data Shape | Producer |
+|---|---|---|
+| `payment/intent.created` | `{ paymentIntentId, bookingId, tenantId, amount, currency }` | `payment.service` |
+| `payment/intent.succeeded` | `{ paymentIntentId, bookingId, tenantId, amount }` | Stripe webhook bridge |
+| `payment/intent.failed` | `{ paymentIntentId, bookingId, tenantId, error }` | Stripe webhook bridge |
+| `payment/refund.requested` | `{ paymentId, bookingId, tenantId, amount, reason }` | `payment.service` |
+| `payment/refund.completed` | `{ refundId, paymentId, tenantId }` | Stripe webhook bridge |
+| `payment/dispute.created` | `{ disputeId, paymentId, tenantId, amount }` | Stripe webhook bridge |
+| `stripe/webhook.received` | `{ eventType, stripeEventId, payload }` | `/api/webhooks/stripe` |
+| `webhook/delivery.failed` | `{ endpointId, tenantId, eventType, reason, failureCount }` | `webhook-delivery.ts` |
+| `waitlist/slot.available` | `{ waitlistEntryId, bookingId, tenantId, customerId }` | `scheduling.events` |
+| `analytics/snapshot.compute` | `{ tenantId, periodType, periodStart }` | `analytics.events` |
+| `saga/compensation.required` | `{ sagaId, sagaType, entityId, tenantId }` | `booking.saga` |
+| `calendar/sync.delete` | `{ bookingId, userId, tenantId }` | Saga compensation |
+
+---
+
+## Root Router Final State
+
+```typescript
+export const appRouter = router({
+  // Phase 1–4
+  booking, notification, calendarSync,
+  // Phase 5
+  team, customer, forms, review, workflow, tenant, platform,
+  // Phase 6
+  payment, analytics, developer, search,
+})
+```
+
+---
+
+## Formal Invariants Reference
+
+| # | Invariant | Enforcement Layer |
+|---|---|---|
+| I1 | `sum(payments where invoiceId) ≤ invoice.totalAmount` | DB CHECK constraint |
+| I2 | Terminal booking states (COMPLETED, CANCELLED, NO_SHOW, REJECTED) accept no outgoing transitions | `assertValidBookingTransition()` |
+| I3 | Every confirmed booking has ≥1 notification attempt | Saga step 3 (send-notification) |
+| I4 | Concurrent requests for same slot cannot both result in confirmed booking | `pg_advisory_xact_lock` in `withSlotLock()` |
+| I5 | Same idempotency key → same result, exactly one charge | `withIdempotency()` Redis NX lock |
+| I6 | Saved workflow graph (`isVisual=true`) is always a valid DAG with exactly one TRIGGER node | `validateWorkflowGraph()` on every save |
+| I7 | Workflow execution depth never exceeds 3 | `__workflowDepth` check at execution entry |
+| I8 | Customer merge is atomic across all 7 related tables | `db.transaction()` in merge service |
+| I9 | No expression evaluator uses `eval()` or `Function()` with user input | `expr-eval` library + grep CI gate |
+| I10 | API key rate limit applied before any business logic | Rate limiting middleware at `/api/v1` route |
+| I11 | All webhook deliveries include valid HMAC-SHA256 signature | `createHmacSignature()` + `timingSafeEqual()` |
+| I12 | Version mismatch on update raises `ConflictError`, no DB change | `updateWithVersion()` WHERE version check |
+
+---
+
+## Risk Register
+
+| Risk | Severity | Mitigation |
+|---|---|---|
+| Saga compensation failure | CRITICAL | CRITICAL log + `requires_manual_intervention = true` + ops alert |
+| Stripe webhook replay | HIGH | Stripe event ID as idempotency key; `constructEvent` HMAC + timestamp |
+| `pg_advisory_xact_lock` deadlock | HIGH | Always acquire locks sorted by canonical key (tenantId:staffId:date) |
+| GoCardless direct debit returned | HIGH | `payment/dispute.created` → notify admin + pause related bookings |
+| Webhook HMAC timing attack | HIGH | `crypto.timingSafeEqual()` — never string `===` for HMAC comparison |
+| Schema migration fails on live DB | HIGH | All changes additive; `CONCURRENTLY` indexes; rollback plan in migration |
+| Analytics snapshot stale (cron fails) | MEDIUM | Health check alerts if last snapshot > 2 hours old |
+| `expr-eval` library CVE | MEDIUM | Pin version + `allowMemberAccess: false` + quarterly audit |
+| Rate limit bypass via key rotation | MEDIUM | Track by `apiKeys.id` (not key string); revoked keys rejected before rate check |
+| FTS index lag after column add | MEDIUM | `CONCURRENTLY` + verify index size before enabling FTS endpoints |
+| Forecast confidence widens (sparse data) | LOW | Return `basisPoints` in response; UI warns if < 30 data points |
+| Optimistic concurrency version overflow | LOW | INTEGER max = 2.1B; at 1,000 updates/day → 5,753 years to overflow |
+
+---
+
+## Success Criteria
+
+Phase 6 is complete when ALL of the following pass:
+
+- [ ] `npx tsc --noEmit` → **0 errors**
+- [ ] `npm run build` → **succeeds**
+- [ ] `npm test` → **250+ tests passing, 0 failing**
+- [ ] `grep -rn "new Function" src/` → **0 results** (invariant I9)
+- [ ] `grep -r "console\.log" src/modules/` → **0 results**
+- [ ] Booking → invoice → payment → refund flow verified by test end-to-end
+- [ ] Analytics returns 12-month revenue time series (tested with mock data)
+- [ ] Developer can create API key → make REST call (mocked) → receive webhook delivery
+- [ ] `validateWorkflowGraph()` rejects non-DAG and multiple TRIGGER nodes
+- [ ] Every invariant I1–I12 has at least one test verifying enforcement
+- [ ] All 12 formal invariants covered in `src/__tests__/invariants.test.ts`
