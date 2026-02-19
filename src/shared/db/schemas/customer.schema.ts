@@ -3,6 +3,7 @@ import {
   pgEnum,
   uuid,
   text,
+  integer,
   boolean,
   numeric,
   timestamp,
@@ -48,6 +49,8 @@ export const customers = pgTable("customers", {
 	createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	updatedAt: timestamp({ precision: 3, mode: 'date' }).notNull(),
 	deletedAt: timestamp({ precision: 3, mode: 'date' }),
+	version: integer().notNull().default(1),
+	anonymisedAt: timestamp('anonymised_at', { withTimezone: true, mode: 'date' }),
 }, (table) => [
 	index("customers_email_idx").using("btree", table.email.asc().nullsLast().op("text_ops")),
 	index("customers_phone_idx").using("btree", table.phone.asc().nullsLast().op("text_ops")),

@@ -401,6 +401,7 @@ export const workflows = pgTable("workflows", {
 	isVisual: boolean().default(false).notNull(),
 	nodes: jsonb(),
 	viewport: jsonb(),
+	version: integer('version').notNull().default(1),
 }, (table) => [
 	index("workflows_tenantId_enabled_idx").using("btree", table.tenantId.asc().nullsLast().op("bool_ops"), table.enabled.asc().nullsLast().op("bool_ops")),
 	index("workflows_triggerEvent_idx").using("btree", table.triggerEvent.asc().nullsLast().op("text_ops")),
@@ -475,6 +476,7 @@ export const invoices = pgTable("invoices", {
 	lastSyncedAt: timestamp({ precision: 3, mode: 'date' }),
 	createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	updatedAt: timestamp({ precision: 3, mode: 'date' }).notNull(),
+	version: integer('version').notNull().default(1),
 }, (table) => [
 	index("invoices_customerId_idx").using("btree", table.customerId.asc().nullsLast().op("uuid_ops")),
 	index("invoices_status_idx").using("btree", table.status.asc().nullsLast().op("enum_ops")),
@@ -516,6 +518,12 @@ export const payments = pgTable("payments", {
 	notes: text(),
 	createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	updatedAt: timestamp({ precision: 3, mode: 'date' }).notNull(),
+	stripePaymentIntentId: text('stripe_payment_intent_id').unique(),
+	stripeChargeId: text('stripe_charge_id'),
+	stripeTransferId: text('stripe_transfer_id'),
+	platformFeeAmount: numeric('platform_fee_amount', { precision: 10, scale: 2 }),
+	idempotencyKey: text('idempotency_key').unique(),
+	gocardlessPaymentId: text('gocardless_payment_id'),
 }, (table) => [
 	index("payments_customerId_idx").using("btree", table.customerId.asc().nullsLast().op("uuid_ops")),
 	index("payments_invoiceId_idx").using("btree", table.invoiceId.asc().nullsLast().op("uuid_ops")),

@@ -79,6 +79,7 @@ export const bookings = pgTable("bookings", {
 	customServiceName: text(),
 	mileageCost: numeric({ precision: 10, scale: 2 }),
 	confirmationTokenHash: text(),
+	version: integer().notNull().default(1),
 }, (table) => [
 	index("bookings_customerId_idx").using("btree", table.customerId.asc().nullsLast().op("uuid_ops")),
 	index("bookings_staffId_idx").using("btree", table.staffId.asc().nullsLast().op("uuid_ops")),

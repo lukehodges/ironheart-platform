@@ -75,6 +75,9 @@ export const users = pgTable("users", {
 	bankSortCode: text(),
 	bankAccountNumber: text(),
 	workosUserId: text("workos_user_id").unique(),
+	lastAssignedAt: timestamp('last_assigned_at', { withTimezone: true, mode: 'date' }),
+	homeLatitude: numeric('home_latitude', { precision: 9, scale: 6 }),
+	homeLongitude: numeric('home_longitude', { precision: 9, scale: 6 }),
 }, (table) => [
 	index("users_email_idx").using("btree", table.email.asc().nullsLast().op("text_ops")),
 	index("users_status_idx").using("btree", table.status.asc().nullsLast().op("enum_ops")),
