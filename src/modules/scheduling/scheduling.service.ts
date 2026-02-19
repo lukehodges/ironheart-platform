@@ -14,9 +14,24 @@ import type {
   SchedulingAlert,
   AssignmentHealth,
   TravelTimeResult,
+  AssignmentStrategy,
+  AssignmentContext,
+  StaffCandidate,
 } from "./scheduling.types";
 import { isStaffAvailable, type ExternalEventBlock } from "./lib/availability";
 import { calculateTravelTime } from "./lib/travel-time";
+import { selectStaff } from "./lib/smart-assignment";
+import { addToWaitlist, checkAndNotifyWaitlist } from "./lib/waitlist";
+
+export { addToWaitlist, checkAndNotifyWaitlist };
+
+export function assignStaff(
+  candidates: StaffCandidate[],
+  strategy: AssignmentStrategy,
+  ctx: AssignmentContext
+) {
+  return selectStaff(candidates, strategy.type, ctx);
+}
 
 const log = logger.child({ module: "scheduling.service" });
 

@@ -105,6 +105,53 @@ export interface StaffRecommendation {
   availabilityStatus: AvailabilityStatus;
 }
 
+// Smart assignment
+export type AssignmentStrategyType =
+  | 'ROUND_ROBIN'
+  | 'LEAST_LOADED'
+  | 'SKILL_MATCH'
+  | 'GEOGRAPHIC'
+  | 'PREFERRED'
+
+export interface AssignmentStrategy {
+  type: AssignmentStrategyType
+  tiebreaker?: 'ROUND_ROBIN' | 'AVAILABILITY'
+}
+
+export interface StaffCandidate {
+  userId: string
+  lastAssignedAt: Date | null
+  bookingsToday: number
+  skills: string[]
+  homeLatitude: number | null
+  homeLongitude: number | null
+}
+
+export interface AssignmentContext {
+  serviceId: string
+  requiredSkills?: string[]
+  customerLatitude?: number
+  customerLongitude?: number
+  preferredStaffId?: string
+  date: string
+}
+
+// Waitlist
+export type WaitlistStatus = 'WAITING' | 'NOTIFIED' | 'BOOKED' | 'EXPIRED'
+
+export interface WaitlistEntry {
+  id: string
+  tenantId: string
+  customerId: string
+  serviceId: string
+  staffId: string | null
+  preferredDate: Date | null
+  flexibilityDays: number
+  status: WaitlistStatus
+  expiresAt: Date
+  createdAt: Date
+}
+
 // Booking shape used by scheduling lib (minimal — avoids circular import with booking module)
 export interface SchedulingBooking {
   id: string;

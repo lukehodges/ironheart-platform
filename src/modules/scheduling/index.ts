@@ -1,6 +1,9 @@
 export { schedulingRouter } from "./scheduling.router";
 export { schedulingFunctions } from "./scheduling.events";
 export * from "./scheduling.types";
+export { selectStaff } from "./lib/smart-assignment";
+export { addToWaitlist, checkAndNotifyWaitlist } from "./lib/waitlist";
+export { assignStaff } from "./scheduling.service";
 export {
   slotCreateSchema,
   slotUpdateSchema,
