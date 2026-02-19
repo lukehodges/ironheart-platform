@@ -72,6 +72,88 @@ type IronheartEvents = {
   "review/request.send": {
     data: { bookingId: string; customerId: string; delay?: string };
   };
+  "workflow/execute": {
+    data: {
+      workflowId: string;
+      tenantId: string;
+      triggerEvent: string;
+      triggerData: Record<string, unknown>;
+    };
+  };
+  "workflow/completed": {
+    data: {
+      workflowId: string;
+      executionId: string;
+      correlationId?: string;
+      tenantId: string;
+      output?: Record<string, unknown>;
+      success: boolean;
+    };
+  };
+  "forms/submitted": {
+    data: {
+      formId: string;
+      bookingId: string | null;
+      tenantId: string;
+      customerId: string | null;
+    };
+  };
+  "review/submitted": {
+    data: {
+      reviewId: string;
+      bookingId: string;
+      tenantId: string;
+      customerId: string;
+      rating: number;
+    };
+  };
+  "stripe/webhook.received": {
+    data: {
+      eventType: string;
+      stripeEventId: string;
+      payload: Record<string, unknown>;
+    };
+  };
+  "payment/intent.succeeded": {
+    data: {
+      paymentIntentId: string;
+      bookingId: string;
+      tenantId: string;
+      amount: number;
+    };
+  };
+  "payment/intent.failed": {
+    data: {
+      paymentIntentId: string;
+      bookingId: string;
+      tenantId: string;
+      error: string;
+    };
+  };
+  "payment/dispute.created": {
+    data: {
+      disputeId: string;
+      paymentId: string;
+      tenantId: string;
+      amount: number;
+    };
+  };
+  "calendar/sync.delete": {
+    data: {
+      bookingId: string;
+      userId: string;
+      tenantId: string;
+    };
+  };
+  "waitlist/slot.available": {
+    data: {
+      waitlistEntryId: string;
+      tenantId: string;
+      customerId: string;
+      serviceId: string;
+      date: string;
+    };
+  };
 };
 
 /**
