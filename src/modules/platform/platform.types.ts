@@ -1,0 +1,80 @@
+export type TenantPlan =
+  | 'TRIAL'
+  | 'STARTER'
+  | 'PROFESSIONAL'
+  | 'ENTERPRISE'
+
+export type TenantStatus =
+  | 'ACTIVE'
+  | 'SUSPENDED'
+  | 'CANCELLED'
+  | 'PENDING'
+
+export interface TenantRecord {
+  id: string
+  slug: string
+  name: string
+  plan: TenantPlan
+  status: TenantStatus
+  trialEndsAt?: Date | null
+  suspendedAt?: Date | null
+  suspendedReason?: string | null
+  createdAt: Date
+  updatedAt: Date
+}
+
+export interface AuditLogRecord {
+  id: string
+  tenantId: string
+  userId?: string | null
+  action: string
+  entityType: string
+  entityId?: string | null
+  oldValues?: Record<string, unknown> | null
+  newValues?: Record<string, unknown> | null
+  severity: 'INFO' | 'WARNING' | 'CRITICAL'
+  createdAt: Date
+}
+
+export interface FeatureFlag {
+  id: string
+  slug: string
+  name: string
+  description?: string | null
+  defaultEnabled: boolean
+  createdAt: Date
+}
+
+export interface TenantFeature {
+  id: string
+  tenantId: string
+  flagId: string
+  isEnabled: boolean
+  createdAt: Date
+  updatedAt: Date
+}
+
+export interface SignupRequest {
+  id: string
+  tenantId?: string | null
+  name: string
+  email: string
+  businessName: string
+  status: 'PENDING' | 'APPROVED' | 'REJECTED'
+  reason?: string | null
+  createdAt: Date
+  updatedAt: Date
+}
+
+export interface CreateTenantInput {
+  businessName: string
+  email: string
+  plan?: TenantPlan | null
+  slug?: string | null
+}
+
+export interface ChangePlanInput {
+  tenantId: string
+  plan: TenantPlan
+  reason?: string | null
+}
