@@ -8,6 +8,17 @@ import { schedulingRouter } from "@/modules/scheduling";
 import { authRouter } from "@/modules/auth";
 import { notificationRouter } from "@/modules/notification";
 import { calendarSyncRouter } from "@/modules/calendar-sync";
+import { teamRouter } from "@/modules/team";
+import { customerRouter } from "@/modules/customer";
+import { formsRouter } from "@/modules/forms";
+import { reviewRouter } from "@/modules/review";
+import { workflowRouter } from "@/modules/workflow";
+import { tenantRouter } from "@/modules/tenant";
+import { platformRouter } from "@/modules/platform";
+import { paymentRouter } from "@/modules/payment";
+import { analyticsRouter } from "@/modules/analytics";
+import { developerRouter } from "@/modules/developer";
+import { searchRouter } from "@/modules/search";
 
 /**
  * Root tRPC router.
@@ -17,7 +28,8 @@ import { calendarSyncRouter } from "@/modules/calendar-sync";
  *   Phase 2: scheduling
  *   Phase 3: auth
  *   Phase 4: notification, calendarSync
- *   Phase 5: remaining module routers
+ *   Phase 5: team, customer, forms, review, workflow, tenant, platform
+ *   Phase 6: payment, analytics, developer, search
  */
 export const appRouter = router({
   auth: authRouter,
@@ -29,6 +41,17 @@ export const appRouter = router({
   scheduling: schedulingRouter,
   notification: notificationRouter,
   calendarSync: calendarSyncRouter,
+  team: teamRouter,
+  customer: customerRouter,
+  forms: formsRouter,
+  review: reviewRouter,
+  workflow: workflowRouter,
+  tenant: tenantRouter,
+  platform: platformRouter,
+  payment: paymentRouter,
+  analytics: analyticsRouter,
+  developer: developerRouter,
+  search: searchRouter,
 });
 
 export type AppRouter = typeof appRouter;

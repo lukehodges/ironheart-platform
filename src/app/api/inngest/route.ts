@@ -4,6 +4,13 @@ import { bookingFunctions } from "@/modules/booking/booking.events";
 import { schedulingFunctions } from "@/modules/scheduling";
 import { notificationFunctions } from "@/modules/notification";
 import { calendarSyncFunctions } from "@/modules/calendar-sync";
+import { workflowFunctions } from "@/modules/workflow";
+import { reviewFunctions } from "@/modules/review";
+import { teamFunctions } from "@/modules/team";
+import { formsFunctions } from "@/modules/forms";
+import { handleStripeWebhook, overdueInvoiceCron } from "@/modules/payment/payment.events";
+import { computeMetricSnapshots } from "@/modules/analytics/analytics.events";
+import { dispatchWebhooks } from "@/modules/developer/developer.events";
 
 /**
  * Inngest serve endpoint.
@@ -25,9 +32,20 @@ import { calendarSyncFunctions } from "@/modules/calendar-sync";
 export const { GET, POST, PUT } = serve({
   client: inngest,
   functions: [
+    // Phase 1-4 functions
     ...bookingFunctions,
     ...schedulingFunctions,
     ...notificationFunctions,
     ...calendarSyncFunctions,
+    // Phase 5 functions
+    ...workflowFunctions,
+    ...reviewFunctions,
+    ...teamFunctions,
+    ...formsFunctions,
+    // Phase 6 functions
+    handleStripeWebhook,
+    overdueInvoiceCron,
+    computeMetricSnapshots,
+    dispatchWebhooks,
   ],
 });
