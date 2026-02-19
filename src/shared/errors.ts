@@ -54,6 +54,14 @@ export class ConflictError extends IronheartError {
   }
 }
 
+/** Request input failed validation or is logically invalid (bad request). */
+export class BadRequestError extends IronheartError {
+  constructor(message: string) {
+    super(message, "BAD_REQUEST");
+    this.name = "BadRequestError";
+  }
+}
+
 /**
  * Convert a domain error to a tRPC error.
  * Call this in router catch blocks: catch (e) { throw toTRPCError(e); }
@@ -73,6 +81,9 @@ export function toTRPCError(error: unknown): TRPCError {
   }
   if (error instanceof ConflictError) {
     return new TRPCError({ code: "CONFLICT", message: error.message });
+  }
+  if (error instanceof BadRequestError) {
+    return new TRPCError({ code: "BAD_REQUEST", message: error.message });
   }
   if (error instanceof TRPCError) {
     return error;
