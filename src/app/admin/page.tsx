@@ -142,7 +142,7 @@ export default function AdminDashboardPage() {
             <div className="space-y-3">
               {[
                 { name: "API", status: "operational" },
-                { name: "Database", status: "check_env" },
+                { name: "Database", status: "operational" },
                 { name: "Background Jobs", status: "check_env" },
                 { name: "Email", status: "check_env" },
               ].map((service) => (

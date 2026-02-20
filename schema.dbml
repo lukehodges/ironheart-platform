@@ -1,0 +1,1559 @@
+Enum AuditSeverity {
+  DEBUG
+  INFO
+  WARNING
+  ERROR
+  CRITICAL
+}
+
+Enum AvailabilityMode {
+  CALENDAR_BASED
+  SLOT_BASED
+  HYBRID
+}
+
+Enum AvailabilityType {
+  RECURRING
+  SPECIFIC
+  BLOCKED
+}
+
+Enum BookingSource {
+  ADMIN
+  PORTAL
+  PHONE
+  WALK_IN
+  API
+}
+
+Enum BookingStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  RESERVED
+  RELEASED
+  CONFIRMED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+Enum CalendarIntegrationProvider {
+  GOOGLE_CALENDAR
+  OUTLOOK_CALENDAR
+}
+
+Enum CalendarSyncType {
+  FULL_SYNC
+  INCREMENTAL_SYNC
+  MANUAL_SYNC
+  BOOKING_PUSH
+  EVENT_IMPORT
+}
+
+Enum CapacityMode {
+  TENANT_LEVEL
+  CALENDAR_LEVEL
+  STAFF_LEVEL
+}
+
+Enum CustomerStatus {
+  ACTIVE
+  INACTIVE
+  BLOCKED
+}
+
+Enum EmployeeType {
+  EMPLOYEE
+  CONTRACTOR
+  FREELANCER
+}
+
+Enum FormSendTiming {
+  ON_BOOKING
+  HOURS_24_BEFORE
+  DAYS_1_BEFORE
+  MANUAL
+}
+
+Enum FormStatus {
+  PENDING
+  COMPLETED
+  EXPIRED
+  CANCELLED
+}
+
+Enum IntegrationProvider {
+  GOOGLE_CALENDAR
+  OUTLOOK_CALENDAR
+  FREEAGENT
+  XERO
+  QUICKBOOKS
+  STRIPE
+  GOCARDLESS
+  TWILIO
+  SENDGRID
+}
+
+Enum IntegrationStatus {
+  DISCONNECTED
+  CONNECTED
+  ERROR
+  EXPIRED
+}
+
+Enum InvoiceStatus {
+  DRAFT
+  SENT
+  VIEWED
+  PAID
+  PARTIALLY_PAID
+  OVERDUE
+  VOID
+  REFUNDED
+}
+
+Enum LocationType {
+  VENUE
+  CUSTOMER_HOME
+  CUSTOMER_WORK
+  OTHER
+}
+
+Enum MessageChannel {
+  EMAIL
+  SMS
+  PUSH
+}
+
+Enum MessageStatus {
+  QUEUED
+  SENT
+  DELIVERED
+  FAILED
+  BOUNCED
+}
+
+Enum MessageTrigger {
+  BOOKING_CREATED
+  BOOKING_CONFIRMED
+  BOOKING_CANCELLED
+  BOOKING_REMINDER_24H
+  BOOKING_REMINDER_2H
+  BOOKING_COMPLETED
+  APPROVAL_REQUIRED
+  BOOKING_APPROVED
+  BOOKING_REJECTED
+  PAYMENT_RECEIVED
+  INVOICE_SENT
+}
+
+Enum ModuleCategory {
+  CORE
+  PREMIUM
+  CUSTOM
+  COMING_SOON
+}
+
+Enum NoteType {
+  GENERAL
+  CLINICAL
+  ADMIN
+  FOLLOW_UP
+}
+
+Enum NotificationType {
+  BOOKING_CREATED
+  BOOKING_CONFIRMED
+  BOOKING_CANCELLED
+  BOOKING_REMINDER
+  BOOKING_RESCHEDULED
+  BOOKING_COMPLETED
+  PAYMENT_RECEIVED
+  PAYMENT_FAILED
+  INVOICE_SENT
+  INVOICE_OVERDUE
+  SHIFT_ASSIGNED
+  SHIFT_REMINDER
+  ROUTE_UPDATED
+  SYSTEM_ALERT
+  MAINTENANCE
+  FEATURE_UPDATE
+  PROMOTION
+  REVIEW_REQUEST
+}
+
+Enum PaymentMethod {
+  CARD
+  BANK_TRANSFER
+  DIRECT_DEBIT
+  CASH
+  CHEQUE
+  OTHER
+}
+
+Enum PaymentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  REFUNDED
+  CANCELLED
+}
+
+Enum PaymentType {
+  DEPOSIT
+  PAYMENT
+  REFUND
+  CREDIT
+}
+
+Enum PlanType {
+  STARTER
+  PROFESSIONAL
+  BUSINESS
+  ENTERPRISE
+  CUSTOM
+}
+
+Enum ProjectMemberStatus {
+  ACTIVE
+  INACTIVE
+  LEFT
+}
+
+Enum ProjectPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+Enum ProjectRole {
+  OWNER
+  MANAGER
+  LEAD
+  MEMBER
+  VIEWER
+}
+
+Enum ProjectStatus {
+  PLANNING
+  ACTIVE
+  ON_HOLD
+  COMPLETED
+  CANCELLED
+}
+
+Enum ProjectType {
+  INTERNAL
+  CLIENT
+  DEVELOPMENT
+  MAINTENANCE
+  RESEARCH
+}
+
+Enum ReviewIssueCategory {
+  WAIT_TIME
+  SERVICE_QUALITY
+  PRICING
+  COMMUNICATION
+  STAFF_ATTITUDE
+  FACILITY
+  OTHER
+}
+
+Enum ReviewRequestStatus {
+  PENDING
+  SENT
+  DELIVERED
+  COMPLETED
+  BOUNCED
+  IGNORED
+}
+
+Enum ReviewResolutionStatus {
+  PENDING
+  CONTACTED
+  RESOLVED
+  DISMISSED
+}
+
+Enum ReviewSource {
+  GOOGLE
+  FACEBOOK
+  PRIVATE
+  INTERNAL
+}
+
+Enum ReviewTiming {
+  HOURS_2
+  HOURS_24
+  DAYS_3
+}
+
+Enum SettingType {
+  BOOLEAN
+  NUMBER
+  TEXT
+  SELECT
+  JSON
+}
+
+Enum StaffStatus {
+  ACTIVE
+  ON_LEAVE
+  UNAVAILABLE
+  TERMINATED
+}
+
+Enum SyncDirection {
+  PUSH
+  PULL
+  BIDIRECTIONAL
+}
+
+Enum SyncStatus {
+  SUCCESS
+  FAILED
+  SKIPPED
+}
+
+Enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+Enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  REVIEW
+  BLOCKED
+  COMPLETED
+  CANCELLED
+}
+
+Enum TaskType {
+  GENERAL
+  DEVELOPMENT
+  DESIGN
+  TESTING
+  DOCUMENTATION
+  MEETING
+  RESEARCH
+}
+
+Enum TenantStatus {
+  ACTIVE
+  TRIAL
+  SUSPENDED
+  CANCELLED
+  DELETED
+}
+
+Enum UserStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  DELETED
+}
+
+Enum UserType {
+  OWNER
+  ADMIN
+  MEMBER
+  CUSTOMER
+  API
+}
+
+Enum WorkflowActionType {
+  SEND_EMAIL
+  SEND_SMS
+  CREATE_CALENDAR_EVENT
+  UPDATE_BOOKING_STATUS
+  SEND_NOTIFICATION
+  CREATE_TASK
+  WEBHOOK
+}
+
+Enum WorkflowExecutionStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+Table SignupRequest {
+  id uuid [pk]
+  businessName text
+  contactName text
+  email text
+  phone text [null]
+  industry text
+  message text [null]
+  status text
+  tenantId uuid [null]
+  createdAt timestamp [default: `now()`]
+  updatedAt timestamp
+}
+
+Table _SlotStaff {
+  A uuid
+  B uuid
+  indexes { (A, B) [pk] }
+}
+
+Table _prisma_migrations {
+  id varchar [pk]
+  checksum varchar
+  finished_at timestamp [null]
+  migration_name varchar
+  logs text [null]
+  rolled_back_at timestamp [null]
+  started_at timestamp [default: `now()`]
+  applied_steps_count int [default: 0]
+}
+
+Table add_ons {
+  id uuid [pk]
+  tenantId uuid
+  name text
+  description text [null]
+  category text
+  priceType text
+  fixedPrice decimal [null]
+  perChildPrice decimal [null]
+  tieredPricing jsonb [null]
+  matchedDonation boolean [default: false]
+  birthdayChildFree boolean [default: false]
+  sortOrder int [default: 0]
+  active boolean [default: true]
+  createdAt timestamp [default: `now()`]
+  updatedAt timestamp
+}
+
+Table api_keys {
+  id uuid [pk]
+  tenantId uuid
+  name text
+  keyHash text
+  keyPrefix text
+  scopes text[] [null]
+  rateLimit int [default: 1000]
+  allowedIps text[] [null]
+  allowedOrigins text[] [null]
+  lastUsedAt timestamp [null]
+  usageCount bigint [default: 0]
+  expiresAt timestamp [null]
+  revokedAt timestamp [null]
+  createdAt timestamp [default: `now()`]
+  createdBy uuid [null]
+}
+
+Table appointment_completions {
+  id uuid [pk]
+  tenantId uuid
+  bookingId uuid
+  customerId uuid
+  completedAt timestamp [default: `now()`]
+  completedBy uuid
+  durationMinutes int [null]
+  actualStartTime timestamp [null]
+  actualEndTime timestamp [null]
+  sessionNotes text [null]
+  nextAppointment timestamp [null]
+  followUpRequired boolean [default: false]
+  paymentCollected decimal [null]
+  paymentMethod text [null]
+  createdAt timestamp [default: `now()`]
+  updatedAt timestamp
+}
+
+Table audit_logs {
+  id uuid [pk]
+  tenantId uuid
+  userId uuid [null]
+  action text
+  entityType text [null]
+  entityId uuid [null]
+  oldValues jsonb [null]
+  newValues jsonb [null]
+  ipAddress text [null]
+  userAgent text [null]
+  sessionId uuid [null]
+  requestId text [null]
+  severity AuditSeverity
+  metadata jsonb [null]
+  createdAt timestamp [default: `now()`]
+}
+
+Table available_slots {
+  id uuid [pk]
+  tenantId uuid
+  date date
+  time text
+  endTime text [null]
+  available boolean [default: true]
+  staffIds uuid[] [null]
+  serviceIds uuid[] [null]
+  venueId uuid [null]
+  capacity int [default: 1]
+  bookedCount int [default: 0]
+  requiresApproval boolean [default: false]
+  approvedAt timestamp [null]
+  approvedBy uuid [null]
+  metadata jsonb [null]
+  sortOrder int [default: 0]
+  createdAt timestamp [default: `now()`]
+  updatedAt timestamp
+  estimatedLocation text [null]
+  previousSlotId uuid [null]
+  travelTimeFromPrev int [null]
+}
+
+Table booking_assignments {
+  id uuid [pk]
+  bookingId uuid
+  userId uuid
+  createdAt timestamp [default: `now()`]
+}
+
+Table booking_status_history {
+  id uuid [pk]
+  bookingId uuid
+  fromStatus BookingStatus [null]
+  toStatus BookingStatus
+  reason text [null]
+  changedById uuid [null]
+  createdAt timestamp [default: `now()`]
+}
+
+Table bookings {
+  id uuid [pk]
+  tenantId uuid
+  bookingNumber text
+  customerId uuid
+  serviceId uuid
+  staffId uuid [null]
+  venueId uuid [null]
+  scheduledDate date
+  scheduledTime text
+  durationMinutes int
+  endTime text [null]
+  locationType LocationType
+  locationAddress jsonb [null]
+  travelMinutes int [null]
+  travelMiles decimal [null]
+  status BookingStatus
+  statusChangedAt timestamp [default: `now()`]
+  approvalRequestedAt timestamp [null]
+  approvalDeadlineAt timestamp [null]
+  approvedAt timestamp [null]
+  approvedById uuid [null]
+  rejectionReason text [null]
+  reservedAt timestamp [null]
+  reservationExpiresAt timestamp [null]
+  price decimal [null]
+  taxAmount decimal [null]
+  totalAmount decimal [null]
+  depositRequired decimal [null]
+  depositPaid decimal
+  depositPaidAt timestamp [null]
+  customerNotes text [null]
+  adminNotes text [null]
+  source BookingSource
+  cancelledAt timestamp [null]
+  cancelledBy uuid [null]
+  cancellationReason text [null]
+  completedAt timestamp [null]
+  createdAt timestamp [default: `now()`]
+  createdById uuid [null]
+  updatedAt timestamp
+  projectId uuid [null]
+  requiresApproval boolean [default: false]
+  slotId uuid [null]
+  customServiceName text [null]
+  mileageCost decimal [null]
+  confirmationTokenHash text [null]
+}
+
+Table completed_forms {
+  id uuid [pk]
+  tenantId uuid
+  templateId uuid
+  templateName text
+  customerId uuid
+  customerName text
+  customerEmail text
+  bookingId uuid [null]
+  responses jsonb
+  signature text [null]
+  submittedAt timestamp [null]
+  ipAddress text [null]
+  userAgent text [null]
+  sessionKey text [null]
+  status FormStatus
+  submittedBy uuid [null]
+  expiresAt timestamp [null]
+  reminderSentAt timestamp [null]
+  createdAt timestamp [default: `now()`]
+}
+
+Table customer_notes {
+  id uuid [pk]
+  customerId uuid
+  bookingId uuid [null]
+  content text
+  type NoteType
+  isPinned boolean [default: false]
+  createdAt timestamp [default: `now()`]
+  createdBy uuid [null]
+  updatedAt timestamp
+}
+
+Table customers {
+  id uuid [pk]
+  tenantId uuid
+  firstName text
+  lastName text
+  email text [null]
+  phone text [null]
+  addressLine1 text [null]
+  addressLine2 text [null]
+  city text [null]
+  county text [null]
+  postcode text [null]
+  country text
+  latitude decimal [null]
+  longitude decimal [null]
+  preferredStaffId uuid [null]
+  notes text [null]
+  tags text[] [null]
+  marketingOptIn boolean [default: false]
+  referralSource text [null]
+  status CustomerStatus
+  createdAt timestamp [default: `now()`]
+  updatedAt timestamp
+  deletedAt timestamp [null]
+}
+
+Table feature_flags {
+  id uuid [pk]
+  key text
+  name text
+  description text [null]
+  category text [null]
+  defaultValue boolean [default: false]
+  defaultConfig jsonb [null]
+  configSchema jsonb [null]
+  createdAt timestamp [default: `now()`]
+  updatedAt timestamp
+}
+
+Table form_templates {
+  id uuid [pk]
+  tenantId uuid
+  name text
+  description text [null]
+  fields jsonb
+  attachedServices uuid[] [null]
+  sendTiming FormSendTiming
+  completionRequired boolean [default: false]
+  allowGuestAccess boolean [default: false]
+  sortOrder int [default: 0]
+  active boolean [default: true]
+  isPublic boolean [default: false]
+  createdAt timestamp [default: `now()`]
+  updatedAt timestamp
+  updatedBy uuid [null]
+}
+
+Table integration_sync_logs {
+  id uuid [pk]
+  integrationId uuid
+  direction SyncDirection
+  entityType text
+  localId uuid [null]
+  remoteId text [null]
+  status SyncStatus
+  errorMessage text [null]
+  createdAt timestamp [default: `now()`]
+}
+
+Table integrations {
+  id uuid [pk]
+  tenantId uuid
+  provider IntegrationProvider
+  status IntegrationStatus
+  accessToken text [null]
+  refreshToken text [null]
+  tokenExpiresAt timestamp [null]
+  config jsonb [null]
+  lastSyncAt timestamp [null]
+  lastSyncError text [null]
+  connectedAt timestamp [null]
+  connectedBy uuid [null]
+  createdAt timestamp [default: `now()`]
+  updatedAt timestamp
+}
+
+Table invoices {
+  id uuid [pk]
+  tenantId uuid
+  invoiceNumber text
+  customerId uuid
+  bookingId uuid [null]
+  subtotal decimal
+  taxAmount decimal
+  discountAmount decimal
+  totalAmount decimal
+  amountPaid decimal
+  amountDue decimal
+  issueDate date [default: `now()`]
+  dueDate date
+  paidAt timestamp [null]
+  status InvoiceStatus
+  lineItems jsonb
+  notes text [null]
+  terms text [null]
+  externalRef text [null]
+  externalUrl text [null]
+  lastSyncedAt timestamp [null]
+  createdAt timestamp [default: `now()`]
+  updatedAt timestamp
+}
+
+Table message_templates {
+  id uuid [pk]
+  tenantId uuid
+  name text
+  trigger MessageTrigger
+  channel MessageChannel
+  subject text [null]
+  body text
+  active boolean [default: true]
+  isSystem boolean [default: false]
+  createdAt timestamp [default: `now()`]
+  updatedAt timestamp
+  serviceId uuid [null]
+}
+
+Table module_settings {
+  id uuid [pk]
+  moduleId uuid
+  key text
+  label text
+  type SettingType
+  defaultValue jsonb [null]
+  options jsonb [null]
+  validation jsonb [null]
+  description text [null]
+  category text [null]
+  order int [default: 0]
+  createdAt timestamp [default: `now()`]
+  updatedAt timestamp
+}
+
+Table modules {
+  id uuid [pk]
+  slug text
+  name text
+  description text [null]
+  category ModuleCategory
+  icon text [null]
+  isActive boolean [default: true]
+  setupFee decimal
+  monthlyFee decimal
+  features jsonb
+  createdAt timestamp [default: `now()`]
+  updatedAt timestamp
+}
+
+Table notification_preferences {
+  userId uuid [pk]
+  emailEnabled boolean [default: true]
+  pushEnabled boolean [default: true]
+  smsEnabled boolean [default: false]
+  typePreferences jsonb [null]
+  quietHoursEnabled boolean [default: false]
+  quietHoursStart text [null]
+  quietHoursEnd text [null]
+  quietHoursDays integer[] [null]
+  digestEnabled boolean [default: false]
+  digestFrequency text [null]
+  digestTime text [null]
+  updatedAt timestamp
+}
+
+Table notifications {
+  id uuid [pk]
+  userId uuid
+  type NotificationType
+  title text
+  message text
+  entityType text [null]
+  entityId uuid [null]
+  actionUrl text [null]
+  read boolean [default: false]
+  readAt timestamp [null]
+  dismissed boolean [default: false]
+  channels text[] [null]
+  emailSent boolean [default: false]
+  pushSent boolean [default: false]
+  createdAt timestamp [default: `now()`]
+  expiresAt timestamp [null]
+}
+
+Table oauth_states {
+  id uuid [pk]
+  state text
+  tenantId uuid
+  userId uuid
+  staffId uuid [null]
+  provider CalendarIntegrationProvider
+  redirectUrl text [null]
+  metadata jsonb [null]
+  expiresAt timestamp
+  usedAt timestamp [null]
+  createdAt timestamp [default: `now()`]
+  codeVerifier text
+}
+
+Table organization_settings {
+  tenantId uuid [pk]
+  businessName text
+  legalName text [null]
+  registrationNo text [null]
+  vatNumber text [null]
+  email text [null]
+  phone text [null]
+  website text [null]
+  addressLine1 text [null]
+  addressLine2 text [null]
+  city text [null]
+  county text [null]
+  postcode text [null]
+  country text
+  timezone text
+  currency text
+  dateFormat text
+  timeFormat text
+  weekStartsOn int [default: 1]
+  logoUrl text [null]
+  faviconUrl text [null]
+  primaryColor text
+  accentColor text
+  businessHours jsonb [null]
+  bookingWindowDays int [default: 30]
+  minNoticeHours int [default: 24]
+  bufferMinutes int [default: 15]
+  allowSameDayBook boolean [default: false]
+  slotDurationMins int [default: 30]
+  senderName text [null]
+  senderEmail text [null]
+  replyToEmail text [null]
+  emailFooter text [null]
+  smsSignature text [null]
+  customerLabel text
+  bookingLabel text
+  staffLabel text
+  createdAt timestamp [default: `now()`]
+  updatedAt timestamp
+  availabilityMode AvailabilityMode
+  capacityMode CapacityMode
+  defaultSlotCapacity int [default: 1]
+  slotApprovalEnabled boolean [default: false]
+  slotApprovalHours int [default: 48]
+  customCss text [null]
+  fontFamily text [null]
+  secondaryColor text [null]
+}
+
+Table payments {
+  id uuid [pk]
+  tenantId uuid
+  customerId uuid
+  invoiceId uuid [null]
+  bookingId uuid [null]
+  amount decimal
+  currency text
+  type PaymentType
+  method PaymentMethod [null]
+  status PaymentStatus
+  provider text [null]
+  providerRef text [null]
+  paidAt timestamp [null]
+  refundedAt timestamp [null]
+  description text [null]
+  notes text [null]
+  createdAt timestamp [default: `now()`]
+  updatedAt timestamp
+}
+
+Table permissions {
+  id uuid [pk]
+  resource text
+  action text
+  description text [null]
+}
+
+Table portal_templates {
+  id uuid [pk]
+  slug text
+  name text
+  description text [null]
+  industry text
+  colorScheme jsonb
+  fonts jsonb [null]
+  logoPosition text
+  stepFlow jsonb
+  requiresLocation boolean [default: true]
+  locationTypes text[] [null]
+  formSchema jsonb
+  defaultAvailabilityMode AvailabilityMode
+  requiresApproval boolean [default: false]
+  reservationMinutes int [default: 15]
+  isActive boolean [default: true]
+  isSystemTemplate boolean [default: false]
+  sortOrder int [default: 0]
+  previewImage text [null]
+  createdAt timestamp [default: `now()`]
+  updatedAt timestamp
+  skipReservation boolean [default: false]
+}
+
+Table project_members {
+  id uuid [pk]
+  projectId uuid
+  userId uuid
+  role ProjectRole
+  responsibilities text[] [null]
+  weeklyHours int [null]
+  hourlyRate decimal [null]
+  status ProjectMemberStatus
+  joinedAt timestamp [default: `now()`]
+  leftAt timestamp [null]
+}
+
+Table projects {
+  id uuid [pk]
+  tenantId uuid
+  name text
+  description text [null]
+  startDate timestamp [null]
+  endDate timestamp [null]
+  estimatedHours int [null]
+  actualHours int [null]
+  status ProjectStatus
+  priority ProjectPriority
+  progress int [default: 0]
+  budgetAmount decimal [null]
+  actualCost decimal [null]
+  type ProjectType
+  isVisible boolean [default: true]
+  createdAt timestamp [default: `now()`]
+  updatedAt timestamp
+  completedAt timestamp [null]
+  deletedAt timestamp [null]
+}
+
+Table review_automation_settings {
+  id uuid [pk]
+  tenantId uuid
+  enabled boolean [default: true]
+  timing ReviewTiming
+  preScreenEnabled boolean [default: true]
+  messageTemplate text
+  googleEnabled boolean [default: false]
+  facebookEnabled boolean [default: false]
+  privateEnabled boolean [default: true]
+  autoPublicMinRating int [default: 4]
+  createdAt timestamp [default: `now()`]
+  updatedAt timestamp
+  updatedBy uuid [null]
+}
+
+Table review_requests {
+  id uuid [pk]
+  tenantId uuid
+  customerId uuid
+  customerName text
+  customerEmail text
+  bookingId uuid
+  sentAt timestamp [default: `now()`]
+  sentBy uuid [null]
+  status ReviewRequestStatus
+  respondedAt timestamp [null]
+  ratingGiven int [null]
+  responseSource ReviewSource [null]
+  ipAddress text [null]
+  userAgent text [null]
+  createdAt timestamp [default: `now()`]
+}
+
+Table reviews {
+  id uuid [pk]
+  tenantId uuid
+  customerId uuid
+  customerName text
+  customerEmail text
+  bookingId uuid [null]
+  staffId uuid [null]
+  serviceId uuid [null]
+  rating int [default: 5]
+  text text [null]
+  source ReviewSource
+  isPublic boolean [default: true]
+  issueCategory ReviewIssueCategory [null]
+  resolutionStatus ReviewResolutionStatus [null]
+  resolutionNotes text [null]
+  resolvedAt timestamp [null]
+  resolvedBy uuid [null]
+  ipAddress text [null]
+  userAgent text [null]
+  createdAt timestamp [default: `now()`]
+  updatedAt timestamp
+  deletedAt timestamp [null]
+}
+
+Table role_permissions {
+  roleId uuid
+  permissionId uuid
+  conditions jsonb [null]
+  indexes { (roleId, permissionId) [pk] }
+}
+
+Table roles {
+  id uuid [pk]
+  tenantId uuid
+  name text
+  description text [null]
+  color text [null]
+  isSystem boolean [default: false]
+  isDefault boolean [default: false]
+  createdAt timestamp [default: `now()`]
+  updatedAt timestamp
+}
+
+Table sent_messages {
+  id uuid [pk]
+  tenantId uuid
+  templateId uuid [null]
+  channel MessageChannel
+  recipientType text
+  recipientId uuid
+  recipientEmail text [null]
+  recipientPhone text [null]
+  bookingId uuid [null]
+  subject text [null]
+  body text
+  status MessageStatus
+  sentAt timestamp [null]
+  deliveredAt timestamp [null]
+  failedAt timestamp [null]
+  errorMessage text [null]
+  providerRef text [null]
+  createdAt timestamp [default: `now()`]
+}
+
+Table service_add_ons {
+  id uuid [pk]
+  serviceId uuid
+  addOnId uuid
+}
+
+Table service_categories {
+  id uuid [pk]
+  tenantId uuid
+  name text
+  description text [null]
+  sortOrder int [default: 0]
+}
+
+Table services {
+  id uuid [pk]
+  tenantId uuid
+  name text
+  description text [null]
+  durationMinutes int
+  bufferMinutes int [default: 0]
+  price decimal
+  taxRate decimal
+  requiresDeposit boolean [default: false]
+  depositAmount decimal [null]
+  depositPercent int [null]
+  color text [null]
+  sortOrder int [default: 0]
+  active boolean [default: true]
+  visibleInPortal boolean [default: true]
+  categoryId uuid [null]
+  createdAt timestamp [default: `now()`]
+  updatedAt timestamp
+  entertainer text [null]
+  icon text [null]
+  locationType text [null]
+  metadata jsonb [null]
+  requiresApproximateTime boolean [default: false]
+  venueNames text[] [null]
+}
+
+Table sessions {
+  id uuid [pk]
+  userId uuid
+  token text
+  refreshToken text [null]
+  userAgent text [null]
+  ipAddress text [null]
+  deviceType text [null]
+  deviceName text [null]
+  country text [null]
+  city text [null]
+  expiresAt timestamp
+  lastUsedAt timestamp [default: `now()`]
+  createdAt timestamp [default: `now()`]
+  revokedAt timestamp [null]
+}
+
+Table tasks {
+  id uuid [pk]
+  projectId uuid
+  tenantId uuid
+  title text
+  description text [null]
+  status TaskStatus
+  priority TaskPriority
+  assignedTo uuid [null]
+  dueDate timestamp [null]
+  estimatedHours int [null]
+  actualHours int [null]
+  dependsOn uuid [null]
+  blocking uuid[] [null]
+  type TaskType
+  progress int [default: 0]
+  createdAt timestamp [default: `now()`]
+  updatedAt timestamp
+  completedAt timestamp [null]
+  deletedAt timestamp [null]
+}
+
+Table tenant_features {
+  tenantId uuid
+  featureId uuid
+  enabled boolean [default: true]
+  config jsonb [null]
+  enabledAt timestamp [default: `now()`]
+  enabledBy uuid [null]
+  indexes { (tenantId, featureId) [pk] }
+}
+
+Table tenant_module_settings {
+  id uuid [pk]
+  tenantId uuid
+  moduleId uuid
+  settingKey text
+  value jsonb [null]
+  createdAt timestamp [default: `now()`]
+  updatedAt timestamp
+}
+
+Table tenant_modules {
+  id uuid [pk]
+  tenantId uuid
+  moduleId uuid
+  isEnabled boolean [default: false]
+  isCustom boolean [default: false]
+  setupPaid boolean [default: false]
+  monthlyRate decimal [null]
+  config jsonb [null]
+  activatedAt timestamp [null]
+  expiresAt timestamp [null]
+  createdAt timestamp [default: `now()`]
+  updatedAt timestamp
+}
+
+Table tenant_portals {
+  id uuid [pk]
+  tenantId uuid
+  templateId uuid
+  urlPath text
+  displayName text
+  colorOverrides jsonb [null]
+  labelOverrides jsonb [null]
+  formOverrides jsonb [null]
+  requiresLocation boolean [default: true]
+  maxTravelMinutes int [null]
+  travelPadding int [default: 15]
+  availabilityMode AvailabilityMode [null]
+  isActive boolean [default: true]
+  isDefault boolean [default: false]
+  sortOrder int [default: 0]
+  createdAt timestamp [default: `now()`]
+  updatedAt timestamp
+  skipReservation boolean [null]
+  bookingSettings jsonb [null]
+}
+
+Table tenants {
+  id uuid [pk]
+  name text
+  slug text
+  domain text [null]
+  plan PlanType
+  status TenantStatus
+  stripeCustomerId text [null]
+  subscriptionId text [null]
+  billingEmail text [null]
+  maxUsers int [default: 5]
+  maxStaff int [default: 10]
+  maxBookingsMonth int [default: 500]
+  storageUsedBytes bigint [default: 0]
+  storageLimitBytes bigint
+  createdAt timestamp [default: `now()`]
+  updatedAt timestamp
+  trialEndsAt timestamp [null]
+  deletedAt timestamp [null]
+}
+
+Table travel_logs {
+  id uuid [pk]
+  bookingId uuid [null]
+  date date
+  fromPostcode text [null]
+  toPostcode text [null]
+  distanceMiles decimal
+  durationMins int
+  mileageRate decimal [null]
+  mileageCost decimal [null]
+  createdAt timestamp [default: `now()`]
+  userId uuid
+}
+
+Table user_availability {
+  id uuid [pk]
+  userId uuid
+  type AvailabilityType
+  dayOfWeek int [null]
+  specificDate date [null]
+  endDate date [null]
+  startTime text
+  endTime text
+  reason text [null]
+  isAllDay boolean [default: false]
+  createdAt timestamp [default: `now()`]
+  updatedAt timestamp
+}
+
+Table user_capacities {
+  id uuid [pk]
+  tenantId uuid
+  userId uuid [null]
+  date date
+  maxBookings int [default: 1]
+  createdAt timestamp [default: `now()`]
+  updatedAt timestamp
+}
+
+Table user_external_events {
+  id uuid [pk]
+  tenantId uuid
+  userId uuid
+  userIntegrationId uuid
+  externalEventId text
+  provider CalendarIntegrationProvider
+  summary text
+  description text [null]
+  location text [null]
+  startTime timestamp
+  endTime timestamp
+  isAllDay boolean [default: false]
+  blocksAvailability boolean [default: true]
+  attendees jsonb [null]
+  metadata jsonb [null]
+  lastSyncedAt timestamp [default: `now()`]
+  createdAt timestamp [default: `now()`]
+  updatedAt timestamp
+  deletedAt timestamp [null]
+}
+
+Table user_integration_sync_logs {
+  id uuid [pk]
+  userIntegrationId uuid
+  syncType CalendarSyncType
+  direction SyncDirection
+  status SyncStatus
+  entityType text [null]
+  entityId uuid [null]
+  externalId text [null]
+  itemsProcessed int [default: 0]
+  itemsSucceeded int [default: 0]
+  itemsFailed int [default: 0]
+  errorMessage text [null]
+  errorDetails jsonb [null]
+  metadata jsonb [null]
+  startedAt timestamp [default: `now()`]
+  completedAt timestamp [null]
+  durationMs int [null]
+  externalEventId text [null]
+}
+
+Table user_integrations {
+  id uuid [pk]
+  tenantId uuid
+  userId uuid
+  provider CalendarIntegrationProvider
+  status IntegrationStatus
+  encryptedAccessToken text [null]
+  encryptedRefreshToken text [null]
+  tokenExpiresAt timestamp [null]
+  tokenVersion int [default: 1]
+  providerAccountId text [null]
+  calendarId text [null]
+  syncEnabled boolean [default: true]
+  pushBookingsToCalendar boolean [default: true]
+  blockTimeOnCalendar boolean [default: true]
+  importCalendarEvents boolean [default: false]
+  twoWaySync boolean [default: false]
+  watchChannelId text [null]
+  watchChannelToken text [null]
+  watchChannelExpiration timestamp [null]
+  watchResourceId text [null]
+  lastSyncAt timestamp [null]
+  lastSyncStatus text [null]
+  lastSyncError text [null]
+  nextSyncAt timestamp [null]
+  connectedAt timestamp [null]
+  connectedBy uuid [null]
+  disconnectedAt timestamp [null]
+  createdAt timestamp [default: `now()`]
+  updatedAt timestamp
+}
+
+Table user_roles {
+  userId uuid
+  roleId uuid
+  grantedAt timestamp [default: `now()`]
+  grantedBy uuid [null]
+  expiresAt timestamp [null]
+  indexes { (userId, roleId) [pk] }
+}
+
+Table users {
+  id uuid [pk]
+  tenantId uuid
+  email text
+  emailVerified timestamp [null]
+  passwordHash text [null]
+  firstName text
+  lastName text
+  displayName text [null]
+  avatarUrl text [null]
+  phone text [null]
+  phoneVerified timestamp [null]
+  timezone text
+  locale text
+  type UserType
+  status UserStatus
+  lastLoginAt timestamp [null]
+  lastActiveAt timestamp [null]
+  loginCount int [default: 0]
+  failedLoginAttempts int [default: 0]
+  lockedUntil timestamp [null]
+  twoFactorEnabled boolean [default: false]
+  twoFactorSecret text [null]
+  recoveryCodesHash text [null]
+  createdAt timestamp [default: `now()`]
+  updatedAt timestamp
+  deletedAt timestamp [null]
+  invitedById uuid [null]
+  bio text [null]
+  dayRate decimal [null]
+  employeeType EmployeeType [null]
+  hourlyRate decimal [null]
+  isTeamMember boolean [default: false]
+  jobTitle text [null]
+  maxConcurrentBookings int [default: 1, null]
+  maxDailyBookings int [null]
+  mileageRate decimal [null]
+  serviceIds uuid[] [null]
+  staffStatus StaffStatus [null]
+  startDate timestamp [null]
+  isPlatformAdmin boolean [default: false]
+  bankAccountName text [null]
+  bankSortCode text [null]
+  bankAccountNumber text [null]
+  workos_user_id text [null]
+}
+
+Table venues {
+  id uuid [pk]
+  tenantId uuid
+  name text
+  addressLine1 text [null]
+  addressLine2 text [null]
+  city text [null]
+  county text [null]
+  postcode text [null]
+  country text
+  latitude decimal [null]
+  longitude decimal [null]
+  phone text [null]
+  email text [null]
+  isDefault boolean [default: false]
+  active boolean [default: true]
+  createdAt timestamp [default: `now()`]
+  updatedAt timestamp
+  additionalCost decimal [null]
+}
+
+Table workflow_actions {
+  id uuid [pk]
+  workflowId uuid
+  actionType WorkflowActionType
+  config jsonb
+  order int [default: 0]
+  enabled boolean [default: true]
+  createdAt timestamp [default: `now()`]
+  updatedAt timestamp
+}
+
+Table workflow_executions {
+  id uuid [pk]
+  workflowId uuid
+  tenantId uuid
+  triggerEvent text
+  triggerData jsonb
+  status WorkflowExecutionStatus
+  startedAt timestamp [default: `now()`]
+  completedAt timestamp [null]
+  errorMessage text [null]
+  actionsExecuted int [default: 0]
+  actionResults jsonb [null]
+}
+
+Table workflows {
+  id uuid [pk]
+  tenantId uuid
+  name text
+  description text [null]
+  enabled boolean [default: true]
+  triggerEvent text
+  conditions jsonb [null]
+  delay int [null]
+  createdAt timestamp [default: `now()`]
+  updatedAt timestamp
+  edges jsonb [null]
+  isVisual boolean [default: false]
+  nodes jsonb [null]
+  viewport jsonb [null]
+}
+
+// Relationships
+Ref: _SlotStaff.A > available_slots.id [delete: cascade]
+Ref: _SlotStaff.B > users.id [delete: cascade]
+Ref: add_ons.tenantId > tenants.id [delete: cascade]
+Ref: api_keys.tenantId > tenants.id [delete: cascade]
+Ref: appointment_completions.tenantId > tenants.id [delete: cascade]
+Ref: appointment_completions.bookingId > bookings.id [delete: restrict]
+Ref: appointment_completions.customerId > customers.id [delete: restrict]
+Ref: appointment_completions.completedBy > users.id [delete: restrict]
+Ref: audit_logs.tenantId > tenants.id [delete: cascade]
+Ref: audit_logs.userId > users.id [delete: set null]
+Ref: available_slots.tenantId > tenants.id [delete: cascade]
+Ref: available_slots.venueId > venues.id [delete: set null]
+Ref: available_slots.previousSlotId > available_slots.id [delete: set null]
+Ref: booking_assignments.bookingId > bookings.id [delete: cascade]
+Ref: booking_assignments.userId > users.id [delete: cascade]
+Ref: booking_status_history.bookingId > bookings.id [delete: cascade]
+Ref: booking_status_history.changedById > users.id [delete: set null]
+Ref: bookings.tenantId > tenants.id [delete: cascade]
+Ref: bookings.customerId > customers.id [delete: restrict]
+Ref: bookings.venueId > venues.id [delete: set null]
+Ref: bookings.approvedById > users.id [delete: set null]
+Ref: bookings.createdById > users.id [delete: set null]
+Ref: bookings.serviceId > services.id [delete: restrict]
+Ref: bookings.projectId > projects.id [delete: set null]
+Ref: bookings.slotId > available_slots.id [delete: set null]
+Ref: bookings.staffId > users.id [delete: set null]
+Ref: completed_forms.tenantId > tenants.id [delete: cascade]
+Ref: completed_forms.templateId > form_templates.id [delete: cascade]
+Ref: completed_forms.customerId > customers.id [delete: cascade]
+Ref: completed_forms.bookingId > bookings.id [delete: set null]
+Ref: completed_forms.submittedBy > users.id [delete: set null]
+Ref: customer_notes.customerId > customers.id [delete: cascade]
+Ref: customer_notes.bookingId > bookings.id [delete: set null]
+Ref: customers.tenantId > tenants.id [delete: cascade]
+Ref: customers.preferredStaffId > users.id [delete: set null]
+Ref: form_templates.tenantId > tenants.id [delete: cascade]
+Ref: integration_sync_logs.integrationId > integrations.id [delete: cascade]
+Ref: invoices.tenantId > tenants.id [delete: cascade]
+Ref: invoices.customerId > customers.id [delete: restrict]
+Ref: invoices.bookingId > bookings.id [delete: set null]
+Ref: message_templates.tenantId > tenants.id [delete: cascade]
+Ref: message_templates.serviceId > services.id [delete: set null]
+Ref: module_settings.moduleId > modules.id [delete: cascade]
+Ref: notification_preferences.userId > users.id [delete: cascade]
+Ref: notifications.userId > users.id [delete: cascade]
+Ref: organization_settings.tenantId > tenants.id [delete: cascade]
+Ref: payments.tenantId > tenants.id [delete: cascade]
+Ref: payments.customerId > customers.id [delete: restrict]
+Ref: payments.invoiceId > invoices.id [delete: set null]
+Ref: payments.bookingId > bookings.id [delete: set null]
+Ref: project_members.projectId > projects.id [delete: cascade]
+Ref: project_members.userId > users.id [delete: restrict]
+Ref: projects.tenantId > tenants.id [delete: cascade]
+Ref: review_automation_settings.tenantId > tenants.id [delete: cascade]
+Ref: review_automation_settings.updatedBy > users.id [delete: set null]
+Ref: review_requests.tenantId > tenants.id [delete: cascade]
+Ref: review_requests.customerId > customers.id [delete: cascade]
+Ref: review_requests.bookingId > bookings.id [delete: restrict]
+Ref: review_requests.sentBy > users.id [delete: set null]
+Ref: reviews.tenantId > tenants.id [delete: cascade]
+Ref: reviews.customerId > customers.id [delete: cascade]
+Ref: reviews.bookingId > bookings.id [delete: set null]
+Ref: reviews.serviceId > services.id [delete: set null]
+Ref: reviews.resolvedBy > users.id [delete: set null]
+Ref: reviews.staffId > users.id [delete: set null]
+Ref: role_permissions.roleId > roles.id [delete: cascade]
+Ref: role_permissions.permissionId > permissions.id [delete: cascade]
+Ref: roles.tenantId > tenants.id [delete: cascade]
+Ref: sent_messages.tenantId > tenants.id [delete: cascade]
+Ref: sent_messages.templateId > message_templates.id [delete: set null]
+Ref: sent_messages.bookingId > bookings.id [delete: set null]
+Ref: service_add_ons.serviceId > services.id [delete: cascade]
+Ref: service_add_ons.addOnId > add_ons.id [delete: cascade]
+Ref: services.tenantId > tenants.id [delete: cascade]
+Ref: services.categoryId > service_categories.id [delete: set null]
+Ref: sessions.userId > users.id [delete: cascade]
+Ref: tasks.projectId > projects.id [delete: cascade]
+Ref: tasks.tenantId > tenants.id [delete: cascade]
+Ref: tasks.assignedTo > users.id [delete: set null]
+Ref: tasks.dependsOn > tasks.id [delete: set null]
+Ref: tenant_features.tenantId > tenants.id [delete: cascade]
+Ref: tenant_features.featureId > feature_flags.id [delete: cascade]
+Ref: tenant_module_settings.tenantId > tenant_modules.tenantId [delete: cascade]
+Ref: tenant_modules.tenantId > tenants.id [delete: cascade]
+Ref: tenant_modules.moduleId > modules.id [delete: cascade]
+Ref: tenant_portals.tenantId > tenants.id [delete: cascade]
+Ref: tenant_portals.templateId > portal_templates.id [delete: restrict]
+Ref: travel_logs.userId > users.id [delete: cascade]
+Ref: user_availability.userId > users.id [delete: cascade]
+Ref: user_capacities.userId > users.id [delete: set null]
+Ref: user_capacities.tenantId > tenants.id [delete: cascade]
+Ref: user_external_events.userIntegrationId > user_integrations.id [delete: cascade]
+Ref: user_external_events.userId > users.id [delete: cascade]
+Ref: user_external_events.tenantId > tenants.id [delete: cascade]
+Ref: user_integration_sync_logs.userIntegrationId > user_integrations.id [delete: cascade]
+Ref: user_integrations.connectedBy > users.id [delete: set null]
+Ref: user_integrations.userId > users.id [delete: cascade]
+Ref: user_roles.userId > users.id [delete: cascade]
+Ref: user_roles.roleId > roles.id [delete: cascade]
+Ref: users.tenantId > tenants.id [delete: cascade]
+Ref: users.invitedById > users.id [delete: set null]
+Ref: venues.tenantId > tenants.id [delete: cascade]
+Ref: workflow_actions.workflowId > workflows.id [delete: cascade]
+Ref: workflow_executions.workflowId > workflows.id [delete: cascade]
+Ref: workflows.tenantId > tenants.id [delete: cascade]

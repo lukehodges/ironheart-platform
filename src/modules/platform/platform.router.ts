@@ -8,6 +8,8 @@ import {
   listTenantsSchema,
   setFlagSchema,
   setTenantFlagSchema,
+  setTenantModuleSchema,
+  listTenantFlagsSchema,
   auditLogQuerySchema,
   approveSignupSchema,
   rejectSignupSchema,
@@ -68,6 +70,20 @@ export const platformRouter = router({
   rejectSignup: platformAdminProcedure
     .input(rejectSignupSchema)
     .mutation(({ input }) => platformService.rejectSignup(input)),
+
+  // Tenant feature flags
+  listTenantFlags: platformAdminProcedure
+    .input(listTenantFlagsSchema)
+    .query(({ input }) => platformService.listTenantFlags(input.tenantId)),
+
+  // Tenant modules
+  listTenantModules: platformAdminProcedure
+    .input(z.object({ tenantId: z.string() }))
+    .query(({ input }) => platformService.listTenantModules(input.tenantId)),
+
+  setTenantModule: platformAdminProcedure
+    .input(setTenantModuleSchema)
+    .mutation(({ input }) => platformService.setTenantModule(input)),
 
   // Audit
   getAuditLog: platformAdminProcedure

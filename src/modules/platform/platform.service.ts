@@ -15,6 +15,8 @@ import { tenantRepository } from "@/modules/tenant/tenant.repository";
 import type {
   TenantRecord,
   FeatureFlag,
+  TenantFeature,
+  TenantModule,
   AuditLogRecord,
   SignupRequest,
 } from "./platform.types";
@@ -25,6 +27,7 @@ import type {
   changePlanSchema,
   setFlagSchema,
   setTenantFlagSchema,
+  setTenantModuleSchema,
   auditLogQuerySchema,
   approveSignupSchema,
   rejectSignupSchema,
@@ -291,6 +294,50 @@ export const platformService = {
       input.flagSlug,
       input.isEnabled
     );
+  },
+
+  // ---------------------------------------------------------------------------
+  // Tenant flags (read per-tenant overrides)
+  // ---------------------------------------------------------------------------
+
+  async listTenantFlags(tenantId: string): Promise<TenantFeature[]> {
+    log.info({ tenantId }, "listTenantFlags");
+    return platformRepository.listTenantFlags(tenantId);
+  },
+
+  // ---------------------------------------------------------------------------
+  // Tenant modules
+  // ---------------------------------------------------------------------------
+
+  async listTenantModules(tenantId: string): Promise<TenantModule[]> {
+    log.info({ tenantId }, "listTenantModules");
+    return platformRepository.listTenantModules(tenantId);
+  },
+
+  async setTenantModule(
+    input: z.infer<typeof setTenantModuleSchema>
+  ): Promise<TenantModule> {
+    log.info({ tenantId: input.tenantId, moduleId: input.moduleId, isEnabled: input.isEnabled }, "setTenantModule");
+
+    const result = await platformRepository.setTenantModule(
+      input.tenantId,
+      input.moduleId,
+      input.isEnabled,
+      input.monthlyRate
+    );
+
+    await platformRepository.insertAuditLog({
+      tenantId: input.tenantId,
+      userId: null,
+      action: input.isEnabled ? "MODULE_ENABLED" : "MODULE_DISABLED",
+      entityType: "tenantModule",
+      entityId: result.id,
+      oldValues: null,
+      newValues: { moduleId: input.moduleId, isEnabled: input.isEnabled, monthlyRate: input.monthlyRate ?? null },
+      severity: "INFO",
+    });
+
+    return result;
   },
 
   // ---------------------------------------------------------------------------

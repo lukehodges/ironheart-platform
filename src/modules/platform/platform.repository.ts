@@ -7,6 +7,8 @@ import {
   tenantFeatures,
   auditLogs,
   signupRequest,
+  modules,
+  tenantModules,
 } from "@/shared/db/schema";
 import { eq, and, ilike, lte, sql } from "drizzle-orm";
 import type {
@@ -15,6 +17,7 @@ import type {
   TenantStatus,
   FeatureFlag,
   TenantFeature,
+  TenantModule,
   AuditLogRecord,
   SignupRequest,
   CreateTenantInput,
@@ -157,6 +160,18 @@ export const platformRepository = {
       .select()
       .from(tenants)
       .where(eq(tenants.id, tenantId))
+      .limit(1);
+
+    return result[0] ? mapTenant(result[0]) : null;
+  },
+
+  async getTenantBySlug(slug: string): Promise<TenantRecord | null> {
+    log.info({ slug }, "getTenantBySlug");
+
+    const result = await db
+      .select()
+      .from(tenants)
+      .where(eq(tenants.slug, slug))
       .limit(1);
 
     return result[0] ? mapTenant(result[0]) : null;
@@ -481,6 +496,130 @@ export const platformRepository = {
       .limit(limit);
 
     return rows.map(mapSignupRequest);
+  },
+
+  // ---- Tenant Modules ----
+
+  async listTenantModules(tenantId: string): Promise<TenantModule[]> {
+    log.info({ tenantId }, "listTenantModules");
+
+    const rows = await db
+      .select({
+        id: tenantModules.id,
+        tenantId: tenantModules.tenantId,
+        moduleId: tenantModules.moduleId,
+        isEnabled: tenantModules.isEnabled,
+        monthlyRate: tenantModules.monthlyRate,
+        activatedAt: tenantModules.activatedAt,
+        createdAt: tenantModules.createdAt,
+        updatedAt: tenantModules.updatedAt,
+        moduleSlug: modules.slug,
+        moduleName: modules.name,
+      })
+      .from(tenantModules)
+      .innerJoin(modules, eq(tenantModules.moduleId, modules.id))
+      .where(eq(tenantModules.tenantId, tenantId));
+
+    return rows.map((r) => ({
+      id: r.id,
+      tenantId: r.tenantId,
+      moduleId: r.moduleId,
+      moduleSlug: r.moduleSlug,
+      moduleName: r.moduleName,
+      isEnabled: r.isEnabled,
+      monthlyRate: r.monthlyRate ?? null,
+      activatedAt: r.activatedAt ?? null,
+      createdAt: r.createdAt,
+      updatedAt: r.updatedAt,
+    }));
+  },
+
+  async setTenantModule(
+    tenantId: string,
+    moduleId: string,
+    isEnabled: boolean,
+    monthlyRate?: number
+  ): Promise<TenantModule> {
+    log.info({ tenantId, moduleId, isEnabled }, "setTenantModule");
+
+    const now = new Date();
+
+    // Verify module exists
+    const modResult = await db
+      .select({ id: modules.id, slug: modules.slug, name: modules.name })
+      .from(modules)
+      .where(eq(modules.id, moduleId))
+      .limit(1);
+
+    if (!modResult[0]) {
+      throw new NotFoundError("Module", moduleId);
+    }
+
+    const existing = await db
+      .select({ id: tenantModules.id })
+      .from(tenantModules)
+      .where(and(eq(tenantModules.tenantId, tenantId), eq(tenantModules.moduleId, moduleId)))
+      .limit(1);
+
+    const updates: Record<string, unknown> = {
+      isEnabled,
+      updatedAt: now,
+      ...(monthlyRate !== undefined ? { monthlyRate: String(monthlyRate) } : {}),
+      ...(isEnabled ? { activatedAt: now } : {}),
+    };
+
+    if (existing[0]) {
+      await db
+        .update(tenantModules)
+        .set(updates as Parameters<typeof db.update>[0] extends infer T ? Record<string, unknown> : never)
+        .where(and(eq(tenantModules.tenantId, tenantId), eq(tenantModules.moduleId, moduleId)));
+    } else {
+      await db.insert(tenantModules).values({
+        id: crypto.randomUUID(),
+        tenantId,
+        moduleId,
+        isEnabled,
+        isCustom: false,
+        setupPaid: false,
+        monthlyRate: monthlyRate !== undefined ? String(monthlyRate) : null,
+        config: {},
+        activatedAt: isEnabled ? now : null,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+
+    // Return updated record
+    const [updated] = await db
+      .select({
+        id: tenantModules.id,
+        tenantId: tenantModules.tenantId,
+        moduleId: tenantModules.moduleId,
+        isEnabled: tenantModules.isEnabled,
+        monthlyRate: tenantModules.monthlyRate,
+        activatedAt: tenantModules.activatedAt,
+        createdAt: tenantModules.createdAt,
+        updatedAt: tenantModules.updatedAt,
+        moduleSlug: modules.slug,
+        moduleName: modules.name,
+      })
+      .from(tenantModules)
+      .innerJoin(modules, eq(tenantModules.moduleId, modules.id))
+      .where(and(eq(tenantModules.tenantId, tenantId), eq(tenantModules.moduleId, moduleId)))
+      .limit(1);
+
+    return {
+      id: updated!.id,
+      tenantId: updated!.tenantId,
+      moduleId: updated!.moduleId,
+      moduleSlug: updated!.moduleSlug,
+      moduleName: updated!.moduleName,
+      isEnabled: updated!.isEnabled,
+      monthlyRate: updated!.monthlyRate ?? null,
+      activatedAt: updated!.activatedAt ?? null,
+      createdAt: updated!.createdAt,
+      updatedAt: updated!.updatedAt,
+    };
   },
 
   async updateSignupRequest(

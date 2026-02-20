@@ -65,3 +65,14 @@ export const suspendTenantSchema = z.object({
   id: z.string(),
   reason: z.string().min(1),
 })
+
+export const listTenantFlagsSchema = z.object({
+  tenantId: z.string(),
+})
+
+export const setTenantModuleSchema = z.object({
+  tenantId: z.string(),
+  moduleId: z.string(),
+  isEnabled: z.boolean(),
+  monthlyRate: z.number().min(0).optional(),
+})

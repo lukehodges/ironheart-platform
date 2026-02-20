@@ -1,6 +1,7 @@
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as schema from "./db/schema";
+import * as relations from "./db/relations";
 
 // During `next build`, NEXT_PHASE === "phase-production-build".
 // postgres() is instantiated but never connects until a query is made,
@@ -20,5 +21,5 @@ const client = postgres(connectionString, {
   connect_timeout: 10,
 });
 
-export const db = drizzle(client, { schema });
+export const db = drizzle(client, { schema: { ...schema, ...relations } });
 export type DB = typeof db;

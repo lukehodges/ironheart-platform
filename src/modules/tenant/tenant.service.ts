@@ -30,6 +30,16 @@ export const tenantService = {
     return tenantRepository.getSettings(ctx.tenantId);
   },
 
+  async getPublicSettings(slug: string): Promise<OrganizationSettings | null> {
+    log.info({ slug }, "getPublicSettings");
+    // Get tenant ID from slug first
+    const tenant = await platformRepository.getTenantBySlug(slug);
+    if (!tenant) {
+      throw new NotFoundError("Tenant", slug);
+    }
+    return tenantRepository.getSettings(tenant.id);
+  },
+
   async updateSettings(
     ctx: Context,
     input: z.infer<typeof updateOrganizationSettingsSchema>

@@ -315,28 +315,113 @@ export const tenantProcedure = protectedProcedure.use(
     const workosUserId = ctx.session.user.id;
     const userEmail = ctx.session.user.email;
 
-    // Try to find user by workosUserId first.
-    let rawUser = (await ctx.db.query.users.findFirst({
-      where: eq(users.workosUserId, workosUserId),
-      with: {
-        userRoles: {
-          with: {
-            role: {
-              with: {
-                rolePermissions: {
-                  with: {
-                    permission: true,
+    logger.debug(
+      {
+        workosUserId,
+        userEmail,
+        tenantId: ctx.tenantId,
+        tenantSlug: ctx.tenantSlug,
+        path,
+        requestId: ctx.requestId
+      },
+      "tenantProcedure: Looking up user"
+    );
+
+    // Check Redis cache for fast user ID lookup
+    const cacheKey = `workos:user:${workosUserId}`;
+    let cachedUserId: string | null = null;
+    try {
+      cachedUserId = await redis.get<string>(cacheKey);
+    } catch (err) {
+      logger.warn({ err, cacheKey }, "Redis cache lookup failed (non-blocking)");
+    }
+
+    let rawUser: DrizzleUserWithRoles | undefined;
+
+    // If we have a cached user ID, use it for direct lookup (fastest path)
+    if (cachedUserId) {
+      rawUser = (await ctx.db.query.users.findFirst({
+        where: eq(users.id, cachedUserId),
+        with: {
+          userRoles: {
+            with: {
+              role: {
+                with: {
+                  rolePermissions: {
+                    with: {
+                      permission: true,
+                    },
                   },
                 },
               },
             },
           },
         },
+      })) as DrizzleUserWithRoles | undefined;
+
+      if (rawUser) {
+        logger.debug(
+          { userId: cachedUserId, requestId: ctx.requestId },
+          "tenantProcedure: User found via Redis cache (fast path)"
+        );
+      } else {
+        // Cache was stale, clear it
+        logger.warn(
+          { cachedUserId, requestId: ctx.requestId },
+          "tenantProcedure: Cached user ID no longer valid, clearing cache"
+        );
+        await redis.del(cacheKey).catch(() => {});
+      }
+    }
+
+    // Fallback: Try to find user by workosUserId
+    if (!rawUser) {
+      rawUser = (await ctx.db.query.users.findFirst({
+        where: eq(users.workosUserId, workosUserId),
+        with: {
+          userRoles: {
+            with: {
+              role: {
+                with: {
+                  rolePermissions: {
+                    with: {
+                      permission: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      })) as DrizzleUserWithRoles | undefined;
+
+      if (rawUser) {
+        // Cache the user ID for next time
+        await redis.setex(cacheKey, 3600, rawUser.id).catch(() => {}); // 1 hour TTL
+      }
+    }
+
+    logger.debug(
+      {
+        foundByWorkosId: !!rawUser,
+        userId: rawUser?.id,
+        userTenantId: rawUser?.tenantId,
+        requestId: ctx.requestId
       },
-    })) as DrizzleUserWithRoles | undefined;
+      "tenantProcedure: First lookup (by workosUserId) result"
+    );
 
     // Email fallback: find by email + tenantId if workosUserId not matched.
     if (!rawUser && ctx.tenantId !== "default") {
+      logger.debug(
+        {
+          userEmail,
+          tenantId: ctx.tenantId,
+          requestId: ctx.requestId
+        },
+        "tenantProcedure: Trying email fallback lookup"
+      );
+
       rawUser = (await ctx.db.query.users.findFirst({
         where: and(
           eq(users.email, userEmail),
@@ -359,24 +444,58 @@ export const tenantProcedure = protectedProcedure.use(
         },
       })) as DrizzleUserWithRoles | undefined;
 
-      // Backfill workosUserId if found by email.
+      logger.debug(
+        {
+          foundByEmail: !!rawUser,
+          userId: rawUser?.id,
+          userTenantId: rawUser?.tenantId,
+          requestId: ctx.requestId
+        },
+        "tenantProcedure: Email fallback lookup result"
+      );
+
+      // Backfill workosUserId, cache user ID, and set externalId in WorkOS if found by email.
       if (rawUser) {
+        const userId = rawUser.id; // Capture for async callbacks
         try {
+          // Update database with WorkOS user ID
           await ctx.db
             .update(users)
             .set({ workosUserId })
-            .where(eq(users.id, rawUser.id));
+            .where(eq(users.id, userId));
           logger.info(
-            { userId: rawUser.id, workosUserId },
+            { userId, workosUserId },
             "Backfilled workosUserId for user found by email"
           );
+
+          // Cache the user ID for fast lookups
+          await redis.setex(cacheKey, 3600, userId).catch(() => {}); // 1 hour TTL
+
+          // Set externalId in WorkOS (async, don't block on errors)
+          const { setWorkOSExternalId } = await import("@/modules/auth/workos-client");
+          setWorkOSExternalId(workosUserId, userId).catch((err) => {
+            logger.warn(
+              { err, userId, workosUserId },
+              "Failed to set WorkOS externalId (non-blocking)"
+            );
+          });
         } catch (err) {
-          logger.error({ err, userId: rawUser.id }, "Failed to backfill workosUserId");
+          logger.error({ err, userId }, "Failed to backfill workosUserId");
         }
       }
     }
 
     if (!rawUser) {
+      logger.error(
+        {
+          workosUserId,
+          userEmail,
+          tenantId: ctx.tenantId,
+          tenantSlug: ctx.tenantSlug,
+          requestId: ctx.requestId
+        },
+        "tenantProcedure: User not found in database"
+      );
       throw new TRPCError({
         code: "UNAUTHORIZED",
         message:
@@ -479,11 +598,36 @@ export const platformAdminProcedure = protectedProcedure.use(
     const workosUserId = ctx.session.user.id;
     const userEmail = ctx.session.user.email;
 
-    // Load the user record to check isPlatformAdmin.
-    const rawUser = await ctx.db.query.users.findFirst({
+    // 1. Primary lookup: by workosUserId (fast path after first login).
+    let rawUser = await ctx.db.query.users.findFirst({
       where: eq(users.workosUserId, workosUserId),
       columns: { id: true, isPlatformAdmin: true, email: true },
     });
+
+    // 2. Email fallback: handles seeded users whose workosUserId hasn't been
+    //    backfilled yet (e.g. first login after seed script).
+    if (!rawUser) {
+      rawUser = await ctx.db.query.users.findFirst({
+        where: eq(users.email, userEmail),
+        columns: { id: true, isPlatformAdmin: true, email: true },
+      });
+
+      if (rawUser) {
+        // Backfill workosUserId so subsequent requests use the fast path.
+        try {
+          await ctx.db
+            .update(users)
+            .set({ workosUserId })
+            .where(eq(users.id, rawUser.id));
+          logger.info(
+            { userId: rawUser.id, workosUserId },
+            "Backfilled workosUserId for platform admin found by email"
+          );
+        } catch (err) {
+          logger.error({ err, userId: rawUser.id }, "Failed to backfill workosUserId for platform admin");
+        }
+      }
+    }
 
     if (!rawUser) {
       throw new TRPCError({
@@ -493,19 +637,20 @@ export const platformAdminProcedure = protectedProcedure.use(
       });
     }
 
-    // Primary check: database flag.
+    // 3. Primary check: database flag.
     if (rawUser.isPlatformAdmin) {
       return next({ ctx });
     }
 
-    // Bootstrap escape hatch: promote user on first admin access via env var.
+    // 4. Bootstrap escape hatch: promote user on first admin access via env var.
+    //    Set PLATFORM_ADMIN_EMAILS=your@email.com in .env.local for initial setup.
+    //    Remove the env var once all platform admins are bootstrapped.
     const bootstrapEmails = (process.env.PLATFORM_ADMIN_EMAILS ?? "")
       .split(",")
       .map((e) => e.trim())
       .filter(Boolean);
 
     if (bootstrapEmails.length > 0 && bootstrapEmails.includes(userEmail)) {
-      // Promote the user to platform admin in the database (runs once per user).
       await ctx.db
         .update(users)
         .set({ isPlatformAdmin: true })

@@ -22,6 +22,13 @@
       "when": 1771517304623,
       "tag": "0002_add_workos_user_id",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1771548385651,
+      "tag": "0003_check",
+      "breakpoints": true
     }
   ]
 }

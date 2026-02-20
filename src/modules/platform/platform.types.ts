@@ -78,3 +78,16 @@ export interface ChangePlanInput {
   plan: TenantPlan
   reason?: string | null
 }
+
+export interface TenantModule {
+  id: string
+  tenantId: string
+  moduleId: string
+  moduleSlug: string
+  moduleName: string
+  isEnabled: boolean
+  monthlyRate: string | null
+  activatedAt: Date | null
+  createdAt: Date
+  updatedAt: Date
+}

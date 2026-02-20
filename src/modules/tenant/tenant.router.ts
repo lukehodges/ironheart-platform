@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { router, tenantProcedure, permissionProcedure } from "@/shared/trpc";
+import { router, tenantProcedure, permissionProcedure, publicProcedure } from "@/shared/trpc";
 import { tenantService } from "./tenant.service";
 import {
   updateOrganizationSettingsSchema,
@@ -12,6 +12,11 @@ export const tenantRouter = router({
   // Settings
   getSettings: tenantProcedure
     .query(({ ctx }) => tenantService.getSettings(ctx)),
+
+  // Public settings (for portal white-labeling)
+  getPublicSettings: publicProcedure
+    .input(z.object({ slug: z.string() }))
+    .query(({ input }) => tenantService.getPublicSettings(input.slug)),
 
   updateSettings: permissionProcedure("tenant:write")
     .input(updateOrganizationSettingsSchema)
