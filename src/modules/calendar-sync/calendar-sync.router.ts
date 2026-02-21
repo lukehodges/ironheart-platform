@@ -1,4 +1,7 @@
-import { router, tenantProcedure } from '@/shared/trpc'
+import { router, tenantProcedure, createModuleMiddleware } from '@/shared/trpc'
+
+const moduleGate = createModuleMiddleware('calendar-sync')
+const moduleProcedure = tenantProcedure.use(moduleGate)
 import { calendarSyncService } from './calendar-sync.service'
 import { calendarSyncRepository } from './calendar-sync.repository'
 import {
@@ -11,7 +14,7 @@ export const calendarSyncRouter = router({
   /**
    * Initiate the OAuth flow — returns the authorization URL.
    */
-  initiateOAuth: tenantProcedure
+  initiateOAuth: moduleProcedure
     .input(initiateOAuthSchema)
     .mutation(async ({ input, ctx }) => {
       const redirectUrl = `${process.env.APP_URL ?? ''}/api/oauth/calendar/callback`
@@ -27,7 +30,7 @@ export const calendarSyncRouter = router({
   /**
    * Get the current user's calendar integration status.
    */
-  getIntegration: tenantProcedure
+  getIntegration: moduleProcedure
     .input(getIntegrationSchema)
     .query(async ({ input, ctx }) => {
       const integration = await calendarSyncRepository.findUserIntegration(
@@ -49,7 +52,7 @@ export const calendarSyncRouter = router({
   /**
    * Disconnect a calendar integration.
    */
-  disconnect: tenantProcedure
+  disconnect: moduleProcedure
     .input(disconnectIntegrationSchema)
     .mutation(async ({ input, ctx }) => {
       const result = await calendarSyncService.disconnect(

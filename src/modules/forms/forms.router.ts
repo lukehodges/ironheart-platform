@@ -1,5 +1,9 @@
 import { z } from "zod";
-import { router, publicProcedure, tenantProcedure, permissionProcedure } from "@/shared/trpc";
+import { router, publicProcedure, tenantProcedure, permissionProcedure, createModuleMiddleware } from "@/shared/trpc";
+
+const moduleGate = createModuleMiddleware('forms');
+const moduleProcedure = tenantProcedure.use(moduleGate);
+const modulePermission = (perm: string) => permissionProcedure(perm).use(moduleGate);
 import { formsService } from "./forms.service";
 import {
   listTemplatesSchema,
@@ -20,36 +24,36 @@ import {
  */
 export const formsRouter = router({
   // Admin — template management
-  listTemplates: tenantProcedure
+  listTemplates: moduleProcedure
     .input(listTemplatesSchema)
     .query(async ({ ctx, input }) => formsService.listTemplates(ctx, input)),
 
-  getTemplate: tenantProcedure
+  getTemplate: moduleProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => formsService.getTemplate(ctx, input.id)),
 
-  createTemplate: permissionProcedure("forms:write")
+  createTemplate: modulePermission("forms:write")
     .input(createTemplateSchema)
     .mutation(async ({ ctx, input }) => formsService.createTemplate(ctx, input)),
 
-  updateTemplate: permissionProcedure("forms:write")
+  updateTemplate: modulePermission("forms:write")
     .input(updateTemplateSchema)
     .mutation(async ({ ctx, input }) => formsService.updateTemplate(ctx, input.id, input)),
 
-  deleteTemplate: permissionProcedure("forms:write")
+  deleteTemplate: modulePermission("forms:write")
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => formsService.deleteTemplate(ctx, input.id)),
 
-  sendForm: permissionProcedure("forms:write")
+  sendForm: modulePermission("forms:write")
     .input(sendFormSchema)
     .mutation(async ({ ctx, input }) => formsService.sendForm(ctx, input)),
 
   // Admin — responses
-  listResponses: tenantProcedure
+  listResponses: moduleProcedure
     .input(listResponsesSchema)
     .query(async ({ ctx, input }) => formsService.listResponses(ctx, input)),
 
-  getResponse: tenantProcedure
+  getResponse: moduleProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => formsService.getResponse(ctx, input.id)),
 

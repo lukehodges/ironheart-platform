@@ -1,4 +1,8 @@
-import { router, tenantProcedure, publicProcedure, permissionProcedure } from "@/shared/trpc";
+import { router, tenantProcedure, publicProcedure, permissionProcedure, createModuleMiddleware } from "@/shared/trpc";
+
+const moduleGate = createModuleMiddleware('booking');
+const moduleProcedure = tenantProcedure.use(moduleGate);
+const modulePermission = (perm: string) => permissionProcedure(perm).use(moduleGate);
 import { bookingService } from "./booking.service";
 import {
   listBookingsSchema,
@@ -19,13 +23,13 @@ import { z } from "zod";
  * the WorkOS session is null. These procedures become functional in Phase 3.
  */
 export const bookingRouter = router({
-  list: permissionProcedure("bookings:read")
+  list: modulePermission("bookings:read")
     .input(listBookingsSchema)
     .query(({ ctx, input }) =>
       bookingService.list(ctx.tenantId, input)
     ),
 
-  getById: tenantProcedure
+  getById: moduleProcedure
     .input(z.object({ id: z.string().uuid() }))
     .query(({ ctx, input }) => bookingService.getById(ctx.tenantId, input.id)),
 
@@ -33,20 +37,20 @@ export const bookingRouter = router({
     .input(z.object({ id: z.string().uuid() }))
     .query(({ input }) => bookingService.getByIdPublic(input.id)),
 
-  create: tenantProcedure
+  create: moduleProcedure
     .input(createBookingSchema)
     .mutation(async ({ ctx, input }) => {
       const { booking } = await bookingService.createBooking(ctx.tenantId, input);
       return booking;
     }),
 
-  update: tenantProcedure
+  update: moduleProcedure
     .input(updateBookingSchema)
     .mutation(({ ctx, input }) =>
       bookingService.updateBooking(ctx.tenantId, input.id, input)
     ),
 
-  cancel: tenantProcedure
+  cancel: moduleProcedure
     .input(cancelBookingSchema)
     .mutation(({ ctx, input }) =>
       bookingService.cancelBooking(ctx.tenantId, input.id, input.reason)
@@ -56,9 +60,9 @@ export const bookingRouter = router({
     .input(confirmReservationSchema)
     .mutation(({ input }) => bookingService.confirmReservation(input.bookingId, input.customerEmail, input.token)),
 
-  getStats: tenantProcedure.query(({ ctx }) => bookingService.getStats(ctx.tenantId)),
+  getStats: moduleProcedure.query(({ ctx }) => bookingService.getStats(ctx.tenantId)),
 
-  listForCalendar: tenantProcedure
+  listForCalendar: moduleProcedure
     .input(calendarBookingsSchema)
     .query(({ ctx, input }) =>
       bookingService.listForCalendar(ctx.tenantId, input.startDate, input.endDate, input.staffId)

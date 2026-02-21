@@ -1,5 +1,9 @@
 import { z } from "zod";
-import { router, publicProcedure, tenantProcedure, permissionProcedure } from "@/shared/trpc";
+import { router, publicProcedure, tenantProcedure, permissionProcedure, createModuleMiddleware } from "@/shared/trpc";
+
+const moduleGate = createModuleMiddleware('review');
+const moduleProcedure = tenantProcedure.use(moduleGate);
+const modulePermission = (perm: string) => permissionProcedure(perm).use(moduleGate);
 import { reviewService } from "./review.service";
 import {
   submitReviewSchema,
@@ -11,28 +15,28 @@ import {
 
 export const reviewRouter = router({
   // Admin — read
-  list: tenantProcedure
+  list: moduleProcedure
     .input(listReviewsSchema)
     .query(({ ctx, input }) => reviewService.listReviews(ctx, input)),
 
-  getById: tenantProcedure
+  getById: moduleProcedure
     .input(z.object({ id: z.string() }))
     .query(({ ctx, input }) => reviewService.getReview(ctx, input.id)),
 
   // Admin — request management
-  requestReview: permissionProcedure("reviews:write")
+  requestReview: modulePermission("reviews:write")
     .input(createReviewRequestSchema)
     .mutation(({ ctx, input }) => reviewService.requestReview(ctx, input)),
 
-  resolveIssue: permissionProcedure("reviews:write")
+  resolveIssue: modulePermission("reviews:write")
     .input(resolveIssueSchema)
     .mutation(({ ctx, input }) => reviewService.resolveIssue(ctx, input)),
 
   // Automation settings
-  getAutomation: tenantProcedure
+  getAutomation: moduleProcedure
     .query(({ ctx }) => reviewService.getAutomationSettings(ctx)),
 
-  updateAutomation: permissionProcedure("reviews:write")
+  updateAutomation: modulePermission("reviews:write")
     .input(updateAutomationSchema)
     .mutation(({ ctx, input }) => reviewService.updateAutomationSettings(ctx, input)),
 

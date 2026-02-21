@@ -1,5 +1,9 @@
 import { z } from "zod";
-import { router, tenantProcedure, permissionProcedure } from "@/shared/trpc";
+import { router, tenantProcedure, permissionProcedure, createModuleMiddleware } from "@/shared/trpc";
+
+const moduleGate = createModuleMiddleware('team');
+const moduleProcedure = tenantProcedure.use(moduleGate);
+const modulePermission = (perm: string) => permissionProcedure(perm).use(moduleGate);
 import { teamService } from "./team.service";
 import {
   listStaffSchema,
@@ -20,50 +24,50 @@ import {
  */
 export const teamRouter = router({
   // Staff management
-  list: tenantProcedure
+  list: moduleProcedure
     .input(listStaffSchema)
     .query(({ ctx, input }) => teamService.listStaff(ctx, input)),
 
-  getById: tenantProcedure
+  getById: moduleProcedure
     .input(z.object({ userId: z.string() }))
     .query(({ ctx, input }) => teamService.getStaffMember(ctx, input.userId)),
 
-  create: permissionProcedure("staff:write")
+  create: modulePermission("staff:write")
     .input(createStaffSchema)
     .mutation(({ ctx, input }) => teamService.createStaff(ctx, input)),
 
-  update: permissionProcedure("staff:write")
+  update: modulePermission("staff:write")
     .input(updateStaffSchema)
     .mutation(({ ctx, input }) => teamService.updateStaff(ctx, input.id, input)),
 
-  deactivate: permissionProcedure("staff:write")
+  deactivate: modulePermission("staff:write")
     .input(z.object({ userId: z.string() }))
     .mutation(({ ctx, input }) => teamService.deactivateStaff(ctx, input.userId)),
 
   // Availability
-  getAvailability: tenantProcedure
+  getAvailability: moduleProcedure
     .input(getAvailabilitySchema)
     .query(({ ctx, input }) => teamService.getAvailability(ctx, input)),
 
-  setAvailability: permissionProcedure("staff:write")
+  setAvailability: modulePermission("staff:write")
     .input(setAvailabilitySchema)
     .mutation(({ ctx, input }) => teamService.setAvailability(ctx, input)),
 
-  blockDates: permissionProcedure("staff:write")
+  blockDates: modulePermission("staff:write")
     .input(blockDatesSchema)
     .mutation(({ ctx, input }) => teamService.blockDates(ctx, input)),
 
   // Capacity
-  getCapacity: tenantProcedure
+  getCapacity: moduleProcedure
     .input(getCapacitySchema)
     .query(({ ctx, input }) => teamService.getCapacity(ctx, input)),
 
-  setCapacity: permissionProcedure("staff:write")
+  setCapacity: modulePermission("staff:write")
     .input(setCapacitySchema)
     .mutation(({ ctx, input }) => teamService.setCapacity(ctx, input)),
 
   // Schedule
-  getSchedule: tenantProcedure
+  getSchedule: moduleProcedure
     .input(getScheduleSchema)
     .query(({ ctx, input }) => teamService.getSchedule(ctx, input)),
 });

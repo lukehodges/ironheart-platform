@@ -1,5 +1,9 @@
 import { z } from 'zod'
-import { router, tenantProcedure, permissionProcedure } from '@/shared/trpc'
+import { router, tenantProcedure, permissionProcedure, createModuleMiddleware } from '@/shared/trpc'
+
+const moduleGate = createModuleMiddleware('workflow')
+const moduleProcedure = tenantProcedure.use(moduleGate)
+const modulePermission = (perm: string) => permissionProcedure(perm).use(moduleGate)
 import { workflowService } from './workflow.service'
 import {
   listWorkflowsSchema,
@@ -19,27 +23,27 @@ import {
  * Write operations: permissionProcedure('workflows:write') (RBAC gated)
  */
 export const workflowRouter = router({
-  list: tenantProcedure
+  list: moduleProcedure
     .input(listWorkflowsSchema)
     .query(({ ctx, input }) => workflowService.listWorkflows(ctx, input)),
 
-  getById: tenantProcedure
+  getById: moduleProcedure
     .input(getWorkflowSchema)
     .query(({ ctx, input }) => workflowService.getWorkflow(ctx, input.id)),
 
-  create: permissionProcedure('workflows:write')
+  create: modulePermission('workflows:write')
     .input(createWorkflowSchema)
     .mutation(({ ctx, input }) => workflowService.createWorkflow(ctx, input)),
 
-  update: permissionProcedure('workflows:write')
+  update: modulePermission('workflows:write')
     .input(updateWorkflowSchema)
     .mutation(({ ctx, input }) => workflowService.updateWorkflow(ctx, input.id, input)),
 
-  delete: permissionProcedure('workflows:write')
+  delete: modulePermission('workflows:write')
     .input(deleteWorkflowSchema)
     .mutation(({ ctx, input }) => workflowService.deleteWorkflow(ctx, input.id)),
 
-  getExecutions: tenantProcedure
+  getExecutions: moduleProcedure
     .input(
       z.object({
         workflowId: z.string().optional(),
@@ -49,7 +53,7 @@ export const workflowRouter = router({
     )
     .query(({ ctx, input }) => workflowService.getExecutionHistory(ctx, input)),
 
-  validateGraph: tenantProcedure
+  validateGraph: moduleProcedure
     .input(validateGraphSchema)
     .mutation(({ input }) =>
       workflowService.validateGraph(input.nodes as any, input.edges as any)

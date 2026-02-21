@@ -1,5 +1,8 @@
 import { z } from "zod";
-import { router, tenantProcedure } from "@/shared/trpc";
+import { router, tenantProcedure, createModuleMiddleware } from "@/shared/trpc";
+
+const moduleGate = createModuleMiddleware('scheduling');
+const moduleProcedure = tenantProcedure.use(moduleGate);
 import {
   slotCreateSchema,
   slotUpdateSchema,
@@ -29,13 +32,13 @@ export const schedulingRouter = router({
   // Slot CRUD
   // ---------------------------------------------------------------------------
 
-  createSlot: tenantProcedure
+  createSlot: moduleProcedure
     .input(slotCreateSchema)
     .mutation(({ ctx, input }) =>
       schedulingService.createSlot(ctx.tenantId, input, ctx.session.user.id)
     ),
 
-  bulkCreateSlots: tenantProcedure
+  bulkCreateSlots: moduleProcedure
     .input(slotBulkCreateSchema)
     .mutation(({ ctx, input }) =>
       schedulingService.bulkCreateSlots(
@@ -45,7 +48,7 @@ export const schedulingRouter = router({
       )
     ),
 
-  generateRecurring: tenantProcedure
+  generateRecurring: moduleProcedure
     .input(recurringSlotSchema)
     .mutation(({ ctx, input }) =>
       schedulingService.generateRecurringSlots(
@@ -55,25 +58,25 @@ export const schedulingRouter = router({
       )
     ),
 
-  updateSlot: tenantProcedure
+  updateSlot: moduleProcedure
     .input(slotUpdateSchema)
     .mutation(({ ctx, input }) =>
       schedulingService.updateSlot(ctx.tenantId, input.id, input)
     ),
 
-  deleteSlot: tenantProcedure
+  deleteSlot: moduleProcedure
     .input(z.object({ id: z.uuid() }))
     .mutation(({ ctx, input }) =>
       schedulingService.deleteSlot(ctx.tenantId, input.id)
     ),
 
-  listSlots: tenantProcedure
+  listSlots: moduleProcedure
     .input(slotListSchema)
     .query(({ ctx, input }) =>
       schedulingService.listSlots(ctx.tenantId, input)
     ),
 
-  getSlotById: tenantProcedure
+  getSlotById: moduleProcedure
     .input(z.object({ id: z.uuid() }))
     .query(({ ctx, input }) =>
       schedulingService.getSlotById(ctx.tenantId, input.id)
@@ -83,7 +86,7 @@ export const schedulingRouter = router({
   // Availability & recommendations
   // ---------------------------------------------------------------------------
 
-  checkAvailability: tenantProcedure
+  checkAvailability: moduleProcedure
     .input(availabilityCheckSchema)
     .query(({ ctx, input }) =>
       schedulingService.checkStaffAvailability(
@@ -95,13 +98,13 @@ export const schedulingRouter = router({
       )
     ),
 
-  getStaffRecommendations: tenantProcedure
+  getStaffRecommendations: moduleProcedure
     .input(z.object({ bookingId: z.uuid() }))
     .query(({ ctx, input }) =>
       schedulingService.getStaffRecommendations(ctx.tenantId, input.bookingId)
     ),
 
-  getAlerts: tenantProcedure
+  getAlerts: moduleProcedure
     .input(z.object({ date: z.date() }))
     .query(({ ctx, input }) =>
       schedulingService.getSchedulingAlerts(ctx.tenantId, input.date)
@@ -111,7 +114,7 @@ export const schedulingRouter = router({
   // Travel time (for /admin/routes page)
   // ---------------------------------------------------------------------------
 
-  getTravelTime: tenantProcedure
+  getTravelTime: moduleProcedure
     .input(travelTimeSchema)
     .query(({ input }) =>
       calculateTravelTime(input.fromPostcode, input.toPostcode)

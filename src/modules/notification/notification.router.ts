@@ -8,7 +8,10 @@
  *   - sendTest           — platform admin, mutation: trigger a test notification
  */
 
-import { router, tenantProcedure, platformAdminProcedure } from '@/shared/trpc'
+import { router, tenantProcedure, platformAdminProcedure, createModuleMiddleware } from '@/shared/trpc'
+
+const moduleGate = createModuleMiddleware('notification')
+const moduleProcedure = tenantProcedure.use(moduleGate)
 import { notificationService } from './notification.service'
 import {
   listSentMessagesSchema,
@@ -22,7 +25,7 @@ export const notificationRouter = router({
    * Currently returns empty array — full query can be added when UI is built.
    * The endpoint signature is locked so the frontend client type is stable.
    */
-  listSentMessages: tenantProcedure
+  listSentMessages: moduleProcedure
     .input(listSentMessagesSchema)
     .query(async () => {
       // Full query implementation deferred to when the audit UI is built.
