@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { type NavSection, navSections } from "./nav-config"
+import { api } from "@/lib/trpc/react"
 
 interface SidebarNavProps {
   collapsed?: boolean
@@ -34,11 +35,13 @@ function hasPermission(
 function filterSection(
   section: NavSection,
   permissions: string[],
-  isPlatformAdmin: boolean
+  isPlatformAdmin: boolean,
+  enabledModules: Set<string> | null
 ): NavSection {
   const items = section.items.filter((item) => {
     if (item.isPlatformAdmin && !isPlatformAdmin) return false
     if (item.permission && !hasPermission(item.permission, permissions)) return false
+    if (item.moduleSlug && enabledModules && !enabledModules.has(item.moduleSlug)) return false
     return true
   })
   return { ...section, items }
@@ -52,8 +55,19 @@ export function SidebarNav({
 }: SidebarNavProps) {
   const pathname = usePathname()
 
+  // Load enabled modules for the current tenant
+  const { data: modules } = api.tenant.listModules.useQuery(undefined, {
+    staleTime: 5 * 60 * 1000, // 5 minutes — matches Redis cache TTL
+    retry: false,
+  })
+
+  // null = still loading (show all items until we know)
+  const enabledModules = modules
+    ? new Set(modules.filter((m) => m.isEnabled).map((m) => m.moduleSlug))
+    : null
+
   const visibleSections = navSections
-    .map((s) => filterSection(s, permissions, isPlatformAdmin))
+    .map((s) => filterSection(s, permissions, isPlatformAdmin, enabledModules))
     .filter((s) => s.items.length > 0)
 
   return (

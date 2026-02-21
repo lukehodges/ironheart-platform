@@ -25,6 +25,7 @@ export interface NavItem {
   permission?: string      // required permission, e.g. 'bookings:read'
   isPlatformAdmin?: boolean // only for platform admins
   badge?: string           // optional badge text
+  moduleSlug?: string      // if set, item hidden when module is disabled
 }
 
 export interface NavSection {
@@ -50,24 +51,28 @@ export const navSections: NavSection[] = [
         href: "/admin/bookings",
         icon: Calendar,
         permission: "bookings:read",
+        moduleSlug: "booking",
       },
       {
         title: "Customers",
         href: "/admin/customers",
         icon: Users,
         permission: "customers:read",
+        moduleSlug: "customer",
       },
       {
         title: "Team",
         href: "/admin/team",
         icon: UserCheck,
         permission: "team:read",
+        moduleSlug: "team",
       },
       {
         title: "Scheduling",
         href: "/admin/scheduling",
         icon: Clock,
         permission: "scheduling:read",
+        moduleSlug: "scheduling",
       },
     ],
   },
@@ -79,18 +84,21 @@ export const navSections: NavSection[] = [
         href: "/admin/workflows",
         icon: Zap,
         permission: "workflows:read",
+        moduleSlug: "workflow",
       },
       {
         title: "Forms",
         href: "/admin/forms",
         icon: FileText,
         permission: "forms:read",
+        moduleSlug: "forms",
       },
       {
         title: "Reviews",
         href: "/admin/reviews",
         icon: Star,
         permission: "reviews:read",
+        moduleSlug: "review",
       },
     ],
   },
@@ -102,6 +110,7 @@ export const navSections: NavSection[] = [
         href: "/admin/payments",
         icon: CreditCard,
         permission: "payments:read",
+        moduleSlug: "payment",
       },
     ],
   },
@@ -129,6 +138,7 @@ export const navSections: NavSection[] = [
         href: "/admin/developer",
         icon: Code2,
         permission: "developer:read",
+        moduleSlug: "developer",
       },
     ],
   },
