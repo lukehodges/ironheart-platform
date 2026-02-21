@@ -32,7 +32,12 @@ export interface AuditLogRecord {
   entityId?: string | null
   oldValues?: Record<string, unknown> | null
   newValues?: Record<string, unknown> | null
+  ipAddress?: string | null
+  userAgent?: string | null
+  sessionId?: string | null
+  requestId?: string | null
   severity: 'INFO' | 'WARNING' | 'CRITICAL'
+  metadata?: Record<string, unknown> | null
   createdAt: Date
 }
 

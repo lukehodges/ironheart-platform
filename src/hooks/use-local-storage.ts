@@ -19,17 +19,19 @@ export function useLocalStorage<T>(
   const setValue = useCallback(
     (value: T | ((prev: T) => T)) => {
       try {
-        const valueToStore =
-          value instanceof Function ? value(storedValue) : value
-        setStoredValue(valueToStore)
-        if (typeof window !== "undefined") {
-          window.localStorage.setItem(key, JSON.stringify(valueToStore))
-        }
+        // Use functional setState to get current value without adding storedValue to deps
+        setStoredValue((prev) => {
+          const valueToStore = value instanceof Function ? value(prev) : value
+          if (typeof window !== "undefined") {
+            window.localStorage.setItem(key, JSON.stringify(valueToStore))
+          }
+          return valueToStore
+        })
       } catch {
         // Ignore write errors
       }
     },
-    [key, storedValue]
+    [key]
   )
 
   useEffect(() => {

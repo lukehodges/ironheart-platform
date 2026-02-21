@@ -10,6 +10,11 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Progress } from "@/components/ui/progress"
 import { Skeleton } from "@/components/ui/skeleton"
 import { WizardStep } from "@/types/booking-flow"
+import { ServiceSelector } from "@/components/booking-flow/service-selector"
+import { SlotPicker } from "@/components/booking-flow/slot-picker"
+import { CustomerDetailsForm } from "@/components/booking-flow/customer-details-form"
+import { BookingSuccess } from "@/components/booking-flow/booking-success"
+import { WizardProgress } from "@/components/booking-flow/wizard-progress"
 
 /**
  * Public booking wizard page
@@ -130,49 +135,10 @@ export default function BookingWizardPage() {
 
       {/* Main content */}
       <main className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
-        {/* Step indicators (mobile: simplified, desktop: full) */}
+        {/* Step indicators */}
         {booking.currentStep !== WizardStep.SUCCESS && (
-          <div className="hidden md:flex items-center justify-between mb-8">
-            {steps.slice(0, -1).map((step, index) => {
-              const isActive = index === currentStepIndex
-              const isCompleted = index < currentStepIndex
-              return (
-                <div key={step.key} className="flex items-center flex-1">
-                  <div
-                    className={`flex items-center gap-3 ${
-                      isActive ? "text-primary" : isCompleted ? "text-success" : "text-muted-foreground"
-                    }`}
-                  >
-                    <div
-                      className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${
-                        isActive
-                          ? "border-primary bg-primary/10"
-                          : isCompleted
-                            ? "border-success bg-success/10"
-                            : "border-border"
-                      }`}
-                    >
-                      {isCompleted ? (
-                        <CheckCircle className="w-5 h-5" />
-                      ) : (
-                        <span className="font-semibold">{index + 1}</span>
-                      )}
-                    </div>
-                    <div className="hidden lg:block">
-                      <div className="font-medium text-sm">{step.label}</div>
-                      <div className="text-xs opacity-70">{step.description}</div>
-                    </div>
-                  </div>
-                  {index < steps.length - 2 && (
-                    <div
-                      className={`h-0.5 flex-1 mx-4 ${
-                        isCompleted ? "bg-success" : "bg-border"
-                      }`}
-                    />
-                  )}
-                </div>
-              )
-            })}
+          <div className="mb-8">
+            <WizardProgress currentStep={booking.currentStep} />
           </div>
         )}
 
@@ -184,19 +150,19 @@ export default function BookingWizardPage() {
               <CardDescription>Choose the service you&apos;d like to book</CardDescription>
             </CardHeader>
             <CardContent>
-              {/* Placeholder - will be replaced with ServiceSelector component in Wave 4 */}
-              <div className="space-y-3">
-                <div className="p-6 border border-border rounded-lg text-center text-muted-foreground">
-                  Service selector component will be rendered here (Wave 4)
-                </div>
-                <div className="flex justify-end">
-                  <Button
-                    onClick={() => booking.nextStep()}
-                    disabled={!booking.state.selectedService}
-                  >
-                    Continue
-                  </Button>
-                </div>
+              {/* TODO: Replace with actual tRPC query when service module is implemented */}
+              <ServiceSelector
+                services={[]}
+                onSelect={(service) => {
+                  booking.selectService(service)
+                  booking.nextStep()
+                }}
+                selectedId={booking.state.selectedService?.id}
+              />
+              <div className="mt-4 p-4 bg-muted/50 rounded-lg">
+                <p className="text-sm text-muted-foreground text-center">
+                  📝 Services module not yet implemented. Add services via admin panel or seed script.
+                </p>
               </div>
             </CardContent>
           </Card>
@@ -218,23 +184,17 @@ export default function BookingWizardPage() {
               </div>
             </CardHeader>
             <CardContent>
-              {/* Placeholder - will be replaced with SlotPicker component in Wave 4 */}
-              <div className="space-y-3">
-                <div className="p-6 border border-border rounded-lg text-center text-muted-foreground">
-                  Slot picker component will be rendered here (Wave 4)
-                </div>
-                <div className="flex justify-between">
-                  <Button variant="outline" onClick={() => booking.prevStep()}>
-                    Back
-                  </Button>
-                  <Button
-                    onClick={() => booking.nextStep()}
-                    disabled={!booking.state.selectedSlot}
-                  >
-                    Continue
-                  </Button>
-                </div>
-              </div>
+              <SlotPicker
+                serviceId={booking.state.selectedService?.id ?? ""}
+                onSelect={(slot) => {
+                  booking.selectSlot(slot)
+                  booking.nextStep()
+                }}
+                getAvailableSlots={async (serviceId: string, date: Date) => {
+                  // TODO: Implement getAvailableSlots
+                  return []
+                }}
+              />
             </CardContent>
           </Card>
         )}
@@ -255,78 +215,36 @@ export default function BookingWizardPage() {
               </div>
             </CardHeader>
             <CardContent>
-              {/* Placeholder - will be replaced with CustomerDetailsForm component in Wave 4 */}
-              <div className="space-y-3">
-                <div className="p-6 border border-border rounded-lg text-center text-muted-foreground">
-                  Customer details form will be rendered here (Wave 4)
-                </div>
-                <div className="flex justify-between">
-                  <Button variant="outline" onClick={() => booking.prevStep()}>
-                    Back
-                  </Button>
-                  <Button
-                    onClick={() => {
-                      void booking.submitCustomerDetails({
-                        name: "Test User",
-                        email: "test@example.com",
-                        phone: "1234567890",
-                        notes: null,
-                        dynamicFields: {},
-                      })
-                    }}
-                    loading={booking.isSubmitting}
-                  >
-                    Confirm Booking
-                  </Button>
-                </div>
-              </div>
+              <CustomerDetailsForm
+                dynamicFields={[]}
+                onSubmit={booking.submitCustomerDetails}
+                isLoading={booking.isSubmitting}
+              />
             </CardContent>
           </Card>
         )}
 
-        {booking.currentStep === WizardStep.SUCCESS && (
-          <Card className="text-center">
-            <CardHeader>
-              <div className="mx-auto mb-4 w-16 h-16 rounded-full bg-success/10 flex items-center justify-center">
-                <CheckCircle className="w-10 h-10 text-success" />
-              </div>
-              <CardTitle className="text-2xl">Booking Confirmed!</CardTitle>
-              <CardDescription>
-                Your appointment has been successfully booked
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="bg-muted/50 rounded-lg p-6 space-y-3">
-                <p className="text-sm text-muted-foreground">
-                  A confirmation email has been sent to your email address.
-                </p>
-                {booking.state.bookingId && (
-                  <div className="text-xs text-muted-foreground font-mono">
-                    Booking ID: {booking.state.bookingId}
-                  </div>
-                )}
-              </div>
-              <div className="flex flex-col sm:flex-row gap-3">
-                <Button
-                  variant="outline"
-                  className="flex-1"
-                  onClick={() => booking.reset()}
-                >
-                  Book Another
-                </Button>
-                <Button
-                  className="flex-1"
-                  onClick={() => {
-                    if (booking.state.bookingId) {
-                      window.location.href = `/booking/${booking.state.bookingId}`
-                    }
-                  }}
-                >
-                  View Booking
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+        {booking.currentStep === WizardStep.SUCCESS && booking.state.bookingId && (
+          <BookingSuccess
+            booking={{
+              id: booking.state.bookingId,
+              service: {
+                name: booking.state.selectedService?.name ?? "Service",
+                durationMinutes: booking.state.selectedService?.durationMinutes ?? 60,
+                price: booking.state.selectedService?.basePrice ?? 0,
+                currency: booking.state.selectedService?.currency ?? "USD",
+              },
+              staff: booking.state.selectedSlot?.userDisplayName
+                ? {
+                    name: booking.state.selectedSlot.userDisplayName,
+                    imageUrl: null,
+                  }
+                : null,
+              dateTime: booking.state.selectedSlot?.startTime ?? new Date(),
+              location: null,
+              customerEmail: booking.state.customerInfo?.email ?? "",
+            }}
+          />
         )}
       </main>
 

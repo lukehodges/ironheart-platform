@@ -13,6 +13,8 @@ import {
   Code2,
   Building2,
   Settings,
+  ScrollText,
+  Shield,
   type LucideIcon,
 } from "lucide-react"
 
@@ -148,6 +150,23 @@ export const navSections: NavSection[] = [
         title: "Settings",
         href: "/admin/settings",
         icon: Settings,
+      },
+      {
+        title: "Audit Log",
+        href: "/admin/audit",
+        icon: ScrollText,
+        permission: "audit:view",
+      },
+    ],
+  },
+  {
+    title: "Platform Admin",
+    items: [
+      {
+        title: "Platform Admin",
+        href: "/platform",
+        icon: Shield,
+        isPlatformAdmin: true,
       },
     ],
   },

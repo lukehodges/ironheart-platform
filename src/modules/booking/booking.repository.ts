@@ -141,7 +141,7 @@ export const bookingRepository = {
       .limit(limit + 1);
 
     const hasMore = rows.length > limit;
-    return { bookings: hasMore ? rows.slice(0, limit) : rows, hasMore };
+    return { rows: hasMore ? rows.slice(0, limit) : rows, hasMore };
   },
 
   async listForCalendar(tenantId: string, startDate: Date, endDate: Date, staffId?: string) {

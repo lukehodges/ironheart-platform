@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { router, platformAdminProcedure } from "@/shared/trpc";
+import { router, platformAdminProcedure, protectedProcedure } from "@/shared/trpc";
 import { platformService } from "./platform.service";
 import {
   createTenantSchema,
@@ -14,6 +14,7 @@ import {
   approveSignupSchema,
   rejectSignupSchema,
   suspendTenantSchema,
+  startImpersonationSchema,
 } from "./platform.schemas";
 
 export const platformRouter = router({
@@ -89,6 +90,18 @@ export const platformRouter = router({
   getAuditLog: platformAdminProcedure
     .input(auditLogQuerySchema)
     .query(({ input }) => platformService.getAuditLog(input)),
+
+  // Impersonation
+  startImpersonation: platformAdminProcedure
+    .input(startImpersonationSchema)
+    .mutation(({ ctx, input }) => platformService.startImpersonation(ctx, input.tenantId)),
+
+  endImpersonation: platformAdminProcedure
+    .mutation(({ ctx }) => platformService.endImpersonation(ctx)),
+
+  // Allow all authenticated users to check - service returns null if not impersonating
+  getActiveImpersonation: protectedProcedure
+    .query(({ ctx }) => platformService.getActiveImpersonation(ctx)),
 });
 
 export type PlatformRouter = typeof platformRouter;

@@ -5,13 +5,16 @@ import {
   organizationSettings,
   modules,
   tenantModules,
+  impersonationSessions,
+  users,
 } from "@/shared/db/schema";
-import { inArray } from "drizzle-orm";
+import { inArray, eq } from "drizzle-orm";
 import { logger } from "@/shared/logger";
-import { NotFoundError, ValidationError } from "@/shared/errors";
+import { NotFoundError, ValidationError, ForbiddenError } from "@/shared/errors";
 import type { Context } from "@/shared/trpc";
 import { platformRepository } from "./platform.repository";
 import { tenantRepository } from "@/modules/tenant/tenant.repository";
+import { redis } from "@/shared/redis";
 import type {
   TenantRecord,
   FeatureFlag,
@@ -399,5 +402,230 @@ export const platformService = {
       limit: input.limit,
       cursor: input.cursor,
     });
+  },
+
+  // ---------------------------------------------------------------------------
+  // Impersonation
+  // ---------------------------------------------------------------------------
+
+  async startImpersonation(
+    ctx: Context,
+    tenantId: string
+  ): Promise<{ sessionId: string; tenantId: string; tenantName: string }> {
+    if (!ctx.session?.user) {
+      throw new ForbiddenError("Platform admin session required");
+    }
+
+    const platformAdminId = ctx.session.user.id;
+    const platformAdminEmail = ctx.session.user.email;
+
+    log.info({ platformAdminId, tenantId }, "startImpersonation");
+
+    // 1. Verify tenant exists and is active
+    const tenant = await db.query.tenants.findFirst({
+      where: eq(tenants.id, tenantId),
+      columns: { id: true, name: true, status: true },
+    });
+
+    if (!tenant) {
+      throw new NotFoundError("Tenant", tenantId);
+    }
+
+    if (tenant.status === "SUSPENDED") {
+      throw new ForbiddenError("Cannot impersonate suspended tenant");
+    }
+
+    // 2. Get platform admin user record
+    const platformAdmin = await db.query.users.findFirst({
+      where: eq(users.workosUserId, platformAdminId),
+      columns: { id: true },
+    });
+
+    if (!platformAdmin) {
+      throw new NotFoundError("Platform admin user", platformAdminId);
+    }
+
+    // 3. Get IP and User-Agent from request
+    const ipAddress = ctx.req.headers.get("x-forwarded-for") ??
+                      ctx.req.headers.get("x-real-ip") ??
+                      null;
+    const userAgent = ctx.req.headers.get("user-agent") ?? null;
+
+    // 4. Create impersonation session in database
+    const [session] = await db
+      .insert(impersonationSessions)
+      .values({
+        id: crypto.randomUUID(),
+        platformAdminId: platformAdmin.id,
+        tenantId,
+        targetTenantUserId: null,
+        ipAddress,
+        userAgent,
+        startedAt: new Date(),
+        endedAt: null,
+        createdAt: new Date(),
+      })
+      .returning();
+
+    if (!session) {
+      throw new ValidationError("Failed to create impersonation session");
+    }
+
+    // 5. Store session in Redis with 24-hour TTL
+    const expiresAt = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
+    const redisKey = `impersonate:${platformAdminId}`;
+    const sessionData = {
+      sessionId: session.id,
+      tenantId,
+      platformAdminEmail,
+      startedAt: Date.now(),
+      expiresAt,
+    };
+
+    await redis.setex(redisKey, 86400, JSON.stringify(sessionData)); // 24 hours in seconds
+
+    // 6. Create audit log entry
+    await platformRepository.insertAuditLog({
+      tenantId,
+      userId: platformAdmin.id,
+      action: "IMPERSONATE_START",
+      entityType: "tenant",
+      entityId: tenantId,
+      oldValues: null,
+      newValues: {
+        platformAdminId: platformAdmin.id,
+        platformAdminEmail,
+        sessionId: session.id,
+      },
+      ipAddress,
+      userAgent,
+      severity: "WARNING",
+      metadata: {
+        sessionId: session.id,
+        expiresAt: new Date(expiresAt).toISOString(),
+      },
+    });
+
+    log.info(
+      { sessionId: session.id, platformAdminId, tenantId },
+      "Impersonation session started"
+    );
+
+    return {
+      sessionId: session.id,
+      tenantId,
+      tenantName: tenant.name,
+    };
+  },
+
+  async endImpersonation(ctx: Context): Promise<void> {
+    if (!ctx.session?.user) {
+      throw new ForbiddenError("Platform admin session required");
+    }
+
+    const platformAdminId = ctx.session.user.id;
+    log.info({ platformAdminId }, "endImpersonation");
+
+    // 1. Get session from Redis
+    const redisKey = `impersonate:${platformAdminId}`;
+    const cached = await redis.get(redisKey);
+
+    if (!cached) {
+      log.warn({ platformAdminId }, "No active impersonation session found");
+      return;
+    }
+
+    // Upstash Redis auto-deserializes JSON
+    const sessionData = cached as {
+      sessionId: string;
+      tenantId: string;
+      platformAdminEmail: string;
+    };
+
+    // 2. Update impersonation_sessions.endedAt in database
+    await db
+      .update(impersonationSessions)
+      .set({ endedAt: new Date() })
+      .where(eq(impersonationSessions.id, sessionData.sessionId));
+
+    // 3. Delete from Redis
+    await redis.del(redisKey);
+
+    // 4. Get platform admin user record for audit log
+    const platformAdmin = await db.query.users.findFirst({
+      where: eq(users.workosUserId, platformAdminId),
+      columns: { id: true },
+    });
+
+    // 5. Create audit log entry
+    if (platformAdmin) {
+      await platformRepository.insertAuditLog({
+        tenantId: sessionData.tenantId,
+        userId: platformAdmin.id,
+        action: "IMPERSONATE_END",
+        entityType: "tenant",
+        entityId: sessionData.tenantId,
+        oldValues: null,
+        newValues: {
+          sessionId: sessionData.sessionId,
+        },
+        severity: "INFO",
+        metadata: {
+          sessionId: sessionData.sessionId,
+        },
+      });
+    }
+
+    log.info(
+      { sessionId: sessionData.sessionId, platformAdminId, tenantId: sessionData.tenantId },
+      "Impersonation session ended"
+    );
+  },
+
+  async getActiveImpersonation(
+    ctx: Context
+  ): Promise<{ tenantId: string; tenantName: string; sessionId: string } | null> {
+    if (!ctx.session?.user) {
+      return null;
+    }
+
+    const platformAdminId = ctx.session.user.id;
+    const redisKey = `impersonate:${platformAdminId}`;
+
+    // Check Redis for active session
+    const cached = await redis.get(redisKey);
+    if (!cached) {
+      return null;
+    }
+
+    // Upstash Redis auto-deserializes JSON, so cached is already an object
+    const sessionData = cached as {
+      sessionId: string;
+      tenantId: string;
+      expiresAt: number;
+    };
+
+    // Check if expired
+    if (sessionData.expiresAt < Date.now()) {
+      await redis.del(redisKey);
+      return null;
+    }
+
+    // Get tenant name
+    const tenant = await db.query.tenants.findFirst({
+      where: eq(tenants.id, sessionData.tenantId),
+      columns: { name: true },
+    });
+
+    if (!tenant) {
+      await redis.del(redisKey);
+      return null;
+    }
+
+    return {
+      tenantId: sessionData.tenantId,
+      tenantName: tenant.name,
+      sessionId: sessionData.sessionId,
+    };
   },
 };

@@ -210,7 +210,7 @@ async function seedPlatformAdmin(platformTenantId: string): Promise<string> {
   console.log("  → seeding platform admin user...");
 
   const now = new Date();
-  const email = process.env.PLATFORM_ADMIN_EMAIL ?? "admin@ironheart.app";
+  const email = process.env.PLATFORM_ADMIN_EMAIL ?? "luke@theironheart.org";
 
   const existing = await db
     .select({ id: schema.users.id })
@@ -536,13 +536,14 @@ async function seedStaff(
   const now = new Date();
   const staffDefs = [
     {
-      email: "luke.hodges.dev@gmail.com",
+      email: "luke@theironheart.org",
       firstName: "Luke",
       lastName: "Hodges",
       jobTitle: "Developer",
       type: "OWNER" as const,
       roleName: "Owner",
       dayRate: "0.00",
+      isPlatformAdmin: true,
     },
     {
       email: "sarah.mitchell@riverside-wellness.co.uk",
@@ -552,6 +553,7 @@ async function seedStaff(
       type: "OWNER" as const,
       roleName: "Owner",
       dayRate: "480.00",
+      isPlatformAdmin: false,
     },
     {
       email: "james.carter@riverside-wellness.co.uk",
@@ -561,6 +563,7 @@ async function seedStaff(
       type: "MEMBER" as const,
       roleName: "Member",
       dayRate: "360.00",
+      isPlatformAdmin: false,
     },
   ];
 
@@ -589,7 +592,7 @@ async function seedStaff(
       type: s.type,
       status: "ACTIVE",
       emailVerified: now,
-      isPlatformAdmin: false,
+      isPlatformAdmin: s.isPlatformAdmin ?? false,
       isTeamMember: true,
       jobTitle: s.jobTitle,
       staffStatus: "ACTIVE",
@@ -1047,9 +1050,9 @@ async function main() {
     await seedPortal(demoTenantId);
 
     console.log("\n✅ Seed complete!\n");
-    console.log("  Platform admin:  admin@ironheart.app  (set workosUserId after first login)");
+    console.log("  Platform admin:  luke@theironheart.org  (platform-wide access)");
     console.log("  Demo tenant:     demo.localhost:3000   or  ?tenant=demo");
-    console.log("  Your login:      luke.hodges.dev@gmail.com  (Owner - full access)");
+    console.log("  Your login:      luke@theironheart.org  (Owner - platform admin access)");
     console.log("  Staff login 1:   sarah.mitchell@riverside-wellness.co.uk  (Owner)");
     console.log("  Staff login 2:   james.carter@riverside-wellness.co.uk  (Member)");
     console.log("");

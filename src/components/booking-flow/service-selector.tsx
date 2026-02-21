@@ -22,6 +22,15 @@ export default function ServiceSelector({
 }: ServiceSelectorProps) {
   const [selectedCategory, setSelectedCategory] = React.useState<string | null>(null)
 
+  // Safety check for undefined services
+  if (!services || !Array.isArray(services)) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-muted-foreground">Loading services...</p>
+      </div>
+    )
+  }
+
   // Extract unique categories from services (if description contains category info)
   // For now, we'll show all services - category filtering can be added later if needed
 

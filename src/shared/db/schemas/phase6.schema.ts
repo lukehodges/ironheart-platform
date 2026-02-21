@@ -234,6 +234,36 @@ export const sagaLog = pgTable("saga_log", {
   index("saga_log_entityId_idx").using("btree", table.entityId.asc().nullsLast().op("uuid_ops")),
 ])
 
+export const impersonationSessions = pgTable("impersonation_sessions", {
+  id: uuid().primaryKey().notNull().default(sql`gen_random_uuid()`),
+  platformAdminId: uuid().notNull(),
+  tenantId: uuid().notNull(),
+  targetTenantUserId: uuid(),
+  startedAt: timestamp({ withTimezone: true, mode: 'date' }).notNull().default(sql`now()`),
+  endedAt: timestamp({ withTimezone: true, mode: 'date' }),
+  ipAddress: text(),
+  userAgent: text(),
+  createdAt: timestamp({ withTimezone: true, mode: 'date' }).notNull().default(sql`now()`),
+}, (table) => [
+  index("impersonation_sessions_platformAdminId_idx").using("btree", table.platformAdminId.asc().nullsLast().op("uuid_ops")).where(sql`ended_at IS NULL`),
+  index("impersonation_sessions_tenantId_idx").using("btree", table.tenantId.asc().nullsLast().op("uuid_ops")),
+  foreignKey({
+    columns: [table.platformAdminId],
+    foreignColumns: [users.id],
+    name: "impersonation_sessions_platformAdminId_fkey",
+  }).onUpdate("cascade").onDelete("cascade"),
+  foreignKey({
+    columns: [table.tenantId],
+    foreignColumns: [tenants.id],
+    name: "impersonation_sessions_tenantId_fkey",
+  }).onUpdate("cascade").onDelete("cascade"),
+  foreignKey({
+    columns: [table.targetTenantUserId],
+    foreignColumns: [users.id],
+    name: "impersonation_sessions_targetTenantUserId_fkey",
+  }).onUpdate("cascade").onDelete("set null"),
+])
+
 // ---------------------------------------------------------------------------
 // Type aliases
 // ---------------------------------------------------------------------------
@@ -264,3 +294,6 @@ export type NewMetricSnapshot = typeof metricSnapshots.$inferInsert;
 
 export type SagaLog = typeof sagaLog.$inferSelect;
 export type NewSagaLog = typeof sagaLog.$inferInsert;
+
+export type ImpersonationSession = typeof impersonationSessions.$inferSelect;
+export type NewImpersonationSession = typeof impersonationSessions.$inferInsert;

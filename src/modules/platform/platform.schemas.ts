@@ -76,3 +76,7 @@ export const setTenantModuleSchema = z.object({
   isEnabled: z.boolean(),
   monthlyRate: z.number().min(0).optional(),
 })
+
+export const startImpersonationSchema = z.object({
+  tenantId: z.string(),
+})

@@ -2,6 +2,7 @@ import { redirect } from "next/navigation"
 import { withAuth } from "@workos-inc/authkit-nextjs"
 import { AdminSidebar } from "@/components/layout/admin-sidebar"
 import { AdminTopbar } from "@/components/layout/admin-topbar"
+import { ImpersonationBanner } from "@/components/platform/impersonation-banner"
 import { db } from "@/shared/db"
 import { users } from "@/shared/db/schemas/auth.schema"
 import { eq } from "drizzle-orm"
@@ -65,6 +66,7 @@ export default async function AdminLayout({
         isPlatformAdmin={isPlatformAdmin}
       />
       <div className="flex flex-1 flex-col min-w-0 overflow-hidden">
+        <ImpersonationBanner />
         <AdminTopbar
           user={userForDisplay}
           permissions={permissions}

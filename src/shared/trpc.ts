@@ -94,6 +94,12 @@ export type Context = {
   requestId: string;
   /** Raw Request object from the tRPC handler — used for header extraction. */
   req: Request;
+  /** Platform admin is impersonating this tenant (set by tenantProcedure middleware). */
+  isImpersonating?: boolean;
+  /** Impersonation session ID (if impersonating). */
+  impersonationSessionId?: string;
+  /** Original platform admin user ID (if impersonating). */
+  platformAdminId?: string;
 };
 
 /**
@@ -315,6 +321,46 @@ export const tenantProcedure = protectedProcedure.use(
     const workosUserId = ctx.session.user.id;
     const userEmail = ctx.session.user.email;
 
+    // Check for active impersonation session
+    const impersonationKey = `impersonate:${workosUserId}`;
+    let impersonationData: {
+      sessionId: string;
+      tenantId: string;
+      platformAdminEmail: string;
+      startedAt: number;
+      expiresAt: number;
+    } | null = null;
+
+    try {
+      const cached = await redis.get<string>(impersonationKey);
+      if (cached) {
+        impersonationData = JSON.parse(cached);
+
+        // Validate session not expired
+        if (impersonationData && impersonationData.expiresAt < Date.now()) {
+          await redis.del(impersonationKey);
+          throw new TRPCError({
+            code: "UNAUTHORIZED",
+            message: "Impersonation session expired",
+          });
+        }
+
+        if (impersonationData) {
+          logger.info(
+            {
+              platformAdminId: workosUserId,
+              tenantId: impersonationData.tenantId,
+              sessionId: impersonationData.sessionId,
+            },
+            "Active impersonation session detected"
+          );
+        }
+      }
+    } catch (err) {
+      if (err instanceof TRPCError) throw err;
+      logger.warn({ err, impersonationKey }, "Failed to check impersonation session");
+    }
+
     logger.debug(
       {
         workosUserId,
@@ -510,6 +556,60 @@ export const tenantProcedure = protectedProcedure.use(
       });
     }
 
+    // If impersonating, override tenant context
+    if (impersonationData) {
+      const { sessionId, tenantId } = impersonationData;
+      const userWithRoles = reshapeUserWithRoles(rawUser);
+
+      // User-based rate limiting
+      if (process.env.UPSTASH_REDIS_REST_URL && process.env.NODE_ENV !== "test") {
+        const { success: userSuccess } = await userRatelimit.limit(`${userWithRoles.id}:${path}`);
+        if (!userSuccess) {
+          throw new TRPCError({
+            code: "TOO_MANY_REQUESTS",
+            message: "Rate limit exceeded",
+          });
+        }
+      }
+
+      return next({
+        ctx: {
+          ...ctx,
+          user: userWithRoles,
+          tenantId,
+          isImpersonating: true,
+          impersonationSessionId: sessionId,
+          platformAdminId: workosUserId,
+        },
+      });
+    }
+
+    // Platform admins can access any tenant without formal impersonation
+    if (rawUser.isPlatformAdmin) {
+      const userWithRoles = reshapeUserWithRoles(rawUser);
+
+      // User-based rate limiting — applied after user is resolved.
+      if (process.env.UPSTASH_REDIS_REST_URL && process.env.NODE_ENV !== "test") {
+        const { success: userSuccess } = await userRatelimit.limit(`${userWithRoles.id}:${path}`);
+        if (!userSuccess) {
+          throw new TRPCError({
+            code: "TOO_MANY_REQUESTS",
+            message: "Rate limit exceeded",
+          });
+        }
+      }
+
+      return next({
+        ctx: {
+          ...ctx,
+          user: userWithRoles,
+          // Platform admins access the requested tenant, not their own
+          tenantId: ctx.tenantId,
+        },
+      });
+    }
+
+    // Regular users: enforce tenant isolation
     if (ctx.tenantId !== "default" && rawUser.tenantId !== ctx.tenantId) {
       throw new TRPCError({
         code: "FORBIDDEN",
