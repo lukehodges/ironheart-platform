@@ -783,16 +783,25 @@ export const platformAdminProcedure = protectedProcedure.use(
  * // In src/modules/review/review.router.ts:
  * const reviewProcedure = tenantProcedure.use(createModuleMiddleware("review-automation"));
  *
- * Phase 0: Stub — always passes through (all modules treated as enabled).
- * Phase 5: Will query TenantModule table to check the module is enabled.
+ * Uses tenantService.isModuleEnabled() with Redis cache to check module status.
  */
 export function createModuleMiddleware(moduleSlug: string) {
   return middleware(async ({ ctx, next }) => {
-    // TODO Phase 5: Check db.query.tenantModules.findFirst({ where: ... })
-    logger.debug(
-      { moduleSlug, tenantId: ctx.tenantId },
-      "Module access check (stub — always passes)"
+    const { tenantService } = await import("@/modules/tenant/tenant.service");
+    const enabled = await tenantService.isModuleEnabled(
+      ctx.tenantId,
+      moduleSlug
     );
+    if (!enabled) {
+      logger.debug(
+        { moduleSlug, tenantId: ctx.tenantId },
+        "Module access denied — not enabled for tenant"
+      );
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: `Module '${moduleSlug}' is not enabled for this tenant`,
+      });
+    }
     return next({ ctx });
   });
 }

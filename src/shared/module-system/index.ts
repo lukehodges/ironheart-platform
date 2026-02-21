@@ -1,4 +1,5 @@
 export { ModuleRegistry } from './registry'
+export { createModuleGate } from './module-gate'
 export type {
   ModuleManifest,
   ModuleCategory,
