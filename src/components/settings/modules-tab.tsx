@@ -6,68 +6,75 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
-import { useSettingsMutations } from "@/hooks/use-settings-mutations"
 import { cn } from "@/lib/utils"
+import { moduleRegistry } from "@/shared/module-system/register-all"
 
 /**
  * ModulesTab — Module toggle cards for settings
  *
- * Displays grid of module cards with:
- * - Module name and description
- * - Toggle switch (with optimistic updates)
- * - Premium badge if applicable
- * - Disabled state with upgrade message if not on correct plan
- *
- * Grid: 2 columns on desktop, 1 column on mobile
- *
- * @example
- * ```tsx
- * <ModulesTab />
- * ```
+ * Queries tenant.listModules for real module data, uses the module
+ * registry for dependency enforcement (canDisable/canEnable).
  */
 export function ModulesTab() {
-  // TODO: Implement settings router with getModules procedure
-  // For now, stub the data to make build pass
-  const isLoading = false
-  const error = null
-  const modules = [] as Array<{
-    moduleId: string
-    name: string
-    description: string
-    isEnabled: boolean
-    isPremium: boolean
-  }>
-  const mutations = useSettingsMutations()
+  const {
+    data: modules,
+    isLoading,
+    error,
+  } = api.tenant.listModules.useQuery(undefined, {
+    staleTime: 60_000,
+  })
+  const utils = api.useUtils()
 
-  // Optimistic state: moduleId -> isEnabled
+  const enableMutation = api.tenant.enableModule.useMutation({
+    onSuccess: () => utils.tenant.listModules.invalidate(),
+  })
+  const disableMutation = api.tenant.disableModule.useMutation({
+    onSuccess: () => utils.tenant.listModules.invalidate(),
+  })
+
+  // Optimistic state: moduleSlug -> isEnabled
   const [optimisticState, setOptimisticState] = useState<Record<string, boolean>>({})
 
-  const handleToggleModule = async (moduleId: string, currentlyEnabled: boolean) => {
+  const enabledSlugs = modules
+    ? modules.filter((m) => m.isEnabled).map((m) => m.moduleSlug)
+    : []
+
+  const handleToggleModule = async (moduleSlug: string, currentlyEnabled: boolean) => {
     const nextEnabled = !currentlyEnabled
 
+    // Check dependency enforcement before toggling
+    if (!nextEnabled) {
+      const result = moduleRegistry.canDisable(moduleSlug, enabledSlugs)
+      if (!result.allowed) {
+        const reason = result.blockedBy.includes("__core__")
+          ? "This is a core module and cannot be disabled."
+          : `Cannot disable: ${result.blockedBy.join(", ")} depend on this module.`
+        alert(reason)
+        return
+      }
+    } else {
+      const result = moduleRegistry.canEnable(moduleSlug, enabledSlugs)
+      if (!result.allowed) {
+        alert(`Enable these modules first: ${result.missingDeps.join(", ")}`)
+        return
+      }
+    }
+
     // Optimistic update
-    setOptimisticState((prev) => ({
-      ...prev,
-      [moduleId]: nextEnabled,
-    }))
+    setOptimisticState((prev) => ({ ...prev, [moduleSlug]: nextEnabled }))
 
     try {
-      await mutations.toggleModule.mutateAsync({
-        moduleId,
-        isEnabled: nextEnabled,
-      })
-
-      // Clear optimistic state on success
-      setOptimisticState((prev) => {
-        const next = { ...prev }
-        delete next[moduleId]
-        return next
-      })
+      if (nextEnabled) {
+        await enableMutation.mutateAsync({ moduleKey: moduleSlug })
+      } else {
+        await disableMutation.mutateAsync({ moduleKey: moduleSlug })
+      }
     } catch {
-      // Revert optimistic state on error
+      // Revert on error
+    } finally {
       setOptimisticState((prev) => {
         const next = { ...prev }
-        delete next[moduleId]
+        delete next[moduleSlug]
         return next
       })
     }
@@ -94,94 +101,111 @@ export function ModulesTab() {
   if (!modules || modules.length === 0) {
     return (
       <div className="rounded-lg border border-dashed border-muted-foreground/50 p-8 text-center">
-        <p className="text-sm text-muted-foreground">No modules available.</p>
+        <p className="text-sm text-muted-foreground">No modules configured for this tenant.</p>
       </div>
     )
   }
+
+  // Separate core from non-core using the registry
+  const coreModules = modules.filter((m) => {
+    const manifest = moduleRegistry.getManifest(m.moduleSlug)
+    return manifest?.isCore
+  })
+  const optionalModules = modules.filter((m) => {
+    const manifest = moduleRegistry.getManifest(m.moduleSlug)
+    return !manifest?.isCore
+  })
 
   return (
     <div className="space-y-6">
       <div>
         <p className="text-sm text-muted-foreground">
-          Enable or disable optional features. Premium modules require an active subscription.
+          Enable or disable optional features. Core modules cannot be disabled.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-        {modules.map((module) => {
-          // Get optimistic state, fallback to actual state
-          const isEnabled = optimisticState[module.moduleId] ?? module.isEnabled
-          const isToggling = module.moduleId in optimisticState
-
-          // Determine if toggle should be disabled
-          // (e.g., if on free plan and module is premium)
-          const isDisabled = module.isPremium && !module.isEnabled
-          const showUpgradeMessage = isDisabled
-
-          return (
-            <Card
-              key={module.moduleId}
-              className={cn(
-                "transition-all",
-                isEnabled && "border-primary/50 bg-primary/5",
-                isDisabled && "opacity-75"
-              )}
-            >
-              <CardHeader>
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <CardTitle className="text-base">{module.name}</CardTitle>
-                      {module.isPremium && (
-                        <Badge variant="warning" className="text-xs">
-                          Premium
-                        </Badge>
-                      )}
+      {coreModules.length > 0 && (
+        <div>
+          <h3 className="text-sm font-medium text-muted-foreground mb-3">Core Modules</h3>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            {coreModules.map((mod) => {
+              const manifest = moduleRegistry.getManifest(mod.moduleSlug)
+              return (
+                <Card key={mod.moduleSlug} className="border-muted bg-muted/30">
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center gap-2">
+                      <CardTitle className="text-base">{mod.moduleName}</CardTitle>
+                      <Badge variant="secondary" className="text-xs">Core</Badge>
                     </div>
-                    <CardDescription className="mt-1 text-sm">
-                      {module.description}
+                    <CardDescription className="text-sm">
+                      {manifest?.description ?? "Required system module"}
                     </CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-xs text-muted-foreground">Always enabled</p>
+                  </CardContent>
+                </Card>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
-              <CardContent>
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    {showUpgradeMessage && (
-                      <p className="text-xs text-muted-foreground">
-                        Upgrade your plan to enable this module
-                      </p>
-                    )}
-                    {!showUpgradeMessage && isEnabled && (
-                      <p className="text-xs text-success font-medium">Enabled</p>
-                    )}
-                    {!showUpgradeMessage && !isEnabled && (
-                      <p className="text-xs text-muted-foreground">Disabled</p>
-                    )}
-                  </div>
+      {optionalModules.length > 0 && (
+        <div>
+          <h3 className="text-sm font-medium text-muted-foreground mb-3">Optional Modules</h3>
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+            {optionalModules.map((mod) => {
+              const manifest = moduleRegistry.getManifest(mod.moduleSlug)
+              const isEnabled = optimisticState[mod.moduleSlug] ?? mod.isEnabled
+              const isToggling = mod.moduleSlug in optimisticState
+              const isPending = enableMutation.isPending || disableMutation.isPending
 
-                  <Switch
-                    checked={isEnabled}
-                    onCheckedChange={() =>
-                      handleToggleModule(module.moduleId, module.isEnabled)
-                    }
-                    disabled={isDisabled || isToggling || mutations.toggleModule.isPending}
-                    aria-label={`Toggle ${module.name} module`}
-                  />
-                </div>
-              </CardContent>
-            </Card>
-          )
-        })}
-      </div>
+              return (
+                <Card
+                  key={mod.moduleSlug}
+                  className={cn(
+                    "transition-all",
+                    isEnabled && "border-primary/50 bg-primary/5"
+                  )}
+                >
+                  <CardHeader>
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <CardTitle className="text-base">{mod.moduleName}</CardTitle>
+                          {manifest?.availability === "addon" && (
+                            <Badge variant="outline" className="text-xs">Addon</Badge>
+                          )}
+                        </div>
+                        <CardDescription className="mt-1 text-sm">
+                          {manifest?.description ?? ""}
+                        </CardDescription>
+                      </div>
+                    </div>
+                  </CardHeader>
 
-      {modules.some((m) => m.isPremium && !m.isEnabled) && (
-        <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
-          <p className="text-sm text-foreground">
-            <span className="font-medium">Want more features?</span>
-            {" "}Upgrade to unlock premium modules and advanced capabilities.
-          </p>
+                  <CardContent>
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        {isEnabled ? (
+                          <p className="text-xs text-emerald-600 font-medium">Enabled</p>
+                        ) : (
+                          <p className="text-xs text-muted-foreground">Disabled</p>
+                        )}
+                      </div>
+                      <Switch
+                        checked={isEnabled}
+                        onCheckedChange={() => handleToggleModule(mod.moduleSlug, mod.isEnabled)}
+                        disabled={isToggling || isPending}
+                        aria-label={`Toggle ${mod.moduleName} module`}
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+              )
+            })}
+          </div>
         </div>
       )}
     </div>
