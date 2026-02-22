@@ -60,6 +60,11 @@ vi.mock("@/shared/inngest", () => ({
   inngest: { send: vi.fn().mockResolvedValue(undefined) },
 }));
 
+vi.mock("@/modules/payment/payment.service", () => ({
+  createInvoiceForBooking: vi.fn().mockResolvedValue({ id: "invoice-mock-001" }),
+  voidInvoice: vi.fn().mockResolvedValue(undefined),
+}));
+
 // Stateful Redis mock — tracks stored values so get() returns what set() stored.
 // This is required to test the lock token check in releaseSlotLock correctly.
 const redisStore: Record<string, string> = {};

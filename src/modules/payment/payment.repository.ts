@@ -1,5 +1,5 @@
 import { db } from '@/shared/db'
-import { and, eq, desc, sql } from 'drizzle-orm'
+import { and, eq, desc, lt, inArray, sql } from 'drizzle-orm'
 import { invoices, payments } from '@/shared/db/schemas/shared.schema'
 import { pricingRules, discountCodes, taxRules } from '@/shared/db/schemas/phase6.schema'
 import { redis } from '@/shared/redis'
@@ -76,6 +76,19 @@ export async function listInvoices(tenantId: string, filters: {
   return { rows: rows.slice(0, filters.limit), hasMore }
 }
 
+/**
+ * Find all invoices that are past their due date and still in a payable status.
+ * Returns invoices in SENT, VIEWED, or PARTIALLY_PAID status with dueDate before now.
+ */
+export async function findOverdueInvoices() {
+  const now = new Date()
+  return db.select().from(invoices)
+    .where(and(
+      lt(invoices.dueDate, now),
+      inArray(invoices.status, ['SENT', 'VIEWED', 'PARTIALLY_PAID'])
+    ))
+}
+
 export async function updateInvoiceStatus(
   id: string,
   tenantId: string,
@@ -122,6 +135,29 @@ export async function createPayment(tenantId: string, input: RecordPaymentInput 
     updatedAt:              new Date(),
   }).returning()
   return payment!
+}
+
+export async function findPaymentByStripePaymentIntentId(stripePaymentIntentId: string) {
+  const [row] = await db.select().from(payments)
+    .where(eq(payments.stripePaymentIntentId, stripePaymentIntentId))
+    .limit(1)
+  return row ?? null
+}
+
+export async function updatePaymentStatus(
+  id: string,
+  status: typeof payments.status._.data,
+  extraFields?: Partial<typeof payments.$inferInsert>
+) {
+  const [updated] = await db.update(payments)
+    .set({
+      status,
+      updatedAt: new Date(),
+      ...extraFields,
+    })
+    .where(eq(payments.id, id))
+    .returning()
+  return updated ?? null
 }
 
 // ---------------------------------------------------------------------------

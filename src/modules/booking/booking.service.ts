@@ -9,6 +9,7 @@ import {
   ValidationError,
 } from "@/shared/errors";
 import { bookingRepository } from "./booking.repository";
+import { createInvoiceForBooking as paymentCreateInvoice, voidInvoice as paymentVoidInvoice } from "@/modules/payment/payment.service";
 import { assertValidBookingTransition } from "./lib/booking-state-machine";
 import type { BookingStatus as StateMachineBookingStatus } from "./lib/booking-state-machine";
 import { withSlotLock } from "./lib/slot-lock";
@@ -224,12 +225,10 @@ export const bookingService = {
               );
             },
             createInvoiceForBooking: async (bId) => {
-              // Stub: return a placeholder invoice ID
-              // Full implementation will be wired to payment.service once that module is complete
-              return { id: `invoice-stub-${bId}` };
+              return paymentCreateInvoice(locked.tenantId, bId, locked.customerId);
             },
-            voidInvoice: async (_invoiceId) => {
-              // Stub: no-op until payment module is fully wired
+            voidInvoice: async (invoiceId) => {
+              await paymentVoidInvoice(locked.tenantId, invoiceId);
             },
             sendInngestEvent: async (name, data) => {
               await (inngest.send as unknown as (event: { name: string; data: Record<string, unknown> }) => Promise<void>)(
@@ -433,12 +432,10 @@ export const bookingService = {
             );
           },
           createInvoiceForBooking: async (bId) => {
-            // Stub: return a placeholder invoice ID
-            // Full implementation will be wired to payment.service once that module is complete
-            return { id: `invoice-stub-${bId}` };
+            return paymentCreateInvoice(tenantId, bId, locked.customerId);
           },
-          voidInvoice: async (_invoiceId) => {
-            // Stub: no-op until payment module is fully wired
+          voidInvoice: async (invoiceId) => {
+            await paymentVoidInvoice(tenantId, invoiceId);
           },
           sendInngestEvent: async (name, data) => {
             await (inngest.send as unknown as (event: { name: string; data: Record<string, unknown> }) => Promise<void>)(

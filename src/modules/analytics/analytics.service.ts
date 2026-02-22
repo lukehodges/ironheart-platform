@@ -2,9 +2,54 @@ import { logger } from '@/shared/logger'
 import { redis } from '@/shared/redis'
 import * as analyticsRepository from './analytics.repository'
 import { computeChurnScore, computeChurnLabel } from './lib/customer-intelligence'
-import type { CustomerInsights, RevenueForecast, MetricKey } from './analytics.types'
+import type { CustomerInsights, RevenueForecast, MetricKey, MetricSummary } from './analytics.types'
 
 const log = logger.child({ module: 'analytics.service' })
+
+// ---------------------------------------------------------------------------
+// getSummary — real DB aggregation
+// ---------------------------------------------------------------------------
+
+export type SummaryPeriod = 'TODAY' | 'WEEK' | 'MONTH' | 'QUARTER' | 'YEAR'
+
+function getPeriodStart(period: SummaryPeriod, now: Date): Date {
+  const d = new Date(now)
+  switch (period) {
+    case 'TODAY':   d.setHours(0, 0, 0, 0); break
+    case 'WEEK':    d.setDate(d.getDate() - 7); break
+    case 'MONTH':   d.setMonth(d.getMonth() - 1); break
+    case 'QUARTER': d.setMonth(d.getMonth() - 3); break
+    case 'YEAR':    d.setFullYear(d.getFullYear() - 1); break
+  }
+  return d
+}
+
+export async function getSummary(tenantId: string, period: SummaryPeriod) {
+  const now = new Date()
+  const periodStart = getPeriodStart(period, now)
+
+  const [bookingCounts, revenueGross, outstanding, newCustomers, avgRating] =
+    await Promise.all([
+      analyticsRepository.getBookingCounts(tenantId, periodStart),
+      analyticsRepository.getRevenueTotal(tenantId, periodStart),
+      analyticsRepository.getOutstandingTotal(tenantId),
+      analyticsRepository.getCustomerCount(tenantId, periodStart),
+      analyticsRepository.getAverageRating(tenantId, periodStart),
+    ])
+
+  log.info({ tenantId, period, periodStart }, 'Summary computed')
+
+  return {
+    period,
+    from: periodStart.toISOString(),
+    to:   now.toISOString(),
+    bookings:         bookingCounts,
+    revenue:          { gross: revenueGross, net: revenueGross, outstanding },
+    customers:        { new: newCustomers, returning: 0, ltvAvg: 0 },
+    reviews:          { ratingAvg: avgRating, responseRate: 0 },
+    staffUtilisation: 0,
+  }
+}
 
 export async function computeHourlyMetrics(tenantId: string): Promise<void> {
   const now = new Date()
@@ -43,28 +88,84 @@ export async function getCustomerInsights(
   tenantId: string,
   customerId: string
 ): Promise<CustomerInsights> {
-  // For now return a stub — full implementation requires joining bookings+payments
-  // This provides the correct structure for the router
-  const daysAgo = 30
-  const frequency = 1
-  const avgValue = 100
-  const cohortStats = { minR: 0, maxR: 365, minF: 0, maxF: 12, minM: 0, maxM: 500 }
+  // Fetch real booking stats and cohort data in parallel
+  const [stats, cohortStats] = await Promise.all([
+    analyticsRepository.getCustomerBookingStats(tenantId, customerId),
+    analyticsRepository.getTenantCohortStats(tenantId),
+  ])
 
-  const score = computeChurnScore(daysAgo, frequency, avgValue, cohortStats)
-  const label = computeChurnLabel(score, daysAgo, 30)
+  const now = new Date()
 
-  log.info({ tenantId, customerId }, 'Customer insights computed')
+  // --- Recency: days since last booking ---
+  const lastBookingDaysAgo = stats.lastBookingDate
+    ? Math.floor((now.getTime() - stats.lastBookingDate.getTime()) / (1000 * 60 * 60 * 24))
+    : 365 // no bookings = treat as maximally stale
+
+  // --- Frequency: average interval between bookings (in days) ---
+  let bookingFrequencyDays = 0
+  if (stats.scheduledDates.length >= 2) {
+    const intervals: number[] = []
+    for (let i = 1; i < stats.scheduledDates.length; i++) {
+      const prev = stats.scheduledDates[i - 1]!
+      const curr = stats.scheduledDates[i]!
+      const diffDays = Math.floor((curr.getTime() - prev.getTime()) / (1000 * 60 * 60 * 24))
+      intervals.push(diffDays)
+    }
+    bookingFrequencyDays = Math.round(intervals.reduce((a, b) => a + b, 0) / intervals.length)
+  }
+
+  // Frequency per 90 days (for RFM model)
+  const ninetyDaysAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000)
+  const bookingsInLast90 = stats.scheduledDates.filter((d) => d >= ninetyDaysAgo).length
+
+  // --- Monetary: average booking value ---
+  const avgBookingValue = stats.totalBookings > 0
+    ? Math.round((stats.totalSpent / stats.totalBookings) * 100) / 100
+    : 0
+
+  // --- LTV: total spent to date ---
+  const ltv = stats.totalSpent
+
+  // --- No-show rate ---
+  const noShowRate = stats.totalBookings > 0
+    ? Math.round((stats.noShowBookings / stats.totalBookings) * 10000) / 10000
+    : 0
+
+  // --- RFM churn scoring ---
+  const churnRiskScore = computeChurnScore(
+    lastBookingDaysAgo,
+    bookingsInLast90,
+    avgBookingValue,
+    cohortStats
+  )
+  const churnRiskLabel = computeChurnLabel(
+    churnRiskScore,
+    lastBookingDaysAgo,
+    bookingFrequencyDays || 30 // fallback to 30 days if no interval data
+  )
+
+  // --- Next predicted booking date ---
+  let nextPredictedBookingDate: Date | null = null
+  if (stats.lastBookingDate && bookingFrequencyDays > 0) {
+    const predicted = new Date(stats.lastBookingDate.getTime() + bookingFrequencyDays * 24 * 60 * 60 * 1000)
+    // Only predict future dates
+    if (predicted > now) {
+      nextPredictedBookingDate = predicted
+    }
+  }
+
+  log.info({ tenantId, customerId, totalBookings: stats.totalBookings, churnRiskLabel }, 'Customer insights computed')
 
   return {
     customerId,
-    ltv:                    avgValue * 12,
-    avgBookingValue:        avgValue,
-    bookingFrequencyDays:   30,
-    lastBookingDaysAgo:     daysAgo,
-    noShowRate:             0,
-    churnRiskScore:         score,
-    churnRiskLabel:         label,
-    nextPredictedBookingDate: null,
+    ltv,
+    avgBookingValue,
+    bookingFrequencyDays,
+    lastBookingDaysAgo,
+    noShowRate,
+    churnRiskScore,
+    churnRiskLabel,
+    nextPredictedBookingDate,
   }
 }
 
