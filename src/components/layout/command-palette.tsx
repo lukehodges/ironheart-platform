@@ -27,6 +27,7 @@ import {
   CommandSeparator,
   CommandShortcut,
 } from "@/components/ui/command"
+import { api } from "@/lib/trpc/react"
 
 // Context for opening the command palette from anywhere
 interface CommandPaletteContextType {
@@ -74,12 +75,26 @@ interface CommandPaletteProps {
 export function CommandPalette({ isOpen, onOpenChange }: CommandPaletteProps) {
   const router = useRouter()
 
+  const [searchValue, setSearchValue] = React.useState("")
+
   const navigate = React.useCallback(
     (href: string) => {
       onOpenChange?.(false)
       router.push(href)
     },
     [router, onOpenChange]
+  )
+
+  // Reset search value when dialog closes
+  React.useEffect(() => {
+    if (!isOpen) {
+      setSearchValue("")
+    }
+  }, [isOpen])
+
+  const { data: searchData } = api.search.globalSearch.useQuery(
+    { query: searchValue, limit: 10 },
+    { enabled: searchValue.length >= 2 }
   )
 
   const pages = [
@@ -116,9 +131,15 @@ export function CommandPalette({ isOpen, onOpenChange }: CommandPaletteProps) {
 
   return (
     <CommandDialog open={isOpen} onOpenChange={onOpenChange}>
-      <CommandInput placeholder="Search pages, customers, bookings..." />
+      <CommandInput
+        placeholder="Search pages, customers, bookings..."
+        value={searchValue}
+        onValueChange={setSearchValue}
+      />
       <CommandList>
-        <CommandEmpty>No results found.</CommandEmpty>
+        <CommandEmpty>
+          {searchValue.length < 2 ? "Type to search..." : "No results found."}
+        </CommandEmpty>
 
         <CommandGroup heading="Quick Actions">
           {actions.map((action) => (
@@ -133,6 +154,39 @@ export function CommandPalette({ isOpen, onOpenChange }: CommandPaletteProps) {
             </CommandItem>
           ))}
         </CommandGroup>
+
+        {searchData && searchData.results.length > 0 && (
+          <>
+            <CommandSeparator />
+
+            <CommandGroup heading="Search Results">
+              {searchData.results.map((result) => {
+                const Icon = result.type === "customer" ? Users : Calendar
+                const href =
+                  result.type === "customer"
+                    ? "/admin/customers"
+                    : "/admin/bookings"
+                return (
+                  <CommandItem
+                    key={`${result.type}-${result.id}`}
+                    onSelect={() => navigate(href)}
+                    className="gap-2"
+                  >
+                    <Icon className="h-4 w-4 text-muted-foreground" />
+                    <div className="flex flex-col">
+                      <span>{result.label}</span>
+                      {result.secondary && (
+                        <span className="text-xs text-muted-foreground">
+                          {result.secondary}
+                        </span>
+                      )}
+                    </div>
+                  </CommandItem>
+                )
+              })}
+            </CommandGroup>
+          </>
+        )}
 
         <CommandSeparator />
 
