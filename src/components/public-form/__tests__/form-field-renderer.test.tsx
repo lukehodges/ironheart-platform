@@ -65,8 +65,16 @@ describe("FormFieldRenderer", () => {
       const input = screen.getByRole("textbox");
       await user.type(input, "Hello");
 
+      // Controlled input with static value="" — each keystroke fires onChange
+      // with the new value of the input at that moment. Because the parent
+      // never updates the value prop, the input resets to "" between renders,
+      // so each call receives just the single typed character.
       expect(onChange).toHaveBeenCalledTimes(5); // Once per character
-      expect(onChange).toHaveBeenLastCalledWith("Hello");
+      expect(onChange).toHaveBeenNthCalledWith(1, "H");
+      expect(onChange).toHaveBeenNthCalledWith(2, "e");
+      expect(onChange).toHaveBeenNthCalledWith(3, "l");
+      expect(onChange).toHaveBeenNthCalledWith(4, "l");
+      expect(onChange).toHaveBeenNthCalledWith(5, "o");
     });
 
     it("respects minLength and maxLength", () => {
@@ -180,7 +188,11 @@ describe("FormFieldRenderer", () => {
       const input = screen.getByRole("textbox");
       await user.type(input, "test@example.com");
 
-      expect(onChange).toHaveBeenLastCalledWith("test@example.com");
+      // Controlled input with static value="" — each keystroke fires onChange
+      // with just the single character (parent never updates value prop).
+      expect(onChange).toHaveBeenCalledTimes("test@example.com".length);
+      expect(onChange).toHaveBeenNthCalledWith(1, "t");
+      expect(onChange).toHaveBeenLastCalledWith("m");
     });
   });
 
@@ -285,7 +297,7 @@ describe("FormFieldRenderer", () => {
       const user = userEvent.setup();
       const onChange = vi.fn();
 
-      render(
+      const { rerender } = render(
         <FormFieldRenderer
           field={multiSelectField}
           value={[]}
@@ -298,8 +310,8 @@ describe("FormFieldRenderer", () => {
       await user.click(checkboxes[0]);
       expect(onChange).toHaveBeenCalledWith(["opt1"]);
 
-      // Simulate parent updating value
-      const { rerender } = render(
+      // Simulate parent updating value via rerender
+      rerender(
         <FormFieldRenderer
           field={multiSelectField}
           value={["opt1"]}
@@ -569,10 +581,18 @@ describe("FormFieldRenderer", () => {
       );
 
       const input = screen.getByRole("textbox");
-      const errorId = input.getAttribute("aria-describedby");
+      const describedBy = input.getAttribute("aria-describedby") ?? "";
 
-      expect(errorId).toContain("error");
-      expect(screen.getByText("Invalid value")).toHaveAttribute("id", errorId);
+      // aria-describedby may contain multiple space-separated IDs (help + error)
+      // when both helpText and error are present.
+      expect(describedBy).toContain("error");
+
+      const errorElement = screen.getByText("Invalid value");
+      const errorElementId = errorElement.getAttribute("id")!;
+
+      // The error element's own id must appear within the aria-describedby list
+      expect(describedBy).toContain(errorElementId);
+      expect(errorElementId).toContain("error");
     });
 
     it("associates help text with input via aria-describedby", () => {

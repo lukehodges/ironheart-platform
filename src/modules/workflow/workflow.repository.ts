@@ -52,7 +52,6 @@ function mapWorkflowRow(row: WorkflowDbRow): WorkflowRecord {
     tenantId: row.tenantId,
     name: row.name,
     description: row.description ?? null,
-    triggerEvent: row.triggerEvent,
     // DB uses "enabled"; WorkflowRecord interface uses "isActive"
     isActive: row.enabled,
     isVisual: row.isVisual,
@@ -118,15 +117,22 @@ export const workflowRepository = {
 
   async findByTrigger(tenantId: string, triggerEvent: string): Promise<WorkflowRecord[]> {
     log.debug({ tenantId, triggerEvent }, 'findByTrigger called')
-    // Returns all ACTIVE workflows matching the trigger event (enabled = true)
+    // Returns all ACTIVE workflows that have a TRIGGER node matching this event
+    // Search in nodes JSONB array for TRIGGER nodes with matching eventType
+    const { sql: rawSql } = await import('drizzle-orm')
     const rows = await db
       .select()
       .from(workflows)
       .where(
         and(
           eq(workflows.tenantId, tenantId),
-          eq(workflows.triggerEvent, triggerEvent),
           eq(workflows.enabled, true),
+          rawSql`EXISTS (
+            SELECT 1
+            FROM jsonb_array_elements(${workflows.nodes}) AS node
+            WHERE node->>'type' = 'TRIGGER'
+            AND node->'config'->>'eventType' = ${triggerEvent}
+          )`
         )
       )
     return rows.map(mapWorkflowRow)
@@ -138,10 +144,19 @@ export const workflowRepository = {
   ): Promise<{ rows: WorkflowRecord[]; hasMore: boolean }> {
     log.debug({ tenantId, opts }, 'listByTenant called')
 
-    const conditions: ReturnType<typeof eq>[] = [eq(workflows.tenantId, tenantId)]
+    const conditions: any[] = [eq(workflows.tenantId, tenantId)]
 
     if (opts.triggerEvent) {
-      conditions.push(eq(workflows.triggerEvent, opts.triggerEvent))
+      // Search for TRIGGER nodes in JSONB with matching eventType
+      const { sql: rawSql } = await import('drizzle-orm')
+      conditions.push(
+        rawSql`EXISTS (
+          SELECT 1
+          FROM jsonb_array_elements(${workflows.nodes}) AS node
+          WHERE node->>'type' = 'TRIGGER'
+          AND node->'config'->>'eventType' = ${opts.triggerEvent}
+        )`
+      )
     }
     if (opts.isActive !== undefined) {
       conditions.push(eq(workflows.enabled, opts.isActive))
@@ -155,7 +170,7 @@ export const workflowRepository = {
     const dbRows = await db
       .select()
       .from(workflows)
-      .where(and(...(conditions as Parameters<typeof and>)))
+      .where(and(...conditions))
       .orderBy(desc(workflows.createdAt))
       .limit(opts.limit + 1)
 
@@ -173,7 +188,6 @@ export const workflowRepository = {
         tenantId,
         name: input.name,
         description: input.description ?? null,
-        triggerEvent: input.triggerEvent,
         // WorkflowRecord.isActive → DB column "enabled"
         enabled: input.isActive ?? true,
         isVisual: input.isVisual ?? false,
@@ -203,7 +217,6 @@ export const workflowRepository = {
 
     if (input.name !== undefined) updateData.name = input.name
     if (input.description !== undefined) updateData.description = input.description
-    if (input.triggerEvent !== undefined) updateData.triggerEvent = input.triggerEvent
     if (input.isActive !== undefined) updateData.enabled = input.isActive
     if (input.isVisual !== undefined) updateData.isVisual = input.isVisual
     if (input.conditions !== undefined) updateData.conditions = input.conditions

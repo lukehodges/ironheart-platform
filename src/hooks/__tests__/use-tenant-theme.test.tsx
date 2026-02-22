@@ -6,7 +6,9 @@ import { useTenantTheme } from "../use-tenant-theme";
 // Mocks
 // ---------------------------------------------------------------------------
 
-const mockUseQuery = vi.fn();
+const { mockUseQuery } = vi.hoisted(() => ({
+  mockUseQuery: vi.fn(),
+}));
 
 vi.mock("@/lib/trpc/react", () => ({
   api: {

@@ -20,12 +20,8 @@ import { calculateTravelTime } from "./lib/travel-time";
  * Thin layer: validate → call service → return result.
  * No business logic here.
  *
- * NOTE: In Phase 0/1, tenantProcedure throws UNAUTHORIZED because the WorkOS
- * session is null. These procedures become functional in Phase 3.
- *
- * NOTE: ctx.user is null in Phase 0/1 (loaded in Phase 3 by tenantProcedure).
- * createdById is sourced from ctx.session.user.id, which is narrowed to
- * non-null by protectedProcedure (tenantProcedure extends protectedProcedure).
+ * All mutating procedures use ctx.user.id (internal DB user ID) for audit
+ * purposes. ctx.user is guaranteed non-null by tenantProcedure middleware.
  */
 export const schedulingRouter = router({
   // ---------------------------------------------------------------------------
@@ -35,7 +31,7 @@ export const schedulingRouter = router({
   createSlot: moduleProcedure
     .input(slotCreateSchema)
     .mutation(({ ctx, input }) =>
-      schedulingService.createSlot(ctx.tenantId, input, ctx.session.user.id)
+      schedulingService.createSlot(ctx.tenantId, input, ctx.user.id)
     ),
 
   bulkCreateSlots: moduleProcedure
@@ -44,7 +40,7 @@ export const schedulingRouter = router({
       schedulingService.bulkCreateSlots(
         ctx.tenantId,
         input.slots,
-        ctx.session.user.id
+        ctx.user.id
       )
     ),
 
@@ -54,7 +50,7 @@ export const schedulingRouter = router({
       schedulingService.generateRecurringSlots(
         ctx.tenantId,
         input,
-        ctx.session.user.id
+        ctx.user.id
       )
     ),
 

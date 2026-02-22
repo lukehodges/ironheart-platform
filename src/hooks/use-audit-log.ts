@@ -36,7 +36,7 @@ export function useAuditLog() {
   // For now, stub the data to make build pass
   const data: { entries: any[]; hasMore: boolean; nextCursor?: string } | undefined = undefined
   const isLoading = false
-  const error = null
+  const error: Error | null = null
   const exportCsv = {
     mutate: (_input: any) => {},
     mutateAsync: (_input: any) => Promise.resolve(),
@@ -44,10 +44,10 @@ export function useAuditLog() {
   }
 
   return {
-    entries: [],
+    entries: [] as any[],
     hasMore: false,
     isLoading,
-    error,
+    error: error as Error | null,
     filters,
     setFilters,
     loadMore: () => setCursor(undefined),

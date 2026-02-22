@@ -146,8 +146,7 @@ export default function AuditLogPage() {
           )}
 
           {/* Error State */}
-          {/* TODO: Re-enable when audit router is implemented */}
-          {/* {error && (
+          {error && (
             <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-6">
               <div className="flex items-start gap-4">
                 <AlertCircle className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
@@ -171,7 +170,7 @@ export default function AuditLogPage() {
                 </div>
               </div>
             </div>
-          )} */}
+          )}
 
           {/* Loading Skeleton */}
           {isLoading && entries.length === 0 && (

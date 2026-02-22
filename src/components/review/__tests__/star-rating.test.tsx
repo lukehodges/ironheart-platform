@@ -346,21 +346,21 @@ describe("StarRating", () => {
     it("renders small size", () => {
       render(<StarRating value={3} size="sm" />);
 
-      const stars = screen.getAllByRole("radio");
+      const stars = screen.getAllByRole("button");
       expect(stars[0].querySelector("svg")).toHaveClass("h-4 w-4");
     });
 
     it("renders medium size (default)", () => {
       render(<StarRating value={3} size="md" />);
 
-      const stars = screen.getAllByRole("radio");
+      const stars = screen.getAllByRole("button");
       expect(stars[0].querySelector("svg")).toHaveClass("h-6 w-6");
     });
 
     it("renders large size", () => {
       render(<StarRating value={3} size="lg" />);
 
-      const stars = screen.getAllByRole("radio");
+      const stars = screen.getAllByRole("button");
       expect(stars[0].querySelector("svg")).toHaveClass("h-8 w-8");
     });
   });

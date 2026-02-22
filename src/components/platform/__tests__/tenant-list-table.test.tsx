@@ -7,7 +7,7 @@ vi.mock('@/hooks/use-platform-tenants', () => ({
   usePlatformTenants: vi.fn(() => ({
     list: {
       data: {
-        tenants: [
+        rows: [
           {
             id: 'tenant-1',
             name: 'Test Tenant',

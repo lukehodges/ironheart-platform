@@ -9,6 +9,32 @@ import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from "@
 // Mocks
 // ---------------------------------------------------------------------------
 
+// Mock db to prevent DATABASE_URL error from slot-lock and optimistic-concurrency imports
+vi.mock("@/shared/db", () => ({
+  db: {
+    transaction: vi.fn((fn: (tx: unknown) => Promise<void>) =>
+      fn({
+        execute: vi.fn().mockResolvedValue([]),
+        update: vi.fn().mockReturnThis(),
+        set: vi.fn().mockReturnThis(),
+        where: vi.fn().mockResolvedValue([]),
+      })
+    ),
+  },
+}));
+
+// Mock slot-lock to avoid transitive db import
+vi.mock("@/modules/booking/lib/slot-lock", () => ({
+  withSlotLock: vi.fn((_tenantId: string, _staffId: string, _date: string, _time: string, operation: (tx: unknown) => Promise<unknown>) =>
+    operation({})
+  ),
+}));
+
+// Mock optimistic-concurrency to avoid transitive db import
+vi.mock("@/shared/optimistic-concurrency", () => ({
+  updateWithVersion: vi.fn().mockResolvedValue(undefined),
+}));
+
 vi.mock("../booking.repository", () => ({
   bookingRepository: {
     findSlotById: vi.fn(),
@@ -233,13 +259,13 @@ describe("bookingService.confirmReservation", () => {
       .rejects.toThrow(NotFoundError);
   });
 
-  it("throws ConflictError when booking is not RESERVED", async () => {
+  it("throws ValidationError when booking is not RESERVED", async () => {
     vi.mocked(bookingRepository.findByIdPublic).mockResolvedValue(
       makeBooking({ status: "CONFIRMED" }) as never
     );
 
     await expect(bookingService.confirmReservation(BOOKING_ID, CUSTOMER_EMAIL, "a".repeat(64)))
-      .rejects.toThrow(ConflictError);
+      .rejects.toThrow(ValidationError);
   });
 
   it("throws ValidationError when reservation has expired", async () => {
@@ -290,13 +316,18 @@ describe("bookingService.confirmReservation", () => {
     const correctToken = "c".repeat(64);
     const correctHash = createHash("sha256").update(correctToken).digest("hex");
 
-    vi.mocked(bookingRepository.findByIdPublic).mockResolvedValue(
-      makeBooking({ confirmationTokenHash: correctHash }) as never
-    );
+    const reservedBooking = makeBooking({ confirmationTokenHash: correctHash });
+    const confirmedBooking = makeBooking({ status: "CONFIRMED", confirmationTokenHash: correctHash });
+
+    // findByIdPublic is called 3 times in the CONFIRMED path:
+    // 1. Initial read (line 159) — returns RESERVED
+    // 2. Re-read inside slot lock (line 202) — returns RESERVED
+    // 3. Final return after saga completes (line 268) — returns CONFIRMED
+    vi.mocked(bookingRepository.findByIdPublic)
+      .mockResolvedValueOnce(reservedBooking as never)
+      .mockResolvedValueOnce(reservedBooking as never)
+      .mockResolvedValueOnce(confirmedBooking as never);
     vi.mocked(bookingRepository.findCustomerEmailForBooking).mockResolvedValue(CUSTOMER_EMAIL);
-    vi.mocked(bookingRepository.updateStatus).mockResolvedValue(
-      makeBooking({ status: "CONFIRMED" }) as never
-    );
     vi.mocked(bookingRepository.recordStatusChange).mockResolvedValue(undefined);
 
     const result = await bookingService.confirmReservation(BOOKING_ID, CUSTOMER_EMAIL, correctToken);
@@ -312,13 +343,18 @@ describe("bookingService.confirmReservation", () => {
     const correctToken = "d".repeat(64);
     const correctHash = createHash("sha256").update(correctToken).digest("hex");
 
-    vi.mocked(bookingRepository.findByIdPublic).mockResolvedValue(
-      makeBooking({ confirmationTokenHash: correctHash }) as never
-    );
+    const reservedBooking = makeBooking({ confirmationTokenHash: correctHash });
+    const confirmedBooking = makeBooking({ status: "CONFIRMED", confirmationTokenHash: correctHash });
+
+    // findByIdPublic is called 3 times in the CONFIRMED path:
+    // 1. Initial read — returns RESERVED
+    // 2. Re-read inside slot lock — returns RESERVED
+    // 3. Final return after saga completes — returns CONFIRMED
+    vi.mocked(bookingRepository.findByIdPublic)
+      .mockResolvedValueOnce(reservedBooking as never)
+      .mockResolvedValueOnce(reservedBooking as never)
+      .mockResolvedValueOnce(confirmedBooking as never);
     vi.mocked(bookingRepository.findCustomerEmailForBooking).mockResolvedValue("Customer@Example.COM");
-    vi.mocked(bookingRepository.updateStatus).mockResolvedValue(
-      makeBooking({ status: "CONFIRMED" }) as never
-    );
     vi.mocked(bookingRepository.recordStatusChange).mockResolvedValue(undefined);
 
     // Should succeed — emails match case-insensitively

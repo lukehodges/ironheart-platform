@@ -37,6 +37,44 @@ const log = logger.child({ module: 'workflow.graph-engine' })
 type InngestStep = any
 
 /**
+ * Find the TRIGGER node that matches the incoming event.
+ *
+ * Supports:
+ * - Event type matching (node.config.eventType === triggerEvent)
+ * - Optional condition filtering (node.config.conditions)
+ *
+ * Returns the first matching TRIGGER node, or null if none match.
+ */
+export function findMatchingTrigger(
+  nodes: WorkflowNode[],
+  triggerEvent: string,
+  triggerData: Record<string, unknown>,
+): WorkflowNode | null {
+  const triggerNodes = nodes.filter(n => n.type === 'TRIGGER')
+
+  for (const trigger of triggerNodes) {
+    // Type-safe access to TriggerNodeConfig properties
+    const config = trigger.config as any
+    const eventType = config?.eventType as string | undefined
+
+    // Match event type
+    if (eventType !== triggerEvent) continue
+
+    // Optional: Match conditions
+    const conditions = config?.conditions
+    if (conditions) {
+      const conditionsMet = evaluateConditionGroup(conditions, triggerData)
+      if (!conditionsMet) continue
+    }
+
+    // Found matching trigger
+    return trigger
+  }
+
+  return null
+}
+
+/**
  * GraphEngine — executes a workflow defined as nodes + edges (DAG with LOOP back-edges).
  *
  * The engine traverses the graph starting from the TRIGGER node, evaluating each

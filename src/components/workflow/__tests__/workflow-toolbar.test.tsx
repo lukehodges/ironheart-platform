@@ -6,13 +6,11 @@ import { WorkflowToolbar } from '../workflow-toolbar';
 describe('WorkflowToolbar', () => {
   const mockProps = {
     workflowName: 'Test Workflow',
-    triggerEvent: 'booking/created',
     isActive: false,
     errorCount: 0,
     warningCount: 0,
     isSaving: false,
     onNameChange: vi.fn(),
-    onTriggerChange: vi.fn(),
     onSave: vi.fn(),
     onToggleActive: vi.fn(),
     onZoomIn: vi.fn(),
@@ -25,7 +23,6 @@ describe('WorkflowToolbar', () => {
 
     expect(screen.getByDisplayValue('Test Workflow')).toBeInTheDocument();
     expect(screen.getByText('Workflow Name')).toBeInTheDocument();
-    expect(screen.getByText('Trigger Event')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /save workflow/i })).toBeInTheDocument();
   });
 
@@ -113,14 +110,11 @@ describe('WorkflowToolbar', () => {
     expect(onToggleActive).toHaveBeenCalled();
   });
 
-  it('calls onTriggerChange when trigger event is changed', async () => {
-    const user = userEvent.setup();
-    const onTriggerChange = vi.fn();
-    render(<WorkflowToolbar {...mockProps} onTriggerChange={onTriggerChange} />);
+  it('displays info about TRIGGER nodes', () => {
+    render(<WorkflowToolbar {...mockProps} />);
 
-    // Note: actual interaction with Select component depends on shadcn implementation
-    // This is a basic structure test
-    expect(screen.getByText('Trigger Event')).toBeInTheDocument();
+    // Check that the hint about trigger nodes is displayed
+    expect(screen.getByText(/Add TRIGGER nodes from the palette/i)).toBeInTheDocument();
   });
 
   it('renders zoom controls', () => {

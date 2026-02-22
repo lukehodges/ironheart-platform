@@ -24,6 +24,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { TriggerConfig } from "./config/trigger-config"
 import { EmailConfig } from "./config/email-config"
 import { IfConfig } from "./config/if-config"
 import { WebhookConfig } from "./config/webhook-config"
@@ -85,9 +86,10 @@ export function NodeConfigPanel({
       // Trigger node
       case "TRIGGER":
         return (
-          <div className="p-4 rounded-lg bg-muted/50 text-sm text-muted-foreground">
-            Trigger configuration coming soon
-          </div>
+          <TriggerConfig
+            config={localConfig as any}
+            onChange={(cfg) => handleConfigChange(cfg as unknown as Record<string, unknown>)}
+          />
         )
 
       // Action nodes - Email

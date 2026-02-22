@@ -9,7 +9,165 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Progress } from "@/components/ui/progress"
 import { Skeleton } from "@/components/ui/skeleton"
 import { toast } from "sonner"
-import type { FormFieldValue } from "@/types/public-form"
+import { FormFieldRenderer } from "@/components/public-form"
+import type { PublicFormField, FormFieldValue } from "@/types/public-form"
+
+// ---------------------------------------------------------------------------
+// Field Mapper: DB FormField → PublicFormField for the renderer component
+// ---------------------------------------------------------------------------
+
+interface DbFormField {
+  id: string
+  type: string
+  label: string
+  required: boolean
+  placeholder?: string
+  options?: string[]
+  validation?: {
+    minLength?: number
+    maxLength?: number
+    pattern?: string
+    min?: string
+    max?: string
+  }
+}
+
+/** Map a DB field type (uppercase) to the public component's field type (lowercase) */
+const FIELD_TYPE_MAP: Record<string, PublicFormField["type"]> = {
+  TEXT: "text",
+  TEXTAREA: "textarea",
+  EMAIL: "email",
+  PHONE: "phone",
+  SELECT: "dropdown",
+  MULTISELECT: "dropdown",
+  BOOLEAN: "checkbox",
+  DATE: "date",
+}
+
+/**
+ * Convert a server-side FormField (from the DB / tRPC response) into the
+ * PublicFormField discriminated union that FormFieldRenderer expects.
+ */
+function mapDbFieldToPublic(field: DbFormField): PublicFormField {
+  const base = {
+    id: field.id,
+    label: field.label,
+    placeholder: field.placeholder ?? null,
+    helpText: null as string | null,
+    isRequired: field.required,
+    validationRules: null as Record<string, unknown> | null,
+  }
+
+  const mappedType = FIELD_TYPE_MAP[field.type] ?? "text"
+
+  switch (mappedType) {
+    case "text":
+      return {
+        ...base,
+        type: "text" as const,
+        minLength: field.validation?.minLength ?? null,
+        maxLength: field.validation?.maxLength ?? null,
+      }
+    case "textarea":
+      return {
+        ...base,
+        type: "textarea" as const,
+        minLength: field.validation?.minLength ?? null,
+        maxLength: field.validation?.maxLength ?? null,
+        rows: null,
+      }
+    case "email":
+      return { ...base, type: "email" as const }
+    case "phone":
+      return { ...base, type: "phone" as const, format: null }
+    case "dropdown":
+      return {
+        ...base,
+        type: "dropdown" as const,
+        options: (field.options ?? []).map((o) => ({ value: o, label: o })),
+        allowMultiple: field.type === "MULTISELECT",
+      }
+    case "checkbox":
+      return { ...base, type: "checkbox" as const, defaultChecked: false }
+    case "date":
+      return {
+        ...base,
+        type: "date" as const,
+        minDate: field.validation?.min ?? null,
+        maxDate: field.validation?.max ?? null,
+      }
+    default:
+      return {
+        ...base,
+        type: "text" as const,
+        minLength: null,
+        maxLength: null,
+      }
+  }
+}
+
+// Validation constants
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const PHONE_REGEX = /^[+]?[\d\s\-().]{7,20}$/
+
+/** Validate a single form field value based on its type constraints */
+function validateField(field: PublicFormField, value: FormFieldValue): string | undefined {
+  const isEmpty = value === null || value === undefined || value === "" || (Array.isArray(value) && value.length === 0)
+
+  if (field.isRequired && isEmpty) {
+    return `${field.label} is required`
+  }
+
+  // Skip further validation if the field is empty and not required
+  if (isEmpty) return undefined
+
+  switch (field.type) {
+    case "email": {
+      if (typeof value === "string" && !EMAIL_REGEX.test(value)) {
+        return "Please enter a valid email address"
+      }
+      break
+    }
+    case "phone": {
+      if (typeof value === "string" && !PHONE_REGEX.test(value)) {
+        return "Please enter a valid phone number"
+      }
+      break
+    }
+    case "text": {
+      if (typeof value === "string") {
+        if (field.minLength != null && value.length < field.minLength) {
+          return `Must be at least ${field.minLength} characters`
+        }
+        if (field.maxLength != null && value.length > field.maxLength) {
+          return `Must be no more than ${field.maxLength} characters`
+        }
+      }
+      break
+    }
+    case "textarea": {
+      if (typeof value === "string") {
+        if (field.minLength != null && value.length < field.minLength) {
+          return `Must be at least ${field.minLength} characters`
+        }
+        if (field.maxLength != null && value.length > field.maxLength) {
+          return `Must be no more than ${field.maxLength} characters`
+        }
+      }
+      break
+    }
+    case "dropdown": {
+      if (field.allowMultiple && Array.isArray(value) && value.length === 0 && field.isRequired) {
+        return "Please select at least one option"
+      }
+      break
+    }
+    default:
+      break
+  }
+
+  return undefined
+}
 
 /**
  * Public form submission page
@@ -121,8 +279,10 @@ export default function FormSubmissionPage() {
     )
   }
 
-  // Parse fields from formData
-  const fields = (formData.template.fields as unknown[]) || []
+  // Parse fields from formData — map DB types to the public component model
+  const fields = (
+    (formData.template.fields as DbFormField[]) ?? []
+  ).map(mapDbFieldToPublic)
   const FIELDS_PER_STEP = 5
   const totalSteps = Math.max(1, Math.ceil(fields.length / FIELDS_PER_STEP))
   const isMultiStep = fields.length > FIELDS_PER_STEP
@@ -137,10 +297,11 @@ export default function FormSubmissionPage() {
   const validateCurrentStep = (): boolean => {
     const newErrors: Record<string, string> = {}
 
-    currentFields.forEach((field: any) => {
+    currentFields.forEach((field: PublicFormField) => {
       const value = fieldValues[field.id]
-      if (field.required && !value) {
-        newErrors[field.id] = `${field.label} is required`
+      const error = validateField(field, value ?? null)
+      if (error) {
+        newErrors[field.id] = error
       }
     })
 
@@ -228,21 +389,27 @@ export default function FormSubmissionPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* Placeholder for dynamic field renderer (Wave 4) */}
+            {/* Dynamic field rendering */}
             <div className="space-y-4">
-              {currentFields.map((field: any) => (
-                <div key={field.id} className="space-y-2">
-                  <label className="text-sm font-medium">
-                    {field.label}
-                    {field.required && <span className="text-destructive ml-1">*</span>}
-                  </label>
-                  <div className="p-4 border border-dashed border-border rounded-md text-center text-sm text-muted-foreground">
-                    {field.type} field renderer (Wave 4)
-                  </div>
-                  {errors[field.id] && (
-                    <p className="text-sm text-destructive">{errors[field.id]}</p>
-                  )}
-                </div>
+              {currentFields.map((field: PublicFormField) => (
+                <FormFieldRenderer
+                  key={field.id}
+                  field={field}
+                  value={fieldValues[field.id] ?? null}
+                  onChange={(value: FormFieldValue) => {
+                    setFieldValues((prev) => ({ ...prev, [field.id]: value }))
+                    // Clear error on change
+                    if (errors[field.id]) {
+                      setErrors((prev) => {
+                        const next = { ...prev }
+                        delete next[field.id]
+                        return next
+                      })
+                    }
+                  }}
+                  error={errors[field.id]}
+                  disabled={submitMutation.isPending}
+                />
               ))}
             </div>
 

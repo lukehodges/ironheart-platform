@@ -19,8 +19,6 @@ import { cn } from '@/lib/utils';
 export interface WorkflowToolbarProps {
   /** Workflow name */
   workflowName: string;
-  /** Selected trigger event */
-  triggerEvent: string;
   /** Whether workflow is active */
   isActive: boolean;
   /** Number of validation errors */
@@ -31,8 +29,6 @@ export interface WorkflowToolbarProps {
   isSaving?: boolean;
   /** Callback when name changes */
   onNameChange: (name: string) => void;
-  /** Callback when trigger event changes */
-  onTriggerChange: (event: string) => void;
   /** Callback when save is clicked */
   onSave: () => void;
   /** Callback when active toggle changes */
@@ -45,16 +41,7 @@ export interface WorkflowToolbarProps {
   onFitView?: () => void;
 }
 
-const TRIGGER_EVENTS = [
-  { value: 'booking/created', label: 'Booking Created' },
-  { value: 'booking/completed', label: 'Booking Completed' },
-  { value: 'booking/cancelled', label: 'Booking Cancelled' },
-  { value: 'booking/rescheduled', label: 'Booking Rescheduled' },
-  { value: 'customer/created', label: 'Customer Created' },
-  { value: 'review/submitted', label: 'Review Submitted' },
-  { value: 'payment/received', label: 'Payment Received' },
-  { value: 'payment/failed', label: 'Payment Failed' },
-];
+// Trigger events are now configured in TRIGGER nodes, not in the toolbar
 
 export const WorkflowToolbar = React.forwardRef<
   HTMLDivElement,
@@ -63,13 +50,11 @@ export const WorkflowToolbar = React.forwardRef<
   (
     {
       workflowName,
-      triggerEvent,
       isActive,
       errorCount = 0,
       warningCount = 0,
       isSaving = false,
       onNameChange,
-      onTriggerChange,
       onSave,
       onToggleActive,
       onZoomIn,
@@ -89,10 +74,10 @@ export const WorkflowToolbar = React.forwardRef<
           'h-auto min-h-[72px] flex-wrap md:flex-nowrap'
         )}
       >
-        {/* Left section: Name & Trigger */}
+        {/* Left section: Name */}
         <div className="flex flex-col gap-3 flex-1 min-w-0 md:flex-row md:items-end md:gap-4">
           {/* Workflow Name */}
-          <div className="flex flex-col gap-1.5 flex-1 min-w-[200px]">
+          <div className="flex flex-col gap-1.5 flex-1 min-w-[200px] max-w-md">
             <Label htmlFor="workflow-name" className="text-xs font-medium">
               Workflow Name
             </Label>
@@ -105,23 +90,9 @@ export const WorkflowToolbar = React.forwardRef<
             />
           </div>
 
-          {/* Trigger Event Selector */}
-          <div className="flex flex-col gap-1.5 flex-1 min-w-[180px]">
-            <Label htmlFor="trigger-event" className="text-xs font-medium">
-              Trigger Event
-            </Label>
-            <Select value={triggerEvent} onValueChange={onTriggerChange}>
-              <SelectTrigger id="trigger-event" className="h-9">
-                <SelectValue placeholder="Select trigger event..." />
-              </SelectTrigger>
-              <SelectContent>
-                {TRIGGER_EVENTS.map((event) => (
-                  <SelectItem key={event.value} value={event.value}>
-                    {event.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          {/* Info hint about triggers */}
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <span>Add TRIGGER nodes from the palette to define when this workflow runs</span>
           </div>
         </div>
 

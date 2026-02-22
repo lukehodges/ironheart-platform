@@ -70,6 +70,15 @@ export interface WorkflowConditionGroup {
 // Node Config interfaces
 // ---------------------------------------------------------------------------
 
+export interface TriggerNodeConfig {
+  /** Event name that triggers this workflow (e.g. "booking/created") */
+  eventType: string
+  /** Optional conditions to filter which events trigger this node */
+  conditions?: WorkflowConditionGroup
+  /** Debounce period in milliseconds to prevent duplicate triggers */
+  debounceMs?: number
+}
+
 export interface IfNodeConfig {
   conditions: WorkflowConditionGroup
 }
@@ -237,6 +246,7 @@ export interface SendNotificationActionConfig {
 
 /** Union of all node config shapes */
 export type NodeConfig =
+  | TriggerNodeConfig
   | IfNodeConfig
   | SwitchNodeConfig
   | MergeNodeConfig
@@ -366,7 +376,6 @@ export interface WorkflowRecord {
   tenantId: string
   name: string
   description: string | null
-  triggerEvent: string
   isActive: boolean
   isVisual: boolean
   /** Graph mode: array of WorkflowNode (stored as JSONB) */
@@ -413,7 +422,6 @@ export interface WorkflowExecutionRecord {
 export interface CreateWorkflowInput {
   name: string
   description?: string | null
-  triggerEvent: string
   isActive?: boolean
   isVisual?: boolean
   conditions?: WorkflowConditionGroup | null
@@ -426,7 +434,6 @@ export interface UpdateWorkflowInput {
   id: string
   name?: string
   description?: string | null
-  triggerEvent?: string
   isActive?: boolean
   isVisual?: boolean
   conditions?: WorkflowConditionGroup | null

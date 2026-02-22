@@ -12,6 +12,7 @@ import type { WorkOSSession } from "@/modules/auth/auth.config";
 import type { UserWithRoles } from "@/modules/auth/rbac";
 import { extractTenantSlugFromRequest } from "@/modules/auth/tenant";
 import { hasPermission } from "@/modules/auth/rbac";
+import { IronheartError, toTRPCError } from "@/shared/errors";
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -234,6 +235,28 @@ const loggingMiddleware = t.middleware(async ({ ctx, next, path }) => {
 });
 
 // ---------------------------------------------------------------------------
+// Error conversion middleware
+// ---------------------------------------------------------------------------
+
+/**
+ * Converts domain errors (IronheartError subclasses) thrown in repository and
+ * service layers into proper TRPCErrors with the correct HTTP status code.
+ *
+ * Without this middleware, domain errors bubble up as INTERNAL_SERVER_ERROR.
+ * Placed early in the chain (after logging) so all procedure types benefit.
+ */
+const errorConversionMiddleware = t.middleware(async ({ next }) => {
+  try {
+    return await next();
+  } catch (error) {
+    if (error instanceof IronheartError) {
+      throw toTRPCError(error);
+    }
+    throw error;
+  }
+});
+
+// ---------------------------------------------------------------------------
 // Rate limiting middleware
 // ---------------------------------------------------------------------------
 
@@ -274,6 +297,7 @@ export const createCallerFactory = t.createCallerFactory;
 
 export const publicProcedure = t.procedure
   .use(loggingMiddleware)
+  .use(errorConversionMiddleware)
   .use(rateLimitMiddleware);
 
 // ---------------------------------------------------------------------------
@@ -286,8 +310,9 @@ export const publicProcedure = t.procedure
  */
 export const protectedProcedure = t.procedure
   .use(loggingMiddleware)
+  .use(errorConversionMiddleware)
   .use(async ({ ctx, next }) => {
-    if (!ctx.session?.user) {
+    if (!ctx.session || !ctx.session.user) {
       throw new TRPCError({
         code: "UNAUTHORIZED",
         message: "You must be signed in to access this resource",
@@ -360,18 +385,6 @@ export const tenantProcedure = protectedProcedure.use(
       if (err instanceof TRPCError) throw err;
       logger.warn({ err, impersonationKey }, "Failed to check impersonation session");
     }
-
-    logger.debug(
-      {
-        workosUserId,
-        userEmail,
-        tenantId: ctx.tenantId,
-        tenantSlug: ctx.tenantSlug,
-        path,
-        requestId: ctx.requestId
-      },
-      "tenantProcedure: Looking up user"
-    );
 
     // Check Redis cache for fast user ID lookup
     const cacheKey = `workos:user:${workosUserId}`;
@@ -447,27 +460,8 @@ export const tenantProcedure = protectedProcedure.use(
       }
     }
 
-    logger.debug(
-      {
-        foundByWorkosId: !!rawUser,
-        userId: rawUser?.id,
-        userTenantId: rawUser?.tenantId,
-        requestId: ctx.requestId
-      },
-      "tenantProcedure: First lookup (by workosUserId) result"
-    );
-
     // Email fallback: find by email + tenantId if workosUserId not matched.
     if (!rawUser && ctx.tenantId !== "default") {
-      logger.debug(
-        {
-          userEmail,
-          tenantId: ctx.tenantId,
-          requestId: ctx.requestId
-        },
-        "tenantProcedure: Trying email fallback lookup"
-      );
-
       rawUser = (await ctx.db.query.users.findFirst({
         where: and(
           eq(users.email, userEmail),
@@ -489,16 +483,6 @@ export const tenantProcedure = protectedProcedure.use(
           },
         },
       })) as DrizzleUserWithRoles | undefined;
-
-      logger.debug(
-        {
-          foundByEmail: !!rawUser,
-          userId: rawUser?.id,
-          userTenantId: rawUser?.tenantId,
-          requestId: ctx.requestId
-        },
-        "tenantProcedure: Email fallback lookup result"
-      );
 
       // Backfill workosUserId, cache user ID, and set externalId in WorkOS if found by email.
       if (rawUser) {
@@ -670,7 +654,7 @@ export function permissionProcedure(requiredPermission: string) {
       });
     }
 
-    return next({ ctx });
+    return next();
   });
 }
 
@@ -739,7 +723,7 @@ export const platformAdminProcedure = protectedProcedure.use(
 
     // 3. Primary check: database flag.
     if (rawUser.isPlatformAdmin) {
-      return next({ ctx });
+      return next();
     }
 
     // 4. Bootstrap escape hatch: promote user on first admin access via env var.
@@ -761,7 +745,7 @@ export const platformAdminProcedure = protectedProcedure.use(
         "Bootstrapped isPlatformAdmin=true via PLATFORM_ADMIN_EMAILS env var"
       );
 
-      return next({ ctx });
+      return next();
     }
 
     throw new TRPCError({
@@ -802,6 +786,6 @@ export function createModuleMiddleware(moduleSlug: string) {
         message: `Module '${moduleSlug}' is not enabled for this tenant`,
       });
     }
-    return next({ ctx });
+    return next();
   });
 }

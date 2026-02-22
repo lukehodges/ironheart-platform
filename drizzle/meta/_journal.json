@@ -36,6 +36,13 @@
       "when": 1771606090829,
       "tag": "0004_flawless_paibok",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1771671330940,
+      "tag": "0005_remove_workflow_trigger_event",
+      "breakpoints": true
     }
   ]
 }

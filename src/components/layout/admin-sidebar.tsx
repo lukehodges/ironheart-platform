@@ -43,7 +43,16 @@ export function AdminSidebar({
   isPlatformAdmin = false,
   className,
 }: AdminSidebarProps) {
-  const [collapsed, setCollapsed] = useLocalStorage("sidebar-collapsed", false)
+  const [storedCollapsed, setCollapsed] = useLocalStorage("sidebar-collapsed", false)
+  const [hasMounted, setHasMounted] = React.useState(false)
+
+  React.useEffect(() => {
+    setHasMounted(true)
+  }, [])
+
+  // Always render expanded on server to avoid hydration mismatch,
+  // then switch to stored value after mount
+  const collapsed = hasMounted ? storedCollapsed : false
 
   return (
     <TooltipProvider>

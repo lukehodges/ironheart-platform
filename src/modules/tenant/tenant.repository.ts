@@ -489,10 +489,11 @@ export const tenantRepository = {
   },
 
   async deleteVenue(tenantId: string, venueId: string): Promise<void> {
-    log.info({ tenantId, venueId }, "deleteVenue");
+    log.info({ tenantId, venueId }, "deleteVenue (soft)");
 
     await db
-      .delete(venues)
+      .update(venues)
+      .set({ active: false, updatedAt: new Date() })
       .where(and(eq(venues.id, venueId), eq(venues.tenantId, tenantId)));
   },
 };

@@ -357,9 +357,11 @@ export const platformService = {
   ): Promise<void> {
     log.info({ id: input.id }, "approveSignup");
 
-    // Load the signup request
-    const requests = await platformRepository.listSignupRequests({ limit: 1 });
-    const signupReq = requests.find((r) => r.id === input.id);
+    // Load the signup request by ID
+    const signupReq = await platformRepository.findSignupRequestById(input.id);
+    if (!signupReq) {
+      throw new NotFoundError("SignupRequest", input.id);
+    }
 
     // Update status to APPROVED
     await platformRepository.updateSignupRequest(input.id, {
@@ -367,7 +369,7 @@ export const platformService = {
     });
 
     // If signup request has a tenantId, activate that tenant
-    if (signupReq?.tenantId) {
+    if (signupReq.tenantId) {
       await platformRepository.activateTenant(signupReq.tenantId);
     }
 

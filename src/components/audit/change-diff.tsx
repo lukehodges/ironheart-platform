@@ -227,6 +227,7 @@ export function ChangeDiff({
         onClick={() => onExpandChange?.(!isExpanded)}
         role="button"
         tabIndex={0}
+        aria-label={isExpanded ? "Collapse changes" : "Expand changes"}
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") {
             e.preventDefault()
@@ -239,16 +240,16 @@ export function ChangeDiff({
             Changes ({changes.length})
           </h4>
         </div>
-        <button
+        <span
           className="p-1 hover:bg-muted rounded-md transition-colors"
-          aria-label={isExpanded ? "Collapse changes" : "Expand changes"}
+          aria-hidden="true"
         >
           {isExpanded ? (
             <ChevronUp className="h-4 w-4 text-muted-foreground" />
           ) : (
             <ChevronDown className="h-4 w-4 text-muted-foreground" />
           )}
-        </button>
+        </span>
       </div>
 
       {/* Content - conditionally rendered based on isExpanded */}

@@ -64,11 +64,10 @@ export const tenantService = {
     moduleSlug: string
   ): Promise<boolean> {
     const cacheKey = `tenant:modules:${tenantId}`;
-    const cached = await redis.get(cacheKey);
+    const cached = await redis.get<Record<string, boolean>>(cacheKey);
 
     if (cached) {
-      const moduleMap = JSON.parse(cached as string) as Record<string, boolean>;
-      return moduleMap[moduleSlug] ?? false;
+      return cached[moduleSlug] ?? false;
     }
 
     // Fall back to DB
@@ -79,7 +78,7 @@ export const tenantService = {
     const moduleMap = Object.fromEntries(
       modules.map((m) => [m.moduleSlug, m.isEnabled])
     );
-    await redis.setex(cacheKey, 300, JSON.stringify(moduleMap));
+    await redis.set(cacheKey, moduleMap, { ex: 300 });
 
     return result;
   },

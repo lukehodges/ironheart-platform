@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { db } from "@/shared/db";
 import { logger } from "@/shared/logger";
+import { auditLog } from "@/shared/audit";
 import { NotFoundError, ForbiddenError } from "@/shared/errors";
 import type { Context } from "@/shared/trpc";
 import { customerRepository } from "./customer.repository";
@@ -148,32 +149,26 @@ export const customerService = {
       throw new ForbiddenError("Target customer does not belong to your tenant");
     }
 
-    // Snapshot source for audit before merge
-    const sourceSnapshot = { ...source };
-
     await db.transaction(async (tx) => {
       // Execute the 7-table cascade merge
       await customerRepository.merge(tx, sourceId, targetId);
-
-      // auditLogs table does not exist in this schema — log the merge instead
-      log.warn(
-        {
-          tenantId: ctx.tenantId,
-          userId: ctx.user?.id,
-          action: "CUSTOMER_MERGED",
-          entityType: "customer",
-          entityId: sourceId,
-          oldValues: sourceSnapshot,
-          newValues: { mergedIntoId: targetId },
-        },
-        "Customer merge audit (auditLogs table not available — logged only)",
-      );
     });
 
     log.info(
       { tenantId: ctx.tenantId, sourceId, targetId },
       "Customer merge complete",
     );
+
+    // Fire-and-forget audit log entry for the merge operation
+    await auditLog({
+      tenantId: ctx.tenantId,
+      actorId: ctx.user?.id ?? "system",
+      action: "updated",
+      resourceType: "customer",
+      resourceId: sourceId,
+      resourceName: `Customer merge: ${sourceId} -> ${targetId}`,
+      changes: [{ field: "mergedIntoId", before: null, after: targetId }],
+    });
   },
 
   // ---------------------------------------------------------------------------

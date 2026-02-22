@@ -392,7 +392,6 @@ export const workflows = pgTable("workflows", {
 	name: text().notNull(),
 	description: text(),
 	enabled: boolean().default(true).notNull(),
-	triggerEvent: text().notNull(),
 	conditions: jsonb(),
 	delay: integer(),
 	createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
@@ -404,7 +403,6 @@ export const workflows = pgTable("workflows", {
 	version: integer('version').notNull().default(1),
 }, (table) => [
 	index("workflows_tenantId_enabled_idx").using("btree", table.tenantId.asc().nullsLast().op("bool_ops"), table.enabled.asc().nullsLast().op("bool_ops")),
-	index("workflows_triggerEvent_idx").using("btree", table.triggerEvent.asc().nullsLast().op("text_ops")),
 	foreignKey({
 		columns: [table.tenantId],
 		foreignColumns: [tenants.id],

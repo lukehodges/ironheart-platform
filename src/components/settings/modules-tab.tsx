@@ -8,14 +8,19 @@ import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "@/lib/utils"
 import { moduleRegistry } from "@/shared/module-system/register-all"
+import { ModuleHierarchyTree } from "./module-hierarchy-tree"
+import { GitFork, LayoutGrid } from "lucide-react"
+
+type ViewMode = "cards" | "tree"
 
 /**
- * ModulesTab — Module toggle cards for settings
+ * ModulesTab — Module toggle cards + dependency tree for settings
  *
  * Queries tenant.listModules for real module data, uses the module
  * registry for dependency enforcement (canDisable/canEnable).
  */
 export function ModulesTab() {
+  const [viewMode, setViewMode] = useState<ViewMode>("cards")
   const {
     data: modules,
     isLoading,
@@ -118,11 +123,44 @@ export function ModulesTab() {
 
   return (
     <div className="space-y-6">
-      <div>
+      <div className="flex items-center justify-between gap-4">
         <p className="text-sm text-muted-foreground">
           Enable or disable optional features. Core modules cannot be disabled.
         </p>
+        <div className="flex shrink-0 items-center rounded-lg border border-border p-0.5">
+          <button
+            type="button"
+            onClick={() => setViewMode("cards")}
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors",
+              viewMode === "cards"
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <LayoutGrid className="h-3.5 w-3.5" />
+            Cards
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode("tree")}
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors",
+              viewMode === "tree"
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <GitFork className="h-3.5 w-3.5" />
+            Tree
+          </button>
+        </div>
       </div>
+
+      {viewMode === "tree" ? (
+        <ModuleHierarchyTree />
+      ) : (
+        <>
 
       {coreModules.length > 0 && (
         <div>
@@ -207,6 +245,8 @@ export function ModulesTab() {
             })}
           </div>
         </div>
+      )}
+      </>
       )}
     </div>
   )

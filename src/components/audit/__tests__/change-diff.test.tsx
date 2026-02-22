@@ -117,9 +117,12 @@ describe("ChangeDiff", () => {
           after: ["array", "of", "items"],
         },
       ]
-      render(<ChangeDiff changes={changes} />)
-      expect(screen.getByText(/object/)).toBeInTheDocument()
-      expect(screen.getByText(/array/)).toBeInTheDocument()
+      const { container } = render(<ChangeDiff changes={changes} />)
+      // Type indicators are rendered as <code class="font-mono"> elements
+      const typeIndicators = container.querySelectorAll("code.font-mono")
+      const typeTexts = Array.from(typeIndicators).map((el) => el.textContent)
+      expect(typeTexts).toContain("object")
+      expect(typeTexts).toContain("array")
     })
   })
 
@@ -247,7 +250,7 @@ describe("ChangeDiff", () => {
 
       onExpandChange.mockClear()
 
-      await userEvent.keyboard("{Space}")
+      await userEvent.keyboard("[Space]")
       expect(onExpandChange).toHaveBeenCalledWith(false)
     })
   })

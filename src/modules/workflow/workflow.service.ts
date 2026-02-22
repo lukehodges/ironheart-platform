@@ -101,16 +101,31 @@ export const workflowService = {
     if (input.isVisual && input.nodes && input.edges) {
       const nodes = input.nodes as WorkflowNode[]
       const edges = input.edges as WorkflowEdge[]
+
+      // Validate graph structure
       const errors = validateWorkflowGraph(nodes, edges)
       if (errors.length > 0) {
         throw new ValidationError(`Workflow graph validation failed: ${errors.join('; ')}`)
       }
+
+      // Validate at least one TRIGGER node exists
+      const triggerNodes = nodes.filter(n => n.type === 'TRIGGER')
+      if (triggerNodes.length === 0) {
+        throw new ValidationError('Visual workflows must have at least one TRIGGER node')
+      }
+
+      // Validate each TRIGGER node has eventType configured
+      triggerNodes.forEach((node, idx) => {
+        const config = node.config as any
+        if (!config?.eventType) {
+          throw new ValidationError(`TRIGGER node ${idx + 1} must have an eventType configured in its config`)
+        }
+      })
     }
 
     return workflowRepository.create(ctx.tenantId, {
       name: input.name,
       description: input.description ?? null,
-      triggerEvent: input.triggerEvent,
       isActive: input.isActive ?? true,
       isVisual: input.isVisual ?? false,
       conditions: input.conditions
@@ -133,20 +148,35 @@ export const workflowService = {
     const existing = await workflowRepository.findById(ctx.tenantId, workflowId)
     if (!existing) throw new NotFoundError('Workflow', workflowId)
 
-    // Validate graph if updating to visual mode with nodes/edges
+    // Validate graph if updating nodes/edges
     if (input.nodes && input.edges) {
       const nodes = input.nodes as WorkflowNode[]
       const edges = input.edges as WorkflowEdge[]
+
+      // Validate graph structure
       const errors = validateWorkflowGraph(nodes, edges)
       if (errors.length > 0) {
         throw new ValidationError(`Workflow graph validation failed: ${errors.join('; ')}`)
+      }
+
+      // Validate TRIGGER nodes (if this is or will be a visual workflow)
+      const isVisual = input.isVisual ?? existing.isVisual
+      if (isVisual) {
+        const triggerNodes = nodes.filter(n => n.type === 'TRIGGER')
+
+        // Validate each TRIGGER node has eventType configured
+        triggerNodes.forEach((node, idx) => {
+          const config = node.config as any
+          if (!config?.eventType) {
+            throw new ValidationError(`TRIGGER node ${idx + 1} must have an eventType configured in its config`)
+          }
+        })
       }
     }
 
     return workflowRepository.update(ctx.tenantId, workflowId, {
       name: input.name,
       description: input.description,
-      triggerEvent: input.triggerEvent,
       isActive: input.isActive,
       isVisual: input.isVisual,
       conditions: input.conditions !== undefined
@@ -297,9 +327,19 @@ export const workflowService = {
         // Graph mode
         const engine = new GraphEngine(workflow.nodes, workflow.edges)
 
-        // Find TRIGGER node as entry point
-        const triggerNode = workflow.nodes.find((n: WorkflowNode) => n.type === 'TRIGGER')
-        if (!triggerNode) throw new Error('Workflow graph has no TRIGGER node')
+        // Find the TRIGGER node that matches this event
+        const { findMatchingTrigger } = await import('./engine/graph.engine')
+        const triggerNode = findMatchingTrigger(workflow.nodes, triggerEvent, enriched)
+
+        if (!triggerNode) {
+          log.info({ workflowId, triggerEvent }, 'No matching TRIGGER node found for this event — skipping')
+          await workflowRepository.updateExecution(executionId, {
+            status: 'completed',
+            completedAt: new Date(),
+            actionResults: [],
+          })
+          return
+        }
 
         const finalContext = await engine.run(triggerNode.id, context, step)
 

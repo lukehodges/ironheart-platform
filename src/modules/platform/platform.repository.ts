@@ -498,6 +498,18 @@ export const platformRepository = {
     return rows.map(mapSignupRequest);
   },
 
+  async findSignupRequestById(id: string): Promise<SignupRequest | null> {
+    log.info({ id }, "findSignupRequestById");
+
+    const rows = await db
+      .select()
+      .from(signupRequest)
+      .where(eq(signupRequest.id, id))
+      .limit(1);
+
+    return rows[0] ? mapSignupRequest(rows[0]) : null;
+  },
+
   // ---- Tenant Modules ----
 
   async listTenantModules(tenantId: string): Promise<TenantModule[]> {

@@ -97,7 +97,6 @@ export const workflowConditionGroupSchema: z.ZodType<WorkflowConditionGroupInput
 export const createWorkflowSchema = z.object({
   name: z.string().min(1).max(255),
   description: z.string().optional(),
-  triggerEvent: z.string().min(1),
   isActive: z.boolean().default(true),
   isVisual: z.boolean().default(false),
   /** Backward-compat: accepts flat WorkflowCondition[] or WorkflowConditionGroup */
@@ -108,13 +107,35 @@ export const createWorkflowSchema = z.object({
   nodes: z.array(z.unknown()).optional(),
   /** Graph mode: edge definitions */
   edges: z.array(z.unknown()).optional(),
+}).superRefine((data, ctx) => {
+  // Visual workflows must have at least one TRIGGER node
+  if (data.isVisual && data.nodes) {
+    const triggerNodes = (data.nodes as any[]).filter(n => n.type === 'TRIGGER')
+    if (triggerNodes.length === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['nodes'],
+        message: 'Visual workflows must have at least one TRIGGER node',
+      })
+    }
+
+    // Each TRIGGER node must have eventType configured
+    triggerNodes.forEach((node: any, idx: number) => {
+      if (!node.config?.eventType) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['nodes', idx, 'config', 'eventType'],
+          message: `TRIGGER node must have an eventType in config`,
+        })
+      }
+    })
+  }
 })
 
 export const updateWorkflowSchema = z.object({
   id: z.string(),
   name: z.string().min(1).max(255).optional(),
   description: z.string().optional().nullable(),
-  triggerEvent: z.string().min(1).optional(),
   isActive: z.boolean().optional(),
   isVisual: z.boolean().optional(),
   conditions: z
@@ -124,6 +145,22 @@ export const updateWorkflowSchema = z.object({
   delay: z.string().optional().nullable(),
   nodes: z.array(z.unknown()).optional().nullable(),
   edges: z.array(z.unknown()).optional().nullable(),
+}).superRefine((data, ctx) => {
+  // If updating nodes for a visual workflow, validate TRIGGER nodes
+  if (data.nodes && Array.isArray(data.nodes)) {
+    const triggerNodes = (data.nodes as any[]).filter(n => n.type === 'TRIGGER')
+
+    // Each TRIGGER node must have eventType configured
+    triggerNodes.forEach((node: any, idx: number) => {
+      if (!node.config?.eventType) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['nodes', idx, 'config', 'eventType'],
+          message: `TRIGGER node must have an eventType in config`,
+        })
+      }
+    })
+  }
 })
 
 // ---------------------------------------------------------------------------
@@ -131,6 +168,7 @@ export const updateWorkflowSchema = z.object({
 // ---------------------------------------------------------------------------
 
 export const listWorkflowsSchema = z.object({
+  /** Filter workflows that have a TRIGGER node matching this event */
   triggerEvent: z.string().optional(),
   isActive: z.boolean().optional(),
   isVisual: z.boolean().optional(),

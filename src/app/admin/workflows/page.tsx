@@ -69,6 +69,18 @@ function formatRelativeDate(date: Date | string | null | undefined): string {
   return `${Math.floor(diffDays / 365)}y ago`
 }
 
+/**
+ * Extract trigger events from a workflow's nodes array
+ */
+function getTriggerEvents(workflow: WorkflowRecord): string[] {
+  if (!workflow.nodes || !Array.isArray(workflow.nodes)) return []
+
+  return workflow.nodes
+    .filter((node: any) => node.type === 'TRIGGER')
+    .map((node: any) => node.config?.eventType as string)
+    .filter(Boolean)
+}
+
 type StatusFilter = "ALL" | "ACTIVE" | "INACTIVE"
 
 // ---------------------------------------------------------------------------
@@ -124,11 +136,19 @@ function WorkflowRow({ workflow, onView, onToggleActive, onDelete }: WorkflowRow
         </div>
       </TableCell>
 
-      {/* Trigger Event */}
+      {/* Trigger Events */}
       <TableCell>
-        <code className="text-xs px-2 py-0.5 rounded bg-muted text-muted-foreground font-mono">
-          {workflow.triggerEvent}
-        </code>
+        <div className="flex flex-wrap gap-1">
+          {getTriggerEvents(workflow).length > 0 ? (
+            getTriggerEvents(workflow).map((event, idx) => (
+              <code key={idx} className="text-xs px-2 py-0.5 rounded bg-muted text-muted-foreground font-mono">
+                {event}
+              </code>
+            ))
+          ) : (
+            <span className="text-xs text-muted-foreground">—</span>
+          )}
+        </div>
       </TableCell>
 
       {/* Status */}
@@ -306,9 +326,11 @@ export default function WorkflowsPage() {
     router.push("/admin/workflows/new")
   }, [router])
 
-  // Extract unique trigger events from rows
+  // Extract unique trigger events from all workflows
   const triggerEvents = Array.from(
-    new Set(rows.map((w) => w.triggerEvent))
+    new Set(
+      rows.flatMap((w) => getTriggerEvents(w))
+    )
   ).sort()
 
   const statusOptions: { label: string; value: StatusFilter }[] = [
@@ -438,7 +460,7 @@ export default function WorkflowsPage() {
             <TableHeader>
               <TableRow>
                 <TableHead className="w-[320px]">Name</TableHead>
-                <TableHead className="w-[200px]">Trigger Event</TableHead>
+                <TableHead className="w-[200px]">Trigger Events</TableHead>
                 <TableHead className="w-[100px]">Status</TableHead>
                 <TableHead className="w-[120px]">Last Run</TableHead>
                 <TableHead className="w-[120px]">

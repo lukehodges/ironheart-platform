@@ -104,18 +104,44 @@ function pad(n: number): string {
 async function seedModules() {
   console.log("  → seeding modules catalogue...");
 
+  // Fix legacy slug mismatches from earlier seed versions
+  const slugRenames: Record<string, string> = {
+    bookings: "booking",
+    customers: "customer",
+    payments: "payment",
+    workflows: "workflow",
+  };
+  for (const [oldSlug, newSlug] of Object.entries(slugRenames)) {
+    await client`
+      UPDATE modules SET slug = ${newSlug}, "updatedAt" = now()
+      WHERE slug = ${oldSlug}
+        AND NOT EXISTS (SELECT 1 FROM modules m2 WHERE m2.slug = ${newSlug})
+    `;
+  }
+
   const now = new Date();
   const catalogue = [
-    { slug: "bookings",       name: "Bookings",         category: "CORE"    as const, features: { create: true, approve: true, cancel: true } },
-    { slug: "customers",      name: "Customers",         category: "CORE"    as const, features: { profiles: true, notes: true, gdpr: true } },
+    // Core modules (always enabled)
+    { slug: "auth",           name: "Authentication",    category: "CORE"    as const, features: { workos: true, sso: true } },
+    { slug: "tenant",         name: "Tenant Management", category: "CORE"    as const, features: { settings: true, modules: true } },
+    { slug: "platform",       name: "Platform Admin",    category: "CORE"    as const, features: { tenants: true, provisioning: true } },
+    { slug: "analytics",      name: "Analytics",         category: "CORE"    as const, features: { dashboard: true, export: true, insights: false } },
+    { slug: "search",         name: "Search",            category: "CORE"    as const, features: { fullText: true, filters: true } },
+    // Standard operations
+    { slug: "customer",       name: "Customers",         category: "CORE"    as const, features: { profiles: true, notes: true, gdpr: true } },
+    { slug: "booking",        name: "Bookings",          category: "CORE"    as const, features: { create: true, approve: true, cancel: true } },
+    { slug: "team",           name: "Team",              category: "CORE"    as const, features: { members: true, availability: true } },
     { slug: "scheduling",     name: "Scheduling",        category: "CORE"    as const, features: { slots: true, availability: true, calendar: true } },
+    { slug: "portal",         name: "Booking Portal",    category: "CORE"    as const, features: { publicBooking: true, embed: true } },
+    { slug: "staff",          name: "Staff Portal",      category: "CORE"    as const, features: { dashboard: true, schedule: true } },
     { slug: "notification",   name: "Notifications",     category: "CORE"    as const, features: { email: true, sms: false, push: false } },
+    // Premium / optional
     { slug: "calendar-sync",  name: "Calendar Sync",     category: "PREMIUM" as const, features: { google: true, outlook: true, twoWay: false } },
     { slug: "forms",          name: "Forms",             category: "PREMIUM" as const, features: { builder: true, signatures: true, conditional: false } },
     { slug: "review",         name: "Reviews",           category: "PREMIUM" as const, features: { collection: true, automation: true, public: false } },
-    { slug: "payments",       name: "Payments",          category: "PREMIUM" as const, features: { stripe: true, gocardless: false, invoices: true } },
-    { slug: "analytics",      name: "Analytics",         category: "PREMIUM" as const, features: { dashboard: true, export: true, insights: false } },
-    { slug: "workflows",      name: "Workflows",         category: "PREMIUM" as const, features: { builder: true, triggers: true, actions: true } },
+    { slug: "payment",        name: "Payments",          category: "PREMIUM" as const, features: { stripe: true, gocardless: false, invoices: true } },
+    { slug: "workflow",       name: "Workflows",         category: "PREMIUM" as const, features: { builder: true, triggers: true, actions: true } },
+    { slug: "developer",      name: "Developer Tools",   category: "PREMIUM" as const, features: { webhooks: true, api: true } },
   ];
 
   const existingSlugs = (
@@ -345,10 +371,20 @@ async function seedOrgSettings(tenantId: string) {
 async function seedTenantModules(tenantId: string) {
   console.log("  → enabling tenant modules...");
 
+  // Only enable modules that match our manifest registry (18 known slugs)
+  const knownSlugs = new Set([
+    "auth", "tenant", "platform", "analytics", "search",
+    "customer", "booking", "team", "scheduling", "portal", "staff",
+    "notification", "calendar-sync", "forms", "review", "payment",
+    "workflow", "developer",
+  ]);
+
   const now = new Date();
   const allModules = await db
     .select({ id: schema.modules.id, slug: schema.modules.slug })
     .from(schema.modules);
+
+  const registryModules = allModules.filter((m) => knownSlugs.has(m.slug));
 
   const existing = await db
     .select({ moduleId: schema.tenantModules.moduleId })
@@ -356,7 +392,7 @@ async function seedTenantModules(tenantId: string) {
     .where(eq(schema.tenantModules.tenantId, tenantId));
 
   const existingIds = new Set(existing.map((r) => r.moduleId));
-  const toEnable = allModules.filter((m) => !existingIds.has(m.id));
+  const toEnable = registryModules.filter((m) => !existingIds.has(m.id));
 
   if (toEnable.length === 0) {
     console.log("    ✓ tenant modules already enabled");
@@ -544,6 +580,16 @@ async function seedStaff(
       roleName: "Owner",
       dayRate: "0.00",
       isPlatformAdmin: true,
+    },
+    {
+      email: "luke.hodges.dev@gmail.com",
+      firstName: "Luke",
+      lastName: "Hodges",
+      jobTitle: "Tenant Admin",
+      type: "OWNER" as const,
+      roleName: "Owner",
+      dayRate: "0.00",
+      isPlatformAdmin: false,
     },
     {
       email: "sarah.mitchell@riverside-wellness.co.uk",

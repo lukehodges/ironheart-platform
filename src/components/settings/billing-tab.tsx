@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { toast } from "sonner"
 import { formatDistanceToNow } from "date-fns"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -254,7 +255,9 @@ function UpgradeButton({ plan }: { plan: string }) {
     // Placeholder: In production, this would call api.settings.getCheckoutSession
     // and redirect to Stripe checkout
     setTimeout(() => {
-      alert(`Upgrade flow for ${plan} plan - integrates with Stripe in production`)
+      toast.info("Upgrade flow coming soon", {
+        description: "Stripe integration will be available in a future update.",
+      })
       setIsLoading(false)
     }, 500)
   }

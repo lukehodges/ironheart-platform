@@ -2,17 +2,22 @@ import { db } from '@/shared/db'
 import { and, eq, desc, sql } from 'drizzle-orm'
 import { invoices, payments } from '@/shared/db/schemas/shared.schema'
 import { pricingRules, discountCodes, taxRules } from '@/shared/db/schemas/phase6.schema'
+import { redis } from '@/shared/redis'
 import type { CreateInvoiceInput, RecordPaymentInput } from './payment.types'
 
 // ---------------------------------------------------------------------------
 // Invoice number generation
 // ---------------------------------------------------------------------------
 
-function generateInvoiceNumber(): string {
-  const now = new Date()
-  const year = now.getFullYear()
-  const seq = Math.floor(Math.random() * 900000) + 100000
-  return `INV-${year}-${seq}`
+async function generateInvoiceNumber(tenantId: string): Promise<string> {
+  const year = new Date().getFullYear()
+  const key = `invoice:counter:${tenantId}:${year}`
+  const seq = await redis.incr(key)
+  // Set TTL on first creation (expire after 2 years to clean up old counters)
+  if (seq === 1) {
+    await redis.expire(key, 63072000) // 2 years in seconds
+  }
+  return `INV-${year}-${String(seq).padStart(5, '0')}`
 }
 
 // ---------------------------------------------------------------------------
@@ -21,11 +26,12 @@ function generateInvoiceNumber(): string {
 
 export async function createInvoice(tenantId: string, input: CreateInvoiceInput) {
   const dueDate = input.dueDate ?? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days default
+  const invoiceNumber = await generateInvoiceNumber(tenantId)
 
   const [invoice] = await db.insert(invoices).values({
     id:             sql`gen_random_uuid()`,
     tenantId,
-    invoiceNumber:  generateInvoiceNumber(),
+    invoiceNumber,
     bookingId:      input.bookingId ?? null,
     customerId:     input.customerId,
     status:         'DRAFT',

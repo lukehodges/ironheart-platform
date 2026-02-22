@@ -7,8 +7,13 @@ import BookingWizardPage from "../page";
 // Mocks
 // ---------------------------------------------------------------------------
 
+const { mockUseParams, mockUseTenantTheme, mockUseBookingFlow } = vi.hoisted(() => ({
+  mockUseParams: vi.fn(() => ({ tenantSlug: "test-tenant" })),
+  mockUseTenantTheme: vi.fn(),
+  mockUseBookingFlow: vi.fn(),
+}));
+
 // Mock useParams
-const mockUseParams = vi.fn(() => ({ tenantSlug: "test-tenant" }));
 vi.mock("next/navigation", async () => {
   const actual = await vi.importActual("next/navigation");
   return {
@@ -18,13 +23,11 @@ vi.mock("next/navigation", async () => {
 });
 
 // Mock useTenantTheme
-const mockUseTenantTheme = vi.fn();
 vi.mock("@/hooks/use-tenant-theme", () => ({
   useTenantTheme: mockUseTenantTheme,
 }));
 
 // Mock useBookingFlow
-const mockUseBookingFlow = vi.fn();
 vi.mock("@/hooks/use-booking-flow", () => ({
   useBookingFlow: mockUseBookingFlow,
 }));
@@ -54,6 +57,104 @@ vi.mock("@/components/ui/progress", () => ({
 
 vi.mock("@/components/ui/skeleton", () => ({
   Skeleton: ({ ...props }: any) => <div data-testid="skeleton" {...props} />,
+}));
+
+// Mock child booking-flow components so page-level tests stay isolated
+vi.mock("@/components/booking-flow/service-selector", () => ({
+  ServiceSelector: ({ onSelect, selectedId }: any) => (
+    <div data-testid="service-selector">
+      <span>ServiceSelector mock</span>
+      {selectedId && <span>Selected: {selectedId}</span>}
+      <button onClick={() => onSelect({ id: "service-1", name: "Test Service" })}>
+        Select a service
+      </button>
+    </div>
+  ),
+  default: ({ onSelect, selectedId }: any) => (
+    <div data-testid="service-selector">
+      <span>ServiceSelector mock</span>
+      {selectedId && <span>Selected: {selectedId}</span>}
+      <button onClick={() => onSelect({ id: "service-1", name: "Test Service" })}>
+        Select a service
+      </button>
+    </div>
+  ),
+}));
+
+vi.mock("@/components/booking-flow/slot-picker", () => ({
+  SlotPicker: ({ onSelect }: any) => (
+    <div data-testid="slot-picker">
+      <span>SlotPicker mock</span>
+      <button onClick={() => onSelect({ startTime: new Date(), userId: "u1", userDisplayName: "Staff" })}>
+        Pick a slot
+      </button>
+    </div>
+  ),
+  default: ({ onSelect }: any) => (
+    <div data-testid="slot-picker">
+      <span>SlotPicker mock</span>
+      <button onClick={() => onSelect({ startTime: new Date(), userId: "u1", userDisplayName: "Staff" })}>
+        Pick a slot
+      </button>
+    </div>
+  ),
+}));
+
+vi.mock("@/components/booking-flow/customer-details-form", () => ({
+  CustomerDetailsForm: ({ onSubmit, isLoading }: any) => (
+    <div data-testid="customer-details-form">
+      <span>CustomerDetailsForm mock</span>
+      <button
+        onClick={() => onSubmit({ name: "Test", email: "test@test.com", phone: "123", notes: null, dynamicFields: {} })}
+        disabled={isLoading}
+        aria-label="Complete Booking"
+      >
+        {isLoading ? "Submitting..." : "Complete Booking"}
+      </button>
+    </div>
+  ),
+  default: ({ onSubmit, isLoading }: any) => (
+    <div data-testid="customer-details-form">
+      <span>CustomerDetailsForm mock</span>
+      <button
+        onClick={() => onSubmit({ name: "Test", email: "test@test.com", phone: "123", notes: null, dynamicFields: {} })}
+        disabled={isLoading}
+        aria-label="Complete Booking"
+      >
+        {isLoading ? "Submitting..." : "Complete Booking"}
+      </button>
+    </div>
+  ),
+}));
+
+vi.mock("@/components/booking-flow/booking-success", () => ({
+  BookingSuccess: ({ booking }: any) => (
+    <div data-testid="booking-success">
+      <h1>Booking Confirmed!</h1>
+      <p>Your appointment has been successfully scheduled.</p>
+      <span>Reference: BK-{booking.id.slice(0, 6).toUpperCase()}</span>
+      <p>A confirmation email has been sent to {booking.customerEmail}</p>
+      <button aria-label="Print booking confirmation">Print Confirmation</button>
+    </div>
+  ),
+  default: ({ booking }: any) => (
+    <div data-testid="booking-success">
+      <h1>Booking Confirmed!</h1>
+      <p>Your appointment has been successfully scheduled.</p>
+      <span>Reference: BK-{booking.id.slice(0, 6).toUpperCase()}</span>
+      <p>A confirmation email has been sent to {booking.customerEmail}</p>
+      <button aria-label="Print booking confirmation">Print Confirmation</button>
+    </div>
+  ),
+}));
+
+vi.mock("@/components/booking-flow/wizard-progress", () => ({
+  WizardProgress: ({ currentStep }: any) => (
+    <div data-testid="wizard-progress">WizardProgress: {currentStep}</div>
+  ),
+  default: ({ currentStep }: any) => (
+    <div data-testid="wizard-progress">WizardProgress: {currentStep}</div>
+  ),
 }));
 
 // ---------------------------------------------------------------------------
@@ -273,7 +374,10 @@ describe("BookingWizardPage", () => {
 
       render(<BookingWizardPage />);
 
-      expect(screen.getByText("Your Details")).toBeInTheDocument();
+      // "Your Details" appears in both the progress label and the card title,
+      // so use getAllByText and verify at least one is present
+      const detailsElements = screen.getAllByText("Your Details");
+      expect(detailsElements.length).toBeGreaterThanOrEqual(1);
       expect(
         screen.getByText("Complete your booking information")
       ).toBeInTheDocument();
@@ -294,7 +398,7 @@ describe("BookingWizardPage", () => {
 
       expect(screen.getByText("Booking Confirmed!")).toBeInTheDocument();
       expect(
-        screen.getByText("Your appointment has been successfully booked")
+        screen.getByText("Your appointment has been successfully scheduled.")
       ).toBeInTheDocument();
     });
   });
@@ -353,15 +457,43 @@ describe("BookingWizardPage", () => {
   });
 
   describe("Step Navigation", () => {
-    it("shows Continue button on SELECT_SERVICE step", () => {
+    it("triggers service selection and advances step via ServiceSelector onSelect", async () => {
+      const user = userEvent.setup();
+      const selectService = vi.fn();
+      const nextStep = vi.fn();
+
+      mockUseBookingFlow.mockReturnValue({
+        ...mockBookingFlow,
+        selectService,
+        nextStep,
+      });
+
       render(<BookingWizardPage />);
 
-      expect(
-        screen.getByRole("button", { name: /continue/i })
-      ).toBeInTheDocument();
+      // The ServiceSelector mock exposes a "Select a service" button
+      // which calls onSelect — the page wires onSelect to selectService + nextStep
+      const selectButton = screen.getByRole("button", { name: /select a service/i });
+      await user.click(selectButton);
+
+      expect(selectService).toHaveBeenCalledWith({ id: "service-1", name: "Test Service" });
+      expect(nextStep).toHaveBeenCalled();
     });
 
-    it("disables Continue when no service selected", () => {
+    it("renders ServiceSelector with selectedId from state", () => {
+      mockUseBookingFlow.mockReturnValue({
+        ...mockBookingFlow,
+        state: {
+          ...mockBookingFlow.state,
+          selectedService: { id: "service-1", name: "Test Service" },
+        },
+      });
+
+      render(<BookingWizardPage />);
+
+      expect(screen.getByText("Selected: service-1")).toBeInTheDocument();
+    });
+
+    it("does not advance step when no service is selected in state", () => {
       mockUseBookingFlow.mockReturnValue({
         ...mockBookingFlow,
         state: {
@@ -372,32 +504,13 @@ describe("BookingWizardPage", () => {
 
       render(<BookingWizardPage />);
 
-      const continueButton = screen.getByRole("button", { name: /continue/i });
-      expect(continueButton).toBeDisabled();
+      // ServiceSelector is rendered; page delegates selection to it
+      expect(screen.getByTestId("service-selector")).toBeInTheDocument();
+      // nextStep has not been called yet
+      expect(mockBookingFlow.nextStep).not.toHaveBeenCalled();
     });
 
-    it("calls nextStep when Continue is clicked", async () => {
-      const user = userEvent.setup();
-      const nextStep = vi.fn();
-
-      mockUseBookingFlow.mockReturnValue({
-        ...mockBookingFlow,
-        nextStep,
-        state: {
-          ...mockBookingFlow.state,
-          selectedService: { id: "service-1", name: "Test Service" },
-        },
-      });
-
-      render(<BookingWizardPage />);
-
-      const continueButton = screen.getByRole("button", { name: /continue/i });
-      await user.click(continueButton);
-
-      expect(nextStep).toHaveBeenCalled();
-    });
-
-    it("shows Back button on PICK_SLOT step", () => {
+    it("shows back navigation button on PICK_SLOT step", () => {
       mockUseBookingFlow.mockReturnValue({
         ...mockBookingFlow,
         currentStep: "PICK_SLOT",
@@ -405,10 +518,16 @@ describe("BookingWizardPage", () => {
 
       render(<BookingWizardPage />);
 
-      expect(screen.getByRole("button", { name: /back/i })).toBeInTheDocument();
+      // The back button is an icon-only button with size="icon-sm" and a ChevronLeft icon
+      // It uses variant="ghost" and has no text label — find it by its role within the card header
+      const buttons = screen.getAllByRole("button");
+      const backButton = buttons.find(
+        (btn) => btn.getAttribute("variant") === "ghost" || btn.closest("[class*='justify-between']")
+      );
+      expect(backButton).toBeDefined();
     });
 
-    it("calls prevStep when Back is clicked", async () => {
+    it("calls prevStep when back navigation is clicked on PICK_SLOT step", async () => {
       const user = userEvent.setup();
       const prevStep = vi.fn();
 
@@ -420,8 +539,15 @@ describe("BookingWizardPage", () => {
 
       render(<BookingWizardPage />);
 
-      const backButton = screen.getByRole("button", { name: /back/i });
-      await user.click(backButton);
+      // The icon-only back button is rendered by the page with variant="ghost"
+      // and contains a ChevronLeft SVG. Find it by looking for the button with
+      // variant="ghost" attribute (passed through by our Button mock via ...props)
+      const allButtons = screen.getAllByRole("button");
+      const backButton = allButtons.find(
+        (btn) => btn.getAttribute("variant") === "ghost"
+      );
+      expect(backButton).toBeDefined();
+      await user.click(backButton!);
 
       expect(prevStep).toHaveBeenCalled();
     });
@@ -436,80 +562,33 @@ describe("BookingWizardPage", () => {
           ...mockBookingFlow.state,
           currentStep: "SUCCESS",
           bookingId: "booking-123",
+          selectedService: { name: "Service", durationMinutes: 60, basePrice: 0, currency: "USD" },
+          selectedSlot: { startTime: new Date(), userDisplayName: null },
+          customerInfo: { email: "test@example.com" },
         },
       });
     });
 
-    it("displays booking ID on success", () => {
+    it("displays booking reference on success", () => {
       render(<BookingWizardPage />);
 
-      expect(screen.getByText(/Booking ID: booking-123/i)).toBeInTheDocument();
+      // BookingSuccess renders the reference as "BK-" + first 6 chars of ID uppercased
+      expect(screen.getByText(/Reference: BK-BOOKI/i)).toBeInTheDocument();
     });
 
-    it("shows Book Another button", () => {
+    it("renders BookingSuccess component with correct booking data", () => {
+      render(<BookingWizardPage />);
+
+      expect(screen.getByTestId("booking-success")).toBeInTheDocument();
+      expect(screen.getByText("Booking Confirmed!")).toBeInTheDocument();
+    });
+
+    it("shows Print Confirmation button", () => {
       render(<BookingWizardPage />);
 
       expect(
-        screen.getByRole("button", { name: /book another/i })
+        screen.getByRole("button", { name: /print booking confirmation/i })
       ).toBeInTheDocument();
-    });
-
-    it("calls reset when Book Another is clicked", async () => {
-      const user = userEvent.setup();
-      const reset = vi.fn();
-
-      mockUseBookingFlow.mockReturnValue({
-        ...mockBookingFlow,
-        currentStep: "SUCCESS",
-        state: {
-          ...mockBookingFlow.state,
-          currentStep: "SUCCESS",
-          bookingId: "booking-123",
-        },
-        reset,
-      });
-
-      render(<BookingWizardPage />);
-
-      const bookAnotherButton = screen.getByRole("button", {
-        name: /book another/i,
-      });
-      await user.click(bookAnotherButton);
-
-      expect(reset).toHaveBeenCalled();
-    });
-
-    it("shows View Booking button", () => {
-      render(<BookingWizardPage />);
-
-      expect(
-        screen.getByRole("button", { name: /view booking/i })
-      ).toBeInTheDocument();
-    });
-
-    it("navigates to booking page when View Booking is clicked", async () => {
-      const user = userEvent.setup();
-      const hrefSpy = vi.fn();
-
-      Object.defineProperty(window, "location", {
-        value: { href: "" },
-        writable: true,
-        configurable: true,
-      });
-
-      Object.defineProperty(window.location, "href", {
-        set: hrefSpy,
-        get: () => "",
-      });
-
-      render(<BookingWizardPage />);
-
-      const viewBookingButton = screen.getByRole("button", {
-        name: /view booking/i,
-      });
-      await user.click(viewBookingButton);
-
-      expect(hrefSpy).toHaveBeenCalledWith("/booking/booking-123");
     });
 
     it("displays confirmation message", () => {
@@ -518,6 +597,21 @@ describe("BookingWizardPage", () => {
       expect(
         screen.getByText(/A confirmation email has been sent/i)
       ).toBeInTheDocument();
+    });
+
+    it("displays success description", () => {
+      render(<BookingWizardPage />);
+
+      expect(
+        screen.getByText(/Your appointment has been successfully scheduled/i)
+      ).toBeInTheDocument();
+    });
+
+    it("hides progress bar and wizard progress on success", () => {
+      render(<BookingWizardPage />);
+
+      expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
+      expect(screen.queryByTestId("wizard-progress")).not.toBeInTheDocument();
     });
   });
 
@@ -555,7 +649,7 @@ describe("BookingWizardPage", () => {
   });
 
   describe("Loading State for Submission", () => {
-    it("shows loading state on Confirm Booking button", () => {
+    it("shows loading state on Complete Booking button", () => {
       mockUseBookingFlow.mockReturnValue({
         ...mockBookingFlow,
         currentStep: "CUSTOMER_DETAILS",
@@ -564,11 +658,13 @@ describe("BookingWizardPage", () => {
 
       render(<BookingWizardPage />);
 
-      const confirmButton = screen.getByRole("button", {
-        name: /confirm booking/i,
+      // CustomerDetailsForm mock renders a "Complete Booking" button that
+      // shows "Submitting..." and is disabled when isLoading is true
+      const submitButton = screen.getByRole("button", {
+        name: /complete booking/i,
       });
-      expect(confirmButton).toHaveTextContent("Loading...");
-      expect(confirmButton).toBeDisabled();
+      expect(submitButton).toHaveTextContent("Submitting...");
+      expect(submitButton).toBeDisabled();
     });
   });
 

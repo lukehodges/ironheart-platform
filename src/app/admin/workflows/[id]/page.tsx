@@ -68,7 +68,6 @@ export default function WorkflowEditorPage() {
 
   // State
   const [workflowName, setWorkflowName] = useState("")
-  const [triggerEvent, setTriggerEvent] = useState("")
   const [isActive, setIsActive] = useState(false)
   const [isPaletteOpen, setIsPaletteOpen] = useState(true)
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null)
@@ -91,7 +90,6 @@ export default function WorkflowEditorPage() {
   useEffect(() => {
     if (workflow) {
       setWorkflowName(workflow.name)
-      setTriggerEvent(workflow.triggerEvent)
       setIsActive(workflow.isActive)
 
       // Parse nodes and edges from workflow
@@ -216,9 +214,6 @@ export default function WorkflowEditorPage() {
     if (!workflowName.trim()) {
       errors.push("Workflow name is required")
     }
-    if (!triggerEvent.trim()) {
-      errors.push("Trigger event is required")
-    }
 
     // Convert React Flow nodes/edges to backend format for validation
     const backendNodes = canvas.nodes.map((node) => ({
@@ -237,12 +232,25 @@ export default function WorkflowEditorPage() {
       targetHandle: edge.targetHandle,
     }))
 
+    // Validate at least one TRIGGER node exists
+    const triggerNodes = backendNodes.filter(n => n.type === 'TRIGGER')
+    if (triggerNodes.length === 0) {
+      errors.push("At least one TRIGGER node is required")
+    }
+
+    // Validate each TRIGGER node has eventType configured
+    triggerNodes.forEach((node, idx) => {
+      if (!node.config?.eventType) {
+        errors.push(`TRIGGER node ${idx + 1} must have an event type configured`)
+      }
+    })
+
     // Validate graph structure
     const graphErrors = validateWorkflowGraph(backendNodes as any, backendEdges as any)
     errors.push(...graphErrors)
 
     return { valid: errors.length === 0, errors }
-  }, [canvas.nodes, canvas.edges, workflowName, triggerEvent])
+  }, [canvas.nodes, canvas.edges, workflowName])
 
   /**
    * Get backend node type from React Flow node
@@ -295,7 +303,6 @@ export default function WorkflowEditorPage() {
     if (workflowId === "new") {
       mutations.create.mutate({
         name: workflowName,
-        triggerEvent,
         isVisual: true,
         nodes: backendNodes as any,
         edges: backendEdges as any,
@@ -305,7 +312,6 @@ export default function WorkflowEditorPage() {
       mutations.update.mutate({
         id: workflowId,
         name: workflowName,
-        triggerEvent,
         nodes: backendNodes as any,
         edges: backendEdges as any,
         isActive,
@@ -314,7 +320,6 @@ export default function WorkflowEditorPage() {
   }, [
     workflowId,
     workflowName,
-    triggerEvent,
     isActive,
     canvas.nodes,
     canvas.edges,
@@ -379,13 +384,11 @@ export default function WorkflowEditorPage() {
         {/* Workflow Toolbar (top, fixed) */}
         <WorkflowToolbar
           workflowName={workflowName}
-          triggerEvent={triggerEvent}
           isActive={isActive}
           errorCount={validationStatus.errorCount}
           warningCount={validationStatus.warningCount}
           isSaving={mutations.update.isPending || mutations.create.isPending}
           onNameChange={setWorkflowName}
-          onTriggerChange={setTriggerEvent}
           onSave={handleSave}
           onToggleActive={handleToggleActive}
         />
