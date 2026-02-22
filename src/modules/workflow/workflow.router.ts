@@ -12,6 +12,7 @@ import {
   updateWorkflowSchema,
   deleteWorkflowSchema,
   validateGraphSchema,
+  getExecutionDetailSchema,
 } from './workflow.schemas'
 
 /**
@@ -42,6 +43,10 @@ export const workflowRouter = router({
   delete: modulePermission('workflows:write')
     .input(deleteWorkflowSchema)
     .mutation(({ ctx, input }) => workflowService.deleteWorkflow(ctx, input.id)),
+
+  getExecutionDetail: moduleProcedure
+    .input(getExecutionDetailSchema)
+    .query(({ ctx, input }) => workflowService.getExecutionDetail(ctx, input.executionId)),
 
   getExecutions: moduleProcedure
     .input(

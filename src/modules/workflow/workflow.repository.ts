@@ -297,6 +297,32 @@ export const workflowRepository = {
   // Execution tracking
   // ────────────────────────────────────────────────────────────────────────────
 
+  async findExecutionById(
+    tenantId: string,
+    executionId: string
+  ): Promise<(WorkflowExecutionRecord & { workflowName: string }) | null> {
+    log.debug({ executionId, tenantId }, 'findExecutionById called')
+    const [row] = await db
+      .select({
+        execution: workflowExecutions,
+        workflowName: workflows.name,
+      })
+      .from(workflowExecutions)
+      .innerJoin(workflows, eq(workflowExecutions.workflowId, workflows.id))
+      .where(
+        and(
+          eq(workflowExecutions.tenantId, tenantId),
+          eq(workflowExecutions.id, executionId)
+        )
+      )
+      .limit(1)
+    if (!row) return null
+    return {
+      ...mapExecutionRow(row.execution),
+      workflowName: row.workflowName,
+    }
+  },
+
   async recordExecution(
     input: Omit<WorkflowExecutionRecord, 'id'>
   ): Promise<WorkflowExecutionRecord> {

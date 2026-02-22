@@ -184,6 +184,10 @@ export const deleteWorkflowSchema = z.object({
   id: z.string(),
 })
 
+export const getExecutionDetailSchema = z.object({
+  executionId: z.uuid(),
+})
+
 // ---------------------------------------------------------------------------
 // Graph validation schema
 // ---------------------------------------------------------------------------

@@ -202,6 +202,26 @@ export const workflowService = {
   // Execution history
   // ---------------------------------------------------------------------------
 
+  async getExecutionDetail(ctx: Context, executionId: string) {
+    log.info({ tenantId: ctx.tenantId, executionId }, 'getExecutionDetail called')
+    const result = await workflowRepository.findExecutionById(ctx.tenantId, executionId)
+    if (!result) throw new NotFoundError('WorkflowExecution', executionId)
+
+    const { workflowName, ...execution } = result
+
+    // Compute duration in milliseconds from startedAt/completedAt
+    let durationMs: number | null = null
+    if (execution.startedAt && execution.completedAt) {
+      durationMs = execution.completedAt.getTime() - execution.startedAt.getTime()
+    }
+
+    return {
+      ...execution,
+      workflowName,
+      durationMs,
+    }
+  },
+
   async getExecutionHistory(
     ctx: Context,
     opts: { workflowId?: string; limit: number; cursor?: string }

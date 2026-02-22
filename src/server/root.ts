@@ -19,6 +19,8 @@ import { paymentRouter } from "@/modules/payment";
 import { analyticsRouter } from "@/modules/analytics";
 import { developerRouter } from "@/modules/developer";
 import { searchRouter } from "@/modules/search";
+import { settingsRouter } from "@/modules/settings";
+import { auditRouter } from "@/modules/audit";
 
 /**
  * Root tRPC router.
@@ -29,7 +31,8 @@ import { searchRouter } from "@/modules/search";
  *   Phase 3: auth
  *   Phase 4: notification, calendarSync
  *   Phase 5: team, customer, forms, review, workflow, tenant, platform
- *   Phase 6: payment, analytics, developer, search
+ *   Phase 6: payment, analytics, developer, search, settings
+ *   Phase 7: audit
  */
 export const appRouter = router({
   auth: authRouter,
@@ -52,6 +55,8 @@ export const appRouter = router({
   analytics: analyticsRouter,
   developer: developerRouter,
   search: searchRouter,
+  settings: settingsRouter,
+  audit: auditRouter,
 });
 
 export type AppRouter = typeof appRouter;
