@@ -200,10 +200,6 @@ export const tenantService = {
   ): Promise<{ bookingCount: number; staffCount: number }> {
     log.info({ tenantId: ctx.tenantId }, "getUsage");
 
-    // Stub — return zeros for Phase 5
-    return {
-      bookingCount: 0,
-      staffCount: 0,
-    };
+    return tenantRepository.getUsageCounts(ctx.tenantId);
   },
 };

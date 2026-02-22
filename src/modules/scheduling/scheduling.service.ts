@@ -1,4 +1,7 @@
 import { addDays, addWeeks, addMonths } from "date-fns";
+import { db } from "@/shared/db";
+import { bookings, users, availableSlots } from "@/shared/db/schema";
+import { eq, and, sql, gte, lte } from "drizzle-orm";
 import { logger } from "@/shared/logger";
 import { NotFoundError } from "@/shared/errors";
 import {
@@ -235,26 +238,162 @@ export const schedulingService = {
 
   /**
    * Return all staff available for a given slot.
-   * TODO: wire to a users/staff repository to enumerate all active staff for the tenant.
+   * Loads the slot, enumerates active team members for the tenant,
+   * and checks each against existing bookings and external events.
    */
   async getAvailableStaffForSlot(
-    _tenantId: string,
-    _slotId: string,
+    tenantId: string,
+    slotId: string,
   ): Promise<StaffAvailability[]> {
-    // TODO: load all active staff for tenant and check availability against the slot window
-    return [];
+    const slot = await schedulingRepository.findSlotById(tenantId, slotId);
+    if (!slot) throw new NotFoundError("Slot", slotId);
+
+    // Load all active team members for the tenant
+    const activeStaff = await db
+      .select({
+        id: users.id,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        staffStatus: users.staffStatus,
+      })
+      .from(users)
+      .where(
+        and(
+          eq(users.tenantId, tenantId),
+          eq(users.isTeamMember, true),
+          eq(users.status, "ACTIVE"),
+        ),
+      );
+
+    if (activeStaff.length === 0) return [];
+
+    // Parse slot time for availability check
+    const slotDate = slot.date;
+    const slotTime = slot.time; // "HH:MM"
+    // Default to 60 minutes if no endTime
+    let durationMinutes = 60;
+    if (slot.endTime) {
+      const [sh, sm] = slotTime.split(":").map(Number);
+      const [eh, em] = slot.endTime.split(":").map(Number);
+      durationMinutes = ((eh ?? 0) * 60 + (em ?? 0)) - ((sh ?? 0) * 60 + (sm ?? 0));
+      if (durationMinutes <= 0) durationMinutes = 60;
+    }
+
+    // Check each staff member's availability
+    const results: StaffAvailability[] = [];
+    for (const staff of activeStaff) {
+      const availability = await this.checkStaffAvailability(
+        tenantId,
+        staff.id,
+        slotDate,
+        slotTime,
+        durationMinutes,
+      );
+      results.push(availability);
+    }
+
+    log.info({ tenantId, slotId, total: activeStaff.length, available: results.filter(r => r.status === "available").length }, "Staff availability checked for slot");
+    return results;
   },
 
   /**
    * Return ranked staff recommendations for a given booking.
-   * TODO: wire to booking repository and staff list once scheduling has access to those.
+   * Scores staff by: service match, workload, and availability.
    */
   async getStaffRecommendations(
-    _tenantId: string,
-    _bookingId: string,
+    tenantId: string,
+    bookingId: string,
   ): Promise<StaffRecommendation[]> {
-    // TODO: load booking details and active staff list, then call lib/recommendations.ts
-    return [];
+    // Load the booking
+    const [booking] = await db
+      .select()
+      .from(bookings)
+      .where(and(eq(bookings.id, bookingId), eq(bookings.tenantId, tenantId)))
+      .limit(1);
+
+    if (!booking) throw new NotFoundError("Booking", bookingId);
+
+    // Load active team members
+    const activeStaff = await db
+      .select({
+        id: users.id,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        staffStatus: users.staffStatus,
+        serviceIds: users.serviceIds,
+      })
+      .from(users)
+      .where(
+        and(
+          eq(users.tenantId, tenantId),
+          eq(users.isTeamMember, true),
+          eq(users.status, "ACTIVE"),
+        ),
+      );
+
+    if (activeStaff.length === 0) return [];
+
+    const recommendations: StaffRecommendation[] = [];
+
+    for (const staff of activeStaff) {
+      const reasons: string[] = [];
+      let score = 50; // Base score
+
+      // Service match: staff.serviceIds contains the booking's serviceId
+      const staffServiceIds = (staff.serviceIds ?? []).filter(Boolean) as string[];
+      if (staffServiceIds.includes(booking.serviceId)) {
+        score += 30;
+        reasons.push("Handles this service");
+      }
+
+      // Workload: fewer bookings on that day = higher score
+      const dayBookings = await schedulingRepository.getStaffBookingsForDate(
+        tenantId,
+        staff.id,
+        booking.scheduledDate,
+      );
+      const activeBookings = dayBookings.filter(b => b.status !== "CANCELLED" && b.status !== "REJECTED");
+      if (activeBookings.length === 0) {
+        score += 20;
+        reasons.push("No other bookings that day");
+      } else if (activeBookings.length <= 2) {
+        score += 10;
+        reasons.push(`Light schedule (${activeBookings.length} booking${activeBookings.length > 1 ? "s" : ""})`);
+      } else {
+        score -= 10;
+        reasons.push(`Busy schedule (${activeBookings.length} bookings)`);
+      }
+
+      // Availability check
+      const availability = await this.checkStaffAvailability(
+        tenantId,
+        staff.id,
+        booking.scheduledDate,
+        booking.scheduledTime,
+        booking.durationMinutes,
+      );
+
+      if (availability.status === "unavailable") {
+        score = Math.max(0, score - 50);
+        reasons.push("Currently unavailable");
+      } else if (availability.status === "available") {
+        reasons.push("Available at requested time");
+      }
+
+      recommendations.push({
+        userId: staff.id,
+        staffName: `${staff.firstName} ${staff.lastName}`.trim(),
+        score: Math.max(0, Math.min(100, score)),
+        reasons,
+        availabilityStatus: availability.status,
+      });
+    }
+
+    // Sort by score descending
+    recommendations.sort((a, b) => b.score - a.score);
+
+    log.info({ tenantId, bookingId, count: recommendations.length }, "Staff recommendations generated");
+    return recommendations;
   },
 
   // ---------------------------------------------------------------------------
@@ -263,30 +402,212 @@ export const schedulingService = {
 
   /**
    * Return scheduling alerts (conflicts, travel issues, back-to-back) for a date.
-   * TODO: wire to booking repository in a later phase — this service currently has
-   * no direct access to the bookings table outside of the per-staff availability queries.
+   * Scans all non-cancelled bookings on the given date and detects overlapping
+   * assignments and back-to-back bookings with no buffer.
    */
   async getSchedulingAlerts(
-    _tenantId: string,
-    _date: Date,
+    tenantId: string,
+    date: Date,
   ): Promise<SchedulingAlert[]> {
-    // TODO: wire to booking repository in a later phase
-    return [];
+    // Load all non-terminal bookings on this date
+    const dayBookings = await db
+      .select({
+        id: bookings.id,
+        staffId: bookings.staffId,
+        scheduledTime: bookings.scheduledTime,
+        durationMinutes: bookings.durationMinutes,
+        status: bookings.status,
+        customerId: bookings.customerId,
+      })
+      .from(bookings)
+      .where(
+        and(
+          eq(bookings.tenantId, tenantId),
+          eq(bookings.scheduledDate, date),
+          sql`${bookings.status} NOT IN ('CANCELLED', 'REJECTED')`,
+        ),
+      );
+
+    if (dayBookings.length === 0) return [];
+
+    // Group bookings by staffId
+    const byStaff = new Map<string, typeof dayBookings>();
+    for (const b of dayBookings) {
+      if (!b.staffId) continue;
+      const existing = byStaff.get(b.staffId) ?? [];
+      existing.push(b);
+      byStaff.set(b.staffId, existing);
+    }
+
+    const alerts: SchedulingAlert[] = [];
+
+    // Helper to parse booking start as minutes-since-midnight
+    function parseMinutes(time: string): number {
+      const [h, m] = time.split(":").map(Number);
+      return (h ?? 0) * 60 + (m ?? 0);
+    }
+
+    for (const [staffId, staffBookings] of byStaff) {
+      // Sort by time
+      const sorted = staffBookings.sort(
+        (a, b) => parseMinutes(a.scheduledTime) - parseMinutes(b.scheduledTime),
+      );
+
+      for (let i = 0; i < sorted.length; i++) {
+        const current = sorted[i]!;
+        const currentStart = parseMinutes(current.scheduledTime);
+        const currentEnd = currentStart + current.durationMinutes;
+
+        for (let j = i + 1; j < sorted.length; j++) {
+          const next = sorted[j]!;
+          const nextStart = parseMinutes(next.scheduledTime);
+
+          // Conflict: overlapping times
+          if (nextStart < currentEnd) {
+            alerts.push({
+              id: `conflict-${current.id}-${next.id}`,
+              bookingId: current.id,
+              staffName: staffId, // TODO: resolve staff name via join if needed
+              customerName: current.customerId,
+              datetime: date,
+              type: "conflict",
+              message: `Booking at ${current.scheduledTime} overlaps with booking at ${next.scheduledTime}`,
+              severity: "error",
+            });
+          }
+          // Back-to-back: no gap between bookings (0-minute buffer)
+          else if (nextStart === currentEnd) {
+            alerts.push({
+              id: `b2b-${current.id}-${next.id}`,
+              bookingId: current.id,
+              staffName: staffId,
+              customerName: current.customerId,
+              datetime: date,
+              type: "back_to_back",
+              message: `Back-to-back booking: ${current.scheduledTime} ends exactly when ${next.scheduledTime} starts`,
+              severity: "warning",
+            });
+          }
+        }
+      }
+    }
+
+    log.info({ tenantId, date, alertCount: alerts.length }, "Scheduling alerts computed");
+    return alerts;
   },
 
   /**
    * Return assignment health for a specific booking.
-   * TODO: wire to booking repository to fetch the booking and its sibling bookings
-   * for the assigned staff member, then delegate to lib/assignment-health.ts.
+   * Checks the assigned staff member's schedule on the booking date to determine
+   * if the assignment is optimal, tight, or conflicting.
    */
-  async getAssignmentHealth(_bookingId: string): Promise<AssignmentHealth> {
-    // TODO: wire to booking repository in a later phase
+  async getAssignmentHealth(bookingId: string): Promise<AssignmentHealth> {
+    // Load the booking (cross-tenant lookup since we only have bookingId)
+    const [booking] = await db
+      .select()
+      .from(bookings)
+      .where(eq(bookings.id, bookingId))
+      .limit(1);
+
+    if (!booking) {
+      return {
+        status: "optimal",
+        icon: "?",
+        label: "Unknown",
+        color: "green",
+        reason: "Booking not found",
+      };
+    }
+
+    if (!booking.staffId) {
+      return {
+        status: "optimal",
+        icon: "−",
+        label: "Unassigned",
+        color: "amber",
+        reason: "No staff assigned to this booking",
+      };
+    }
+
+    // Get all bookings for this staff member on the same date
+    const dayBookings = await schedulingRepository.getStaffBookingsForDate(
+      booking.tenantId,
+      booking.staffId,
+      booking.scheduledDate,
+    );
+
+    const activeBookings = dayBookings.filter(
+      (b) => b.status !== "CANCELLED" && b.status !== "REJECTED",
+    );
+
+    // Helper to parse booking start as minutes-since-midnight
+    function parseMinutes(time: string): number {
+      const [h, m] = time.split(":").map(Number);
+      return (h ?? 0) * 60 + (m ?? 0);
+    }
+
+    const bookingStart = parseMinutes(booking.scheduledTime);
+    const bookingEnd = bookingStart + booking.durationMinutes;
+
+    // Check for direct conflicts (overlapping with other bookings)
+    let hasConflict = false;
+    let hasBackToBack = false;
+
+    for (const other of activeBookings) {
+      if (other.id === bookingId) continue;
+      const otherStart = parseMinutes(other.scheduledTime);
+      const otherEnd = otherStart + other.durationMinutes;
+
+      if (bookingStart < otherEnd && otherStart < bookingEnd) {
+        hasConflict = true;
+        break;
+      }
+      // Back-to-back: no gap
+      if (bookingEnd === otherStart || otherEnd === bookingStart) {
+        hasBackToBack = true;
+      }
+    }
+
+    if (hasConflict) {
+      return {
+        status: "conflict",
+        icon: "!",
+        label: "Conflict",
+        color: "red",
+        reason: "This booking overlaps with another booking for the same staff member",
+      };
+    }
+
+    if (activeBookings.length >= 6) {
+      return {
+        status: "tight_schedule",
+        icon: "~",
+        label: "Heavy Load",
+        color: "red",
+        reason: `Staff has ${activeBookings.length} bookings on this date`,
+      };
+    }
+
+    if (hasBackToBack || activeBookings.length >= 4) {
+      return {
+        status: "tight_schedule",
+        icon: "~",
+        label: "Tight Schedule",
+        color: "amber",
+        reason: hasBackToBack
+          ? "Back-to-back bookings with no buffer"
+          : `Staff has ${activeBookings.length} bookings on this date`,
+      };
+    }
+
     return {
       status: "optimal",
       icon: "✓",
       label: "Optimal",
       color: "green",
-      reason: "Assignment health calculation not yet wired to booking data",
+      reason: activeBookings.length <= 1
+        ? "Light schedule"
+        : `${activeBookings.length} bookings with adequate spacing`,
     };
   },
 

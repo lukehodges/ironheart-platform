@@ -6,8 +6,10 @@ import {
   tenantModules,
   modules,
   venues,
+  bookings,
+  users,
 } from "@/shared/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import type {
   OrganizationSettings,
   TenantModule,
@@ -495,5 +497,34 @@ export const tenantRepository = {
       .update(venues)
       .set({ active: false, updatedAt: new Date() })
       .where(and(eq(venues.id, venueId), eq(venues.tenantId, tenantId)));
+  },
+
+  // ---- Usage Counts ----
+
+  async getUsageCounts(
+    tenantId: string
+  ): Promise<{ bookingCount: number; staffCount: number }> {
+    log.info({ tenantId }, "getUsageCounts");
+
+    const [bookingResult, staffResult] = await Promise.all([
+      db
+        .select({ count: sql<number>`count(*)` })
+        .from(bookings)
+        .where(eq(bookings.tenantId, tenantId)),
+      db
+        .select({ count: sql<number>`count(*)` })
+        .from(users)
+        .where(
+          and(
+            eq(users.tenantId, tenantId),
+            eq(users.isTeamMember, true),
+          ),
+        ),
+    ]);
+
+    return {
+      bookingCount: Number(bookingResult[0]?.count ?? 0),
+      staffCount: Number(staffResult[0]?.count ?? 0),
+    };
   },
 };

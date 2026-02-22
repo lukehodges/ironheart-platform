@@ -128,10 +128,71 @@ export async function executeAction(
       }
 
       case 'CREATE_TASK': {
-        // Stub — no tasks table spec yet
         const cfg = config as CreateTaskActionConfig
-        log.info({ title: cfg.title, actionType }, 'CREATE_TASK stub — no tasks table yet')
-        return { success: true, stubbed: true, title: cfg.title ?? '' }
+        const tenantId = String(data.tenantId ?? '')
+        if (!tenantId) {
+          throw new Error('CREATE_TASK requires tenantId in context')
+        }
+
+        // Resolve assignee from config field or context
+        const assignedTo = cfg.assigneeField
+          ? String(resolveField(cfg.assigneeField, data) ?? data.staffId ?? '')
+          : String(data.staffId ?? '')
+
+        // Compute due date from offset (e.g. "3d", "24h", "1w") or default to 7 days
+        let dueDate: Date | null = null
+        if (cfg.dueDateOffset) {
+          const match = cfg.dueDateOffset.match(/^(\d+)(h|d|w)$/)
+          if (match) {
+            const amount = parseInt(match[1]!, 10)
+            const unit = match[2]!
+            const now = new Date()
+            if (unit === 'h') {
+              dueDate = new Date(now.getTime() + amount * 60 * 60 * 1000)
+            } else if (unit === 'd') {
+              dueDate = new Date(now.getTime() + amount * 24 * 60 * 60 * 1000)
+            } else if (unit === 'w') {
+              dueDate = new Date(now.getTime() + amount * 7 * 24 * 60 * 60 * 1000)
+            }
+          }
+        }
+        if (!dueDate) {
+          dueDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // default: 7 days
+        }
+
+        // projectId is required by the tasks table — resolve from context or config
+        const projectId = String(
+          (data.projectId as string | undefined) ??
+          (config as Record<string, unknown>).projectId ??
+          ''
+        )
+        if (!projectId) {
+          throw new Error('CREATE_TASK requires projectId in context or config (tasks.projectId is NOT NULL)')
+        }
+
+        const { db: actionDb } = await import('@/shared/db')
+        const { tasks } = await import('@/shared/db/schema')
+        const now = new Date()
+        const taskId = crypto.randomUUID()
+
+        await actionDb.insert(tasks).values({
+          id: taskId,
+          tenantId,
+          projectId,
+          title: String(cfg.title ?? 'Workflow Task'),
+          description: cfg.description ? String(cfg.description) : null,
+          status: 'TODO',
+          priority: cfg.priority ?? 'MEDIUM',
+          assignedTo: assignedTo || null,
+          dueDate,
+          type: 'GENERAL',
+          progress: 0,
+          createdAt: now,
+          updatedAt: now,
+        })
+
+        log.info({ taskId, title: cfg.title, assignedTo, actionType }, 'CREATE_TASK completed')
+        return { success: true, taskId, title: cfg.title ?? 'Workflow Task' }
       }
 
       case 'SEND_NOTIFICATION': {

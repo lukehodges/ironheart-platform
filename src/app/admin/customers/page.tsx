@@ -36,6 +36,8 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { CustomerDetailSheet } from "@/components/customers/customer-detail-sheet"
 import { CustomerCreateDialog } from "@/components/customers/customer-create-dialog"
+import { CustomerEditDialog } from "@/components/customers/customer-edit-dialog"
+import { CustomerSearchDialog } from "@/components/customers/customer-search-dialog"
 import { CustomerMergeDialog } from "@/components/customers/customer-merge-dialog"
 import type { CustomerRecord } from "@/modules/customer/customer.types"
 
@@ -166,10 +168,11 @@ function TableRowSkeleton() {
 interface CustomerRowProps {
   customer: CustomerRecord
   onView: (id: string) => void
+  onEdit: (id: string) => void
   onMerge: (id: string) => void
 }
 
-function CustomerRow({ customer, onView, onMerge }: CustomerRowProps) {
+function CustomerRow({ customer, onView, onEdit, onMerge }: CustomerRowProps) {
   return (
     <TableRow
       className="cursor-pointer"
@@ -249,6 +252,9 @@ function CustomerRow({ customer, onView, onMerge }: CustomerRowProps) {
             <DropdownMenuItem onClick={() => onView(customer.id)}>
               View
             </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onEdit(customer.id)}>
+              Edit
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
               onClick={() => onMerge(customer.id)}
@@ -277,6 +283,12 @@ export default function CustomersPage() {
   // Sheet / dialog state
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null)
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
+  const [editState, setEditState] = useState<{ open: boolean; customerId: string }>({
+    open: false,
+    customerId: "",
+  })
+  const [mergeSearchOpen, setMergeSearchOpen] = useState(false)
+  const [mergeSecondaryId, setMergeSecondaryId] = useState<string | null>(null)
   const [mergeState, setMergeState] = useState<{
     open: boolean
     primaryId: string
@@ -331,11 +343,13 @@ export default function CustomersPage() {
     setSelectedCustomerId(id)
   }, [])
 
+  const handleEditOpen = useCallback((customerId: string) => {
+    setEditState({ open: true, customerId })
+  }, [])
+
   const handleMergeOpen = useCallback((secondaryId: string) => {
-    // Merge requires a primary target — for now open dialog with no primary pre-selected
-    // In a real flow, the user would pick the primary from a search
-    setMergeState({ open: true, primaryId: "", secondaryId })
-    toast.info("Select the primary customer to merge into from the dialog")
+    setMergeSecondaryId(secondaryId)
+    setMergeSearchOpen(true)
   }, [])
 
   function handleCreateSuccess(customerId: string) {
@@ -476,6 +490,7 @@ export default function CustomersPage() {
                     key={customer.id}
                     customer={customer}
                     onView={handleView}
+                    onEdit={handleEditOpen}
                     onMerge={handleMergeOpen}
                   />
                 ))
@@ -519,8 +534,7 @@ export default function CustomersPage() {
         customerId={selectedCustomerId}
         onClose={() => setSelectedCustomerId(null)}
         onEdit={(id) => {
-          // In a full implementation, this would open an edit dialog
-          toast.info(`Edit customer ${id} — edit dialog not yet implemented`)
+          setEditState({ open: true, customerId: id })
         }}
       />
 
@@ -531,7 +545,37 @@ export default function CustomersPage() {
         onSuccess={handleCreateSuccess}
       />
 
-      {/* Merge dialog */}
+      {/* Edit dialog */}
+      {editState.customerId && (
+        <CustomerEditDialog
+          customerId={editState.customerId}
+          open={editState.open}
+          onOpenChange={(open) =>
+            setEditState((prev) => ({ ...prev, open }))
+          }
+        />
+      )}
+
+      {/* Merge search dialog — pick the primary (target) customer */}
+      <CustomerSearchDialog
+        open={mergeSearchOpen}
+        onOpenChange={setMergeSearchOpen}
+        excludeId={mergeSecondaryId ?? undefined}
+        title="Select Target Customer"
+        description="Choose the customer to merge into. The selected customer will be kept."
+        onSelect={(primary) => {
+          setMergeSearchOpen(false)
+          if (mergeSecondaryId) {
+            setMergeState({
+              open: true,
+              primaryId: primary.id,
+              secondaryId: mergeSecondaryId,
+            })
+          }
+        }}
+      />
+
+      {/* Merge confirmation dialog */}
       {mergeState.open && mergeState.primaryId && mergeState.secondaryId && (
         <CustomerMergeDialog
           open={mergeState.open}
@@ -542,6 +586,7 @@ export default function CustomersPage() {
           secondaryCustomerId={mergeState.secondaryId}
           onSuccess={() => {
             setMergeState({ open: false, primaryId: "", secondaryId: "" })
+            setMergeSecondaryId(null)
             setSelectedCustomerId(null)
           }}
         />

@@ -1,9 +1,11 @@
 import { db } from '@/shared/db'
-import { and, eq, gte, lte, sql, count, avg, sum, min, max, isNull } from 'drizzle-orm'
+import { and, eq, gte, lte, sql, count, avg, sum, min, max, isNull, desc } from 'drizzle-orm'
 import { metricSnapshots } from '@/shared/db/schemas/phase6.schema'
 import { bookings } from '@/shared/db/schemas/booking.schema'
 import { payments, invoices, reviews } from '@/shared/db/schemas/shared.schema'
 import { customers } from '@/shared/db/schemas/customer.schema'
+import { services } from '@/shared/db/schemas/services.schema'
+import { users } from '@/shared/db/schemas/auth.schema'
 import type { CohortStats, MetricKey, PeriodType } from './analytics.types'
 
 export async function getTimeSeriesMetric(params: {
@@ -38,24 +40,27 @@ export async function upsertSnapshot(snapshot: {
   value: number
 }) {
   // metricSnapshots has no unique constraint — delete-then-insert to achieve upsert semantics
-  await db
-    .delete(metricSnapshots)
-    .where(
-      and(
-        eq(metricSnapshots.tenantId, snapshot.tenantId),
-        eq(metricSnapshots.metricKey, snapshot.metricKey),
-        eq(metricSnapshots.periodType, snapshot.periodType),
-        eq(metricSnapshots.periodStart, snapshot.periodStart)
+  // Wrapped in a transaction for atomicity (U5.10)
+  await db.transaction(async (tx) => {
+    await tx
+      .delete(metricSnapshots)
+      .where(
+        and(
+          eq(metricSnapshots.tenantId, snapshot.tenantId),
+          eq(metricSnapshots.metricKey, snapshot.metricKey),
+          eq(metricSnapshots.periodType, snapshot.periodType),
+          eq(metricSnapshots.periodStart, snapshot.periodStart)
+        )
       )
-    )
 
-  await db.insert(metricSnapshots).values({
-    tenantId:    snapshot.tenantId,
-    metricKey:   snapshot.metricKey,
-    dimensions:  snapshot.dimensions,
-    periodType:  snapshot.periodType,
-    periodStart: snapshot.periodStart,
-    value:       String(snapshot.value),
+    await tx.insert(metricSnapshots).values({
+      tenantId:    snapshot.tenantId,
+      metricKey:   snapshot.metricKey,
+      dimensions:  snapshot.dimensions,
+      periodType:  snapshot.periodType,
+      periodStart: snapshot.periodStart,
+      value:       String(snapshot.value),
+    })
   })
 }
 
@@ -324,4 +329,210 @@ export async function getTenantCohortStats(tenantId: string): Promise<CohortStat
     minM: Math.min(...monetaries),
     maxM: Math.max(...monetaries),
   }
+}
+
+// ---------------------------------------------------------------------------
+// Revenue chart — time series data grouped by date bucket
+// ---------------------------------------------------------------------------
+
+export async function getRevenueChart(
+  tenantId: string,
+  from: Date,
+  to: Date,
+  periodType: 'DAY' | 'WEEK' | 'MONTH'
+): Promise<Array<{ date: string; value: number }>> {
+  const truncExpr =
+    periodType === 'DAY'   ? sql`date_trunc('day', ${payments.createdAt})`   :
+    periodType === 'WEEK'  ? sql`date_trunc('week', ${payments.createdAt})`  :
+                             sql`date_trunc('month', ${payments.createdAt})`
+
+  const rows = await db
+    .select({
+      dateBucket: sql<string>`${truncExpr}::text`.as('date_bucket'),
+      total: sum(payments.amount),
+    })
+    .from(payments)
+    .where(
+      and(
+        eq(payments.tenantId, tenantId),
+        eq(payments.status, 'COMPLETED'),
+        eq(payments.type, 'PAYMENT'),
+        gte(payments.createdAt, from),
+        lte(payments.createdAt, to)
+      )
+    )
+    .groupBy(sql`date_bucket`)
+    .orderBy(sql`date_bucket`)
+
+  return rows.map((r) => ({
+    date:  r.dateBucket ? r.dateBucket.split(' ')[0]! : '',
+    value: r.total ? parseFloat(r.total) : 0,
+  }))
+}
+
+// ---------------------------------------------------------------------------
+// Bookings by status — status distribution for donut chart
+// ---------------------------------------------------------------------------
+
+export async function getBookingsByStatus(
+  tenantId: string,
+  from?: Date,
+  to?: Date
+): Promise<Array<{ status: string; count: number }>> {
+  const conditions = [eq(bookings.tenantId, tenantId)]
+  if (from) conditions.push(gte(bookings.createdAt, from))
+  if (to) conditions.push(lte(bookings.createdAt, to))
+
+  const rows = await db
+    .select({
+      status: bookings.status,
+      total: count(),
+    })
+    .from(bookings)
+    .where(and(...conditions))
+    .groupBy(bookings.status)
+
+  return rows.map((r) => ({
+    status: r.status,
+    count:  Number(r.total),
+  }))
+}
+
+// ---------------------------------------------------------------------------
+// Top services — ranked by booking count
+// ---------------------------------------------------------------------------
+
+export async function getTopServices(
+  tenantId: string,
+  limit: number,
+  from?: Date,
+  to?: Date
+): Promise<Array<{ serviceId: string; serviceName: string; bookingCount: number; revenue: number }>> {
+  const conditions = [eq(bookings.tenantId, tenantId)]
+  if (from) conditions.push(gte(bookings.createdAt, from))
+  if (to) conditions.push(lte(bookings.createdAt, to))
+
+  const rows = await db
+    .select({
+      serviceId:    bookings.serviceId,
+      serviceName:  services.name,
+      bookingCount: count(),
+      revenue:      sum(bookings.totalAmount),
+    })
+    .from(bookings)
+    .innerJoin(services, eq(bookings.serviceId, services.id))
+    .where(and(...conditions))
+    .groupBy(bookings.serviceId, services.name)
+    .orderBy(desc(count()))
+    .limit(limit)
+
+  return rows.map((r) => ({
+    serviceId:    r.serviceId,
+    serviceName:  r.serviceName,
+    bookingCount: Number(r.bookingCount),
+    revenue:      r.revenue ? parseFloat(r.revenue) : 0,
+  }))
+}
+
+// ---------------------------------------------------------------------------
+// Staff utilization — booking count + hours per staff member
+// ---------------------------------------------------------------------------
+
+export async function getStaffUtilization(
+  tenantId: string,
+  from?: Date,
+  to?: Date
+): Promise<Array<{ staffId: string; staffName: string; bookingCount: number; hoursBooked: number }>> {
+  const conditions = [
+    eq(bookings.tenantId, tenantId),
+    sql`${bookings.staffId} IS NOT NULL`,
+  ]
+  if (from) conditions.push(gte(bookings.createdAt, from))
+  if (to) conditions.push(lte(bookings.createdAt, to))
+
+  const rows = await db
+    .select({
+      staffId:      bookings.staffId,
+      firstName:    users.firstName,
+      lastName:     users.lastName,
+      bookingCount: count(),
+      totalMinutes: sum(bookings.durationMinutes),
+    })
+    .from(bookings)
+    .innerJoin(users, eq(bookings.staffId, users.id))
+    .where(and(...conditions))
+    .groupBy(bookings.staffId, users.firstName, users.lastName)
+    .orderBy(desc(count()))
+
+  return rows.map((r) => ({
+    staffId:      r.staffId!,
+    staffName:    `${r.firstName} ${r.lastName}`,
+    bookingCount: Number(r.bookingCount),
+    hoursBooked:  r.totalMinutes ? Math.round((parseFloat(r.totalMinutes) / 60) * 100) / 100 : 0,
+  }))
+}
+
+// ---------------------------------------------------------------------------
+// Churn risk — customers with overdue booking intervals
+// ---------------------------------------------------------------------------
+
+export interface ChurnRiskCustomer {
+  customerId: string
+  customerName: string
+  lastBooking: Date | null
+  avgInterval: number
+  scheduledDates: Date[]
+}
+
+export async function getChurnRiskCandidates(
+  tenantId: string,
+  limit: number
+): Promise<ChurnRiskCustomer[]> {
+  // Get all customers with at least 2 bookings (need >= 2 to compute interval)
+  const customerRows = await db
+    .select({
+      customerId:  bookings.customerId,
+      firstName:   customers.firstName,
+      lastName:    customers.lastName,
+      lastBooking: max(bookings.scheduledDate),
+      bookingCount: count(),
+    })
+    .from(bookings)
+    .innerJoin(customers, eq(bookings.customerId, customers.id))
+    .where(
+      and(
+        eq(bookings.tenantId, tenantId),
+        isNull(customers.deletedAt),
+        sql`${bookings.status} NOT IN ('CANCELLED', 'REJECTED')`
+      )
+    )
+    .groupBy(bookings.customerId, customers.firstName, customers.lastName)
+    .having(sql`count(*) >= 2`)
+
+  // For each candidate, fetch their scheduled dates to compute interval
+  const results: ChurnRiskCustomer[] = []
+
+  for (const row of customerRows) {
+    const dateRows = await db
+      .select({ scheduledDate: bookings.scheduledDate })
+      .from(bookings)
+      .where(
+        and(
+          eq(bookings.tenantId, tenantId),
+          eq(bookings.customerId, row.customerId),
+          sql`${bookings.status} NOT IN ('CANCELLED', 'REJECTED')`
+        )
+      )
+      .orderBy(bookings.scheduledDate)
+
+    results.push({
+      customerId:    row.customerId,
+      customerName:  `${row.firstName} ${row.lastName}`,
+      lastBooking:   row.lastBooking ? new Date(row.lastBooking) : null,
+      avgInterval:   0, // computed in service layer
+      scheduledDates: dateRows.map((r) => new Date(r.scheduledDate)),
+    })
+  }
+
+  return results
 }

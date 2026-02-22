@@ -546,11 +546,48 @@ export function CustomerDetailSheet({
               variant="outline"
               className="gap-1.5"
               onClick={() => {
-                toast.info("GDPR export initiated — you will receive an email shortly.")
+                if (!customer) return
+                const exportData = {
+                  customer: {
+                    id: customer.id,
+                    name: customer.name,
+                    email: customer.email ?? null,
+                    phone: customer.phone ?? null,
+                    dateOfBirth: customer.dateOfBirth ?? null,
+                    gender: customer.gender ?? null,
+                    address: customer.address ?? null,
+                    tags: customer.tags ?? [],
+                    notes: customer.notes ?? null,
+                    referralSource: customer.referralSource ?? null,
+                    isActive: customer.isActive,
+                    createdAt: customer.createdAt,
+                    updatedAt: customer.updatedAt,
+                  },
+                  bookingHistory: (history ?? []).map((b) => ({
+                    id: b.id,
+                    scheduledDate: b.scheduledDate,
+                    status: b.status,
+                    totalAmount: b.totalAmount ?? null,
+                  })),
+                  exportedAt: new Date().toISOString(),
+                }
+                const blob = new Blob(
+                  [JSON.stringify(exportData, null, 2)],
+                  { type: "application/json" }
+                )
+                const url = URL.createObjectURL(blob)
+                const a = document.createElement("a")
+                a.href = url
+                a.download = `customer-${customer.id}-export.json`
+                document.body.appendChild(a)
+                a.click()
+                document.body.removeChild(a)
+                URL.revokeObjectURL(url)
+                toast.success("Customer data exported successfully")
               }}
             >
               <Download className="h-3.5 w-3.5" aria-hidden="true" />
-              GDPR Export
+              Export Data
             </Button>
 
             <div className="ml-auto">

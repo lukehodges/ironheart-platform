@@ -6,6 +6,12 @@ import {
   summarySchema,
   timeSeriesSchema,
   forecastSchema,
+  kpiSchema,
+  revenueChartSchema,
+  bookingsByStatusSchema,
+  topServicesSchema,
+  staffUtilizationSchema,
+  churnRiskSchema,
 } from './analytics.schemas'
 import type { MetricKey, PeriodType } from './analytics.types'
 
@@ -39,5 +45,59 @@ export const analyticsRouter = router({
     .input(forecastSchema)
     .query(async ({ ctx, input }) => {
       return analyticsService.getRevenueForecast(ctx.tenantId, input.weeks)
+    }),
+
+  getKPIs: tenantProcedure
+    .input(kpiSchema)
+    .query(async ({ ctx, input }) => {
+      return analyticsService.getKPIs(ctx.tenantId, input.period)
+    }),
+
+  getRevenueChart: tenantProcedure
+    .input(revenueChartSchema)
+    .query(async ({ ctx, input }) => {
+      return analyticsService.getRevenueChart(
+        ctx.tenantId,
+        input.from,
+        input.to,
+        input.periodType
+      )
+    }),
+
+  getBookingsByStatus: tenantProcedure
+    .input(bookingsByStatusSchema)
+    .query(async ({ ctx, input }) => {
+      return analyticsService.getBookingsByStatus(
+        ctx.tenantId,
+        input.from,
+        input.to
+      )
+    }),
+
+  getTopServices: tenantProcedure
+    .input(topServicesSchema)
+    .query(async ({ ctx, input }) => {
+      return analyticsService.getTopServices(
+        ctx.tenantId,
+        input.limit ?? 10,
+        input.from,
+        input.to
+      )
+    }),
+
+  getStaffUtilization: permissionProcedure('analytics:read')
+    .input(staffUtilizationSchema)
+    .query(async ({ ctx, input }) => {
+      return analyticsService.getStaffUtilization(
+        ctx.tenantId,
+        input.from,
+        input.to
+      )
+    }),
+
+  getChurnRisk: permissionProcedure('analytics:read')
+    .input(churnRiskSchema)
+    .query(async ({ ctx, input }) => {
+      return analyticsService.getChurnRisk(ctx.tenantId, input.limit ?? 20)
     }),
 })
