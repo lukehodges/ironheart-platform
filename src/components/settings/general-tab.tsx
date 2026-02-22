@@ -70,19 +70,23 @@ export function GeneralTab() {
   const mutations = useSettingsMutations()
   const isLoading = mutations.updateGeneral.isPending
 
-  // TODO: Implement settings router with getGeneral procedure
-  // For now, stub the data to make build pass
-  const isLoadingSettings = false
-  const currentSettings = React.useMemo(
-    () => ({
-      businessName: "Demo Business",
-      address: "123 Main St, City, State 12345",
-      timezone: "UTC",
-      currency: "USD",
-      logoUrl: undefined as string | undefined,
-    }),
-    []
-  )
+  const { data: settingsData, isLoading: isLoadingSettings } = api.tenant.getSettings.useQuery(undefined, {
+    staleTime: 60_000,
+  })
+
+  // Map OrganizationSettings to the general form shape
+  const currentSettings = React.useMemo(() => {
+    if (!settingsData) return null
+    return {
+      businessName: settingsData.businessName ?? "",
+      address: [settingsData.addressLine1, settingsData.addressLine2, settingsData.city, settingsData.county, settingsData.postcode]
+        .filter(Boolean)
+        .join(", ") || "",
+      timezone: settingsData.timezone ?? "UTC",
+      currency: settingsData.currency ?? "USD",
+      logoUrl: settingsData.logoUrl ?? undefined,
+    }
+  }, [settingsData])
 
   React.useEffect(() => {
     if (currentSettings) {
@@ -98,6 +102,17 @@ export function GeneralTab() {
       }
     }
   }, [currentSettings])
+
+  // Show loading skeleton while fetching settings
+  if (isLoadingSettings) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-center py-8">
+          <Loader2 className="h-6 w-6 animate-spin" />
+        </div>
+      </div>
+    )
+  }
 
   const handleFieldChange = (field: keyof GeneralSettingsInput, value: string | undefined) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
@@ -178,18 +193,16 @@ export function GeneralTab() {
       return
     }
 
-    // For now, submit without logo if no file selected
+    // Map general form fields to the updateOrganizationSettings schema
     // In a real implementation, you would upload the logo to a storage service
     // and get back a URL to submit with the form
-    mutations.updateGeneral.mutate(formData)
-  }
-
-  if (isLoadingSettings) {
-    return (
-      <div className="flex items-center justify-center py-8">
-        <Loader2 className="h-6 w-6 animate-spin" />
-      </div>
-    )
+    mutations.updateGeneral.mutate({
+      businessName: formData.businessName,
+      addressLine1: formData.address,
+      timezone: formData.timezone,
+      currency: formData.currency,
+      logoUrl: formData.logoUrl,
+    })
   }
 
   return (

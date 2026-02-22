@@ -81,7 +81,7 @@ export default function AuditLogPage() {
    */
   const handleExport = async () => {
     try {
-      await exportCsv.mutateAsync(filters)
+      await exportCsv.mutateAsync()
       toast.success("Audit log exported successfully")
     } catch (err) {
       toast.error("Failed to export audit log")

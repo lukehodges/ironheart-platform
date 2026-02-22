@@ -4,8 +4,67 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
-import { type NavSection, navSections } from "./nav-config"
+import { buildNavSections, type NavSection } from "./nav-builder"
+import { moduleRegistry } from "@/shared/module-system/register-all"
 import { api } from "@/lib/trpc/react"
+import {
+  LayoutDashboard,
+  Calendar,
+  CalendarDays,
+  Users,
+  UserCheck,
+  UserCog,
+  Clock,
+  Zap,
+  FileText,
+  Star,
+  CreditCard,
+  Receipt,
+  BarChart3,
+  Search,
+  Code,
+  Code2,
+  Building2,
+  Settings,
+  ScrollText,
+  Shield,
+  Bell,
+  Globe,
+  type LucideIcon,
+} from "lucide-react"
+
+/**
+ * Map of icon string names (from module manifests) to Lucide icon components.
+ * Used to resolve the string-based icon references returned by buildNavSections.
+ */
+const ICON_MAP: Record<string, LucideIcon> = {
+  LayoutDashboard,
+  Calendar,
+  CalendarDays,
+  Users,
+  UserCheck,
+  UserCog,
+  Clock,
+  Zap,
+  FileText,
+  Star,
+  CreditCard,
+  Receipt,
+  BarChart3,
+  Search,
+  Code,
+  Code2,
+  Building2,
+  Settings,
+  ScrollText,
+  Shield,
+  Bell,
+  Globe,
+}
+
+function resolveIcon(iconName: string): LucideIcon {
+  return ICON_MAP[iconName] ?? LayoutDashboard
+}
 
 interface SidebarNavProps {
   collapsed?: boolean
@@ -19,32 +78,40 @@ function isActive(href: string, pathname: string): boolean {
   return pathname.startsWith(href)
 }
 
-function hasPermission(
-  permission: string | undefined,
-  permissions: string[]
-): boolean {
-  if (!permission) return true
-  if (permissions.includes("*:*")) return true
-  if (permissions.includes(permission)) return true
-  const [resource, action] = permission.split(":")
-  if (permissions.includes(`${resource}:*`)) return true
-  if (permissions.includes(`*:${action}`)) return true
-  return false
+/**
+ * Static nav items that are not part of the module registry:
+ * - Dashboard: always shown (top-level, no module)
+ * - Audit Log: shown if user has audit:view permission
+ */
+function buildStaticDashboardSection(): NavSection {
+  return {
+    items: [
+      { title: "Dashboard", href: "/admin", icon: "LayoutDashboard" },
+    ],
+  }
 }
 
-function filterSection(
-  section: NavSection,
-  permissions: string[],
-  isPlatformAdmin: boolean,
-  enabledModules: Set<string> | null
-): NavSection {
-  const items = section.items.filter((item) => {
-    if (item.isPlatformAdmin && !isPlatformAdmin) return false
-    if (item.permission && !hasPermission(item.permission, permissions)) return false
-    if (item.moduleSlug && enabledModules && !enabledModules.has(item.moduleSlug)) return false
-    return true
-  })
-  return { ...section, items }
+function buildStaticAccountSection(permissions: string[]): NavSection | null {
+  const items: NavSection["items"] = []
+
+  // Audit Log — requires audit:view permission
+  const hasAuditPermission =
+    !permissions.length || // if no permissions passed, don't filter
+    permissions.includes("*:*") ||
+    permissions.includes("audit:view") ||
+    permissions.includes("audit:*") ||
+    permissions.includes("*:view")
+
+  if (hasAuditPermission) {
+    items.push({
+      title: "Audit Log",
+      href: "/admin/audit",
+      icon: "ScrollText",
+      permission: "audit:view",
+    })
+  }
+
+  return items.length > 0 ? { title: "Account", items } : null
 }
 
 export function SidebarNav({
@@ -61,18 +128,80 @@ export function SidebarNav({
     retry: false,
   })
 
-  // null = still loading (show all items until we know)
-  const enabledModules = modules
-    ? new Set(modules.filter((m) => m.isEnabled).map((m) => m.moduleSlug))
-    : null
+  // Derive enabledSlugs from the tenant modules query
+  const enabledSlugs = modules
+    ? modules.filter((m) => m.isEnabled).map((m) => m.moduleSlug)
+    : []
 
-  const visibleSections = navSections
-    .map((s) => filterSection(s, permissions, isPlatformAdmin, enabledModules))
-    .filter((s) => s.items.length > 0)
+  // Build module-driven nav sections via nav-builder
+  const moduleSections = modules
+    ? buildNavSections(moduleRegistry, enabledSlugs, permissions, isPlatformAdmin)
+    : []
+
+  // Assemble final sections: Dashboard + module sections + static account items
+  const dashboardSection = buildStaticDashboardSection()
+  const accountSection = buildStaticAccountSection(permissions)
+
+  // Merge: if nav-builder already produced an "Account" section (e.g. Settings from tenant manifest),
+  // append our static account items into it rather than duplicating
+  const sections: NavSection[] = [dashboardSection]
+
+  for (const section of moduleSections) {
+    if (section.title === "Account" && accountSection) {
+      // Merge static account items into the module-generated Account section
+      sections.push({
+        ...section,
+        items: [...section.items, ...accountSection.items],
+      })
+    } else {
+      sections.push(section)
+    }
+  }
+
+  // If no Account section came from modules but we have static account items, add it
+  const hasAccountFromModules = moduleSections.some((s) => s.title === "Account")
+  if (!hasAccountFromModules && accountSection) {
+    sections.push(accountSection)
+  }
+
+  // If modules haven't loaded yet, show a minimal skeleton state
+  if (!modules) {
+    return (
+      <nav className="flex-1 overflow-y-auto py-4 scrollbar-thin" aria-label="Main navigation">
+        <div className="mb-1">
+          <ul role="list" className="space-y-0.5 px-2">
+            <li>
+              <Link
+                href="/admin"
+                className={cn(
+                  "group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-150",
+                  pathname === "/admin"
+                    ? "bg-primary text-primary-foreground shadow-sm shadow-primary/20"
+                    : "text-sidebar-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                )}
+                aria-current={pathname === "/admin" ? "page" : undefined}
+              >
+                <LayoutDashboard className="h-4 w-4 shrink-0" aria-hidden="true" />
+                {!collapsed && <span className="truncate">Dashboard</span>}
+              </Link>
+            </li>
+          </ul>
+          {/* Skeleton placeholders */}
+          {!collapsed && (
+            <div className="mt-4 space-y-3 px-4">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="h-4 rounded bg-sidebar-accent/50 animate-pulse" />
+              ))}
+            </div>
+          )}
+        </div>
+      </nav>
+    )
+  }
 
   return (
     <nav className="flex-1 overflow-y-auto py-4 scrollbar-thin" aria-label="Main navigation">
-      {visibleSections.map((section, idx) => (
+      {sections.map((section, idx) => (
         <div key={idx} className="mb-1">
           {section.title && !collapsed && (
             <p className="px-3 mb-1 text-[10px] font-semibold uppercase tracking-widest text-sidebar-muted-foreground">
@@ -85,7 +214,7 @@ export function SidebarNav({
           <ul role="list" className="space-y-0.5 px-2">
             {section.items.map((item) => {
               const active = isActive(item.href, pathname)
-              const Icon = item.icon
+              const Icon = resolveIcon(item.icon)
 
               if (collapsed) {
                 return (

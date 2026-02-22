@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useSettingsMutations } from "@/hooks/use-settings-mutations"
 import { api } from "@/lib/trpc/react"
-import type { NotificationSettings } from "@/types/settings"
+// TODO: Re-import NotificationSettings from "@/types/settings" when notification_preferences router is wired
 import {
   Card,
   CardContent,
@@ -26,9 +26,17 @@ import { TemplateEditor } from "@/components/settings/template-editor"
 import { Skeleton } from "@/components/ui/skeleton"
 
 export function NotificationsTab() {
-  // TODO: Implement settings router with getNotifications procedure
-  // For now, stub the data to make build pass
-  const isLoading = false
+  const {
+    data: orgSettings,
+    isLoading,
+  } = api.tenant.getSettings.useQuery(undefined, { staleTime: 60_000 })
+
+  // The organizationSettings table has communication fields (senderEmail, senderName, etc.)
+  // but does NOT have emailEnabled/smsEnabled/reminderTiming/templates.
+  // Those belong to the message_templates / notification_preferences tables.
+  // For now, use defaults for the fields not yet in the settings query.
+  // TODO: Wire emailEnabled/smsEnabled to notification_preferences table
+  // TODO: Wire templates to message_templates table
   const settings = {
     emailEnabled: true,
     smsEnabled: false,
@@ -36,6 +44,12 @@ export function NotificationsTab() {
     confirmationTemplate: "Thank you for your booking!",
     reminderTemplate: "Reminder: You have an appointment tomorrow.",
     cancellationTemplate: "Your appointment has been cancelled.",
+    // These come from the real settings
+    senderName: orgSettings?.senderName ?? "",
+    senderEmail: orgSettings?.senderEmail ?? "",
+    replyToEmail: orgSettings?.replyToEmail ?? "",
+    emailFooter: orgSettings?.emailFooter ?? "",
+    smsSignature: orgSettings?.smsSignature ?? "",
   }
   const { updateNotifications } = useSettingsMutations()
 
@@ -51,6 +65,8 @@ export function NotificationsTab() {
   } | null>(null)
 
   // Load settings when data arrives
+  // Using orgSettings as dependency (not `settings`) to avoid infinite re-render
+  // since `settings` is a new object reference every render
   useEffect(() => {
     if (settings) {
       setEmailEnabled(settings.emailEnabled)
@@ -60,16 +76,19 @@ export function NotificationsTab() {
       setReminderTemplate(settings.reminderTemplate)
       setCancellationTemplate(settings.cancellationTemplate)
     }
-  }, [settings])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orgSettings])
 
   const handleSave = () => {
+    // Save the communication fields that exist in organizationSettings via updateSettings
+    // TODO: Save emailEnabled/smsEnabled/reminderTiming/templates when notification_preferences
+    // and message_templates routers are wired
     updateNotifications.mutate({
-      emailEnabled,
-      smsEnabled,
-      reminderTiming,
-      confirmationTemplate,
-      reminderTemplate,
-      cancellationTemplate,
+      senderEmail: settings.senderEmail || undefined,
+      senderName: settings.senderName || undefined,
+      replyToEmail: settings.replyToEmail || undefined,
+      emailFooter: settings.emailFooter || undefined,
+      smsSignature: settings.smsSignature || undefined,
     })
   }
 

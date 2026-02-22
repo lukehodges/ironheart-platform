@@ -20,56 +20,55 @@ import { api } from "@/lib/trpc/react"
 import { Loader2, Download, Zap, Users, HardDrive } from "lucide-react"
 
 export function BillingTab() {
-  // TODO: Implement settings router with getBilling procedure
-  // For now, using stub data to make build pass
-  const isLoading = false
-  const error = null
-  const billingData = {
-    plan: "Professional",
-    status: "active" as const,
-    currentPrice: 9900, // $99.00 in cents
-    billingCycle: "month" as const,
-    features: [
-      "Unlimited bookings",
-      "Up to 10 team members",
-      "100GB storage",
-      "Advanced analytics",
-      "Custom branding",
-      "Priority support",
-    ],
-    usage: {
-      bookingsThisMonth: 145,
-      bookingsLimit: 1000,
-      teamMembers: 5,
-      teamMembersLimit: 10,
-      storageUsedGb: 23.5,
-      storageLimitGb: 100,
-    },
-    invoices: [] as Array<{
-      id: string
-      date: string
-      amount: number
-      status: "paid" | "pending" | "failed" | "draft"
-    }>,
-  }
-
-  if (!billingData) {
-    return (
-      <div className="rounded-lg border border-border p-4">
-        <p className="text-sm text-muted-foreground">No billing information available.</p>
-      </div>
-    )
-  }
+  const {
+    data: planData,
+    isLoading: isPlanLoading,
+  } = api.tenant.getPlan.useQuery(undefined, { staleTime: 60_000 })
 
   const {
-    plan,
-    status,
-    currentPrice,
-    billingCycle,
-    features,
-    usage,
-    invoices,
-  } = billingData
+    data: usageData,
+    isLoading: isUsageLoading,
+  } = api.tenant.getUsage.useQuery(undefined, { staleTime: 60_000 })
+
+  const isLoading = isPlanLoading || isUsageLoading
+
+  if (isLoading) {
+    return <BillingTabSkeleton />
+  }
+
+  // Build billing data from real API + hardcoded fallbacks for fields not yet available
+  const plan = planData?.plan ?? "Free"
+  const status = planData?.status ?? "active"
+
+  // TODO: Wire to real billing/subscription data when Stripe integration is added
+  const currentPrice = 0 // Cents - no pricing data available yet
+  const billingCycle = "month" as const
+  const features = [
+    "Unlimited bookings",
+    "Up to 10 team members",
+    "100GB storage",
+    "Advanced analytics",
+    "Custom branding",
+    "Priority support",
+  ]
+
+  // Usage: real data from API where available, hardcoded limits for now
+  const usage = {
+    bookingsThisMonth: usageData?.bookingCount ?? 0,
+    bookingsLimit: 1000, // TODO: Wire to plan limits when available
+    teamMembers: usageData?.staffCount ?? 0,
+    teamMembersLimit: 10, // TODO: Wire to plan limits when available
+    storageUsedGb: 0, // TODO: Wire to storage metrics when available
+    storageLimitGb: 100, // TODO: Wire to plan limits when available
+  }
+
+  // TODO: Wire to real invoice data from payment/billing module
+  const invoices = [] as Array<{
+    id: string
+    date: string
+    amount: number
+    status: "paid" | "pending" | "failed" | "draft"
+  }>
 
   // Calculate usage percentages
   const bookingsPercentage = (usage.bookingsThisMonth / usage.bookingsLimit) * 100

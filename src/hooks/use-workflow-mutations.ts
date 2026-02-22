@@ -56,22 +56,27 @@ export function useWorkflowMutations() {
     },
   })
 
-  // TODO: Implement activate and deactivate procedures in workflow router
-  const stubMutation = {
-    mutate: (_input: any) => {
-      toast.info("Workflow activation mutations not yet implemented")
+  const activate = api.workflow.update.useMutation({
+    onSuccess: () => {
+      toast.success("Workflow activated")
+      utils.workflow.list.invalidate()
+      utils.workflow.getById.invalidate()
     },
-    mutateAsync: (_input: any) => {
-      toast.info("Workflow activation mutations not yet implemented")
-      return Promise.resolve({} as any)
+    onError: (error) => {
+      toast.error(`Failed to activate workflow: ${error.message}`)
     },
-    isPending: false,
-    isError: false,
-    isSuccess: false,
-  }
+  })
 
-  const activate = stubMutation
-  const deactivate = stubMutation
+  const deactivate = api.workflow.update.useMutation({
+    onSuccess: () => {
+      toast.success("Workflow deactivated")
+      utils.workflow.list.invalidate()
+      utils.workflow.getById.invalidate()
+    },
+    onError: (error) => {
+      toast.error(`Failed to deactivate workflow: ${error.message}`)
+    },
+  })
 
   const deleteWorkflow = api.workflow.delete.useMutation({
     onSuccess: () => {
@@ -83,5 +88,23 @@ export function useWorkflowMutations() {
     },
   })
 
-  return { create, update, activate, deactivate, deleteWorkflow }
+  return {
+    create,
+    update,
+    activate: {
+      ...activate,
+      mutate: (input: { id: string }) =>
+        activate.mutate({ id: input.id, isActive: true }),
+      mutateAsync: (input: { id: string }) =>
+        activate.mutateAsync({ id: input.id, isActive: true }),
+    },
+    deactivate: {
+      ...deactivate,
+      mutate: (input: { id: string }) =>
+        deactivate.mutate({ id: input.id, isActive: false }),
+      mutateAsync: (input: { id: string }) =>
+        deactivate.mutateAsync({ id: input.id, isActive: false }),
+    },
+    deleteWorkflow,
+  }
 }

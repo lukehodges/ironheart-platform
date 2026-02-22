@@ -16,7 +16,7 @@ import { Separator } from "@/components/ui/separator"
 import { useSettingsMutations } from "@/hooks/use-settings-mutations"
 import { createApiKeySchema, type CreateApiKeyInput } from "@/schemas/settings.schemas"
 import type { ApiKey } from "@/types/settings"
-import { Loader2, Trash2, Copy, Check, Plus, Shield } from "lucide-react"
+import { Loader2, Trash2, Copy, Check, Plus, Shield, Webhook, ExternalLink } from "lucide-react"
 import { toast } from "sonner"
 import { formatDistanceToNow } from "date-fns"
 
@@ -28,7 +28,7 @@ import { formatDistanceToNow } from "date-fns"
  * - Create API key dialog with name and expiry options
  * - Display new key once in dialog with copy-to-clipboard
  * - Revoke API key with confirmation dialog
- * - Webhook endpoints list (placeholder for Wave 8B.2)
+ * - Webhook endpoints: list, create, delete (wired to developer module)
  *
  * @example
  * ```tsx
@@ -57,6 +57,49 @@ export function SecurityTab() {
 
   // Copy button state
   const [copiedKeyId, setCopiedKeyId] = useState<string | null>(null)
+
+  // --- Webhook state ---
+  const [isCreateWebhookOpen, setIsCreateWebhookOpen] = useState(false)
+  const [webhookForm, setWebhookForm] = useState({ url: "", description: "", events: "" })
+  const [webhookFormErrors, setWebhookFormErrors] = useState<Record<string, string>>({})
+  const [newlyCreatedSecret, setNewlyCreatedSecret] = useState<string | null>(null)
+  const [deleteWebhookId, setDeleteWebhookId] = useState<string | null>(null)
+
+  // Webhook tRPC queries and mutations
+  const {
+    data: webhookEndpoints,
+    isLoading: isLoadingWebhooks,
+  } = api.developer.listWebhookEndpoints.useQuery(undefined, {
+    retry: false,
+  })
+
+  const utils = api.useUtils()
+
+  const createWebhookMutation = api.developer.createWebhookEndpoint.useMutation({
+    onSuccess: (data) => {
+      // Show secret once after creation
+      setNewlyCreatedSecret(data.secret)
+      utils.developer.invalidate()
+    },
+    onError: (error) => {
+      toast.error("Failed to create webhook endpoint", {
+        description: error.message,
+      })
+    },
+  })
+
+  const deleteWebhookMutation = api.developer.deleteWebhookEndpoint.useMutation({
+    onSuccess: () => {
+      toast.success("Webhook endpoint deleted")
+      setDeleteWebhookId(null)
+      utils.developer.invalidate()
+    },
+    onError: (error) => {
+      toast.error("Failed to delete webhook endpoint", {
+        description: error.message,
+      })
+    },
+  })
 
   const handleCreateApiKey = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -88,7 +131,7 @@ export function SecurityTab() {
     try {
       await navigator.clipboard.writeText(key)
       setCopiedKeyId(key)
-      toast.success("API key copied to clipboard")
+      toast.success("Copied to clipboard")
       setTimeout(() => setCopiedKeyId(null), 2000)
     } catch {
       toast.error("Failed to copy to clipboard")
@@ -104,6 +147,43 @@ export function SecurityTab() {
     } catch {
       // Error handled by mutation's onError
     }
+  }
+
+  const handleCreateWebhook = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setWebhookFormErrors({})
+
+    // Basic validation
+    const errors: Record<string, string> = {}
+    if (!webhookForm.url) {
+      errors.url = "URL is required"
+    } else if (!webhookForm.url.startsWith("https://")) {
+      errors.url = "URL must start with https://"
+    }
+    if (!webhookForm.events.trim()) {
+      errors.events = "At least one event type is required"
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setWebhookFormErrors(errors)
+      return
+    }
+
+    const events = webhookForm.events
+      .split(",")
+      .map((e) => e.trim())
+      .filter(Boolean)
+
+    createWebhookMutation.mutate({
+      url: webhookForm.url,
+      description: webhookForm.description || undefined,
+      events,
+    })
+  }
+
+  const handleDeleteWebhook = () => {
+    if (!deleteWebhookId) return
+    deleteWebhookMutation.mutate({ id: deleteWebhookId })
   }
 
   if (isLoadingKeys) {
@@ -294,7 +374,7 @@ export function SecurityTab() {
                     <TableCell className="font-medium">{apiKey.name}</TableCell>
                     <TableCell className="font-mono text-sm">
                       <code className="text-muted-foreground">
-                        {apiKey.key.substring(0, apiKey.key.length - 4).replace(/./g, "•")}
+                        {apiKey.key.substring(0, apiKey.key.length - 4).replace(/./g, "\u2022")}
                         {apiKey.key.slice(-4)}
                       </code>
                     </TableCell>
@@ -375,30 +455,305 @@ export function SecurityTab() {
 
       <Separator />
 
-      {/* Webhook Endpoints Section (Placeholder for Wave 8B.2) */}
+      {/* Webhook Endpoints Section */}
       <div>
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h3 className="text-lg font-semibold">Webhook Endpoints</h3>
+            <h3 className="text-lg font-semibold flex items-center gap-2">
+              <Webhook className="h-5 w-5" />
+              Webhook Endpoints
+            </h3>
             <p className="text-sm text-muted-foreground mt-1">
               Configure webhooks to receive real-time notifications of events.
             </p>
           </div>
-          <Button variant="outline" className="gap-2" disabled>
-            <Plus className="h-4 w-4" />
-            Add Webhook
-          </Button>
+          <Dialog open={isCreateWebhookOpen} onOpenChange={(open) => {
+            setIsCreateWebhookOpen(open)
+            if (!open) {
+              setWebhookForm({ url: "", description: "", events: "" })
+              setWebhookFormErrors({})
+              setNewlyCreatedSecret(null)
+            }
+          }}>
+            <DialogTrigger asChild>
+              <Button variant="outline" className="gap-2">
+                <Plus className="h-4 w-4" />
+                Add Webhook
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>
+                  {newlyCreatedSecret ? "Webhook Created" : "Create Webhook Endpoint"}
+                </DialogTitle>
+                <DialogDescription>
+                  {newlyCreatedSecret
+                    ? "Save your webhook signing secret now. You won't be able to see it again."
+                    : "Add a new endpoint to receive webhook event notifications."}
+                </DialogDescription>
+              </DialogHeader>
+
+              {newlyCreatedSecret ? (
+                <div className="space-y-4">
+                  <div className="rounded-lg bg-muted/50 p-4 border border-border">
+                    <p className="text-xs text-muted-foreground mb-2">Signing Secret</p>
+                    <div className="flex gap-2 items-center">
+                      <code className="flex-1 break-all font-mono text-xs text-foreground">
+                        {newlyCreatedSecret}
+                      </code>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => handleCopyKey(newlyCreatedSecret)}
+                        className="flex-shrink-0"
+                      >
+                        {copiedKeyId === newlyCreatedSecret ? (
+                          <Check className="h-4 w-4 text-success" />
+                        ) : (
+                          <Copy className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="rounded-lg border border-warning/50 bg-warning/5 p-3">
+                    <p className="text-xs font-medium text-warning mb-1">Important</p>
+                    <p className="text-xs text-muted-foreground">
+                      Use this secret to verify webhook payloads. Store it securely.
+                    </p>
+                  </div>
+
+                  <Button
+                    onClick={() => {
+                      setIsCreateWebhookOpen(false)
+                      setNewlyCreatedSecret(null)
+                      setWebhookForm({ url: "", description: "", events: "" })
+                    }}
+                    className="w-full"
+                  >
+                    Done
+                  </Button>
+                </div>
+              ) : (
+                <form onSubmit={handleCreateWebhook} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="webhookUrl">
+                      Endpoint URL <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      id="webhookUrl"
+                      type="url"
+                      value={webhookForm.url}
+                      onChange={(e) => {
+                        setWebhookForm((prev) => ({ ...prev, url: e.target.value }))
+                        if (webhookFormErrors.url) {
+                          setWebhookFormErrors((prev) => {
+                            const next = { ...prev }
+                            delete next.url
+                            return next
+                          })
+                        }
+                      }}
+                      placeholder="https://example.com/webhooks"
+                      error={!!webhookFormErrors.url}
+                      aria-invalid={!!webhookFormErrors.url}
+                      required
+                    />
+                    {webhookFormErrors.url && (
+                      <p className="text-sm text-destructive">{webhookFormErrors.url}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="webhookDescription">Description</Label>
+                    <Input
+                      id="webhookDescription"
+                      type="text"
+                      value={webhookForm.description}
+                      onChange={(e) =>
+                        setWebhookForm((prev) => ({ ...prev, description: e.target.value }))
+                      }
+                      placeholder="e.g., Production notifications"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="webhookEvents">
+                      Event Types <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      id="webhookEvents"
+                      type="text"
+                      value={webhookForm.events}
+                      onChange={(e) => {
+                        setWebhookForm((prev) => ({ ...prev, events: e.target.value }))
+                        if (webhookFormErrors.events) {
+                          setWebhookFormErrors((prev) => {
+                            const next = { ...prev }
+                            delete next.events
+                            return next
+                          })
+                        }
+                      }}
+                      placeholder="booking/created, booking/cancelled"
+                      error={!!webhookFormErrors.events}
+                      aria-invalid={!!webhookFormErrors.events}
+                      required
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Comma-separated list of event types to subscribe to.
+                    </p>
+                    {webhookFormErrors.events && (
+                      <p className="text-sm text-destructive">{webhookFormErrors.events}</p>
+                    )}
+                  </div>
+
+                  <div className="flex gap-2 justify-end">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setIsCreateWebhookOpen(false)}
+                      disabled={createWebhookMutation.isPending}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="submit"
+                      disabled={createWebhookMutation.isPending}
+                    >
+                      {createWebhookMutation.isPending && (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      )}
+                      Create Webhook
+                    </Button>
+                  </div>
+                </form>
+              )}
+            </DialogContent>
+          </Dialog>
         </div>
 
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-8 text-center">
-            <Shield className="h-12 w-12 text-muted-foreground mb-3 opacity-50" />
-            <p className="text-sm text-muted-foreground">Webhook endpoints coming soon.</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              Configure webhooks to receive real-time event notifications.
-            </p>
-          </CardContent>
-        </Card>
+        {isLoadingWebhooks ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="h-6 w-6 animate-spin" />
+          </div>
+        ) : webhookEndpoints && webhookEndpoints.length > 0 ? (
+          <Card>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>URL</TableHead>
+                  <TableHead>Events</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Created</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {webhookEndpoints.map((endpoint) => (
+                  <TableRow key={endpoint.id}>
+                    <TableCell>
+                      <div className="flex items-center gap-2 max-w-[280px]">
+                        <ExternalLink className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                        <span className="font-mono text-xs truncate" title={endpoint.url}>
+                          {endpoint.url}
+                        </span>
+                      </div>
+                      {endpoint.description && (
+                        <p className="text-xs text-muted-foreground mt-1">{endpoint.description}</p>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-1">
+                        {endpoint.events.slice(0, 3).map((event) => (
+                          <Badge key={event} variant="secondary" className="text-[10px]">
+                            {event}
+                          </Badge>
+                        ))}
+                        {endpoint.events.length > 3 && (
+                          <Badge variant="outline" className="text-[10px]">
+                            +{endpoint.events.length - 3}
+                          </Badge>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={
+                          endpoint.status === "ACTIVE"
+                            ? "default"
+                            : endpoint.status === "FAILING"
+                              ? "destructive"
+                              : "secondary"
+                        }
+                        className="text-[10px]"
+                      >
+                        {endpoint.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-sm">
+                      {formatDistanceToNow(new Date(endpoint.createdAt), { addSuffix: true })}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <AlertDialog
+                        open={deleteWebhookId === endpoint.id}
+                        onOpenChange={(open) => {
+                          if (!open) setDeleteWebhookId(null)
+                        }}
+                      >
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setDeleteWebhookId(endpoint.id)}
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete Webhook Endpoint?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This will permanently delete the webhook endpoint for{" "}
+                              <span className="font-mono text-foreground">{endpoint.url}</span>.
+                              No further events will be delivered to this URL.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <div className="flex gap-2 justify-end">
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={handleDeleteWebhook}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              disabled={deleteWebhookMutation.isPending}
+                            >
+                              {deleteWebhookMutation.isPending ? (
+                                <>
+                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                  Deleting...
+                                </>
+                              ) : (
+                                "Delete"
+                              )}
+                            </AlertDialogAction>
+                          </div>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </Card>
+        ) : (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-8 text-center">
+              <Webhook className="h-12 w-12 text-muted-foreground mb-3 opacity-50" />
+              <p className="text-sm text-muted-foreground">No webhook endpoints configured.</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Add an endpoint to receive real-time event notifications via HTTP.
+              </p>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   )

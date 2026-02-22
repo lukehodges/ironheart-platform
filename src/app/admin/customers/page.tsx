@@ -40,6 +40,71 @@ import { CustomerMergeDialog } from "@/components/customers/customer-merge-dialo
 import type { CustomerRecord } from "@/modules/customer/customer.types"
 
 // ---------------------------------------------------------------------------
+// Per-row aggregate component (N+1 accepted for now — see U3.9)
+// ---------------------------------------------------------------------------
+
+function CustomerAggregateCell({
+  customerId,
+  field,
+}: {
+  customerId: string
+  field: "bookings" | "spend" | "lastBooking"
+}) {
+  const { data, isLoading } = api.customer.getBookingHistory.useQuery(
+    { customerId },
+    { staleTime: 5 * 60 * 1000 },
+  )
+
+  if (isLoading) return <Skeleton className="h-4 w-12 inline-block" />
+
+  const bookings = data ?? []
+
+  if (field === "bookings") {
+    return (
+      <span className="text-sm tabular-nums">{bookings.length}</span>
+    )
+  }
+
+  if (field === "spend") {
+    const total = bookings.reduce(
+      (sum, b) => sum + (b.totalAmount ?? 0),
+      0,
+    )
+    // Format as currency — assumes GBP for now
+    const formatted =
+      total > 0
+        ? new Intl.NumberFormat("en-GB", {
+            style: "currency",
+            currency: "GBP",
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 2,
+          }).format(total / 100) // amounts stored in pence
+        : "\u2014"
+    return <span className="text-sm tabular-nums">{formatted}</span>
+  }
+
+  // lastBooking
+  if (bookings.length === 0) {
+    return (
+      <span className="text-xs text-muted-foreground">{"\u2014"}</span>
+    )
+  }
+
+  const sorted = [...bookings].sort(
+    (a, b) =>
+      new Date(b.scheduledDate).getTime() -
+      new Date(a.scheduledDate).getTime(),
+  )
+  const lastDate = sorted[0]?.scheduledDate ?? null
+
+  return (
+    <span className="text-xs text-muted-foreground">
+      {formatRelativeDate(lastDate)}
+    </span>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
@@ -143,21 +208,19 @@ function CustomerRow({ customer, onView, onMerge }: CustomerRowProps) {
         </span>
       </TableCell>
 
-      {/* Total Bookings — not available in CustomerRecord directly, show dash */}
+      {/* Total Bookings */}
       <TableCell>
-        <span className="text-sm tabular-nums">—</span>
+        <CustomerAggregateCell customerId={customer.id} field="bookings" />
       </TableCell>
 
-      {/* Total Spend — not directly on CustomerRecord, show dash */}
+      {/* Total Spend */}
       <TableCell>
-        <span className="text-sm tabular-nums">—</span>
+        <CustomerAggregateCell customerId={customer.id} field="spend" />
       </TableCell>
 
       {/* Last Booking */}
       <TableCell>
-        <span className="text-xs text-muted-foreground">
-          {formatRelativeDate(null)}
-        </span>
+        <CustomerAggregateCell customerId={customer.id} field="lastBooking" />
       </TableCell>
 
       {/* Status */}

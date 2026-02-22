@@ -140,18 +140,36 @@ export default function AnalyticsPage() {
           // Error state
           <ErrorCard message="Failed to load KPIs" colSpan={4} />
         ) : analytics.kpis.data ? (
-          // Render KPI cards
+          // Render KPI cards from summary data
           <>
-            {(analytics.kpis.data as KPICardType[]).map((kpi: KPICardType, index: number) => (
-              <KPICard
-                key={index}
-                label={kpi.label}
-                value={kpi.value}
-                change={kpi.change}
-                trend={kpi.trend}
-                period={kpi.period}
-              />
-            ))}
+            <KPICard
+              label="Bookings"
+              value={analytics.kpis.data.bookings.created}
+              change={0}
+              trend="neutral"
+              period={analytics.kpis.data.period}
+            />
+            <KPICard
+              label="Revenue"
+              value={`£${(analytics.kpis.data.revenue.gross / 100).toFixed(2)}`}
+              change={0}
+              trend="neutral"
+              period={analytics.kpis.data.period}
+            />
+            <KPICard
+              label="New Customers"
+              value={analytics.kpis.data.customers.new}
+              change={0}
+              trend="neutral"
+              period={analytics.kpis.data.period}
+            />
+            <KPICard
+              label="Avg. Rating"
+              value={analytics.kpis.data.reviews.ratingAvg || "N/A"}
+              change={0}
+              trend="neutral"
+              period={analytics.kpis.data.period}
+            />
           </>
         ) : (
           // Empty state
