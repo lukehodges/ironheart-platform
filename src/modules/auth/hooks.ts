@@ -60,7 +60,7 @@ export function checkUserPermission(
 /**
  * usePermission hook — returns boolean.
  * Requires user to be passed from the parent auth context.
- * TODO: wire to tRPC auth.me query once tRPC client provider is set up.
+ * Auth is provided by WorkOS AuthKit via the admin layout.
  */
 export function usePermission(
   user: ClientUser | null,

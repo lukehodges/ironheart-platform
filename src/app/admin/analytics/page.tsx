@@ -67,23 +67,51 @@ export default function AnalyticsPage() {
   const handleExport = useCallback(async (format: "csv" | "pdf") => {
     setIsExporting(true)
     try {
-      // Simulate export process
-      await new Promise((resolve) => setTimeout(resolve, 1500))
-
-      if (format === "csv") {
-        // In production, this would generate and download a CSV file
-        // For now, we'll just show a success message
-        toast.success("Analytics data exported to CSV")
-      } else {
-        // In production, this would generate and download a PDF file
-        toast.success("Analytics data exported to PDF")
+      if (format === "pdf") {
+        toast.info("PDF export coming soon")
+        return
       }
+
+      // Build CSV from available analytics data
+      const rows: string[][] = []
+      rows.push(["Metric", "Value"])
+
+      // KPIs
+      const kpis = analytics.kpis.data
+      if (kpis) {
+        rows.push(["Bookings Created", String(kpis.bookings?.created ?? 0)])
+        rows.push(["Bookings Confirmed", String(kpis.bookings?.confirmed ?? 0)])
+        rows.push(["Bookings Completed", String(kpis.bookings?.completed ?? 0)])
+        rows.push(["Revenue Gross", String(kpis.revenue?.gross ?? 0)])
+        rows.push(["Revenue Net", String(kpis.revenue?.net ?? 0)])
+        rows.push(["Revenue Outstanding", String(kpis.revenue?.outstanding ?? 0)])
+        rows.push(["New Customers", String(kpis.customers?.new ?? 0)])
+        rows.push(["Returning Customers", String(kpis.customers?.returning ?? 0)])
+        rows.push(["Average Rating", String(kpis.reviews?.ratingAvg ?? 0)])
+        rows.push(["Staff Utilisation", String(kpis.staffUtilisation ?? 0)])
+      }
+
+      const csvContent = rows
+        .map((row) => row.map((cell) => `"${cell.replace(/"/g, '""')}"`).join(","))
+        .join("\n")
+
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      link.href = url
+      link.download = `analytics-${new Date().toISOString().slice(0, 10)}.csv`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+
+      toast.success("Analytics data exported to CSV")
     } catch (error) {
       toast.error(`Failed to export analytics: ${error instanceof Error ? error.message : "Unknown error"}`)
     } finally {
       setIsExporting(false)
     }
-  }, [])
+  }, [analytics.kpis.data, analytics.bookingsByStatus.data, analytics.topServices.data])
 
   // Check if we have any data loading
   const isAnyLoading =

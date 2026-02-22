@@ -41,8 +41,8 @@ export default function BookingWizardPage() {
   // Booking flow state
   const booking = useBookingFlow({
     tenantSlug,
-    onSuccess: (bookingId) => {
-      console.log("Booking created:", bookingId)
+    onSuccess: () => {
+      // booking created successfully
     },
   })
 

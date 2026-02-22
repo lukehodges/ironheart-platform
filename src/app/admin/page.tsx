@@ -16,7 +16,6 @@ import { PageHeader } from "@/components/ui/page-header"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Separator } from "@/components/ui/separator"
 import { Skeleton, SkeletonStatCard, SkeletonList } from "@/components/ui/skeleton"
 import { api } from "@/lib/trpc/react"
 
@@ -230,44 +229,6 @@ export default function AdminDashboardPage() {
           </CardContent>
         </Card>
 
-        {/* System status */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">System Status</CardTitle>
-            <CardDescription>Service health overview</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {[
-                { name: "API", status: "operational" },
-                { name: "Database", status: "operational" },
-                { name: "Background Jobs", status: "check_env" },
-                { name: "Email", status: "check_env" },
-              ].map((service) => (
-                <div key={service.name} className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    {service.status === "operational" ? (
-                      <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-                    ) : (
-                      <AlertCircle className="h-4 w-4 text-amber-500" />
-                    )}
-                    <span className="text-sm">{service.name}</span>
-                  </div>
-                  <Badge
-                    variant={service.status === "operational" ? "success" : "warning"}
-                    className="text-[10px]"
-                  >
-                    {service.status === "operational" ? "Operational" : "Needs Config"}
-                  </Badge>
-                </div>
-              ))}
-            </div>
-            <Separator className="my-4" />
-            <p className="text-xs text-muted-foreground">
-              Configure environment variables to activate all services.
-            </p>
-          </CardContent>
-        </Card>
       </div>
     </div>
   )

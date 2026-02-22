@@ -38,21 +38,6 @@ import type {
 
 const log = logger.child({ module: "platform.service" });
 
-// ---------------------------------------------------------------------------
-// Helper — generate a URL-safe slug from a business name
-// ---------------------------------------------------------------------------
-
-function generateSlug(name: string): string {
-  return (
-    name
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-|-$/g, "") +
-    "-" +
-    Math.random().toString(36).slice(2, 7)
-  );
-}
-
 export const platformService = {
 
   // ---------------------------------------------------------------------------
