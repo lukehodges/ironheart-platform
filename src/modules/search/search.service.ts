@@ -1,7 +1,7 @@
 import { logger } from '@/shared/logger'
 import { searchProviderRegistry } from '@/shared/module-system/search-registry'
 import { tenantService } from '@/modules/tenant/tenant.service'
-import type { GlobalSearchResult } from './search.types'
+import type { GlobalSearchResult, SearchResultGroup } from './search.types'
 
 const log = logger.child({ module: 'search.service' })
 
@@ -33,9 +33,9 @@ export const searchService = {
       providers = checks.filter((c) => c.enabled).map((c) => c.provider)
     }
 
-    // 4. Fan out searches in parallel, build grouped response
+    // 4. Fan out searches in parallel (resilient to individual provider failures)
     const perTypeLimit = Math.ceil(limit / Math.max(providers.length, 1))
-    const groups = await Promise.all(
+    const settled = await Promise.allSettled(
       providers.map(async (p) => {
         const { hits, hasMore } = await p.search(tenantId, query, perTypeLimit)
         return {
@@ -46,6 +46,16 @@ export const searchService = {
         }
       })
     )
+
+    const groups = settled
+      .filter((r): r is PromiseFulfilledResult<SearchResultGroup> => r.status === 'fulfilled')
+      .map((r) => r.value)
+
+    for (const r of settled) {
+      if (r.status === 'rejected') {
+        log.error({ err: r.reason }, 'search provider failed')
+      }
+    }
 
     const totalFound = groups.reduce((sum, g) => sum + g.results.length, 0)
     return { groups, query, totalFound }
