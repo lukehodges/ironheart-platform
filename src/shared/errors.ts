@@ -62,6 +62,30 @@ export class BadRequestError extends IronheartError {
   }
 }
 
+/** Assignment would exceed the staff member's capacity limits. */
+export class CapacityExceededError extends IronheartError {
+  constructor(
+    public readonly capacityType: string,
+    public readonly current: number,
+    public readonly max: number,
+    public readonly enforcement: 'STRICT' | 'FLEXIBLE',
+  ) {
+    super(
+      `Capacity exceeded for ${capacityType}: ${current}/${max} (enforcement: ${enforcement})`,
+      "CAPACITY_EXCEEDED"
+    );
+    this.name = "CapacityExceededError";
+  }
+}
+
+/** Skill has expired and cannot be used for assignment. */
+export class SkillExpiredError extends IronheartError {
+  constructor(skillName: string, expiredAt: Date) {
+    super(`Skill "${skillName}" expired at ${expiredAt.toISOString()}`, "SKILL_EXPIRED");
+    this.name = "SkillExpiredError";
+  }
+}
+
 /**
  * Convert a domain error to a tRPC error.
  * Call this in router catch blocks: catch (e) { throw toTRPCError(e); }
@@ -84,6 +108,9 @@ export function toTRPCError(error: unknown): TRPCError {
   }
   if (error instanceof BadRequestError) {
     return new TRPCError({ code: "BAD_REQUEST", message: error.message });
+  }
+  if (error instanceof CapacityExceededError) {
+    return new TRPCError({ code: "CONFLICT", message: error.message });
   }
   if (error instanceof TRPCError) {
     return error;

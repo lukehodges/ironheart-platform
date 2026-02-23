@@ -21,6 +21,7 @@ import { users } from "./auth.schema"
 import { customers } from "./customer.schema"
 import { services } from "./services.schema"
 import { capacityMode } from "./scheduling.schema"
+import { capacityEnforcementMode } from "./resource-pool.schema"
 import { bookings } from "./booking.schema"
 
 // ---------------------------------------------------------------------------
@@ -220,9 +221,14 @@ export const tenantModuleSettings = pgTable("tenant_module_settings", {
 	index("tenant_module_settings_tenantId_idx").using("btree", table.tenantId.asc().nullsLast().op("uuid_ops")),
 	uniqueIndex("tenant_module_settings_tenantId_moduleId_settingKey_key").using("btree", table.tenantId.asc().nullsLast().op("text_ops"), table.moduleId.asc().nullsLast().op("text_ops"), table.settingKey.asc().nullsLast().op("text_ops")),
 	foreignKey({
-		columns: [table.tenantId, table.moduleId],
-		foreignColumns: [tenantModules.tenantId, tenantModules.moduleId],
-		name: "tenant_module_settings_tenantId_moduleId_fkey"
+		columns: [table.tenantId],
+		foreignColumns: [tenants.id],
+		name: "tenant_module_settings_tenantId_fkey"
+	}).onUpdate("cascade").onDelete("cascade"),
+	foreignKey({
+		columns: [table.moduleId],
+		foreignColumns: [modules.id],
+		name: "tenant_module_settings_moduleId_fkey"
 	}).onUpdate("cascade").onDelete("cascade"),
 ])
 
@@ -271,6 +277,7 @@ export const organizationSettings = pgTable("organization_settings", {
 	defaultSlotCapacity: integer().default(1).notNull(),
 	slotApprovalEnabled: boolean().default(false).notNull(),
 	slotApprovalHours: integer().default(48).notNull(),
+	capacityEnforcement: capacityEnforcementMode().default('FLEXIBLE').notNull(),
 	customCss: text(),
 	fontFamily: text(),
 	secondaryColor: text(),
