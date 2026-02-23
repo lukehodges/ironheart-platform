@@ -22,7 +22,9 @@ This guide is split into multiple files to allow agents to load only the section
 | [12-testing.md](./12-testing.md) | Testing patterns |
 | [13-pitfalls.md](./13-pitfalls.md) | Common pitfalls to avoid |
 | [14-deploy.md](./14-deploy.md) | Build & deploy, env vars |
+| [15-search-providers.md](./15-search-providers.md) | Dynamic search provider system |
+| [16-resource-pool.md](./16-resource-pool.md) | Shared resource pool (skills, capacity, assignments) |
 
 ---
 
-*Last updated: 2026-02-22*
+*Last updated: 2026-02-23*
