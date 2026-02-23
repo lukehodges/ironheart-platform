@@ -18,7 +18,7 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as schema from "../src/shared/db/schema";
 import * as relations from "../src/shared/db/relations";
-import { eq, inArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 
 // ---------------------------------------------------------------------------
 // DB connection (fresh, avoids importing shared/db.ts which validates env at
@@ -250,6 +250,7 @@ async function seedPlatformAdmin(platformTenantId: string): Promise<string> {
   }
 
   const userId = uuid();
+  const workosUserId = process.env.WORKOS_ADMIN_USER_ID ?? null;
   await db.insert(schema.users).values({
     id: userId,
     tenantId: platformTenantId,
@@ -267,13 +268,15 @@ async function seedPlatformAdmin(platformTenantId: string): Promise<string> {
     loginCount: 0,
     failedLoginAttempts: 0,
     twoFactorEnabled: false,
-    serviceIds: [],
+    ...(workosUserId ? { workosUserId } : {}),
     createdAt: now,
     updatedAt: now,
   });
 
   console.log(`    ✓ platform admin created (${userId})`);
-  console.log("    ℹ  Set workosUserId after first WorkOS login");
+  if (!workosUserId) {
+    console.log("    ℹ  Set WORKOS_ADMIN_USER_ID in .env.local to pre-link WorkOS account");
+  }
   return userId;
 }
 
@@ -565,7 +568,6 @@ async function seedRolePermissions(
 async function seedStaff(
   tenantId: string,
   roleIds: Record<string, string>,
-  serviceIds: string[]
 ): Promise<string[]> {
   console.log("  → seeding staff users...");
 
@@ -580,6 +582,7 @@ async function seedStaff(
       roleName: "Owner",
       dayRate: "0.00",
       isPlatformAdmin: true,
+      workosUserId: process.env.WORKOS_ADMIN_USER_ID ?? null,
     },
     {
       email: "luke.hodges.dev@gmail.com",
@@ -590,6 +593,7 @@ async function seedStaff(
       roleName: "Owner",
       dayRate: "0.00",
       isPlatformAdmin: false,
+      workosUserId: process.env.WORKOS_DEV_USER_ID ?? null,
     },
     {
       email: "sarah.mitchell@riverside-wellness.co.uk",
@@ -600,6 +604,7 @@ async function seedStaff(
       roleName: "Owner",
       dayRate: "480.00",
       isPlatformAdmin: false,
+      workosUserId: null,
     },
     {
       email: "james.carter@riverside-wellness.co.uk",
@@ -610,6 +615,7 @@ async function seedStaff(
       roleName: "Member",
       dayRate: "360.00",
       isPlatformAdmin: false,
+      workosUserId: null,
     },
   ];
 
@@ -619,7 +625,7 @@ async function seedStaff(
     const existing = await db
       .select({ id: schema.users.id })
       .from(schema.users)
-      .where(eq(schema.users.email, s.email))
+      .where(and(eq(schema.users.email, s.email), eq(schema.users.tenantId, tenantId)))
       .limit(1);
 
     if (existing[0]) {
@@ -644,12 +650,12 @@ async function seedStaff(
       staffStatus: "ACTIVE",
       startDate: daysAgo(180),
       dayRate: s.dayRate,
-      serviceIds,
       timezone: "Europe/London",
       locale: "en-GB",
       loginCount: 0,
       failedLoginAttempts: 0,
       twoFactorEnabled: false,
+      ...(s.workosUserId ? { workosUserId: s.workosUserId } : {}),
       createdAt: now,
       updatedAt: now,
     });
@@ -1084,7 +1090,7 @@ async function main() {
     const serviceIds = await seedServices(demoTenantId);
 
     console.log("\n── Step 6: Staff");
-    const staffIds = await seedStaff(demoTenantId, roleIds, serviceIds);
+    const staffIds = await seedStaff(demoTenantId, roleIds);
 
     console.log("\n── Step 7: Customers");
     const customerIds = await seedCustomers(demoTenantId);

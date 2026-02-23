@@ -320,7 +320,6 @@ export const schedulingService = {
         firstName: users.firstName,
         lastName: users.lastName,
         staffStatus: users.staffStatus,
-        serviceIds: users.serviceIds,
       })
       .from(users)
       .where(
@@ -339,12 +338,7 @@ export const schedulingService = {
       const reasons: string[] = [];
       let score = 50; // Base score
 
-      // Service match: staff.serviceIds contains the booking's serviceId
-      const staffServiceIds = (staff.serviceIds ?? []).filter(Boolean) as string[];
-      if (staffServiceIds.includes(booking.serviceId)) {
-        score += 30;
-        reasons.push("Handles this service");
-      }
+      // TODO: Service match will use resource pool skills in a future task
 
       // Workload: fewer bookings on that day = higher score
       const dayBookings = await schedulingRepository.getStaffBookingsForDate(

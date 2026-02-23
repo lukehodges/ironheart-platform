@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { format } from "date-fns"
-import { Mail, Phone, Calendar, Plus, Trash2 } from "lucide-react"
+import { Mail, Phone, Calendar } from "lucide-react"
 import { toast } from "sonner"
 import { api } from "@/lib/trpc/react"
 import {
@@ -66,76 +66,40 @@ function formatDate(date: Date | string | null | undefined): string {
 
 // ─── Capacity tab ────────────────────────────────────────────────────────────
 
-interface CapacityEntry {
-  date: string
-  maxBookings: number
-}
-
 function CapacityTab({ memberId }: { memberId: string }) {
   const utils = api.useUtils()
   const today = new Date().toISOString().split("T")[0]!
 
   const { data: capacityData, isLoading } = api.team.getCapacity.useQuery({
     userId: memberId,
-    startDate: today,
+    capacityType: "bookings",
+    date: today,
   })
 
-  const [defaultMax, setDefaultMax] = useState<string>("")
-  const [overrides, setOverrides] = useState<CapacityEntry[]>([])
-  const [newDate, setNewDate] = useState(today)
-  const [newMax, setNewMax] = useState("8")
+  const [maxDaily, setMaxDaily] = useState<string>("")
+  const [effectiveFrom, setEffectiveFrom] = useState(today)
 
   const setCapacityMutation = api.team.setCapacity.useMutation({
     onSuccess: () => {
       toast.success("Capacity updated")
-      void utils.team.getCapacity.invalidate({ userId: memberId })
+      void utils.team.getCapacity.invalidate({ userId: memberId, capacityType: "bookings" })
     },
     onError: (err) => {
       toast.error(err.message ?? "Failed to update capacity")
     },
   })
 
-  // TODO: team.update (permissionProcedure staff:write) handles defaultMaxDailyBookings
-  // For now we call team.update mutation to persist the default max value
-  const updateMutation = api.team.update.useMutation({
-    onSuccess: () => {
-      toast.success("Default capacity saved")
-    },
-    onError: (err) => {
-      toast.error(err.message ?? "Failed to save default capacity")
-    },
-  })
-
-  function saveDefaultMax() {
-    const val = parseInt(defaultMax, 10)
+  function saveCapacity() {
+    const val = parseInt(maxDaily, 10)
     if (isNaN(val) || val < 1) {
       toast.error("Enter a valid number (minimum 1)")
       return
     }
-    updateMutation.mutate({ id: memberId, defaultMaxDailyBookings: val })
-  }
-
-  function addOverride() {
-    const val = parseInt(newMax, 10)
-    if (!newDate || isNaN(val) || val < 1) {
-      toast.error("Enter a valid date and booking count")
-      return
-    }
-    const updated = [
-      ...overrides.filter((o) => o.date !== newDate),
-      { date: newDate, maxBookings: val },
-    ].sort((a, b) => a.date.localeCompare(b.date))
-    setOverrides(updated)
-  }
-
-  function removeOverride(date: string) {
-    setOverrides((prev) => prev.filter((o) => o.date !== date))
-  }
-
-  function saveOverrides() {
     setCapacityMutation.mutate({
       userId: memberId,
-      entries: overrides.map((o) => ({ date: o.date, maxBookings: o.maxBookings })),
+      capacityType: "bookings",
+      maxDaily: val,
+      effectiveFrom,
     })
   }
 
@@ -150,125 +114,61 @@ function CapacityTab({ memberId }: { memberId: string }) {
 
   return (
     <div className="space-y-6">
-      {/* Default max daily bookings */}
-      <div className="space-y-2">
-        <Label htmlFor="default-max-bookings" className="text-sm font-medium">
-          Default max daily bookings
-        </Label>
-        <p className="text-xs text-muted-foreground">
-          This applies on days without a specific override.
-        </p>
-        <div className="flex items-center gap-2">
-          <Input
-            id="default-max-bookings"
-            type="number"
-            min={1}
-            max={100}
-            className="w-24 h-8 text-sm"
-            placeholder="e.g. 8"
-            value={defaultMax}
-            onChange={(e) => setDefaultMax(e.target.value)}
-          />
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={saveDefaultMax}
-            loading={updateMutation.isPending}
-          >
-            Save
-          </Button>
+      {/* Current capacity */}
+      {capacityData && (
+        <div className="space-y-2">
+          <h4 className="text-sm font-medium">Current capacity</h4>
+          <div className="rounded-md border border-border px-3 py-2 text-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">Type</span>
+              <span className="text-xs">{capacityData.capacityType}</span>
+            </div>
+            {capacityData.maxDaily != null && (
+              <div className="flex items-center justify-between mt-1">
+                <span className="text-xs text-muted-foreground">Max daily</span>
+                <Badge variant="info" className="text-[10px]">
+                  {capacityData.maxDaily}
+                </Badge>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       <Separator />
 
-      {/* Per-day overrides */}
+      {/* Set capacity */}
       <div className="space-y-3">
-        <h4 className="text-sm font-medium">Per-day capacity overrides</h4>
-
-        {/* Existing capacity entries from server */}
-        {capacityData && capacityData.length > 0 && (
-          <div className="space-y-1 mb-2">
-            <p className="text-xs text-muted-foreground">Upcoming overrides from server:</p>
-            {capacityData.map((entry) => (
-              <div
-                key={`${entry.userId}-${entry.date}`}
-                className="flex items-center justify-between rounded-md border border-border px-3 py-1.5 text-sm"
-              >
-                <span className="text-xs">{entry.date}</span>
-                <Badge variant="info" className="text-[10px]">
-                  Max {entry.maxBookings}
-                </Badge>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Local overrides list */}
-        {overrides.length > 0 && (
-          <div className="space-y-1">
-            {overrides.map((o) => (
-              <div
-                key={o.date}
-                className="flex items-center justify-between rounded-md border border-border px-3 py-1.5"
-              >
-                <span className="text-xs">{o.date}</span>
-                <div className="flex items-center gap-2">
-                  <Badge variant="info" className="text-[10px]">
-                    Max {o.maxBookings}
-                  </Badge>
-                  <button
-                    type="button"
-                    onClick={() => removeOverride(o.date)}
-                    className="text-muted-foreground hover:text-destructive transition-colors"
-                    aria-label={`Remove override for ${o.date}`}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Add override row */}
+        <h4 className="text-sm font-medium">Set capacity</h4>
         <div className="flex items-end gap-2">
           <div className="space-y-1 flex-1">
-            <Label className="text-xs">Date</Label>
+            <Label className="text-xs">Effective from</Label>
             <Input
               type="date"
               className="h-8 text-xs"
-              value={newDate}
-              onChange={(e) => setNewDate(e.target.value)}
+              value={effectiveFrom}
+              onChange={(e) => setEffectiveFrom(e.target.value)}
             />
           </div>
           <div className="space-y-1 w-24">
-            <Label className="text-xs">Max bookings</Label>
+            <Label className="text-xs">Max daily</Label>
             <Input
               type="number"
               min={1}
               className="h-8 text-xs"
-              value={newMax}
-              onChange={(e) => setNewMax(e.target.value)}
+              value={maxDaily}
+              placeholder="e.g. 8"
+              onChange={(e) => setMaxDaily(e.target.value)}
             />
           </div>
-          <Button size="sm" variant="outline" onClick={addOverride}>
-            <Plus className="h-3.5 w-3.5" />
-            Add
+          <Button
+            size="sm"
+            onClick={saveCapacity}
+            loading={setCapacityMutation.isPending}
+          >
+            Save
           </Button>
         </div>
-
-        {overrides.length > 0 && (
-          <div className="flex justify-end">
-            <Button
-              size="sm"
-              onClick={saveOverrides}
-              loading={setCapacityMutation.isPending}
-            >
-              Save overrides
-            </Button>
-          </div>
-        )}
       </div>
     </div>
   )
@@ -319,7 +219,7 @@ function BookingsTab({ memberId }: { memberId: string }) {
           Today — {format(new Date(), "EEEE, d MMM")}
         </p>
         <Badge variant="info" className="text-[10px]">
-          {bookings.length} booked / {schedule.capacity} capacity
+          {bookings.length} booked
         </Badge>
       </div>
 

@@ -35,7 +35,6 @@ interface FormState {
   email: string
   phone: string
   employeeType: EmployeeType | ""
-  defaultMaxDailyBookings: string
 }
 
 interface FormErrors {
@@ -50,7 +49,6 @@ const initialForm: FormState = {
   email: "",
   phone: "",
   employeeType: "",
-  defaultMaxDailyBookings: "",
 }
 
 const EMPLOYEE_TYPE_LABELS: Record<EmployeeType, string> = {
@@ -122,14 +120,12 @@ export function AddMemberDialog({
     setErrors({})
 
     const fullName = `${form.firstName.trim()} ${form.lastName.trim()}`.trim()
-    const maxDailyBookings = parseInt(form.defaultMaxDailyBookings, 10)
 
     createMutation.mutate({
       name: fullName,
       email: form.email.trim(),
       phone: form.phone.trim() || undefined,
       employeeType: form.employeeType ? (form.employeeType as EmployeeType) : undefined,
-      defaultMaxDailyBookings: isNaN(maxDailyBookings) ? undefined : maxDailyBookings,
     })
   }
 
@@ -254,23 +250,6 @@ export function AddMemberDialog({
               </Select>
             </div>
 
-            {/* Default max daily bookings */}
-            <div className="space-y-1.5">
-              <Label htmlFor="member-max-bookings">Default max daily bookings</Label>
-              <Input
-                id="member-max-bookings"
-                type="number"
-                min={1}
-                max={100}
-                placeholder="e.g. 8"
-                value={form.defaultMaxDailyBookings}
-                onChange={(e) => handleChange("defaultMaxDailyBookings", e.target.value)}
-                className="w-full"
-              />
-              <p className="text-xs text-muted-foreground">
-                Leave blank to use the organisation default.
-              </p>
-            </div>
           </div>
 
           <DialogFooter className="mt-4">

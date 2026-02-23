@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 // ---------------------------------------------------------------------------
-// We test teamRepository.getStaffAvailableSlots and getCapacityForDate
+// We test teamRepository.getStaffAvailableSlots
 // by mocking @/shared/db with a chainable Drizzle-style mock.
 //
 // IMPORTANT: vi.mock() is hoisted to the top of the file, so we must not
@@ -44,7 +44,7 @@ vi.mock('@/shared/db', () => {
 })
 
 vi.mock('@/shared/db/schema', () => ({
-  users: { id: 'id', tenantId: 'tenantId', maxDailyBookings: 'maxDailyBookings' },
+  users: { id: 'id', tenantId: 'tenantId' },
   userAvailability: {
     userId: 'userId',
     type: 'type',
@@ -204,53 +204,3 @@ describe('teamRepository.getStaffAvailableSlots', () => {
   })
 })
 
-// ---------------------------------------------------------------------------
-// teamRepository.getCapacityForDate
-// ---------------------------------------------------------------------------
-
-describe('teamRepository.getCapacityForDate', () => {
-  beforeEach(() => {
-    setQueue()
-  })
-
-  it('returns userCapacities value when specific date entry exists', async () => {
-    setQueue(
-      [{ maxBookings: 5, userId: USER_ID, date: new Date(DATE_STR) }],
-    )
-
-    const capacity = await teamRepository.getCapacityForDate(TENANT_ID, USER_ID, DATE_STR)
-    expect(capacity).toBe(5)
-  })
-
-  it('falls back to users.maxDailyBookings when no specific capacity', async () => {
-    setQueue(
-      [],                         // userCapacities: empty
-      [{ maxDailyBookings: 8 }],  // users: has maxDailyBookings
-    )
-
-    const capacity = await teamRepository.getCapacityForDate(TENANT_ID, USER_ID, DATE_STR)
-    expect(capacity).toBe(8)
-  })
-
-  it('falls back to organizationSettings.defaultSlotCapacity as third fallback', async () => {
-    setQueue(
-      [],                           // userCapacities: empty
-      [{ maxDailyBookings: null }], // users: no maxDailyBookings
-      [{ defaultSlotCapacity: 12 }], // orgSettings: has capacity
-    )
-
-    const capacity = await teamRepository.getCapacityForDate(TENANT_ID, USER_ID, DATE_STR)
-    expect(capacity).toBe(12)
-  })
-
-  it('returns 8 as hard fallback when all else fails', async () => {
-    setQueue(
-      [],                            // userCapacities: empty
-      [{ maxDailyBookings: null }],  // users: null
-      [{ defaultSlotCapacity: null }], // orgSettings: null
-    )
-
-    const capacity = await teamRepository.getCapacityForDate(TENANT_ID, USER_ID, DATE_STR)
-    expect(capacity).toBe(8)
-  })
-})

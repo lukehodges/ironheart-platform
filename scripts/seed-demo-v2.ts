@@ -123,7 +123,7 @@ async function seedPlatform() {
       type: "OWNER" as const, status: "ACTIVE", emailVerified: now,
       isPlatformAdmin: true, isTeamMember: false, timezone: "Europe/London",
       locale: "en-GB", loginCount: 0, failedLoginAttempts: 0,
-      twoFactorEnabled: false, serviceIds: [], createdAt: now, updatedAt: now,
+      twoFactorEnabled: false, createdAt: now, updatedAt: now,
     });
   }
 
@@ -290,7 +290,7 @@ async function seedStaff(tenantId: string, roleIds: Record<string, string>) {
       displayName: `${s.firstName} ${s.lastName}`, type: s.type, status: "ACTIVE" as const,
       emailVerified: now, isPlatformAdmin: s.isPlatform, isTeamMember: true,
       jobTitle: s.jobTitle, staffStatus: "ACTIVE" as const, startDate: daysAgo(180),
-      dayRate: s.dayRate, serviceIds: [], timezone: "Europe/London", locale: "en-GB",
+      dayRate: s.dayRate, timezone: "Europe/London", locale: "en-GB",
       loginCount: 0, failedLoginAttempts: 0, twoFactorEnabled: false,
       createdAt: now, updatedAt: now,
     });
