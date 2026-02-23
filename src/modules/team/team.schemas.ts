@@ -45,22 +45,6 @@ export const getAvailabilitySchema = z.object({
   timezone: z.string().optional(),
 })
 
-export const getCapacitySchema = z.object({
-  userId: z.string(),
-  startDate: z.string().regex(dateRegex),
-  endDate: z.string().regex(dateRegex).optional(),
-})
-
-export const setCapacitySchema = z.object({
-  userId: z.string(),
-  entries: z.array(
-    z.object({
-      date: z.string().regex(dateRegex),
-      maxBookings: z.number().int().min(1),
-    })
-  ),
-})
-
 export const getScheduleSchema = z.object({
   userId: z.string(),
   date: z.string().regex(dateRegex),
@@ -73,7 +57,6 @@ export const createStaffSchema = z.object({
   phone: z.string().optional(),
   employeeType: z.enum(['EMPLOYED', 'SELF_EMPLOYED', 'CONTRACTOR']).optional(),
   hourlyRate: z.number().optional(),
-  defaultMaxDailyBookings: z.number().int().optional(),
 })
 
 export const updateStaffSchema = z.object({
@@ -83,7 +66,6 @@ export const updateStaffSchema = z.object({
   phone: z.string().optional(),
   employeeType: z.enum(['EMPLOYED', 'SELF_EMPLOYED', 'CONTRACTOR']).optional(),
   hourlyRate: z.number().optional(),
-  defaultMaxDailyBookings: z.number().int().optional(),
   status: z.enum(['ACTIVE', 'INACTIVE', 'SUSPENDED']).optional(),
 })
 

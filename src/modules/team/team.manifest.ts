@@ -17,7 +17,7 @@ export const teamManifest: ModuleManifest = {
     { id: 'staff-utilization', type: 'heatmap', label: 'Staff Utilization', size: '2x2',
       dataSource: { procedure: 'team.analytics.utilization' } },
   ],
-  permissions: ['team:read', 'team:write'],
+  permissions: ['team:read', 'team:write', 'staff:read', 'staff:write'],
   eventsProduced: [],
   eventsConsumed: [],
   isCore: false,

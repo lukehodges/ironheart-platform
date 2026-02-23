@@ -4,9 +4,7 @@ import { NotFoundError } from "@/shared/errors";
 import {
   users,
   userAvailability,
-  userCapacities,
   bookings,
-  organizationSettings,
 } from "@/shared/db/schema";
 import {
   eq,
@@ -27,7 +25,6 @@ import type {
   AvailabilityType,
   AvailabilityEntry,
   AvailabilitySlot,
-  CapacityEntry,
   CreateStaffInput,
   UpdateStaffInput,
 } from "./team.types";
@@ -93,7 +90,6 @@ function mapUserToStaffMember(row: typeof users.$inferSelect): StaffMember {
     isTeamMember: row.isTeamMember,
     hourlyRate: row.hourlyRate !== null ? Number(row.hourlyRate) : null,
     staffStatus: row.staffStatus ?? null,
-    defaultMaxDailyBookings: row.maxDailyBookings ?? null,
     workosUserId: row.workosUserId ?? null,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
@@ -206,7 +202,6 @@ export const teamRepository = {
         status: "ACTIVE",
         employeeType: mapDomainEmployeeType(input.employeeType ?? null),
         hourlyRate: input.hourlyRate !== undefined ? String(input.hourlyRate) : null,
-        maxDailyBookings: input.defaultMaxDailyBookings ?? null,
         timezone: "Europe/London",
         locale: "en-GB",
         type: "MEMBER",
@@ -243,8 +238,6 @@ export const teamRepository = {
       updateData.employeeType = mapDomainEmployeeType(input.employeeType ?? null);
     if (input.hourlyRate !== undefined)
       updateData.hourlyRate = input.hourlyRate !== null ? String(input.hourlyRate) : null;
-    if (input.defaultMaxDailyBookings !== undefined)
-      updateData.maxDailyBookings = input.defaultMaxDailyBookings;
     if (input.status !== undefined) {
       if (input.status === "INACTIVE") {
         updateData.staffStatus = "TERMINATED";
@@ -533,118 +526,6 @@ export const teamRepository = {
       isAllDay: true,
       createdAt: now,
       updatedAt: now,
-    });
-  },
-
-  // ---- CAPACITY ----
-
-  async getCapacity(
-    tenantId: string,
-    userId: string,
-    opts: { startDate: string; endDate?: string }
-  ): Promise<CapacityEntry[]> {
-    log.info({ tenantId, userId, opts }, "getCapacity");
-
-    const conditions = [
-      eq(userCapacities.tenantId, tenantId),
-      eq(userCapacities.userId, userId),
-      gte(userCapacities.date, new Date(opts.startDate)),
-    ];
-
-    if (opts.endDate) {
-      conditions.push(lte(userCapacities.date, new Date(opts.endDate)));
-    }
-
-    const rows = await db
-      .select()
-      .from(userCapacities)
-      .where(and(...conditions))
-      .orderBy(asc(userCapacities.date));
-
-    return rows.map((row) => ({
-      userId: row.userId ?? userId,
-      date: row.date.toISOString().slice(0, 10),
-      maxBookings: row.maxBookings,
-    }));
-  },
-
-  async getCapacityForDate(
-    tenantId: string,
-    userId: string,
-    date: string
-  ): Promise<number> {
-    log.info({ tenantId, userId, date }, "getCapacityForDate");
-
-    // 1. Check userCapacities for the exact date
-    const [specific] = await db
-      .select()
-      .from(userCapacities)
-      .where(
-        and(
-          eq(userCapacities.userId, userId),
-          eq(userCapacities.date, new Date(date))
-        )
-      )
-      .limit(1);
-
-    if (specific) return specific.maxBookings;
-
-    // 2. Fallback to users.maxDailyBookings
-    const [staff] = await db
-      .select({ maxDailyBookings: users.maxDailyBookings })
-      .from(users)
-      .where(eq(users.id, userId))
-      .limit(1);
-
-    if (staff?.maxDailyBookings) return staff.maxDailyBookings;
-
-    // 3. Fallback to organizationSettings.defaultSlotCapacity
-    const [settings] = await db
-      .select({ defaultSlotCapacity: organizationSettings.defaultSlotCapacity })
-      .from(organizationSettings)
-      .where(eq(organizationSettings.tenantId, tenantId))
-      .limit(1);
-
-    // Hard fallback: 8
-    return settings?.defaultSlotCapacity ?? 8;
-  },
-
-  async setCapacityEntries(
-    tenantId: string,
-    userId: string,
-    entries: Array<{ date: string; maxBookings: number }>
-  ): Promise<void> {
-    log.info({ tenantId, userId, count: entries.length }, "setCapacityEntries");
-
-    if (entries.length === 0) return;
-
-    const dates = entries.map((e) => new Date(e.date));
-
-    await db.transaction(async (tx) => {
-      // Delete existing entries for those dates
-      await tx
-        .delete(userCapacities)
-        .where(
-          and(
-            eq(userCapacities.tenantId, tenantId),
-            eq(userCapacities.userId, userId),
-            inArray(userCapacities.date, dates)
-          )
-        );
-
-      // Re-insert
-      const now = new Date();
-      await tx.insert(userCapacities).values(
-        entries.map((e) => ({
-          id: crypto.randomUUID(),
-          tenantId,
-          userId,
-          date: new Date(e.date),
-          maxBookings: e.maxBookings,
-          createdAt: now,
-          updatedAt: now,
-        }))
-      );
     });
   },
 

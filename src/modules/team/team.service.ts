@@ -6,7 +6,6 @@ import type {
   StaffMember,
   AvailabilityEntry,
   AvailabilitySlot,
-  CapacityEntry,
 } from "./team.types";
 import type {
   listStaffSchema,
@@ -15,8 +14,6 @@ import type {
   getAvailabilitySchema,
   setAvailabilitySchema,
   blockDatesSchema,
-  getCapacitySchema,
-  setCapacitySchema,
   getScheduleSchema,
 } from "./team.schemas";
 import { teamRepository } from "./team.repository";
@@ -70,7 +67,6 @@ export const teamService = {
       phone: input.phone,
       employeeType: input.employeeType,
       hourlyRate: input.hourlyRate,
-      defaultMaxDailyBookings: input.defaultMaxDailyBookings,
     });
 
     log.info({ userId: ctx.user?.id, tenantId: ctx.tenantId, newMemberId: member.id }, "Staff created");
@@ -92,7 +88,6 @@ export const teamService = {
       phone: input.phone,
       employeeType: input.employeeType,
       hourlyRate: input.hourlyRate,
-      defaultMaxDailyBookings: input.defaultMaxDailyBookings,
       status: input.status,
     });
 
@@ -182,51 +177,6 @@ export const teamService = {
   },
 
   // ---------------------------------------------------------------------------
-  // CAPACITY
-  // ---------------------------------------------------------------------------
-
-  async getCapacity(
-    ctx: Context,
-    input: z.infer<typeof getCapacitySchema>
-  ): Promise<CapacityEntry[]> {
-    const entries = await teamRepository.getCapacity(
-      ctx.tenantId,
-      input.userId,
-      {
-        startDate: input.startDate,
-        endDate: input.endDate,
-      }
-    );
-
-    log.info(
-      { tenantId: ctx.tenantId, userId: input.userId, count: entries.length },
-      "Capacity fetched"
-    );
-    return entries;
-  },
-
-  async setCapacity(
-    ctx: Context,
-    input: z.infer<typeof setCapacitySchema>
-  ): Promise<void> {
-    if (input.entries.length === 0) {
-      log.info({ tenantId: ctx.tenantId, userId: input.userId }, "setCapacity called with no entries — no-op");
-      return;
-    }
-
-    await teamRepository.setCapacityEntries(
-      ctx.tenantId,
-      input.userId,
-      input.entries
-    );
-
-    log.info(
-      { userId: ctx.user?.id, tenantId: ctx.tenantId, targetUserId: input.userId, count: input.entries.length },
-      "Capacity set"
-    );
-  },
-
-  // ---------------------------------------------------------------------------
   // SCHEDULE
   // ---------------------------------------------------------------------------
 
@@ -237,7 +187,6 @@ export const teamService = {
     userId: string;
     date: string;
     availableSlots: AvailabilitySlot[];
-    capacity: number;
     assignedBookings: Array<{
       id: string;
       scheduledDate: Date;
@@ -251,10 +200,9 @@ export const teamService = {
     // Parse the requested date
     const dateObj = new Date(input.date);
 
-    // Fetch available slots, capacity, and assigned bookings in parallel
-    const [availableSlots, capacity, assignedBookings] = await Promise.all([
+    // Fetch available slots and assigned bookings in parallel
+    const [availableSlots, assignedBookings] = await Promise.all([
       teamRepository.getStaffAvailableSlots(ctx.tenantId, input.userId, dateObj, timezone),
-      teamRepository.getCapacityForDate(ctx.tenantId, input.userId, input.date),
       teamRepository.getAssignedBookings(
         ctx.tenantId,
         input.userId,
@@ -269,7 +217,6 @@ export const teamService = {
         userId: input.userId,
         date: input.date,
         slotCount: availableSlots.length,
-        capacity,
         bookingCount: assignedBookings.length,
       },
       "Schedule fetched"
@@ -279,7 +226,6 @@ export const teamService = {
       userId: input.userId,
       date: input.date,
       availableSlots,
-      capacity,
       assignedBookings,
     };
   },

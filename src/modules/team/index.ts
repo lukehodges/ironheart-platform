@@ -5,6 +5,5 @@ export { teamService } from "./team.service";
 export type {
   StaffMember,
   AvailabilityEntry,
-  CapacityEntry,
   TeamSchedule,
 } from "./team.types";

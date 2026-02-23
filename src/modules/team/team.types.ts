@@ -16,7 +16,6 @@ export interface StaffMember {
   isTeamMember: boolean
   hourlyRate: number | null
   staffStatus: string | null
-  defaultMaxDailyBookings: number | null
   workosUserId: string | null
   createdAt: Date
   updatedAt: Date
@@ -43,12 +42,6 @@ export type AvailabilityEntry =
       isAllDay: boolean
     }
 
-export interface CapacityEntry {
-  userId: string
-  date: string       // "YYYY-MM-DD"
-  maxBookings: number
-}
-
 export interface AvailabilitySlot {
   startTime: string  // "HH:MM"
   endTime: string    // "HH:MM"
@@ -58,8 +51,6 @@ export interface TeamSchedule {
   userId: string
   date: string       // "YYYY-MM-DD"
   slots: Array<{ startTime: string; endTime: string }>
-  capacity: number
-  bookedCount: number
 }
 
 export interface CreateStaffInput {
@@ -68,7 +59,6 @@ export interface CreateStaffInput {
   phone?: string
   employeeType?: EmployeeType
   hourlyRate?: number
-  defaultMaxDailyBookings?: number
 }
 
 export interface UpdateStaffInput {
@@ -78,6 +68,5 @@ export interface UpdateStaffInput {
   phone?: string
   employeeType?: EmployeeType
   hourlyRate?: number
-  defaultMaxDailyBookings?: number
   status?: StaffStatus
 }
