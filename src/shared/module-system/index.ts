@@ -9,3 +9,15 @@ export type {
   AnalyticsWidgetDataSource,
   ModuleSettingsTab,
 } from './types'
+export {
+  SearchProviderRegistry,
+  searchProviderRegistry,
+} from './search-registry'
+export type {
+  SearchProvider,
+  SearchResult,
+  RawSearchHit,
+  SearchHitResult,
+  SearchResultGroup,
+  GlobalSearchResult,
+} from './search-registry'
