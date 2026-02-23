@@ -1,14 +1,6 @@
-export type SearchResultType = 'customer' | 'booking'
-
-export interface SearchResult {
-  type: SearchResultType
-  id: string
-  label: string
-  secondary: string | null
-}
-
-export interface GlobalSearchResult {
-  results: SearchResult[]
-  query: string
-  totalFound: number
-}
+// Re-export all search types from the canonical source
+export type {
+  SearchResult,
+  SearchResultGroup,
+  GlobalSearchResult,
+} from '@/shared/module-system/search-registry'
