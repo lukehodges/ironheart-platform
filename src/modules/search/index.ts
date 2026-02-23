@@ -1,3 +1,3 @@
 export * from './search.types'
-export * from './search.repository'
+export { searchService } from './search.service'
 export { searchRouter } from './search.router'
