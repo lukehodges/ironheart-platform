@@ -121,7 +121,8 @@ export class ModuleRegistry {
 
   getEnabledManifests(enabledSlugs: string[]): ModuleManifest[] {
     const set = new Set(enabledSlugs)
-    return this.getAllManifests().filter((m) => set.has(m.slug))
+    // Core modules are always enabled regardless of tenantModules rows
+    return this.getAllManifests().filter((m) => m.isCore || set.has(m.slug))
   }
 
   getSidebarItems(enabledSlugs: string[]): ModuleSidebarItem[] {

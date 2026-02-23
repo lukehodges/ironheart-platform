@@ -32,7 +32,7 @@ function formatCurrency(amount: number): string {
     currency: "GBP",
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(amount / 100)
+  }).format(amount)
 }
 
 interface CustomerCardProps {

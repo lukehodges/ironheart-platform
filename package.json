@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "drizzle-kit migrate && next dev",
-    "build": "drizzle-kit migrate && next build",
+    "dev": "drizzle-kit push && next dev",
+    "build": "drizzle-kit push && next build",
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
@@ -13,7 +13,14 @@
     "test:ui": "vitest --ui",
     "email:dev": "react-email dev --dir src/modules/notification/templates/email --port 3001",
     "db:seed": "tsx --tsconfig tsconfig.json scripts/seed-demo.ts",
-    "db:reset": "tsx --tsconfig tsconfig.json scripts/seed-demo.ts --reset"
+    "db:reset": "tsx --tsconfig tsconfig.json scripts/seed-demo.ts --reset",
+    "db:ensure-platform": "drizzle-kit push && tsx --tsconfig tsconfig.json scripts/ensure-platform.ts",
+    "db:flush": "tsx --tsconfig tsconfig.json scripts/db-flush.ts",
+    "e2e": "playwright test",
+    "e2e:headed": "playwright test --headed",
+    "e2e:debug": "playwright test --debug",
+    "e2e:setup": "playwright test --project=setup --headed",
+    "test:api": "tsx --tsconfig tsconfig.json scripts/exercise-trpc.ts"
   },
   "dependencies": {
     "@fullcalendar/core": "^6.1.20",
@@ -87,6 +94,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",

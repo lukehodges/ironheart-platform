@@ -54,16 +54,26 @@ function formatCurrency(amount: number): string {
     currency: "GBP",
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(amount / 100)
+  }).format(amount)
 }
 
 function formatRelativeDate(date: Date | string): string {
   const d = typeof date === "string" ? new Date(date) : date
   const now = new Date()
   const diffMs = now.getTime() - d.getTime()
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+  const diffDays = Math.floor(Math.abs(diffMs) / (1000 * 60 * 60 * 24))
+  const isFuture = diffMs < 0
 
   if (diffDays === 0) return "Today"
+
+  if (isFuture) {
+    if (diffDays === 1) return "Tomorrow"
+    if (diffDays < 7) return `in ${diffDays} days`
+    if (diffDays < 30) return `in ${Math.floor(diffDays / 7)} weeks`
+    if (diffDays < 365) return `in ${Math.floor(diffDays / 30)} months`
+    return `in ${Math.floor(diffDays / 365)} years`
+  }
+
   if (diffDays === 1) return "Yesterday"
   if (diffDays < 7) return `${diffDays} days ago`
   if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`

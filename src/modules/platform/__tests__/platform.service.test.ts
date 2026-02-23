@@ -313,12 +313,8 @@ describe('platformService.provisionTenant', () => {
     const mockInsertReturning = vi.fn()
     const mockInsertValues = vi.fn().mockReturnValue({ returning: mockInsertReturning })
     const mockInsert = vi.fn().mockReturnValue({ values: mockInsertValues })
-    const mockSelectFromWhere = vi.fn().mockResolvedValue([
-      { id: 'mod-1', slug: 'notification' },
-      { id: 'mod-2', slug: 'calendar-sync' },
-      { id: 'mod-3', slug: 'forms' },
-      { id: 'mod-4', slug: 'review' },
-    ])
+    // defaultSlugs is empty — platform modules are all isCore, no tenantModules needed
+    const mockSelectFromWhere = vi.fn().mockResolvedValue([])
     const mockSelectFrom = vi.fn().mockReturnValue({ where: mockSelectFromWhere })
     const mockSelect = vi.fn().mockReturnValue({ from: mockSelectFrom })
 
@@ -746,7 +742,7 @@ describe('platformService.startImpersonation', () => {
     expect(redis.setex).toHaveBeenCalledWith(
       `impersonate:${ADMIN_USER_ID}`,
       86400,
-      expect.stringContaining(SESSION_ID),
+      expect.objectContaining({ sessionId: SESSION_ID, tenantId: TENANT_ID }),
     )
     expect(platformRepository.insertAuditLog).toHaveBeenCalledWith(
       expect.objectContaining({

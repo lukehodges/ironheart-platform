@@ -136,9 +136,9 @@ function exportCsv(rows: BookingRecord[], filename = "bookings.csv") {
   const headers = [
     "Booking Number",
     "Status",
-    "Customer ID",
-    "Service ID",
-    "Staff ID",
+    "Customer",
+    "Service",
+    "Staff",
     "Date",
     "Time",
     "Duration (min)",
@@ -152,9 +152,9 @@ function exportCsv(rows: BookingRecord[], filename = "bookings.csv") {
       [
         r.bookingNumber,
         r.status,
-        r.customerId,
-        r.serviceId,
-        r.staffId ?? "",
+        r.customerName ?? r.customerId,
+        r.customServiceName ?? r.serviceName ?? r.serviceId,
+        r.staffName ?? r.staffId ?? "",
         new Date(r.scheduledDate).toISOString().slice(0, 10),
         r.scheduledTime,
         r.durationMinutes,
@@ -806,13 +806,12 @@ export function BookingsTable({ filters, onRowClick }: BookingsTableProps) {
                         <div className="flex items-center gap-2 min-w-0">
                           <Avatar className="h-6 w-6 shrink-0 text-[10px]">
                             <AvatarFallback>
-                              {getInitials(booking.customerId.slice(0, 4).toUpperCase())}
+                              {getInitials(booking.customerName ?? "?")}
                             </AvatarFallback>
                           </Avatar>
                           <div className="min-w-0">
                             <p className="truncate text-sm font-medium text-foreground">
-                              {/* customerId shown until customer data enrichment is added */}
-                              {booking.customerId.slice(0, 8)}…
+                              {booking.customerName ?? "Unknown customer"}
                             </p>
                             <p className="truncate text-xs text-muted-foreground">
                               #{booking.bookingNumber}
@@ -826,7 +825,7 @@ export function BookingsTable({ filters, onRowClick }: BookingsTableProps) {
                     {!hiddenColumns.has("service") && (
                       <TableCell className="py-3">
                         <span className="text-sm text-foreground">
-                          {booking.customServiceName ?? booking.serviceId.slice(0, 8) + "…"}
+                          {booking.customServiceName ?? booking.serviceName ?? "Unknown service"}
                         </span>
                       </TableCell>
                     )}
@@ -835,9 +834,20 @@ export function BookingsTable({ filters, onRowClick }: BookingsTableProps) {
                     {!hiddenColumns.has("staff") && (
                       <TableCell className="py-3">
                         {booking.staffId ? (
-                          <span className="text-sm text-foreground">
-                            {booking.staffId.slice(0, 8)}…
-                          </span>
+                          <div className="flex items-center gap-2 min-w-0">
+                            <Avatar className="h-6 w-6 shrink-0 text-[10px]">
+                              <AvatarImage
+                                src={booking.staffAvatarUrl ?? undefined}
+                                alt={booking.staffName ?? "Staff"}
+                              />
+                              <AvatarFallback>
+                                {getInitials(booking.staffName ?? "?")}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="truncate text-sm text-foreground">
+                              {booking.staffName ?? "Unknown staff"}
+                            </span>
+                          </div>
                         ) : (
                           <span className="text-xs text-muted-foreground">Unassigned</span>
                         )}

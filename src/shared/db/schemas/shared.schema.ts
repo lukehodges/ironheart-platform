@@ -192,6 +192,7 @@ export const tenantModules = pgTable("tenant_modules", {
 	createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	updatedAt: timestamp({ precision: 3, mode: 'date' }).notNull(),
 }, (table) => [
+	uniqueIndex("tenant_modules_tenantId_moduleId_key").using("btree", table.tenantId.asc().nullsLast().op("uuid_ops"), table.moduleId.asc().nullsLast().op("uuid_ops")),
 	index("tenant_modules_moduleId_idx").using("btree", table.moduleId.asc().nullsLast().op("uuid_ops")),
 	index("tenant_modules_tenantId_idx").using("btree", table.tenantId.asc().nullsLast().op("uuid_ops")),
 	foreignKey({

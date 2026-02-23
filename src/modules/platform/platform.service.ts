@@ -132,11 +132,15 @@ export const platformService = {
 
       // 3. Enable default modules — must query modules table by slug to get UUIDs
       // tenantModules uses moduleId (UUID FK → modules.id), NOT a text slug column
-      const defaultSlugs = ["notification", "calendar-sync", "forms", "review"];
-      const moduleRows = await tx
-        .select({ id: modules.id, slug: modules.slug })
-        .from(modules)
-        .where(inArray(modules.slug, defaultSlugs));
+      // Platform layer modules are all isCore: true and don't need tenantModules rows.
+      // Vertical modules will be re-enabled here once the platform layer is solid.
+      const defaultSlugs: string[] = [];
+      const moduleRows = defaultSlugs.length > 0
+        ? await tx
+            .select({ id: modules.id, slug: modules.slug })
+            .from(modules)
+            .where(inArray(modules.slug, defaultSlugs))
+        : [];
 
       for (const mod of moduleRows) {
         await tx.insert(tenantModules).values({
@@ -469,7 +473,7 @@ export const platformService = {
       expiresAt,
     };
 
-    await redis.setex(redisKey, 86400, JSON.stringify(sessionData)); // 24 hours in seconds
+    await redis.setex(redisKey, 86400, sessionData); // 24 hours in seconds
 
     // 6. Create audit log entry
     await platformRepository.insertAuditLog({

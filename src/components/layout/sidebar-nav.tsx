@@ -6,7 +6,6 @@ import { cn } from "@/lib/utils"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { buildNavSections, type NavSection } from "./nav-builder"
 import { moduleRegistry } from "@/shared/module-system/register-all"
-import { api } from "@/lib/trpc/react"
 import {
   LayoutDashboard,
   Calendar,
@@ -70,6 +69,7 @@ interface SidebarNavProps {
   collapsed?: boolean
   permissions?: string[]
   isPlatformAdmin?: boolean
+  enabledModuleSlugs?: string[]
   onNavigate?: () => void
 }
 
@@ -81,7 +81,7 @@ function isActive(href: string, pathname: string): boolean {
 /**
  * Static nav items that are not part of the module registry:
  * - Dashboard: always shown (top-level, no module)
- * - Audit Log: shown if user has audit:view permission
+ * - Audit Log: shown if user has audit:read permission (matches audit.router)
  */
 function buildStaticDashboardSection(): NavSection {
   return {
@@ -94,20 +94,20 @@ function buildStaticDashboardSection(): NavSection {
 function buildStaticAccountSection(permissions: string[]): NavSection | null {
   const items: NavSection["items"] = []
 
-  // Audit Log — requires audit:view permission
+  // Audit Log — requires audit:read permission (aligned with audit.router.ts)
   const hasAuditPermission =
     !permissions.length || // if no permissions passed, don't filter
     permissions.includes("*:*") ||
-    permissions.includes("audit:view") ||
+    permissions.includes("audit:read") ||
     permissions.includes("audit:*") ||
-    permissions.includes("*:view")
+    permissions.includes("*:read")
 
   if (hasAuditPermission) {
     items.push({
       title: "Audit Log",
       href: "/admin/audit",
       icon: "ScrollText",
-      permission: "audit:view",
+      permission: "audit:read",
     })
   }
 
@@ -118,25 +118,13 @@ export function SidebarNav({
   collapsed = false,
   permissions = [],
   isPlatformAdmin = false,
+  enabledModuleSlugs = [],
   onNavigate,
 }: SidebarNavProps) {
   const pathname = usePathname()
 
-  // Load enabled modules for the current tenant
-  const { data: modules } = api.tenant.listModules.useQuery(undefined, {
-    staleTime: 5 * 60 * 1000, // 5 minutes — matches Redis cache TTL
-    retry: false,
-  })
-
-  // Derive enabledSlugs from the tenant modules query
-  const enabledSlugs = modules
-    ? modules.filter((m) => m.isEnabled).map((m) => m.moduleSlug)
-    : []
-
   // Build module-driven nav sections via nav-builder
-  const moduleSections = modules
-    ? buildNavSections(moduleRegistry, enabledSlugs, permissions, isPlatformAdmin)
-    : []
+  const moduleSections = buildNavSections(moduleRegistry, enabledModuleSlugs, permissions, isPlatformAdmin)
 
   // Assemble final sections: Dashboard + module sections + static account items
   const dashboardSection = buildStaticDashboardSection()
@@ -162,41 +150,6 @@ export function SidebarNav({
   const hasAccountFromModules = moduleSections.some((s) => s.title === "Account")
   if (!hasAccountFromModules && accountSection) {
     sections.push(accountSection)
-  }
-
-  // If modules haven't loaded yet, show a minimal skeleton state
-  if (!modules) {
-    return (
-      <nav className="flex-1 overflow-y-auto py-4 scrollbar-thin" aria-label="Main navigation">
-        <div className="mb-1">
-          <ul role="list" className="space-y-0.5 px-2">
-            <li>
-              <Link
-                href="/admin"
-                className={cn(
-                  "group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-150",
-                  pathname === "/admin"
-                    ? "bg-primary text-primary-foreground shadow-sm shadow-primary/20"
-                    : "text-sidebar-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                )}
-                aria-current={pathname === "/admin" ? "page" : undefined}
-              >
-                <LayoutDashboard className="h-4 w-4 shrink-0" aria-hidden="true" />
-                {!collapsed && <span className="truncate">Dashboard</span>}
-              </Link>
-            </li>
-          </ul>
-          {/* Skeleton placeholders */}
-          {!collapsed && (
-            <div className="mt-4 space-y-3 px-4">
-              {[1, 2, 3, 4, 5].map((i) => (
-                <div key={i} className="h-4 rounded bg-sidebar-accent/50 animate-pulse" />
-              ))}
-            </div>
-          )}
-        </div>
-      </nav>
-    )
   }
 
   return (

@@ -44,6 +44,7 @@ interface AdminTopbarProps {
   user?: AdminTopbarUser
   permissions?: string[]
   isPlatformAdmin?: boolean
+  enabledModuleSlugs?: string[]
 }
 
 // Build breadcrumbs from pathname
@@ -111,6 +112,7 @@ export function AdminTopbar({
   user,
   permissions = [],
   isPlatformAdmin = false,
+  enabledModuleSlugs = [],
 }: AdminTopbarProps) {
   const router = useRouter()
   const breadcrumbs = useBreadcrumbs()
@@ -133,7 +135,7 @@ export function AdminTopbar({
       <header className="sticky top-0 z-40 flex h-14 items-center gap-4 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4">
 
         {/* Mobile sidebar trigger */}
-        <MobileSidebar permissions={permissions} isPlatformAdmin={isPlatformAdmin} />
+        <MobileSidebar permissions={permissions} isPlatformAdmin={isPlatformAdmin} enabledModuleSlugs={enabledModuleSlugs} />
 
         {/* Breadcrumbs — desktop only */}
         <nav

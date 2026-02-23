@@ -17,7 +17,7 @@ export function getStripe(): Stripe {
 }
 
 export interface CreatePaymentIntentInput {
-  amount: number           // in pence/cents
+  amount: number           // in pounds/dollars (major units)
   currency: string
   customerId?: string
   bookingId?: string

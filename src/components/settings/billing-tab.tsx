@@ -79,7 +79,7 @@ export function BillingTab() {
   const formattedPrice = new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
-  }).format(currentPrice / 100)
+  }).format(currentPrice)
 
   return (
     <div className="space-y-6">
@@ -224,7 +224,7 @@ export function BillingTab() {
                       {new Intl.NumberFormat("en-US", {
                         style: "currency",
                         currency: "USD",
-                      }).format(invoice.amount / 100)}
+                      }).format(invoice.amount)}
                     </TableCell>
                     <TableCell>
                       <InvoiceStatusBadge status={invoice.status} />

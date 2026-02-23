@@ -93,7 +93,7 @@ function formatCurrency(amountInPence: number | string): string {
   return new Intl.NumberFormat("en-GB", {
     style: "currency",
     currency: "GBP",
-  }).format(numeric / 100)
+  }).format(numeric)
 }
 
 function formatDate(date: Date | string | null | undefined): string {
@@ -111,9 +111,19 @@ function formatRelativeDate(date: Date | string | null | undefined): string {
   const d = typeof date === "string" ? new Date(date) : date
   const now = new Date()
   const diffMs = now.getTime() - d.getTime()
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+  const diffDays = Math.floor(Math.abs(diffMs) / (1000 * 60 * 60 * 24))
+  const isFuture = diffMs < 0
 
   if (diffDays === 0) return "Today"
+
+  if (isFuture) {
+    if (diffDays === 1) return "Tomorrow"
+    if (diffDays < 7) return `in ${diffDays} days`
+    if (diffDays < 30) return `in ${Math.floor(diffDays / 7)}w`
+    if (diffDays < 365) return `in ${Math.floor(diffDays / 30)}mo`
+    return `in ${Math.floor(diffDays / 365)}y`
+  }
+
   if (diffDays === 1) return "Yesterday"
   if (diffDays < 7) return `${diffDays} days ago`
   if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`
@@ -479,9 +489,9 @@ export default function PaymentsPage() {
   }, [])
 
   const handleCreateSubmit = useCallback(() => {
-    const subtotal = Math.round(parseFloat(createForm.subtotal) * 100)
-    const taxAmount = Math.round(parseFloat(createForm.taxAmount || "0") * 100)
-    const totalAmount = Math.round(parseFloat(createForm.totalAmount) * 100)
+    const subtotal = parseFloat(createForm.subtotal)
+    const taxAmount = parseFloat(createForm.taxAmount || "0")
+    const totalAmount = parseFloat(createForm.totalAmount)
 
     if (!createForm.customerId || isNaN(subtotal) || isNaN(totalAmount)) {
       toast.error("Please fill in all required fields")
@@ -502,7 +512,7 @@ export default function PaymentsPage() {
   const handleRecordPaymentSubmit = useCallback(() => {
     if (!paymentInvoice) return
 
-    const amount = Math.round(parseFloat(paymentForm.amount) * 100)
+    const amount = parseFloat(paymentForm.amount)
     if (isNaN(amount) || amount <= 0) {
       toast.error("Please enter a valid payment amount")
       return

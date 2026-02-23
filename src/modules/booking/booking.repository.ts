@@ -13,6 +13,7 @@ import {
   tenants,
 } from "@/shared/db/schema";
 import { eq, and, or, gte, lte, isNull, inArray, sql, desc, asc } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import type { BookingStatus, CreateBookingInput, UpdateBookingInput, LocationAddress } from "./booking.types";
 
 const log = logger.child({ module: "booking.repository" });
@@ -118,7 +119,6 @@ export const bookingRepository = {
     if (filters.cursor) conditions.push(lte(bookings.createdAt, new Date(filters.cursor)));
 
     // RBAC: MEMBER users see only bookings they're assigned to
-    let rows;
     if (userId) {
       // Get booking IDs assigned to this user via bookingAssignments
       const assignedIds = await db
@@ -133,15 +133,48 @@ export const bookingRepository = {
       conditions.push(rbacCondition!);
     }
 
-    rows = await db
-      .select()
+    // Alias the users table for the staff LEFT JOIN (since users is already
+    // imported and could collide if used directly in two different joins)
+    const staffUsers = alias(users, "staffUsers");
+
+    const rows = await db
+      .select({
+        // All booking columns
+        booking: bookings,
+        // Enriched name / avatar fields from joined tables
+        customerFirstName: customers.firstName,
+        customerLastName: customers.lastName,
+        serviceName: services.name,
+        staffDisplayName: staffUsers.displayName,
+        staffFirstName: staffUsers.firstName,
+        staffLastName: staffUsers.lastName,
+        staffAvatarUrl: staffUsers.avatarUrl,
+      })
       .from(bookings)
+      .leftJoin(customers, eq(bookings.customerId, customers.id))
+      .leftJoin(services, eq(bookings.serviceId, services.id))
+      .leftJoin(staffUsers, eq(bookings.staffId, staffUsers.id))
       .where(and(...conditions))
       .orderBy(desc(bookings.createdAt))
       .limit(limit + 1);
 
     const hasMore = rows.length > limit;
-    return { rows: hasMore ? rows.slice(0, limit) : rows, hasMore };
+    const sliced = hasMore ? rows.slice(0, limit) : rows;
+
+    // Flatten each row: spread the booking columns and append the enriched fields
+    const enrichedRows = sliced.map((r) => ({
+      ...r.booking,
+      customerName: r.customerFirstName && r.customerLastName
+        ? `${r.customerFirstName} ${r.customerLastName}`
+        : r.customerFirstName ?? r.customerLastName ?? null,
+      serviceName: r.serviceName ?? null,
+      staffName: r.staffDisplayName ?? (r.staffFirstName && r.staffLastName
+        ? `${r.staffFirstName} ${r.staffLastName}`.trim()
+        : r.staffFirstName ?? r.staffLastName ?? null),
+      staffAvatarUrl: r.staffAvatarUrl ?? null,
+    }));
+
+    return { rows: enrichedRows, hasMore };
   },
 
   async listForCalendar(tenantId: string, startDate: Date, endDate: Date, staffId?: string) {

@@ -25,7 +25,7 @@ function formatCurrency(amount: number): string {
     currency: "GBP",
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
-  }).format(amount / 100) // amounts stored in pence
+  }).format(amount)
 }
 
 function formatDate(date: Date): string {

@@ -56,6 +56,12 @@ export interface BookingRecord {
   createdAt: Date
   createdById: string | null
   updatedAt: Date
+
+  // Enriched fields from JOINs (available on list queries)
+  customerName?: string | null
+  serviceName?: string | null
+  staffName?: string | null
+  staffAvatarUrl?: string | null
 }
 
 export interface CreateBookingInput {

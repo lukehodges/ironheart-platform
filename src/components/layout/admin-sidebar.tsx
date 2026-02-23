@@ -21,6 +21,7 @@ interface AdminSidebarProps {
   user?: AdminSidebarUser
   permissions?: string[]
   isPlatformAdmin?: boolean
+  enabledModuleSlugs?: string[]
   className?: string
 }
 
@@ -41,6 +42,7 @@ export function AdminSidebar({
   user,
   permissions = [],
   isPlatformAdmin = false,
+  enabledModuleSlugs = [],
   className,
 }: AdminSidebarProps) {
   const [storedCollapsed, setCollapsed] = useLocalStorage("sidebar-collapsed", false)
@@ -94,6 +96,7 @@ export function AdminSidebar({
           collapsed={collapsed}
           permissions={permissions}
           isPlatformAdmin={isPlatformAdmin}
+          enabledModuleSlugs={enabledModuleSlugs}
         />
 
         {/* Footer */}

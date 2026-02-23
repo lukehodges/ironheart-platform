@@ -60,7 +60,7 @@ function formatPrice(amount: number | null | undefined): string {
   return new Intl.NumberFormat("en-GB", {
     style: "currency",
     currency: "GBP",
-  }).format(amount / 100)
+  }).format(amount)
 }
 
 function getInitials(name: string): string {

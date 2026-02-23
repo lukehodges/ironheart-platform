@@ -179,7 +179,7 @@ export default function AnalyticsPage() {
             />
             <KPICard
               label="Revenue"
-              value={`£${(analytics.kpis.data.revenue.gross / 100).toFixed(2)}`}
+              value={`£${analytics.kpis.data.revenue.gross}`}
               change={0}
               trend="neutral"
               period={analytics.kpis.data.period}

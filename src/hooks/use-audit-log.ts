@@ -4,13 +4,12 @@ import { api } from '@/lib/trpc/react'
 import { useState, useMemo, useCallback } from 'react'
 import type { AuditLogFilters } from '@/types/audit-log'
 
-// TODO: Wire to audit.list when audit module (U4.2) is built
-
 /**
  * Audit log hook
  *
  * Manages audit log entries with cursor-based pagination and filtering.
- * Currently wired to platform.getAuditLog as an interim solution.
+ * Wired to audit.list which uses permissionProcedure('audit:read'),
+ * so tenant admins (OWNER/ADMIN) and users with audit:read can access.
  *
  * @returns Object containing audit log entries, pagination state, filters, and mutations
  *
@@ -32,23 +31,23 @@ import type { AuditLogFilters } from '@/types/audit-log'
  * ```
  */
 export function useAuditLog() {
-  const [filters, setFilters] = useState<AuditLogFilters>({})
+  const [filters, setFiltersRaw] = useState<AuditLogFilters>({})
   const [cursor, setCursor] = useState<string | undefined>()
   const [allEntries, setAllEntries] = useState<any[]>([])
   const [isExporting, setIsExporting] = useState(false)
 
-  // Map the AuditLogFilters to the platform.getAuditLog input shape
+  // Map the AuditLogFilters to the audit.list input shape
   const queryInput = useMemo(
     () => ({
       action: filters.action,
-      entityType: filters.resourceType,
+      resourceType: filters.resourceType,
       limit: 50,
       cursor,
     }),
     [filters.action, filters.resourceType, cursor],
   )
 
-  const { data, isLoading, error } = api.platform.getAuditLog.useQuery(queryInput, {
+  const { data, isLoading, error } = api.audit.list.useQuery(queryInput, {
     // When we get data back, accumulate entries for cursor-based pagination
     placeholderData: (prev) => prev,
   })
@@ -69,13 +68,11 @@ export function useAuditLog() {
   const hasMore = data?.hasMore ?? false
 
   const loadMore = useCallback(() => {
-    if (!data?.rows || data.rows.length === 0) return
-    const lastEntry = data.rows[data.rows.length - 1]
-    if (!lastEntry) return
+    if (!data?.rows || data.rows.length === 0 || !data.nextCursor) return
     // Save current entries before loading more
     setAllEntries(entries)
-    setCursor(lastEntry.id)
-  }, [data?.rows, entries])
+    setCursor(data.nextCursor)
+  }, [data?.rows, data?.nextCursor, entries])
 
   // Client-side CSV generation (no backend endpoint exists yet)
   const exportCsv = useMemo(
@@ -127,6 +124,13 @@ export function useAuditLog() {
       setIsExporting(false)
     }
   }
+
+  // Reset cursor and accumulated entries when filters change
+  const setFilters = useCallback((newFilters: AuditLogFilters) => {
+    setFiltersRaw(newFilters)
+    setCursor(undefined)
+    setAllEntries([])
+  }, [])
 
   return {
     entries: entries.length > 0 ? entries : (data?.rows ?? []),

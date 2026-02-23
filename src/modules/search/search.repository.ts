@@ -1,5 +1,5 @@
 import { db } from '@/shared/db'
-import { and, eq, sql } from 'drizzle-orm'
+import { and, eq, sql, isNull } from 'drizzle-orm'
 import { customers } from '@/shared/db/schemas/customer.schema'
 import { bookings } from '@/shared/db/schemas/booking.schema'
 
@@ -22,7 +22,7 @@ export async function fullTextSearchCustomers(
         and(
           eq(customers.tenantId, tenantId),
           sql`customers.search_vector @@ plainto_tsquery('english', ${query})`,
-          sql`customers.deleted_at IS NULL`
+          isNull(customers.deletedAt)
         )
       )
       .orderBy(sql`ts_rank(customers.search_vector, plainto_tsquery('english', ${query})) DESC`)
@@ -41,7 +41,7 @@ export async function fullTextSearchCustomers(
         and(
           eq(customers.tenantId, tenantId),
           sql`(${customers.firstName} || ' ' || ${customers.lastName} || ' ' || COALESCE(${customers.email}, '')) ILIKE ${'%' + query + '%'}`,
-          sql`customers.deleted_at IS NULL`
+          isNull(customers.deletedAt)
         )
       )
       .limit(limit)

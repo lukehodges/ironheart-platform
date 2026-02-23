@@ -80,7 +80,7 @@ function CustomerAggregateCell({
             currency: "GBP",
             minimumFractionDigits: 0,
             maximumFractionDigits: 2,
-          }).format(total / 100) // amounts stored in pence
+          }).format(total)
         : "\u2014"
     return <span className="text-sm tabular-nums">{formatted}</span>
   }
@@ -117,9 +117,19 @@ function formatRelativeDate(date: Date | string | null | undefined): string {
   const d = typeof date === "string" ? new Date(date) : date
   const now = new Date()
   const diffMs = now.getTime() - d.getTime()
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+  const diffDays = Math.floor(Math.abs(diffMs) / (1000 * 60 * 60 * 24))
+  const isFuture = diffMs < 0
 
   if (diffDays === 0) return "Today"
+
+  if (isFuture) {
+    if (diffDays === 1) return "Tomorrow"
+    if (diffDays < 7) return `in ${diffDays} days`
+    if (diffDays < 30) return `in ${Math.floor(diffDays / 7)}w`
+    if (diffDays < 365) return `in ${Math.floor(diffDays / 30)}mo`
+    return `in ${Math.floor(diffDays / 365)}y`
+  }
+
   if (diffDays === 1) return "Yesterday"
   if (diffDays < 7) return `${diffDays} days ago`
   if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`

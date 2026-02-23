@@ -16,7 +16,7 @@ export const notificationManifest: ModuleManifest = {
   permissions: ['notifications:read', 'notifications:write'],
   eventsProduced: [],
   eventsConsumed: ['notification/send.email', 'notification/send.sms'],
-  isCore: false,
+  isCore: true,
   availability: 'standard',
   settingsTab: { slug: 'notification-settings', label: 'Notifications', icon: 'Bell', section: 'module' },
   auditResources: ['notification'],

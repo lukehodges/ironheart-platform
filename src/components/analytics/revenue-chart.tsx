@@ -30,7 +30,7 @@ function formatCurrency(amount: number): string {
     currency: 'GBP',
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
-  }).format(amount / 100)
+  }).format(amount)
 }
 
 function CustomTooltip({ active, payload }: any) {

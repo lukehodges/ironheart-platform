@@ -110,6 +110,9 @@ export const teamRepository = {
 
   async findById(tenantId: string, userId: string): Promise<StaffMember | null> {
     log.info({ tenantId, userId }, "findById");
+    // Search without isTeamMember filter first — a booking may reference a
+    // staff member who was deactivated (isTeamMember = false). Filtering too
+    // aggressively causes "Staff member not found" errors when viewing bookings.
     const result = await db
       .select()
       .from(users)
@@ -117,7 +120,6 @@ export const teamRepository = {
         and(
           eq(users.tenantId, tenantId),
           eq(users.id, userId),
-          eq(users.isTeamMember, true)
         )
       )
       .limit(1);

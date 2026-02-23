@@ -16,11 +16,13 @@ import { SidebarNav } from "./sidebar-nav"
 interface MobileSidebarProps {
   permissions?: string[]
   isPlatformAdmin?: boolean
+  enabledModuleSlugs?: string[]
 }
 
 export function MobileSidebar({
   permissions = [],
   isPlatformAdmin = false,
+  enabledModuleSlugs = [],
 }: MobileSidebarProps) {
   const [open, setOpen] = React.useState(false)
 
@@ -59,6 +61,7 @@ export function MobileSidebar({
               collapsed={false}
               permissions={permissions}
               isPlatformAdmin={isPlatformAdmin}
+              enabledModuleSlugs={enabledModuleSlugs}
               onNavigate={() => setOpen(false)}
             />
           </TooltipProvider>

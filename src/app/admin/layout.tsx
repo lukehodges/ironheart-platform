@@ -6,6 +6,8 @@ import { ImpersonationBanner } from "@/components/platform/impersonation-banner"
 import { db } from "@/shared/db"
 import { users } from "@/shared/db/schemas/auth.schema"
 import { eq } from "drizzle-orm"
+import { tenantRepository } from "@/modules/tenant/tenant.repository"
+import { redis } from "@/shared/redis"
 
 export default async function AdminLayout({
   children,
@@ -24,14 +26,17 @@ export default async function AdminLayout({
   let dbUser = null
   let permissions: string[] = []
   let isPlatformAdmin = false
+  let enabledModuleSlugs: string[] = []
 
   try {
     const result = await db
       .select({
         id: users.id,
+        tenantId: users.tenantId,
         firstName: users.firstName,
         lastName: users.lastName,
         email: users.email,
+        type: users.type,
         isPlatformAdmin: users.isPlatformAdmin,
       })
       .from(users)
@@ -43,6 +48,27 @@ export default async function AdminLayout({
     if (dbUser?.isPlatformAdmin) {
       isPlatformAdmin = true
       permissions = ["*:*"]
+
+      // Platform admins without an active impersonation session
+      // should use /platform — they have no tenant context here
+      const impersonationKey = `impersonate:${workosUser.id}`
+      const impersonation = await redis.get(impersonationKey)
+      if (!impersonation) {
+        redirect("/platform")
+      }
+    }
+
+    // OWNER and ADMIN user types have implicit full access (matches rbac.ts)
+    if (!isPlatformAdmin && dbUser?.type && (dbUser.type === "OWNER" || dbUser.type === "ADMIN")) {
+      permissions = ["*:*"]
+    }
+
+    // Load enabled modules for sidebar navigation
+    if (dbUser?.tenantId) {
+      const modules = await tenantRepository.listModules(dbUser.tenantId)
+      enabledModuleSlugs = modules
+        .filter((m) => m.isEnabled)
+        .map((m) => m.moduleSlug)
     }
   } catch {
     // DB unavailable (e.g. env not set in dev) — continue with basic profile
@@ -64,6 +90,7 @@ export default async function AdminLayout({
         user={userForDisplay}
         permissions={permissions}
         isPlatformAdmin={isPlatformAdmin}
+        enabledModuleSlugs={enabledModuleSlugs}
       />
       <div className="flex flex-1 flex-col min-w-0 overflow-hidden">
         <ImpersonationBanner />
@@ -71,6 +98,7 @@ export default async function AdminLayout({
           user={userForDisplay}
           permissions={permissions}
           isPlatformAdmin={isPlatformAdmin}
+          enabledModuleSlugs={enabledModuleSlugs}
         />
         <main
           className="flex-1 overflow-y-auto scrollbar-thin"

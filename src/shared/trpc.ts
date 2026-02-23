@@ -348,18 +348,33 @@ export const tenantProcedure = protectedProcedure.use(
 
     // Check for active impersonation session
     const impersonationKey = `impersonate:${workosUserId}`;
-    let impersonationData: {
+    type ImpersonationSession = {
       sessionId: string;
       tenantId: string;
       platformAdminEmail: string;
       startedAt: number;
       expiresAt: number;
-    } | null = null;
+    };
+    let impersonationData: ImpersonationSession | null = null;
 
     try {
-      const cached = await redis.get<string>(impersonationKey);
+      // Upstash Redis auto-deserializes JSON — cached is already an object
+      const cached = await redis.get(impersonationKey);
       if (cached) {
-        impersonationData = JSON.parse(cached);
+        // Validate it's the expected shape (guard against corrupt data)
+        const data = cached as Record<string, unknown>;
+        if (
+          typeof data === "object" &&
+          data !== null &&
+          typeof data.sessionId === "string" &&
+          typeof data.tenantId === "string"
+        ) {
+          impersonationData = data as ImpersonationSession;
+        } else {
+          // Corrupt data — clear it
+          logger.warn({ impersonationKey }, "Corrupt impersonation session data, clearing");
+          await redis.del(impersonationKey);
+        }
 
         // Validate session not expired
         if (impersonationData && impersonationData.expiresAt < Date.now()) {
