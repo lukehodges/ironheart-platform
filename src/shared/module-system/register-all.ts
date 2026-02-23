@@ -1,4 +1,7 @@
 import { ModuleRegistry } from './registry'
+import { searchProviderRegistry } from './search-registry'
+import { customerSearchProvider } from '@/modules/customer/customer.search-provider'
+import { bookingSearchProvider } from '@/modules/booking/booking.search-provider'
 
 // Core platform modules (always on, isCore: true)
 import { authManifest } from '@/modules/auth/auth.manifest'
@@ -57,3 +60,7 @@ moduleRegistry.register(settingsManifest)
 
 // Validate dependency graph at startup
 moduleRegistry.validate()
+
+// --- Search providers (only for modules registered on this server instance) ---
+searchProviderRegistry.register(customerSearchProvider)
+searchProviderRegistry.register(bookingSearchProvider)
