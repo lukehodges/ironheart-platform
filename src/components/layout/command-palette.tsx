@@ -155,36 +155,38 @@ export function CommandPalette({ isOpen, onOpenChange }: CommandPaletteProps) {
           ))}
         </CommandGroup>
 
-        {searchData && searchData.results.length > 0 && (
+        {searchData && searchData.groups.length > 0 && (
           <>
             <CommandSeparator />
 
-            <CommandGroup heading="Search Results">
-              {searchData.results.map((result) => {
-                const Icon = result.type === "customer" ? Users : Calendar
-                const href =
-                  result.type === "customer"
-                    ? "/admin/customers"
-                    : "/admin/bookings"
-                return (
-                  <CommandItem
-                    key={`${result.type}-${result.id}`}
-                    onSelect={() => navigate(href)}
-                    className="gap-2"
-                  >
-                    <Icon className="h-4 w-4 text-muted-foreground" />
-                    <div className="flex flex-col">
-                      <span>{result.label}</span>
-                      {result.secondary && (
-                        <span className="text-xs text-muted-foreground">
-                          {result.secondary}
-                        </span>
-                      )}
-                    </div>
-                  </CommandItem>
-                )
-              })}
-            </CommandGroup>
+            {searchData.groups.map((group) => (
+              <CommandGroup key={group.type} heading={group.label}>
+                {group.results.map((result) => {
+                  const Icon = result.type === "customer" ? Users : Calendar
+                  const href =
+                    result.type === "customer"
+                      ? "/admin/customers"
+                      : "/admin/bookings"
+                  return (
+                    <CommandItem
+                      key={`${result.type}-${result.id}`}
+                      onSelect={() => navigate(href)}
+                      className="gap-2"
+                    >
+                      <Icon className="h-4 w-4 text-muted-foreground" />
+                      <div className="flex flex-col">
+                        <span>{result.label}</span>
+                        {result.secondary && (
+                          <span className="text-xs text-muted-foreground">
+                            {result.secondary}
+                          </span>
+                        )}
+                      </div>
+                    </CommandItem>
+                  )
+                })}
+              </CommandGroup>
+            ))}
           </>
         )}
 
