@@ -27,6 +27,12 @@ vi.mock('@/shared/module-system/search-registry', () => ({
   },
 }))
 
+vi.mock('@/shared/module-system/register-all', () => ({
+  moduleRegistry: {
+    getManifest: vi.fn(() => ({})), // default: manifest exists
+  },
+}))
+
 vi.mock('@/modules/tenant/tenant.service', () => ({
   tenantService: {
     isModuleEnabled: vi.fn(),

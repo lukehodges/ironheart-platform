@@ -1,7 +1,4 @@
 import { ModuleRegistry } from './registry'
-import { searchProviderRegistry } from './search-registry'
-import { customerSearchProvider } from '@/modules/customer/customer.search-provider'
-import { bookingSearchProvider } from '@/modules/booking/booking.search-provider'
 
 // Core platform modules (always on, isCore: true)
 import { authManifest } from '@/modules/auth/auth.manifest'
@@ -44,8 +41,13 @@ moduleRegistry.register(notificationManifest)
 moduleRegistry.register(settingsManifest)
 
 // --- Vertical / feature modules (DISABLED) ---
+// When re-enabling a module, also register its search provider if it has one:
+// import { customerSearchProvider } from '@/modules/customer/customer.search-provider'
+// import { bookingSearchProvider } from '@/modules/booking/booking.search-provider'
 // moduleRegistry.register(customerManifest)
+// searchProviderRegistry.register(customerSearchProvider)
 // moduleRegistry.register(bookingManifest)
+// searchProviderRegistry.register(bookingSearchProvider)
 // moduleRegistry.register(teamManifest)
 // moduleRegistry.register(schedulingManifest)
 // moduleRegistry.register(portalManifest)
@@ -53,14 +55,9 @@ moduleRegistry.register(settingsManifest)
 // moduleRegistry.register(workflowManifest)
 // moduleRegistry.register(formsManifest)
 // moduleRegistry.register(reviewManifest)
-// moduleRegistry.register(notificationManifest)  // moved to core
 // moduleRegistry.register(calendarSyncManifest)
 // moduleRegistry.register(paymentManifest)
 // moduleRegistry.register(developerManifest)
 
 // Validate dependency graph at startup
 moduleRegistry.validate()
-
-// --- Search providers (only for modules registered on this server instance) ---
-searchProviderRegistry.register(customerSearchProvider)
-searchProviderRegistry.register(bookingSearchProvider)

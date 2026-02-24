@@ -1,5 +1,6 @@
 import { logger } from '@/shared/logger'
 import { searchProviderRegistry } from '@/shared/module-system/search-registry'
+import { moduleRegistry } from '@/shared/module-system/register-all'
 import { tenantService } from '@/modules/tenant/tenant.service'
 import type { GlobalSearchResult, SearchResultGroup } from './search.types'
 
@@ -22,7 +23,10 @@ export const searchService = {
       providers = providers.filter((p) => types.includes(p.resultType))
     }
 
-    // 3. Filter by tenant-level module enablement
+    // 3. Filter by server-level manifest registration
+    providers = providers.filter((p) => moduleRegistry.getManifest(p.moduleSlug) !== null)
+
+    // 4. Filter by tenant-level module enablement
     if (providers.length > 0) {
       const checks = await Promise.all(
         providers.map(async (p) => ({
@@ -33,7 +37,7 @@ export const searchService = {
       providers = checks.filter((c) => c.enabled).map((c) => c.provider)
     }
 
-    // 4. Fan out searches in parallel (resilient to individual provider failures)
+    // 5. Fan out searches in parallel (resilient to individual provider failures)
     const perTypeLimit = Math.ceil(limit / Math.max(providers.length, 1))
     const settled = await Promise.allSettled(
       providers.map(async (p) => {
