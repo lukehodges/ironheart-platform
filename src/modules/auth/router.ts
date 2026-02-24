@@ -2,16 +2,24 @@ import { z } from "zod";
 import { router, tenantProcedure, publicProcedure } from "@/shared/trpc";
 import { getUserPermissions } from "./rbac";
 import { eq } from "drizzle-orm";
-import { users } from "@/shared/db/schema";
+import { users, staffProfiles } from "@/shared/db/schema";
 
 export const authRouter = router({
   /**
    * Get the current authenticated user with enriched data.
    * Used by the client-side useCurrentUser() hook.
    */
-  me: tenantProcedure.query(({ ctx }) => {
+  me: tenantProcedure.query(async ({ ctx }) => {
     const user = ctx.user!;
     const permissions = getUserPermissions(user);
+
+    // Check if user has a staff profile (replaces removed users.isTeamMember column)
+    const [profile] = await ctx.db
+      .select({ userId: staffProfiles.userId })
+      .from(staffProfiles)
+      .where(eq(staffProfiles.userId, user.id))
+      .limit(1);
+
     return {
       id: user.id,
       email: user.email,
@@ -23,7 +31,7 @@ export const authRouter = router({
       status: user.status,
       tenantId: user.tenantId,
       tenantSlug: ctx.tenantSlug,
-      isTeamMember: user.isTeamMember,
+      isTeamMember: !!profile,
       isPlatformAdmin: user.isPlatformAdmin,
       permissions,
     };

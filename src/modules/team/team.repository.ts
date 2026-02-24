@@ -3,6 +3,7 @@ import { logger } from "@/shared/logger";
 import { NotFoundError } from "@/shared/errors";
 import {
   users,
+  staffProfiles,
   userAvailability,
   bookings,
 } from "@/shared/db/schema";
@@ -13,6 +14,7 @@ import {
   gte,
   lte,
   isNull,
+  isNotNull,
   ilike,
   inArray,
   sql,
@@ -62,37 +64,40 @@ function mapDomainEmployeeType(
   return null;
 }
 
-function mapUserToStaffMember(row: typeof users.$inferSelect): StaffMember {
+type UserRow = typeof users.$inferSelect;
+type StaffProfileRow = typeof staffProfiles.$inferSelect | null;
+
+function mapToStaffMember(user: UserRow, profile: StaffProfileRow): StaffMember {
   let status: StaffStatus;
-  if (row.staffStatus === "TERMINATED") {
+  if (profile?.staffStatus === "TERMINATED") {
     status = "INACTIVE";
-  } else if (row.staffStatus === "ACTIVE") {
+  } else if (profile?.staffStatus === "ACTIVE") {
     status = "ACTIVE";
-  } else if (row.status === "SUSPENDED") {
+  } else if (user.status === "SUSPENDED") {
     status = "SUSPENDED";
-  } else if (row.status === "DELETED") {
+  } else if (user.status === "DELETED") {
     status = "INACTIVE";
-  } else if (row.status === "ACTIVE") {
+  } else if (user.status === "ACTIVE") {
     status = "ACTIVE";
   } else {
     status = "INACTIVE";
   }
 
   return {
-    id: row.id,
-    tenantId: row.tenantId,
-    email: row.email,
-    name: row.displayName ?? `${row.firstName} ${row.lastName}`.trim(),
-    phone: row.phone ?? null,
-    avatarUrl: row.avatarUrl ?? null,
+    id: user.id,
+    tenantId: user.tenantId,
+    email: user.email,
+    name: user.displayName ?? `${user.firstName} ${user.lastName}`.trim(),
+    phone: user.phone ?? null,
+    avatarUrl: user.avatarUrl ?? null,
     status,
-    employeeType: mapDbEmployeeType(row.employeeType),
-    isTeamMember: row.isTeamMember,
-    hourlyRate: row.hourlyRate !== null ? Number(row.hourlyRate) : null,
-    staffStatus: row.staffStatus ?? null,
-    workosUserId: row.workosUserId ?? null,
-    createdAt: row.createdAt,
-    updatedAt: row.updatedAt,
+    employeeType: mapDbEmployeeType(profile?.employeeType ?? null),
+    isTeamMember: profile !== null,
+    hourlyRate: profile?.hourlyRate !== null && profile?.hourlyRate !== undefined ? Number(profile.hourlyRate) : null,
+    staffStatus: profile?.staffStatus ?? null,
+    workosUserId: user.workosUserId ?? null,
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt,
   };
 }
 
@@ -106,12 +111,16 @@ export const teamRepository = {
 
   async findById(tenantId: string, userId: string): Promise<StaffMember | null> {
     log.info({ tenantId, userId }, "findById");
-    // Search without isTeamMember filter first — a booking may reference a
-    // staff member who was deactivated (isTeamMember = false). Filtering too
+    // Search without requiring a staffProfiles row — a booking may reference a
+    // staff member who was deactivated (profile deleted). Filtering too
     // aggressively causes "Staff member not found" errors when viewing bookings.
     const result = await db
-      .select()
+      .select({
+        user: users,
+        profile: staffProfiles,
+      })
       .from(users)
+      .leftJoin(staffProfiles, eq(staffProfiles.userId, users.id))
       .where(
         and(
           eq(users.tenantId, tenantId),
@@ -120,7 +129,7 @@ export const teamRepository = {
       )
       .limit(1);
     const row = result[0];
-    return row ? mapUserToStaffMember(row) : null;
+    return row ? mapToStaffMember(row.user, row.profile) : null;
   },
 
   async listByTenant(
@@ -130,9 +139,10 @@ export const teamRepository = {
     log.info({ tenantId, opts }, "listByTenant");
     const { search, status, limit, cursor } = opts;
 
+    // Inner join with staffProfiles means only users with a staff profile
+    // are returned — equivalent to the old isTeamMember = true filter.
     const conditions = [
       eq(users.tenantId, tenantId),
-      eq(users.isTeamMember, true),
     ];
 
     if (search) {
@@ -150,14 +160,14 @@ export const teamRepository = {
     if (status === "ACTIVE") {
       conditions.push(
         or(
-          eq(users.staffStatus, "ACTIVE"),
+          eq(staffProfiles.staffStatus, "ACTIVE"),
           eq(users.status, "ACTIVE")
         ) as ReturnType<typeof eq>
       );
     } else if (status === "INACTIVE") {
       conditions.push(
         or(
-          eq(users.staffStatus, "TERMINATED"),
+          eq(staffProfiles.staffStatus, "TERMINATED"),
           eq(users.status, "DELETED")
         ) as ReturnType<typeof eq>
       );
@@ -170,15 +180,21 @@ export const teamRepository = {
     }
 
     const rows = await db
-      .select()
+      .select({
+        user: users,
+        profile: staffProfiles,
+      })
       .from(users)
+      .innerJoin(staffProfiles, eq(staffProfiles.userId, users.id))
       .where(and(...conditions))
       .orderBy(desc(users.createdAt))
       .limit(limit + 1);
 
     const hasMore = rows.length > limit;
     return {
-      rows: (hasMore ? rows.slice(0, limit) : rows).map(mapUserToStaffMember),
+      rows: (hasMore ? rows.slice(0, limit) : rows).map((r) =>
+        mapToStaffMember(r.user, r.profile)
+      ),
       hasMore,
     };
   },
@@ -186,35 +202,49 @@ export const teamRepository = {
   async create(tenantId: string, input: CreateStaffInput): Promise<StaffMember> {
     log.info({ tenantId, email: input.email }, "create staff");
     const now = new Date();
+    const userId = crypto.randomUUID();
 
-    const [row] = await db
-      .insert(users)
-      .values({
-        id: crypto.randomUUID(),
-        tenantId,
-        email: input.email,
-        firstName: input.name.split(" ")[0] ?? input.name,
-        lastName: input.name.split(" ").slice(1).join(" ") || "",
-        displayName: input.name,
-        phone: input.phone ?? null,
-        isTeamMember: true,
-        staffStatus: "ACTIVE",
-        status: "ACTIVE",
-        employeeType: mapDomainEmployeeType(input.employeeType ?? null),
-        hourlyRate: input.hourlyRate !== undefined ? String(input.hourlyRate) : null,
-        timezone: "Europe/London",
-        locale: "en-GB",
-        type: "MEMBER",
-        loginCount: 0,
-        failedLoginAttempts: 0,
-        twoFactorEnabled: false,
-        isPlatformAdmin: false,
-        createdAt: now,
-        updatedAt: now,
-      })
-      .returning();
+    const result = await db.transaction(async (tx) => {
+      const [userRow] = await tx
+        .insert(users)
+        .values({
+          id: userId,
+          tenantId,
+          email: input.email,
+          firstName: input.name.split(" ")[0] ?? input.name,
+          lastName: input.name.split(" ").slice(1).join(" ") || "",
+          displayName: input.name,
+          phone: input.phone ?? null,
+          status: "ACTIVE",
+          timezone: "Europe/London",
+          locale: "en-GB",
+          type: "MEMBER",
+          loginCount: 0,
+          failedLoginAttempts: 0,
+          twoFactorEnabled: false,
+          isPlatformAdmin: false,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .returning();
 
-    return mapUserToStaffMember(row!);
+      const [profileRow] = await tx
+        .insert(staffProfiles)
+        .values({
+          userId,
+          tenantId,
+          staffStatus: "ACTIVE",
+          employeeType: mapDomainEmployeeType(input.employeeType ?? null),
+          hourlyRate: input.hourlyRate !== undefined ? String(input.hourlyRate) : null,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .returning();
+
+      return { user: userRow!, profile: profileRow! };
+    });
+
+    return mapToStaffMember(result.user, result.profile);
   },
 
   async update(
@@ -225,56 +255,114 @@ export const teamRepository = {
     log.info({ tenantId, userId }, "update staff");
     const now = new Date();
 
-    const updateData: Record<string, unknown> = { updatedAt: now };
+    // Fields that belong on the users table
+    const userUpdate: Record<string, unknown> = { updatedAt: now };
+    // Fields that belong on the staffProfiles table
+    const profileUpdate: Record<string, unknown> = { updatedAt: now };
 
-    if (input.email !== undefined) updateData.email = input.email;
+    if (input.email !== undefined) userUpdate.email = input.email;
     if (input.name !== undefined) {
-      updateData.displayName = input.name;
-      updateData.firstName = input.name.split(" ")[0] ?? input.name;
-      updateData.lastName = input.name.split(" ").slice(1).join(" ") || "";
+      userUpdate.displayName = input.name;
+      userUpdate.firstName = input.name.split(" ")[0] ?? input.name;
+      userUpdate.lastName = input.name.split(" ").slice(1).join(" ") || "";
     }
-    if (input.phone !== undefined) updateData.phone = input.phone;
+    if (input.phone !== undefined) userUpdate.phone = input.phone;
     if (input.employeeType !== undefined)
-      updateData.employeeType = mapDomainEmployeeType(input.employeeType ?? null);
+      profileUpdate.employeeType = mapDomainEmployeeType(input.employeeType ?? null);
     if (input.hourlyRate !== undefined)
-      updateData.hourlyRate = input.hourlyRate !== null ? String(input.hourlyRate) : null;
+      profileUpdate.hourlyRate = input.hourlyRate !== null ? String(input.hourlyRate) : null;
     if (input.status !== undefined) {
       if (input.status === "INACTIVE") {
-        updateData.staffStatus = "TERMINATED";
-        updateData.status = "DELETED";
+        profileUpdate.staffStatus = "TERMINATED";
+        userUpdate.status = "DELETED";
       } else if (input.status === "ACTIVE") {
-        updateData.staffStatus = "ACTIVE";
-        updateData.status = "ACTIVE";
+        profileUpdate.staffStatus = "ACTIVE";
+        userUpdate.status = "ACTIVE";
       } else if (input.status === "SUSPENDED") {
-        updateData.status = "SUSPENDED";
+        userUpdate.status = "SUSPENDED";
       }
     }
 
-    const [updated] = await db
-      .update(users)
-      .set(updateData)
-      .where(and(eq(users.id, userId), eq(users.tenantId, tenantId)))
-      .returning();
+    const result = await db.transaction(async (tx) => {
+      const [updatedUser] = await tx
+        .update(users)
+        .set(userUpdate)
+        .where(and(eq(users.id, userId), eq(users.tenantId, tenantId)))
+        .returning();
 
-    if (!updated) throw new NotFoundError("Staff member", userId);
-    return mapUserToStaffMember(updated);
+      if (!updatedUser) throw new NotFoundError("Staff member", userId);
+
+      // Upsert the staff profile — it may not exist if the user was created
+      // before the staffProfiles table migration.
+      let updatedProfile: typeof staffProfiles.$inferSelect | null = null;
+      if (Object.keys(profileUpdate).length > 1) {
+        // More than just updatedAt
+        const existing = await tx
+          .select()
+          .from(staffProfiles)
+          .where(eq(staffProfiles.userId, userId))
+          .limit(1);
+
+        if (existing[0]) {
+          const [row] = await tx
+            .update(staffProfiles)
+            .set(profileUpdate)
+            .where(eq(staffProfiles.userId, userId))
+            .returning();
+          updatedProfile = row ?? null;
+        } else {
+          const [row] = await tx
+            .insert(staffProfiles)
+            .values({
+              userId,
+              tenantId,
+              staffStatus: "ACTIVE",
+              createdAt: new Date(),
+              updatedAt: now,
+              ...profileUpdate,
+            })
+            .returning();
+          updatedProfile = row ?? null;
+        }
+      } else {
+        const existing = await tx
+          .select()
+          .from(staffProfiles)
+          .where(eq(staffProfiles.userId, userId))
+          .limit(1);
+        updatedProfile = existing[0] ?? null;
+      }
+
+      return { user: updatedUser, profile: updatedProfile };
+    });
+
+    return mapToStaffMember(result.user, result.profile);
   },
 
   async deactivate(tenantId: string, userId: string): Promise<void> {
     log.info({ tenantId, userId }, "deactivate staff");
     const now = new Date();
 
-    const result = await db
-      .update(users)
-      .set({
-        staffStatus: "TERMINATED",
-        isTeamMember: false,
-        updatedAt: now,
-      })
-      .where(and(eq(users.id, userId), eq(users.tenantId, tenantId)))
-      .returning({ id: users.id });
+    const result = await db.transaction(async (tx) => {
+      // Update staffProfiles status to TERMINATED
+      const profileResult = await tx
+        .update(staffProfiles)
+        .set({
+          staffStatus: "TERMINATED",
+          updatedAt: now,
+        })
+        .where(
+          and(
+            eq(staffProfiles.userId, userId),
+            eq(staffProfiles.tenantId, tenantId),
+          )
+        )
+        .returning({ userId: staffProfiles.userId });
 
-    if (!result[0]) throw new NotFoundError("Staff member", userId);
+      if (!profileResult[0]) throw new NotFoundError("Staff member", userId);
+
+      return profileResult;
+    });
   },
 
   // ---- AVAILABILITY ----

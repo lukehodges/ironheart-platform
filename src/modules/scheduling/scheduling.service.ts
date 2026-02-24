@@ -1,6 +1,6 @@
 import { addDays, addWeeks, addMonths } from "date-fns";
 import { db } from "@/shared/db";
-import { bookings, users, availableSlots } from "@/shared/db/schema";
+import { bookings, users, availableSlots, staffProfiles } from "@/shared/db/schema";
 import { eq, and, sql, gte, lte } from "drizzle-orm";
 import { logger } from "@/shared/logger";
 import { NotFoundError } from "@/shared/errors";
@@ -254,13 +254,13 @@ export const schedulingService = {
         id: users.id,
         firstName: users.firstName,
         lastName: users.lastName,
-        staffStatus: users.staffStatus,
+        staffStatus: staffProfiles.staffStatus,
       })
       .from(users)
+      .innerJoin(staffProfiles, eq(staffProfiles.userId, users.id))
       .where(
         and(
           eq(users.tenantId, tenantId),
-          eq(users.isTeamMember, true),
           eq(users.status, "ACTIVE"),
         ),
       );
@@ -319,13 +319,13 @@ export const schedulingService = {
         id: users.id,
         firstName: users.firstName,
         lastName: users.lastName,
-        staffStatus: users.staffStatus,
+        staffStatus: staffProfiles.staffStatus,
       })
       .from(users)
+      .innerJoin(staffProfiles, eq(staffProfiles.userId, users.id))
       .where(
         and(
           eq(users.tenantId, tenantId),
-          eq(users.isTeamMember, true),
           eq(users.status, "ACTIVE"),
         ),
       );

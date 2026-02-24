@@ -1,8 +1,5 @@
 // src/shared/resource-pool/resource-pool.service.ts
-import { db } from "@/shared/db"
 import { logger } from "@/shared/logger"
-import { organizationSettings } from "@/shared/db/schema"
-import { eq } from "drizzle-orm"
 import { resourcePoolRepository } from "./resource-pool.repository"
 import type {
   ResourceSkillInput,
@@ -16,14 +13,10 @@ import type {
 
 const log = logger.child({ module: "resource-pool.service" })
 
-async function getTenantEnforcement(tenantId: string): Promise<CapacityEnforcementMode> {
-  const [settings] = await db
-    .select({ capacityEnforcement: organizationSettings.capacityEnforcement })
-    .from(organizationSettings)
-    .where(eq(organizationSettings.tenantId, tenantId))
-    .limit(1)
-
-  return (settings?.capacityEnforcement as CapacityEnforcementMode) ?? 'FLEXIBLE'
+async function getTenantEnforcement(_tenantId: string): Promise<CapacityEnforcementMode> {
+  // capacityEnforcement column was removed from organizationSettings.
+  // Default to FLEXIBLE until a dedicated settings mechanism is added.
+  return 'FLEXIBLE'
 }
 
 export const resourcePoolService = {

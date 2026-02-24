@@ -102,10 +102,7 @@ async function seedPlatform() {
     await db.insert(schema.organizationSettings).values({
       tenantId: platId, businessName: "Ironheart Platform", email: "platform@ironheart.app",
       timezone: "Europe/London", currency: "GBP", dateFormat: "dd/MM/yyyy",
-      timeFormat: "HH:mm", weekStartsOn: 1, bookingWindowDays: 90,
-      minNoticeHours: 0, bufferMinutes: 0, allowSameDayBook: true,
-      slotDurationMins: 60, defaultSlotCapacity: 1,
-      availabilityMode: "CALENDAR_BASED", capacityMode: "STAFF_LEVEL",
+      timeFormat: "HH:mm", weekStartsOn: 1,
       createdAt: now, updatedAt: now,
     });
   }
@@ -121,7 +118,7 @@ async function seedPlatform() {
       id: adminId, tenantId: platId!, email: adminEmail,
       firstName: "Platform", lastName: "Admin", displayName: "Platform Admin",
       type: "OWNER" as const, status: "ACTIVE", emailVerified: now,
-      isPlatformAdmin: true, isTeamMember: false, timezone: "Europe/London",
+      isPlatformAdmin: true, timezone: "Europe/London",
       locale: "en-GB", loginCount: 0, failedLoginAttempts: 0,
       twoFactorEnabled: false, createdAt: now, updatedAt: now,
     });
@@ -160,9 +157,6 @@ async function seedDemoTenant() {
     city: "Oxford", county: "Oxfordshire", postcode: "OX1 2AB", country: "GB",
     timezone: "Europe/London", currency: "GBP", dateFormat: "dd/MM/yyyy", timeFormat: "HH:mm",
     weekStartsOn: 1, primaryColor: "#0F766E", accentColor: "#7C3AED",
-    bookingWindowDays: 60, minNoticeHours: 24, bufferMinutes: 15,
-    allowSameDayBook: false, slotDurationMins: 30, defaultSlotCapacity: 1,
-    availabilityMode: "CALENDAR_BASED", capacityMode: "STAFF_LEVEL",
     customerLabel: "patient", bookingLabel: "appointment", staffLabel: "therapist",
     createdAt: now, updatedAt: now,
   });
@@ -288,10 +282,17 @@ async function seedStaff(tenantId: string, roleIds: Record<string, string>) {
     await db.insert(schema.users).values({
       id: userId, tenantId, email: s.email, firstName: s.firstName, lastName: s.lastName,
       displayName: `${s.firstName} ${s.lastName}`, type: s.type, status: "ACTIVE" as const,
-      emailVerified: now, isPlatformAdmin: s.isPlatform, isTeamMember: true,
-      jobTitle: s.jobTitle, staffStatus: "ACTIVE" as const, startDate: daysAgo(180),
-      dayRate: s.dayRate, timezone: "Europe/London", locale: "en-GB",
+      emailVerified: now, isPlatformAdmin: s.isPlatform,
+      timezone: "Europe/London", locale: "en-GB",
       loginCount: 0, failedLoginAttempts: 0, twoFactorEnabled: false,
+      createdAt: now, updatedAt: now,
+    });
+
+    // Create staff profile
+    await db.insert(schema.staffProfiles).values({
+      userId, tenantId,
+      jobTitle: s.jobTitle, staffStatus: "ACTIVE",
+      startDate: daysAgo(180), dayRate: s.dayRate,
       createdAt: now, updatedAt: now,
     });
     const roleId = roleIds[s.role];

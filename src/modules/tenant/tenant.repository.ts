@@ -8,6 +8,7 @@ import {
   venues,
   bookings,
   users,
+  staffProfiles,
 } from "@/shared/db/schema";
 import { eq, and, sql } from "drizzle-orm";
 import type {
@@ -53,14 +54,6 @@ function mapOrgSettings(
     accentColor: row.accentColor ?? null,
     fontFamily: row.fontFamily ?? null,
     customCss: row.customCss ?? null,
-    bookingWindowDays: row.bookingWindowDays ?? null,
-    minNoticeHours: row.minNoticeHours ?? null,
-    bufferMinutes: row.bufferMinutes ?? null,
-    allowSameDayBook: row.allowSameDayBook ?? null,
-    slotDurationMins: row.slotDurationMins ?? null,
-    slotApprovalEnabled: row.slotApprovalEnabled ?? null,
-    slotApprovalHours: row.slotApprovalHours ?? null,
-    defaultSlotCapacity: row.defaultSlotCapacity ?? null,
     senderName: row.senderName ?? null,
     senderEmail: row.senderEmail ?? null,
     replyToEmail: row.replyToEmail ?? null,
@@ -69,10 +62,6 @@ function mapOrgSettings(
     customerLabel: row.customerLabel ?? null,
     bookingLabel: row.bookingLabel ?? null,
     staffLabel: row.staffLabel ?? null,
-    availabilityMode:
-      (row.availabilityMode as OrganizationSettings["availabilityMode"]) ?? null,
-    capacityMode:
-      (row.capacityMode as OrganizationSettings["capacityMode"]) ?? null,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
@@ -185,14 +174,6 @@ export const tenantRepository = {
         ["accentColor", "accentColor"],
         ["fontFamily", "fontFamily"],
         ["customCss", "customCss"],
-        ["bookingWindowDays", "bookingWindowDays"],
-        ["minNoticeHours", "minNoticeHours"],
-        ["bufferMinutes", "bufferMinutes"],
-        ["allowSameDayBook", "allowSameDayBook"],
-        ["slotDurationMins", "slotDurationMins"],
-        ["slotApprovalEnabled", "slotApprovalEnabled"],
-        ["slotApprovalHours", "slotApprovalHours"],
-        ["defaultSlotCapacity", "defaultSlotCapacity"],
         ["senderName", "senderName"],
         ["senderEmail", "senderEmail"],
         ["replyToEmail", "replyToEmail"],
@@ -201,8 +182,6 @@ export const tenantRepository = {
         ["customerLabel", "customerLabel"],
         ["bookingLabel", "bookingLabel"],
         ["staffLabel", "staffLabel"],
-        ["availabilityMode", "availabilityMode"],
-        ["capacityMode", "capacityMode"],
       ];
 
       for (const [key, dbKey] of fieldMap) {
@@ -252,14 +231,6 @@ export const tenantRepository = {
         accentColor: updates.accentColor ?? "#10B981",
         fontFamily: updates.fontFamily ?? null,
         customCss: updates.customCss ?? null,
-        bookingWindowDays: updates.bookingWindowDays ?? 30,
-        minNoticeHours: updates.minNoticeHours ?? 24,
-        bufferMinutes: updates.bufferMinutes ?? 15,
-        allowSameDayBook: updates.allowSameDayBook ?? false,
-        slotDurationMins: updates.slotDurationMins ?? 30,
-        slotApprovalEnabled: updates.slotApprovalEnabled ?? false,
-        slotApprovalHours: updates.slotApprovalHours ?? 48,
-        defaultSlotCapacity: updates.defaultSlotCapacity ?? 1,
         senderName: updates.senderName ?? null,
         senderEmail: updates.senderEmail ?? null,
         replyToEmail: updates.replyToEmail ?? null,
@@ -268,12 +239,6 @@ export const tenantRepository = {
         customerLabel: updates.customerLabel ?? "customer",
         bookingLabel: updates.bookingLabel ?? "booking",
         staffLabel: updates.staffLabel ?? "staff",
-        availabilityMode:
-          (updates.availabilityMode as typeof organizationSettings.$inferInsert["availabilityMode"]) ??
-          "CALENDAR_BASED",
-        capacityMode:
-          (updates.capacityMode as typeof organizationSettings.$inferInsert["capacityMode"]) ??
-          "TENANT_LEVEL",
         createdAt: now,
         updatedAt: now,
       })
@@ -513,13 +478,8 @@ export const tenantRepository = {
         .where(eq(bookings.tenantId, tenantId)),
       db
         .select({ count: sql<number>`count(*)` })
-        .from(users)
-        .where(
-          and(
-            eq(users.tenantId, tenantId),
-            eq(users.isTeamMember, true),
-          ),
-        ),
+        .from(staffProfiles)
+        .where(eq(staffProfiles.tenantId, tenantId)),
     ]);
 
     return {
