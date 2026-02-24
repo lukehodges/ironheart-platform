@@ -92,10 +92,9 @@ describe('resourcePoolService.requestAssignment', () => {
     expect(result).toEqual({ success: true, assignmentId: 'asgn-2' })
   })
 
-  it('rejects when over capacity in STRICT mode', async () => {
+  it('rejects when over capacity without override reason', async () => {
     mockRepo.getCapacity.mockResolvedValue({ maxDaily: 8, capacityType: 'bookings' })
     mockRepo.getActiveWeightForDate.mockResolvedValue(8)
-    setOrgSettings('STRICT')
 
     const result = await resourcePoolService.requestAssignment(TENANT, {
       userId: USER, moduleSlug: 'bookings', resourceType: 'booking',
@@ -108,7 +107,7 @@ describe('resourcePoolService.requestAssignment', () => {
       capacityType: 'bookings',
       current: 8,
       max: 8,
-      enforcement: 'STRICT',
+      enforcement: 'FLEXIBLE',
     })
     expect(mockRepo.createAssignment).not.toHaveBeenCalled()
   })
