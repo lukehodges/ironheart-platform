@@ -1,9 +1,11 @@
 "use client"
 
 import { Clock, CheckCircle2, MinusCircle } from "lucide-react"
+import { api } from "@/lib/trpc/react"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
+import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "@/lib/utils"
 import type { StaffMember, StaffStatus } from "@/modules/team/team.types"
 
@@ -55,6 +57,55 @@ function AvailabilityIndicator({ status }: { status: StaffStatus }) {
   )
 }
 
+function WorkloadBadge({ memberId }: { memberId: string }) {
+  const today = new Date().toISOString().split("T")[0]!
+  const { data, isLoading } = api.team.getWorkload.useQuery(
+    { userId: memberId, date: today },
+    { staleTime: 60 * 1000 }
+  )
+
+  if (isLoading) return <Skeleton className="h-4 w-10 inline-block" />
+  if (!data || data.capacities.length === 0) return null
+
+  const primary = data.capacities[0]!
+  return (
+    <span className={cn(
+      "text-xs tabular-nums font-semibold",
+      primary.isOver ? "text-destructive" : "text-muted-foreground"
+    )}>
+      {primary.used}/{primary.max ?? "∞"}
+    </span>
+  )
+}
+
+function SkillChips({ memberId }: { memberId: string }) {
+  const { data, isLoading } = api.team.listSkills.useQuery(
+    { userId: memberId },
+    { staleTime: 60 * 1000 }
+  )
+
+  if (isLoading || !data || data.length === 0) return null
+
+  const visible = data.slice(0, 3)
+  const overflow = data.length - visible.length
+
+  return (
+    <div className="flex flex-wrap items-center justify-center gap-1 mt-1">
+      {visible.map((skill) => (
+        <span
+          key={skill.id}
+          className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground"
+        >
+          {skill.skillName}
+        </span>
+      ))}
+      {overflow > 0 && (
+        <span className="text-[10px] text-muted-foreground">+{overflow}</span>
+      )}
+    </div>
+  )
+}
+
 export function TeamMemberCard({ member, onClick }: TeamMemberCardProps) {
   const statusInfo = statusConfig[member.status]
 
@@ -78,7 +129,6 @@ export function TeamMemberCard({ member, onClick }: TeamMemberCardProps) {
     >
       <CardContent className="p-5">
         <div className="flex flex-col items-center text-center gap-3">
-          {/* Avatar */}
           <Avatar className="h-16 w-16 text-base">
             {member.avatarUrl && (
               <AvatarImage src={member.avatarUrl} alt={`${member.name} avatar`} />
@@ -88,7 +138,6 @@ export function TeamMemberCard({ member, onClick }: TeamMemberCardProps) {
             </AvatarFallback>
           </Avatar>
 
-          {/* Name and role */}
           <div className="space-y-1 min-w-0 w-full">
             <p className="text-sm font-semibold text-foreground truncate">{member.name}</p>
             {member.employeeType && (
@@ -98,15 +147,17 @@ export function TeamMemberCard({ member, onClick }: TeamMemberCardProps) {
             )}
           </div>
 
-          {/* Status badge */}
           <Badge variant={statusInfo.variant} className="text-[10px] px-2">
             {statusInfo.label}
           </Badge>
+
+          <SkillChips memberId={member.id} />
         </div>
       </CardContent>
 
-      <CardFooter className="px-5 py-3 border-t border-border justify-center">
+      <CardFooter className="px-5 py-3 border-t border-border justify-between">
         <AvailabilityIndicator status={member.status} />
+        <WorkloadBadge memberId={member.id} />
       </CardFooter>
     </Card>
   )
