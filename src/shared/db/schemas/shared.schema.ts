@@ -16,12 +16,10 @@ import {
   primaryKey,
 } from "drizzle-orm/pg-core"
 import { sql } from "drizzle-orm"
-import { tenants, availabilityMode, moduleCategory, settingType } from "./tenant.schema"
+import { tenants, moduleCategory, settingType } from "./tenant.schema"
 import { users } from "./auth.schema"
 import { customers } from "./customer.schema"
 import { services } from "./services.schema"
-import { capacityMode } from "./scheduling.schema"
-import { capacityEnforcementMode } from "./resource-pool.schema"
 import { bookings } from "./booking.schema"
 
 // ---------------------------------------------------------------------------
@@ -257,11 +255,6 @@ export const organizationSettings = pgTable("organization_settings", {
 	primaryColor: text().default('#3B82F6').notNull(),
 	accentColor: text().default('#10B981').notNull(),
 	businessHours: jsonb(),
-	bookingWindowDays: integer().default(30).notNull(),
-	minNoticeHours: integer().default(24).notNull(),
-	bufferMinutes: integer().default(15).notNull(),
-	allowSameDayBook: boolean().default(false).notNull(),
-	slotDurationMins: integer().default(30).notNull(),
 	senderName: text(),
 	senderEmail: text(),
 	replyToEmail: text(),
@@ -272,12 +265,6 @@ export const organizationSettings = pgTable("organization_settings", {
 	staffLabel: text().default('staff').notNull(),
 	createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	updatedAt: timestamp({ precision: 3, mode: 'date' }).notNull(),
-	availabilityMode: availabilityMode().default('CALENDAR_BASED').notNull(),
-	capacityMode: capacityMode().default('TENANT_LEVEL').notNull(),
-	defaultSlotCapacity: integer().default(1).notNull(),
-	slotApprovalEnabled: boolean().default(false).notNull(),
-	slotApprovalHours: integer().default(48).notNull(),
-	capacityEnforcement: capacityEnforcementMode().default('FLEXIBLE').notNull(),
 	customCss: text(),
 	fontFamily: text(),
 	secondaryColor: text(),
