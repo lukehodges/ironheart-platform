@@ -36,6 +36,33 @@ export interface ModuleSettingsTab {
   section: 'module'
 }
 
+export interface ModuleQuickAction {
+  title: string
+  href: string
+  icon?: string
+  shortcut?: string
+  permission?: string
+}
+
+export interface ModuleSettingDefinition {
+  key: string
+  label: string
+  type: 'boolean' | 'number' | 'text' | 'select' | 'json'
+  defaultValue: unknown
+  options?: { label: string; value: string }[]
+  validation?: { min?: number; max?: number; pattern?: string }
+  category?: string
+  order?: number
+}
+
+export interface NotificationTriggerDefinition {
+  key: string
+  label: string
+  description: string
+  defaultChannels: ('EMAIL' | 'SMS' | 'PUSH')[]
+  variables: string[]
+}
+
 export interface ModuleManifest {
   slug: string
   name: string
@@ -47,6 +74,7 @@ export interface ModuleManifest {
 
   routes: ModuleRoute[]
   sidebarItems: ModuleSidebarItem[]
+  quickActions?: ModuleQuickAction[]
   analyticsWidgets: AnalyticsWidgetDefinition[]
   permissions: string[]
 
@@ -58,4 +86,6 @@ export interface ModuleManifest {
 
   settingsTab?: ModuleSettingsTab
   auditResources?: string[]
+  settingsDefinitions?: ModuleSettingDefinition[]
+  notificationTriggers?: NotificationTriggerDefinition[]
 }
