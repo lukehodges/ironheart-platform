@@ -13,6 +13,7 @@ import type { UserWithRoles } from "@/modules/auth/rbac";
 import { extractTenantSlugFromRequest } from "@/modules/auth/tenant";
 import { hasPermission } from "@/modules/auth/rbac";
 import { IronheartError, toTRPCError } from "@/shared/errors";
+import { initStartupTasks } from "@/shared/module-system/register-all";
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -183,6 +184,12 @@ export async function createContext({
       tenantId = resolvedTenantId;
     }
   }
+
+  // Run async startup tasks (permission sync, settings seed) on first request.
+  // initStartupTasks() is idempotent — no-op after the first call.
+  await initStartupTasks().catch((err) => {
+    logger.error({ err }, "Failed to run startup tasks (non-blocking)");
+  });
 
   return {
     db,

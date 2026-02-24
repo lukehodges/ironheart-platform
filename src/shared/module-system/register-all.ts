@@ -1,4 +1,6 @@
 import { ModuleRegistry } from './registry'
+import { syncPermissions } from './permission-seeder'
+import { notificationTriggerRegistry } from './notification-trigger-registry'
 
 // Core platform modules (always on, isCore: true)
 import { authManifest } from '@/modules/auth/auth.manifest'
@@ -61,3 +63,28 @@ moduleRegistry.register(settingsManifest)
 
 // Validate dependency graph at startup
 moduleRegistry.validate()
+
+// --- Startup hooks ---
+// Register notification triggers from manifests (synchronous, no DB needed)
+for (const manifest of moduleRegistry.getAllManifests()) {
+  if (manifest.notificationTriggers?.length) {
+    notificationTriggerRegistry.register(manifest.slug, manifest.notificationTriggers)
+  }
+}
+
+// Async startup tasks (permission sync, settings seed) run on first request
+// or via an explicit init() call. They need DB access which isn't available
+// at module load time in all environments.
+let startupDone = false
+
+export async function initStartupTasks(): Promise<void> {
+  if (startupDone) return
+  startupDone = true
+
+  await syncPermissions(moduleRegistry.getAllManifests())
+
+  // Module settings seeding requires the modules table to be populated.
+  // Import lazily to avoid circular deps.
+  const { moduleSettingsService } = await import('@/modules/settings/module-settings.service')
+  await moduleSettingsService.seedModuleSettings(moduleRegistry.getAllManifests())
+}
