@@ -2,7 +2,8 @@
 
 import { useState } from "react"
 import { format } from "date-fns"
-import { Mail, Phone, Calendar } from "lucide-react"
+import Link from "next/link"
+import { Mail, Phone, Calendar, ExternalLink } from "lucide-react"
 import { toast } from "sonner"
 import { api } from "@/lib/trpc/react"
 import {
@@ -426,6 +427,18 @@ export function TeamMemberSheet({ memberId, onClose }: TeamMemberSheetProps) {
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
+
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs gap-1.5 ml-auto"
+                  asChild
+                >
+                  <Link href={`/admin/team/${member.id}`}>
+                    <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
+                    View full profile
+                  </Link>
+                </Button>
               </div>
             </div>
 
