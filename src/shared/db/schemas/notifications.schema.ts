@@ -45,8 +45,8 @@ export const messageTemplates = pgTable("message_templates", {
 	updatedAt: timestamp({ precision: 3, mode: 'date' }).notNull(),
 	serviceId: uuid(),
 }, (table) => [
-	index("message_templates_tenantId_idx").using("btree", table.tenantId.asc().nullsLast().op("uuid_ops")),
-	uniqueIndex("message_templates_tenantId_trigger_channel_serviceId_key").using("btree", table.tenantId.asc().nullsLast().op("uuid_ops"), table.trigger.asc().nullsLast().op("enum_ops"), table.channel.asc().nullsLast().op("uuid_ops"), table.serviceId.asc().nullsLast().op("uuid_ops")),
+	index("message_templates_tenantId_idx").on( table.tenantId),
+	uniqueIndex("message_templates_tenantId_trigger_channel_serviceId_key").on( table.tenantId, table.trigger, table.channel, table.serviceId),
 	foreignKey({
 		columns: [table.tenantId],
 		foreignColumns: [tenants.id],
@@ -80,9 +80,9 @@ export const sentMessages = pgTable("sent_messages", {
 	providerRef: text(),
 	createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 }, (table) => [
-	index("sent_messages_bookingId_idx").using("btree", table.bookingId.asc().nullsLast().op("uuid_ops")),
-	index("sent_messages_tenantId_createdAt_idx").using("btree", table.tenantId.asc().nullsLast().op("timestamp_ops"), table.createdAt.asc().nullsLast().op("timestamp_ops")),
-	index("sentMessages_tenantId_bookingId_idx").using("btree", table.tenantId.asc().nullsLast().op("uuid_ops"), table.bookingId.asc().nullsLast().op("uuid_ops")),
+	index("sent_messages_bookingId_idx").on( table.bookingId),
+	index("sent_messages_tenantId_createdAt_idx").on( table.tenantId, table.createdAt),
+	index("sentMessages_tenantId_bookingId_idx").on( table.tenantId, table.bookingId),
 	foreignKey({
 		columns: [table.tenantId],
 		foreignColumns: [tenants.id],
@@ -118,8 +118,8 @@ export const notifications = pgTable("notifications", {
 	createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	expiresAt: timestamp({ precision: 3, mode: 'date' }),
 }, (table) => [
-	index("notifications_userId_createdAt_idx").using("btree", table.userId.asc().nullsLast().op("timestamp_ops"), table.createdAt.asc().nullsLast().op("uuid_ops")),
-	index("notifications_userId_read_idx").using("btree", table.userId.asc().nullsLast().op("bool_ops"), table.read.asc().nullsLast().op("bool_ops")),
+	index("notifications_userId_createdAt_idx").on( table.userId, table.createdAt),
+	index("notifications_userId_read_idx").on( table.userId, table.read),
 	foreignKey({
 		columns: [table.userId],
 		foreignColumns: [users.id],

@@ -78,7 +78,7 @@ export const featureFlags = pgTable("feature_flags", {
 	createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	updatedAt: timestamp({ precision: 3, mode: 'date' }).notNull(),
 }, (table) => [
-	uniqueIndex("feature_flags_key_key").using("btree", table.key.asc().nullsLast().op("text_ops")),
+	uniqueIndex("feature_flags_key_key").on( table.key),
 ])
 
 export const tenantFeatures = pgTable("tenant_features", {
@@ -119,10 +119,10 @@ export const auditLogs = pgTable("audit_logs", {
 	metadata: jsonb(),
 	createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 }, (table) => [
-	index("audit_logs_action_idx").using("btree", table.action.asc().nullsLast().op("text_ops")),
-	index("audit_logs_tenantId_createdAt_idx").using("btree", table.tenantId.asc().nullsLast().op("timestamp_ops"), table.createdAt.asc().nullsLast().op("timestamp_ops")),
-	index("audit_logs_tenantId_entityType_entityId_idx").using("btree", table.tenantId.asc().nullsLast().op("uuid_ops"), table.entityType.asc().nullsLast().op("uuid_ops"), table.entityId.asc().nullsLast().op("text_ops")),
-	index("audit_logs_userId_idx").using("btree", table.userId.asc().nullsLast().op("uuid_ops")),
+	index("audit_logs_action_idx").on( table.action),
+	index("audit_logs_tenantId_createdAt_idx").on( table.tenantId, table.createdAt),
+	index("audit_logs_tenantId_entityType_entityId_idx").on( table.tenantId, table.entityType, table.entityId),
+	index("audit_logs_userId_idx").on( table.userId),
 	foreignKey({
 		columns: [table.tenantId],
 		foreignColumns: [tenants.id],
@@ -149,9 +149,9 @@ export const modules = pgTable("modules", {
 	createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	updatedAt: timestamp({ precision: 3, mode: 'date' }).notNull(),
 }, (table) => [
-	index("modules_category_idx").using("btree", table.category.asc().nullsLast().op("enum_ops")),
-	index("modules_isActive_idx").using("btree", table.isActive.asc().nullsLast().op("bool_ops")),
-	uniqueIndex("modules_slug_key").using("btree", table.slug.asc().nullsLast().op("text_ops")),
+	index("modules_category_idx").on( table.category),
+	index("modules_isActive_idx").on( table.isActive),
+	uniqueIndex("modules_slug_key").on( table.slug),
 ])
 
 export const moduleSettings = pgTable("module_settings", {
@@ -169,9 +169,9 @@ export const moduleSettings = pgTable("module_settings", {
 	createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	updatedAt: timestamp({ precision: 3, mode: 'date' }).notNull(),
 }, (table) => [
-	index("module_settings_category_idx").using("btree", table.category.asc().nullsLast().op("text_ops")),
-	index("module_settings_moduleId_idx").using("btree", table.moduleId.asc().nullsLast().op("uuid_ops")),
-	uniqueIndex("module_settings_moduleId_key_key").using("btree", table.moduleId.asc().nullsLast().op("uuid_ops"), table.key.asc().nullsLast().op("text_ops")),
+	index("module_settings_category_idx").on( table.category),
+	index("module_settings_moduleId_idx").on( table.moduleId),
+	uniqueIndex("module_settings_moduleId_key_key").on( table.moduleId, table.key),
 	foreignKey({
 		columns: [table.moduleId],
 		foreignColumns: [modules.id],
@@ -193,9 +193,9 @@ export const tenantModules = pgTable("tenant_modules", {
 	createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	updatedAt: timestamp({ precision: 3, mode: 'date' }).notNull(),
 }, (table) => [
-	uniqueIndex("tenant_modules_tenantId_moduleId_key").using("btree", table.tenantId.asc().nullsLast().op("uuid_ops"), table.moduleId.asc().nullsLast().op("uuid_ops")),
-	index("tenant_modules_moduleId_idx").using("btree", table.moduleId.asc().nullsLast().op("uuid_ops")),
-	index("tenant_modules_tenantId_idx").using("btree", table.tenantId.asc().nullsLast().op("uuid_ops")),
+	uniqueIndex("tenant_modules_tenantId_moduleId_key").on( table.tenantId, table.moduleId),
+	index("tenant_modules_moduleId_idx").on( table.moduleId),
+	index("tenant_modules_tenantId_idx").on( table.tenantId),
 	foreignKey({
 		columns: [table.tenantId],
 		foreignColumns: [tenants.id],
@@ -217,9 +217,9 @@ export const tenantModuleSettings = pgTable("tenant_module_settings", {
 	createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	updatedAt: timestamp({ precision: 3, mode: 'date' }).notNull(),
 }, (table) => [
-	index("tenant_module_settings_moduleId_idx").using("btree", table.moduleId.asc().nullsLast().op("uuid_ops")),
-	index("tenant_module_settings_tenantId_idx").using("btree", table.tenantId.asc().nullsLast().op("uuid_ops")),
-	uniqueIndex("tenant_module_settings_tenantId_moduleId_settingKey_key").using("btree", table.tenantId.asc().nullsLast().op("text_ops"), table.moduleId.asc().nullsLast().op("text_ops"), table.settingKey.asc().nullsLast().op("text_ops")),
+	index("tenant_module_settings_moduleId_idx").on( table.moduleId),
+	index("tenant_module_settings_tenantId_idx").on( table.tenantId),
+	uniqueIndex("tenant_module_settings_tenantId_moduleId_settingKey_key").on( table.tenantId, table.moduleId, table.settingKey),
 	foreignKey({
 		columns: [table.tenantId],
 		foreignColumns: [tenants.id],
@@ -310,9 +310,9 @@ export const projects = pgTable("projects", {
 	completedAt: timestamp({ precision: 3, mode: 'date' }),
 	deletedAt: timestamp({ precision: 3, mode: 'date' }),
 }, (table) => [
-	index("projects_startDate_idx").using("btree", table.startDate.asc().nullsLast().op("timestamp_ops")),
-	index("projects_tenantId_priority_idx").using("btree", table.tenantId.asc().nullsLast().op("uuid_ops"), table.priority.asc().nullsLast().op("enum_ops")),
-	index("projects_tenantId_status_idx").using("btree", table.tenantId.asc().nullsLast().op("uuid_ops"), table.status.asc().nullsLast().op("uuid_ops")),
+	index("projects_startDate_idx").on( table.startDate),
+	index("projects_tenantId_priority_idx").on( table.tenantId, table.priority),
+	index("projects_tenantId_status_idx").on( table.tenantId, table.status),
 	foreignKey({
 		columns: [table.tenantId],
 		foreignColumns: [tenants.id],
@@ -332,9 +332,9 @@ export const projectMembers = pgTable("project_members", {
 	joinedAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	leftAt: timestamp({ precision: 3, mode: 'date' }),
 }, (table) => [
-	index("project_members_projectId_idx").using("btree", table.projectId.asc().nullsLast().op("uuid_ops")),
-	uniqueIndex("project_members_projectId_userId_key").using("btree", table.projectId.asc().nullsLast().op("uuid_ops"), table.userId.asc().nullsLast().op("uuid_ops")),
-	index("project_members_userId_idx").using("btree", table.userId.asc().nullsLast().op("uuid_ops")),
+	index("project_members_projectId_idx").on( table.projectId),
+	uniqueIndex("project_members_projectId_userId_key").on( table.projectId, table.userId),
+	index("project_members_userId_idx").on( table.userId),
 	foreignKey({
 		columns: [table.projectId],
 		foreignColumns: [projects.id],
@@ -368,10 +368,10 @@ export const tasks = pgTable("tasks", {
 	completedAt: timestamp({ precision: 3, mode: 'date' }),
 	deletedAt: timestamp({ precision: 3, mode: 'date' }),
 }, (table) => [
-	index("tasks_assignedTo_dueDate_idx").using("btree", table.assignedTo.asc().nullsLast().op("timestamp_ops"), table.dueDate.asc().nullsLast().op("uuid_ops")),
-	index("tasks_dueDate_idx").using("btree", table.dueDate.asc().nullsLast().op("timestamp_ops")),
-	index("tasks_projectId_status_idx").using("btree", table.projectId.asc().nullsLast().op("enum_ops"), table.status.asc().nullsLast().op("uuid_ops")),
-	index("tasks_tenantId_status_idx").using("btree", table.tenantId.asc().nullsLast().op("enum_ops"), table.status.asc().nullsLast().op("uuid_ops")),
+	index("tasks_assignedTo_dueDate_idx").on( table.assignedTo, table.dueDate),
+	index("tasks_dueDate_idx").on( table.dueDate),
+	index("tasks_projectId_status_idx").on( table.projectId, table.status),
+	index("tasks_tenantId_status_idx").on( table.tenantId, table.status),
 	foreignKey({
 		columns: [table.projectId],
 		foreignColumns: [projects.id],
@@ -410,7 +410,7 @@ export const workflows = pgTable("workflows", {
 	viewport: jsonb(),
 	version: integer('version').notNull().default(1),
 }, (table) => [
-	index("workflows_tenantId_enabled_idx").using("btree", table.tenantId.asc().nullsLast().op("bool_ops"), table.enabled.asc().nullsLast().op("bool_ops")),
+	index("workflows_tenantId_enabled_idx").on( table.tenantId, table.enabled),
 	foreignKey({
 		columns: [table.tenantId],
 		foreignColumns: [tenants.id],
@@ -428,7 +428,7 @@ export const workflowActions = pgTable("workflow_actions", {
 	createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	updatedAt: timestamp({ precision: 3, mode: 'date' }).notNull(),
 }, (table) => [
-	index("workflow_actions_workflowId_order_idx").using("btree", table.workflowId.asc().nullsLast().op("int4_ops"), table.order.asc().nullsLast().op("int4_ops")),
+	index("workflow_actions_workflowId_order_idx").on( table.workflowId, table.order),
 	foreignKey({
 		columns: [table.workflowId],
 		foreignColumns: [workflows.id],
@@ -449,8 +449,8 @@ export const workflowExecutions = pgTable("workflow_executions", {
 	actionsExecuted: integer().default(0).notNull(),
 	actionResults: jsonb(),
 }, (table) => [
-	index("workflow_executions_tenantId_startedAt_idx").using("btree", table.tenantId.asc().nullsLast().op("uuid_ops"), table.startedAt.asc().nullsLast().op("uuid_ops")),
-	index("workflow_executions_workflowId_status_idx").using("btree", table.workflowId.asc().nullsLast().op("uuid_ops"), table.status.asc().nullsLast().op("uuid_ops")),
+	index("workflow_executions_tenantId_startedAt_idx").on( table.tenantId, table.startedAt),
+	index("workflow_executions_workflowId_status_idx").on( table.workflowId, table.status),
 	foreignKey({
 		columns: [table.workflowId],
 		foreignColumns: [workflows.id],
@@ -484,10 +484,10 @@ export const invoices = pgTable("invoices", {
 	updatedAt: timestamp({ precision: 3, mode: 'date' }).notNull(),
 	version: integer('version').notNull().default(1),
 }, (table) => [
-	index("invoices_customerId_idx").using("btree", table.customerId.asc().nullsLast().op("uuid_ops")),
-	index("invoices_status_idx").using("btree", table.status.asc().nullsLast().op("enum_ops")),
-	index("invoices_tenantId_idx").using("btree", table.tenantId.asc().nullsLast().op("uuid_ops")),
-	uniqueIndex("invoices_tenantId_invoiceNumber_key").using("btree", table.tenantId.asc().nullsLast().op("uuid_ops"), table.invoiceNumber.asc().nullsLast().op("text_ops")),
+	index("invoices_customerId_idx").on( table.customerId),
+	index("invoices_status_idx").on( table.status),
+	index("invoices_tenantId_idx").on( table.tenantId),
+	uniqueIndex("invoices_tenantId_invoiceNumber_key").on( table.tenantId, table.invoiceNumber),
 	foreignKey({
 		columns: [table.tenantId],
 		foreignColumns: [tenants.id],
@@ -531,9 +531,9 @@ export const payments = pgTable("payments", {
 	idempotencyKey: text('idempotency_key').unique(),
 	gocardlessPaymentId: text('gocardless_payment_id'),
 }, (table) => [
-	index("payments_customerId_idx").using("btree", table.customerId.asc().nullsLast().op("uuid_ops")),
-	index("payments_invoiceId_idx").using("btree", table.invoiceId.asc().nullsLast().op("uuid_ops")),
-	index("payments_tenantId_idx").using("btree", table.tenantId.asc().nullsLast().op("uuid_ops")),
+	index("payments_customerId_idx").on( table.customerId),
+	index("payments_invoiceId_idx").on( table.invoiceId),
+	index("payments_tenantId_idx").on( table.tenantId),
 	foreignKey({
 		columns: [table.tenantId],
 		foreignColumns: [tenants.id],
@@ -580,11 +580,11 @@ export const reviews = pgTable("reviews", {
 	updatedAt: timestamp({ precision: 3, mode: 'date' }).notNull(),
 	deletedAt: timestamp({ precision: 3, mode: 'date' }),
 }, (table) => [
-	index("reviews_bookingId_idx").using("btree", table.bookingId.asc().nullsLast().op("uuid_ops")),
-	index("reviews_createdAt_idx").using("btree", table.createdAt.asc().nullsLast().op("timestamp_ops")),
-	index("reviews_customerId_idx").using("btree", table.customerId.asc().nullsLast().op("uuid_ops")),
-	index("reviews_staffId_idx").using("btree", table.staffId.asc().nullsLast().op("uuid_ops")),
-	index("reviews_tenantId_idx").using("btree", table.tenantId.asc().nullsLast().op("uuid_ops")),
+	index("reviews_bookingId_idx").on( table.bookingId),
+	index("reviews_createdAt_idx").on( table.createdAt),
+	index("reviews_customerId_idx").on( table.customerId),
+	index("reviews_staffId_idx").on( table.staffId),
+	index("reviews_tenantId_idx").on( table.tenantId),
 	foreignKey({
 		columns: [table.tenantId],
 		foreignColumns: [tenants.id],
@@ -634,10 +634,10 @@ export const reviewRequests = pgTable("review_requests", {
 	userAgent: text(),
 	createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 }, (table) => [
-	index("review_requests_bookingId_idx").using("btree", table.bookingId.asc().nullsLast().op("uuid_ops")),
-	index("review_requests_customerId_idx").using("btree", table.customerId.asc().nullsLast().op("uuid_ops")),
-	index("review_requests_status_idx").using("btree", table.status.asc().nullsLast().op("enum_ops")),
-	index("review_requests_tenantId_idx").using("btree", table.tenantId.asc().nullsLast().op("uuid_ops")),
+	index("review_requests_bookingId_idx").on( table.bookingId),
+	index("review_requests_customerId_idx").on( table.customerId),
+	index("review_requests_status_idx").on( table.status),
+	index("review_requests_tenantId_idx").on( table.tenantId),
 	foreignKey({
 		columns: [table.tenantId],
 		foreignColumns: [tenants.id],
@@ -675,7 +675,7 @@ export const reviewAutomationSettings = pgTable("review_automation_settings", {
 	updatedAt: timestamp({ precision: 3, mode: 'date' }).notNull(),
 	updatedBy: uuid(),
 }, (table) => [
-	uniqueIndex("review_automation_settings_tenantId_key").using("btree", table.tenantId.asc().nullsLast().op("uuid_ops")),
+	uniqueIndex("review_automation_settings_tenantId_key").on( table.tenantId),
 	foreignKey({
 		columns: [table.tenantId],
 		foreignColumns: [tenants.id],
@@ -705,8 +705,8 @@ export const formTemplates = pgTable("form_templates", {
 	updatedAt: timestamp({ precision: 3, mode: 'date' }).notNull(),
 	updatedBy: uuid(),
 }, (table) => [
-	index("form_templates_tenantId_active_idx").using("btree", table.tenantId.asc().nullsLast().op("bool_ops"), table.active.asc().nullsLast().op("bool_ops")),
-	index("form_templates_tenantId_idx").using("btree", table.tenantId.asc().nullsLast().op("uuid_ops")),
+	index("form_templates_tenantId_active_idx").on( table.tenantId, table.active),
+	index("form_templates_tenantId_idx").on( table.tenantId),
 	foreignKey({
 		columns: [table.tenantId],
 		foreignColumns: [tenants.id],
@@ -735,12 +735,12 @@ export const completedForms = pgTable("completed_forms", {
 	reminderSentAt: timestamp({ precision: 3, mode: 'date' }),
 	createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 }, (table) => [
-	index("completed_forms_bookingId_idx").using("btree", table.bookingId.asc().nullsLast().op("uuid_ops")),
-	index("completed_forms_customerId_idx").using("btree", table.customerId.asc().nullsLast().op("uuid_ops")),
-	index("completed_forms_status_idx").using("btree", table.status.asc().nullsLast().op("enum_ops")),
-	index("completed_forms_submittedAt_idx").using("btree", table.submittedAt.asc().nullsLast().op("timestamp_ops")),
-	index("completed_forms_templateId_idx").using("btree", table.templateId.asc().nullsLast().op("uuid_ops")),
-	index("completed_forms_tenantId_idx").using("btree", table.tenantId.asc().nullsLast().op("uuid_ops")),
+	index("completed_forms_bookingId_idx").on( table.bookingId),
+	index("completed_forms_customerId_idx").on( table.customerId),
+	index("completed_forms_status_idx").on( table.status),
+	index("completed_forms_submittedAt_idx").on( table.submittedAt),
+	index("completed_forms_templateId_idx").on( table.templateId),
+	index("completed_forms_tenantId_idx").on( table.tenantId),
 	foreignKey({
 		columns: [table.tenantId],
 		foreignColumns: [tenants.id],

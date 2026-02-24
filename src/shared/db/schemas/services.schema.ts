@@ -32,7 +32,7 @@ export const serviceCategories = pgTable("service_categories", {
 	description: text(),
 	sortOrder: integer().default(0).notNull(),
 }, (table) => [
-	uniqueIndex("service_categories_tenantId_name_key").using("btree", table.tenantId.asc().nullsLast().op("text_ops"), table.name.asc().nullsLast().op("text_ops")),
+	uniqueIndex("service_categories_tenantId_name_key").on( table.tenantId, table.name),
 ])
 
 export const venues = pgTable("venues", {
@@ -55,7 +55,7 @@ export const venues = pgTable("venues", {
 	updatedAt: timestamp({ precision: 3, mode: 'date' }).notNull(),
 	additionalCost: numeric({ precision: 10, scale: 2 }),
 }, (table) => [
-	index("venues_tenantId_idx").using("btree", table.tenantId.asc().nullsLast().op("uuid_ops")),
+	index("venues_tenantId_idx").on( table.tenantId),
 	foreignKey({
 		columns: [table.tenantId],
 		foreignColumns: [tenants.id],
@@ -89,8 +89,8 @@ export const services = pgTable("services", {
 	requiresApproximateTime: boolean().default(false).notNull(),
 	venueNames: text().array(),
 }, (table) => [
-	index("services_tenantId_active_idx").using("btree", table.tenantId.asc().nullsLast().op("bool_ops"), table.active.asc().nullsLast().op("bool_ops")),
-	index("services_tenantId_idx").using("btree", table.tenantId.asc().nullsLast().op("uuid_ops")),
+	index("services_tenantId_active_idx").on( table.tenantId, table.active),
+	index("services_tenantId_idx").on( table.tenantId),
 	foreignKey({
 		columns: [table.tenantId],
 		foreignColumns: [tenants.id],
@@ -120,8 +120,8 @@ export const addOns = pgTable("add_ons", {
 	createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	updatedAt: timestamp({ precision: 3, mode: 'date' }).notNull(),
 }, (table) => [
-	index("add_ons_tenantId_active_idx").using("btree", table.tenantId.asc().nullsLast().op("bool_ops"), table.active.asc().nullsLast().op("bool_ops")),
-	index("add_ons_tenantId_idx").using("btree", table.tenantId.asc().nullsLast().op("uuid_ops")),
+	index("add_ons_tenantId_active_idx").on( table.tenantId, table.active),
+	index("add_ons_tenantId_idx").on( table.tenantId),
 	foreignKey({
 		columns: [table.tenantId],
 		foreignColumns: [tenants.id],
@@ -134,7 +134,7 @@ export const serviceAddOns = pgTable("service_add_ons", {
 	serviceId: uuid().notNull(),
 	addOnId: uuid().notNull(),
 }, (table) => [
-	uniqueIndex("service_add_ons_serviceId_addOnId_key").using("btree", table.serviceId.asc().nullsLast().op("uuid_ops"), table.addOnId.asc().nullsLast().op("uuid_ops")),
+	uniqueIndex("service_add_ons_serviceId_addOnId_key").on( table.serviceId, table.addOnId),
 	foreignKey({
 		columns: [table.serviceId],
 		foreignColumns: [services.id],

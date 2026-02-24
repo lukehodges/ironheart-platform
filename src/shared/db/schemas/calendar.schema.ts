@@ -46,7 +46,7 @@ export const integrations = pgTable("integrations", {
 	createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	updatedAt: timestamp({ precision: 3, mode: 'date' }).notNull(),
 }, (table) => [
-	uniqueIndex("integrations_tenantId_provider_key").using("btree", table.tenantId.asc().nullsLast().op("uuid_ops"), table.provider.asc().nullsLast().op("uuid_ops")),
+	uniqueIndex("integrations_tenantId_provider_key").on( table.tenantId, table.provider),
 ])
 
 export const integrationSyncLogs = pgTable("integration_sync_logs", {
@@ -60,7 +60,7 @@ export const integrationSyncLogs = pgTable("integration_sync_logs", {
 	errorMessage: text(),
 	createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 }, (table) => [
-	index("integration_sync_logs_integrationId_createdAt_idx").using("btree", table.integrationId.asc().nullsLast().op("timestamp_ops"), table.createdAt.asc().nullsLast().op("timestamp_ops")),
+	index("integration_sync_logs_integrationId_createdAt_idx").on( table.integrationId, table.createdAt),
 	foreignKey({
 		columns: [table.integrationId],
 		foreignColumns: [integrations.id],
@@ -82,9 +82,9 @@ export const oauthStates = pgTable("oauth_states", {
 	createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	codeVerifier: text().notNull(),
 }, (table) => [
-	index("oauth_states_expiresAt_idx").using("btree", table.expiresAt.asc().nullsLast().op("timestamp_ops")),
-	index("oauth_states_state_idx").using("btree", table.state.asc().nullsLast().op("text_ops")),
-	uniqueIndex("oauth_states_state_key").using("btree", table.state.asc().nullsLast().op("text_ops")),
+	index("oauth_states_expiresAt_idx").on( table.expiresAt),
+	index("oauth_states_state_idx").on( table.state),
+	uniqueIndex("oauth_states_state_key").on( table.state),
 ])
 
 export const userIntegrations = pgTable("user_integrations", {
@@ -119,13 +119,13 @@ export const userIntegrations = pgTable("user_integrations", {
 	createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	updatedAt: timestamp({ precision: 3, mode: 'date' }).notNull(),
 }, (table) => [
-	index("user_integrations_lastSyncAt_idx").using("btree", table.lastSyncAt.asc().nullsLast().op("timestamp_ops")),
-	index("user_integrations_provider_status_idx").using("btree", table.provider.asc().nullsLast().op("enum_ops"), table.status.asc().nullsLast().op("enum_ops")),
-	index("user_integrations_tenantId_idx").using("btree", table.tenantId.asc().nullsLast().op("uuid_ops")),
-	uniqueIndex("user_integrations_tenantId_userId_provider_key").using("btree", table.tenantId.asc().nullsLast().op("enum_ops"), table.userId.asc().nullsLast().op("uuid_ops"), table.provider.asc().nullsLast().op("enum_ops")),
-	index("user_integrations_userId_idx").using("btree", table.userId.asc().nullsLast().op("uuid_ops")),
-	index("user_integrations_watchChannelExpiration_idx").using("btree", table.watchChannelExpiration.asc().nullsLast().op("timestamp_ops")),
-	index("user_integrations_watchChannelId_idx").using("btree", table.watchChannelId.asc().nullsLast().op("text_ops")),
+	index("user_integrations_lastSyncAt_idx").on( table.lastSyncAt),
+	index("user_integrations_provider_status_idx").on( table.provider, table.status),
+	index("user_integrations_tenantId_idx").on( table.tenantId),
+	uniqueIndex("user_integrations_tenantId_userId_provider_key").on( table.tenantId, table.userId, table.provider),
+	index("user_integrations_userId_idx").on( table.userId),
+	index("user_integrations_watchChannelExpiration_idx").on( table.watchChannelExpiration),
+	index("user_integrations_watchChannelId_idx").on( table.watchChannelId),
 	foreignKey({
 		columns: [table.connectedBy],
 		foreignColumns: [users.id],
@@ -158,10 +158,10 @@ export const userIntegrationSyncLogs = pgTable("user_integration_sync_logs", {
 	durationMs: integer(),
 	externalEventId: text(),
 }, (table) => [
-	index("user_integration_sync_logs_externalEventId_idx").using("btree", table.externalEventId.asc().nullsLast().op("text_ops")),
-	index("user_integration_sync_logs_status_idx").using("btree", table.status.asc().nullsLast().op("enum_ops")),
-	index("user_integration_sync_logs_syncType_idx").using("btree", table.syncType.asc().nullsLast().op("enum_ops")),
-	index("user_integration_sync_logs_userIntegrationId_startedAt_idx").using("btree", table.userIntegrationId.asc().nullsLast().op("uuid_ops"), table.startedAt.asc().nullsLast().op("timestamp_ops")),
+	index("user_integration_sync_logs_externalEventId_idx").on( table.externalEventId),
+	index("user_integration_sync_logs_status_idx").on( table.status),
+	index("user_integration_sync_logs_syncType_idx").on( table.syncType),
+	index("user_integration_sync_logs_userIntegrationId_startedAt_idx").on( table.userIntegrationId, table.startedAt),
 	foreignKey({
 		columns: [table.userIntegrationId],
 		foreignColumns: [userIntegrations.id],
@@ -190,11 +190,11 @@ export const userExternalEvents = pgTable("user_external_events", {
 	updatedAt: timestamp({ precision: 3, mode: 'date' }).notNull(),
 	deletedAt: timestamp({ precision: 3, mode: 'date' }),
 }, (table) => [
-	index("user_external_events_blocksAvailability_idx").using("btree", table.blocksAvailability.asc().nullsLast().op("bool_ops")),
-	index("user_external_events_tenantId_idx").using("btree", table.tenantId.asc().nullsLast().op("uuid_ops")),
-	index("user_external_events_userId_endTime_idx").using("btree", table.userId.asc().nullsLast().op("uuid_ops"), table.endTime.asc().nullsLast().op("timestamp_ops")),
-	index("user_external_events_userId_startTime_idx").using("btree", table.userId.asc().nullsLast().op("uuid_ops"), table.startTime.asc().nullsLast().op("timestamp_ops")),
-	uniqueIndex("user_external_events_userIntegrationId_externalEventId_key").using("btree", table.userIntegrationId.asc().nullsLast().op("uuid_ops"), table.externalEventId.asc().nullsLast().op("text_ops")),
+	index("user_external_events_blocksAvailability_idx").on( table.blocksAvailability),
+	index("user_external_events_tenantId_idx").on( table.tenantId),
+	index("user_external_events_userId_endTime_idx").on( table.userId, table.endTime),
+	index("user_external_events_userId_startTime_idx").on( table.userId, table.startTime),
+	uniqueIndex("user_external_events_userIntegrationId_externalEventId_key").on( table.userIntegrationId, table.externalEventId),
 	foreignKey({
 		columns: [table.userIntegrationId],
 		foreignColumns: [userIntegrations.id],

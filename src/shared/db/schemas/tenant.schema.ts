@@ -50,10 +50,10 @@ export const tenants = pgTable("tenants", {
 	trialEndsAt: timestamp({ precision: 3, mode: 'date' }),
 	deletedAt: timestamp({ precision: 3, mode: 'date' }),
 }, (table) => [
-	uniqueIndex("tenants_domain_key").using("btree", table.domain.asc().nullsLast().op("text_ops")),
-	index("tenants_slug_idx").using("btree", table.slug.asc().nullsLast().op("text_ops")),
-	uniqueIndex("tenants_slug_key").using("btree", table.slug.asc().nullsLast().op("text_ops")),
-	index("tenants_status_idx").using("btree", table.status.asc().nullsLast().op("enum_ops")),
+	uniqueIndex("tenants_domain_key").on( table.domain),
+	index("tenants_slug_idx").on( table.slug),
+	uniqueIndex("tenants_slug_key").on( table.slug),
+	index("tenants_status_idx").on( table.status),
 ])
 
 export const portalTemplates = pgTable("portal_templates", {
@@ -80,7 +80,7 @@ export const portalTemplates = pgTable("portal_templates", {
 	updatedAt: timestamp({ precision: 3, mode: 'date' }).notNull(),
 	skipReservation: boolean().default(false).notNull(),
 }, (table) => [
-	uniqueIndex("portal_templates_slug_key").using("btree", table.slug.asc().nullsLast().op("text_ops")),
+	uniqueIndex("portal_templates_slug_key").on( table.slug),
 ])
 
 export const tenantPortals = pgTable("tenant_portals", {
@@ -104,8 +104,8 @@ export const tenantPortals = pgTable("tenant_portals", {
 	skipReservation: boolean(),
 	bookingSettings: jsonb(),
 }, (table) => [
-	index("tenant_portals_tenantId_isActive_idx").using("btree", table.tenantId.asc().nullsLast().op("uuid_ops"), table.isActive.asc().nullsLast().op("uuid_ops")),
-	uniqueIndex("tenant_portals_tenantId_urlPath_key").using("btree", table.tenantId.asc().nullsLast().op("text_ops"), table.urlPath.asc().nullsLast().op("text_ops")),
+	index("tenant_portals_tenantId_isActive_idx").on( table.tenantId, table.isActive),
+	uniqueIndex("tenant_portals_tenantId_urlPath_key").on( table.tenantId, table.urlPath),
 	foreignKey({
 		columns: [table.tenantId],
 		foreignColumns: [tenants.id],

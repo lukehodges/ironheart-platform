@@ -76,10 +76,10 @@ export const users = pgTable("users", {
 	homeLatitude: numeric('home_latitude', { precision: 9, scale: 6 }),
 	homeLongitude: numeric('home_longitude', { precision: 9, scale: 6 }),
 }, (table) => [
-	index("users_email_idx").using("btree", table.email.asc().nullsLast().op("text_ops")),
-	index("users_status_idx").using("btree", table.status.asc().nullsLast().op("enum_ops")),
-	uniqueIndex("users_tenantId_email_key").using("btree", table.tenantId.asc().nullsLast().op("uuid_ops"), table.email.asc().nullsLast().op("text_ops")),
-	index("users_tenantId_idx").using("btree", table.tenantId.asc().nullsLast().op("uuid_ops")),
+	index("users_email_idx").on( table.email),
+	index("users_status_idx").on( table.status),
+	uniqueIndex("users_tenantId_email_key").on( table.tenantId, table.email),
+	index("users_tenantId_idx").on( table.tenantId),
 	foreignKey({
 		columns: [table.tenantId],
 		foreignColumns: [tenants.id],
@@ -103,8 +103,8 @@ export const roles = pgTable("roles", {
 	createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	updatedAt: timestamp({ precision: 3, mode: 'date' }).notNull(),
 }, (table) => [
-	index("roles_tenantId_idx").using("btree", table.tenantId.asc().nullsLast().op("uuid_ops")),
-	uniqueIndex("roles_tenantId_name_key").using("btree", table.tenantId.asc().nullsLast().op("text_ops"), table.name.asc().nullsLast().op("text_ops")),
+	index("roles_tenantId_idx").on( table.tenantId),
+	uniqueIndex("roles_tenantId_name_key").on( table.tenantId, table.name),
 	foreignKey({
 		columns: [table.tenantId],
 		foreignColumns: [tenants.id],
@@ -118,7 +118,7 @@ export const permissions = pgTable("permissions", {
 	action: text().notNull(),
 	description: text(),
 }, (table) => [
-	uniqueIndex("permissions_resource_action_key").using("btree", table.resource.asc().nullsLast().op("text_ops"), table.action.asc().nullsLast().op("text_ops")),
+	uniqueIndex("permissions_resource_action_key").on( table.resource, table.action),
 ])
 
 export const rolePermissions = pgTable("role_permissions", {
@@ -175,10 +175,10 @@ export const sessions = pgTable("sessions", {
 	createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	revokedAt: timestamp({ precision: 3, mode: 'date' }),
 }, (table) => [
-	uniqueIndex("sessions_refreshToken_key").using("btree", table.refreshToken.asc().nullsLast().op("text_ops")),
-	index("sessions_token_idx").using("btree", table.token.asc().nullsLast().op("text_ops")),
-	uniqueIndex("sessions_token_key").using("btree", table.token.asc().nullsLast().op("text_ops")),
-	index("sessions_userId_idx").using("btree", table.userId.asc().nullsLast().op("uuid_ops")),
+	uniqueIndex("sessions_refreshToken_key").on( table.refreshToken),
+	index("sessions_token_idx").on( table.token),
+	uniqueIndex("sessions_token_key").on( table.token),
+	index("sessions_userId_idx").on( table.userId),
 	foreignKey({
 		columns: [table.userId],
 		foreignColumns: [users.id],
@@ -204,9 +204,9 @@ export const apiKeys = pgTable("api_keys", {
 	createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	createdBy: uuid(),
 }, (table) => [
-	uniqueIndex("api_keys_keyHash_key").using("btree", table.keyHash.asc().nullsLast().op("text_ops")),
-	index("api_keys_keyPrefix_idx").using("btree", table.keyPrefix.asc().nullsLast().op("text_ops")),
-	index("api_keys_tenantId_idx").using("btree", table.tenantId.asc().nullsLast().op("uuid_ops")),
+	uniqueIndex("api_keys_keyHash_key").on( table.keyHash),
+	index("api_keys_keyPrefix_idx").on( table.keyPrefix),
+	index("api_keys_tenantId_idx").on( table.tenantId),
 	foreignKey({
 		columns: [table.tenantId],
 		foreignColumns: [tenants.id],

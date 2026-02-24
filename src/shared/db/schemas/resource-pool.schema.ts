@@ -57,20 +57,14 @@ export const resourceSkills = pgTable("resource_skills", {
   createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
   updatedAt: timestamp({ precision: 3, mode: 'date' }).notNull(),
 }, (table) => [
-  uniqueIndex("resource_skills_tenant_user_type_id_key").using("btree",
-    table.tenantId.asc().nullsLast().op("uuid_ops"),
-    table.userId.asc().nullsLast().op("uuid_ops"),
-    table.skillType.asc().nullsLast().op("enum_ops"),
-    table.skillId.asc().nullsLast().op("text_ops"),
+  uniqueIndex("resource_skills_tenant_user_type_id_key").on(
+    table.tenantId, table.userId, table.skillType, table.skillId,
   ),
-  index("resource_skills_tenantId_userId_idx").using("btree",
-    table.tenantId.asc().nullsLast().op("uuid_ops"),
-    table.userId.asc().nullsLast().op("uuid_ops"),
+  index("resource_skills_tenantId_userId_idx").on(
+    table.tenantId, table.userId,
   ),
-  index("resource_skills_tenantId_skillType_skillId_idx").using("btree",
-    table.tenantId.asc().nullsLast().op("uuid_ops"),
-    table.skillType.asc().nullsLast().op("enum_ops"),
-    table.skillId.asc().nullsLast().op("text_ops"),
+  index("resource_skills_tenantId_skillType_skillId_idx").on(
+    table.tenantId, table.skillType, table.skillId,
   ),
   foreignKey({
     columns: [table.tenantId],
@@ -103,15 +97,11 @@ export const resourceCapacities = pgTable("resource_capacities", {
   createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
   updatedAt: timestamp({ precision: 3, mode: 'date' }).notNull(),
 }, (table) => [
-  uniqueIndex("resource_capacities_tenant_user_type_from_key").using("btree",
-    table.tenantId.asc().nullsLast().op("uuid_ops"),
-    table.userId.asc().nullsLast().op("uuid_ops"),
-    table.capacityType.asc().nullsLast().op("text_ops"),
-    table.effectiveFrom.asc().nullsLast().op("date_ops"),
+  uniqueIndex("resource_capacities_tenant_user_type_from_key").on(
+    table.tenantId, table.userId, table.capacityType, table.effectiveFrom,
   ),
-  index("resource_capacities_tenantId_userId_idx").using("btree",
-    table.tenantId.asc().nullsLast().op("uuid_ops"),
-    table.userId.asc().nullsLast().op("uuid_ops"),
+  index("resource_capacities_tenantId_userId_idx").on(
+    table.tenantId, table.userId,
   ),
   foreignKey({
     columns: [table.tenantId],
@@ -142,18 +132,14 @@ export const resourceAssignments = pgTable("resource_assignments", {
   overrideReason: text(),
   metadata: jsonb(),
 }, (table) => [
-  index("resource_assignments_tenant_user_status_date_idx").using("btree",
-    table.tenantId.asc().nullsLast().op("uuid_ops"),
-    table.userId.asc().nullsLast().op("uuid_ops"),
-    table.status.asc().nullsLast().op("enum_ops"),
-    table.scheduledDate.asc().nullsLast().op("date_ops"),
+  index("resource_assignments_tenant_user_status_date_idx").on(
+    table.tenantId, table.userId, table.status, table.scheduledDate,
   ),
-  index("resource_assignments_tenantId_moduleSlug_idx").using("btree",
-    table.tenantId.asc().nullsLast().op("uuid_ops"),
-    table.moduleSlug.asc().nullsLast().op("text_ops"),
+  index("resource_assignments_tenantId_moduleSlug_idx").on(
+    table.tenantId, table.moduleSlug,
   ),
-  index("resource_assignments_resourceId_idx").using("btree",
-    table.resourceId.asc().nullsLast().op("uuid_ops"),
+  index("resource_assignments_resourceId_idx").on(
+    table.resourceId,
   ),
   foreignKey({
     columns: [table.tenantId],

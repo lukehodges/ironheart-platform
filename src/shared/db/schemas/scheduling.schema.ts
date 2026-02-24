@@ -52,9 +52,9 @@ export const availableSlots = pgTable("available_slots", {
 	previousSlotId: uuid(),
 	travelTimeFromPrev: integer(),
 }, (table) => [
-	index("available_slots_tenantId_available_idx").using("btree", table.tenantId.asc().nullsLast().op("bool_ops"), table.available.asc().nullsLast().op("uuid_ops")),
-	index("available_slots_tenantId_date_idx").using("btree", table.tenantId.asc().nullsLast().op("date_ops"), table.date.asc().nullsLast().op("date_ops")),
-	index("available_slots_tenantId_date_time_idx").using("btree", table.tenantId.asc().nullsLast().op("text_ops"), table.date.asc().nullsLast().op("date_ops"), table.time.asc().nullsLast().op("date_ops")),
+	index("available_slots_tenantId_available_idx").on( table.tenantId, table.available),
+	index("available_slots_tenantId_date_idx").on( table.tenantId, table.date),
+	index("available_slots_tenantId_date_time_idx").on( table.tenantId, table.date, table.time),
 	foreignKey({
 		columns: [table.tenantId],
 		foreignColumns: [tenants.id],
@@ -76,7 +76,7 @@ export const slotStaff = pgTable("_SlotStaff", {
 	a: uuid("A").notNull(),
 	b: uuid("B").notNull(),
 }, (table) => [
-	index().using("btree", table.b.asc().nullsLast().op("uuid_ops")),
+	index().on( table.b),
 	foreignKey({
 		columns: [table.a],
 		foreignColumns: [availableSlots.id],
@@ -104,9 +104,9 @@ export const userAvailability = pgTable("user_availability", {
 	createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	updatedAt: timestamp({ precision: 3, mode: 'date' }).notNull(),
 }, (table) => [
-	index("user_availability_userId_dayOfWeek_idx").using("btree", table.userId.asc().nullsLast().op("int4_ops"), table.dayOfWeek.asc().nullsLast().op("uuid_ops")),
-	index("user_availability_userId_idx").using("btree", table.userId.asc().nullsLast().op("uuid_ops")),
-	index("user_availability_userId_specificDate_idx").using("btree", table.userId.asc().nullsLast().op("uuid_ops"), table.specificDate.asc().nullsLast().op("date_ops")),
+	index("user_availability_userId_dayOfWeek_idx").on( table.userId, table.dayOfWeek),
+	index("user_availability_userId_idx").on( table.userId),
+	index("user_availability_userId_specificDate_idx").on( table.userId, table.specificDate),
 	foreignKey({
 		columns: [table.userId],
 		foreignColumns: [users.id],
@@ -123,8 +123,8 @@ export const userCapacities = pgTable("user_capacities", {
 	createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	updatedAt: timestamp({ precision: 3, mode: 'date' }).notNull(),
 }, (table) => [
-	index("user_capacities_tenantId_date_idx").using("btree", table.tenantId.asc().nullsLast().op("date_ops"), table.date.asc().nullsLast().op("uuid_ops")),
-	uniqueIndex("user_capacities_tenantId_userId_date_key").using("btree", table.tenantId.asc().nullsLast().op("date_ops"), table.userId.asc().nullsLast().op("date_ops"), table.date.asc().nullsLast().op("date_ops")),
+	index("user_capacities_tenantId_date_idx").on( table.tenantId, table.date),
+	uniqueIndex("user_capacities_tenantId_userId_date_key").on( table.tenantId, table.userId, table.date),
 	foreignKey({
 		columns: [table.userId],
 		foreignColumns: [users.id],

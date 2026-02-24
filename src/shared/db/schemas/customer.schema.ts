@@ -52,11 +52,11 @@ export const customers = pgTable("customers", {
 	version: integer().notNull().default(1),
 	anonymisedAt: timestamp('anonymised_at', { withTimezone: true, mode: 'date' }),
 }, (table) => [
-	index("customers_email_idx").using("btree", table.email.asc().nullsLast().op("text_ops")),
-	index("customers_phone_idx").using("btree", table.phone.asc().nullsLast().op("text_ops")),
-	uniqueIndex("customers_tenantId_email_key").using("btree", table.tenantId.asc().nullsLast().op("text_ops"), table.email.asc().nullsLast().op("text_ops")),
-	index("customers_tenantId_idx").using("btree", table.tenantId.asc().nullsLast().op("uuid_ops")),
-	index("customers_tenantId_lastName_idx").using("btree", table.tenantId.asc().nullsLast().op("text_ops"), table.lastName.asc().nullsLast().op("uuid_ops")),
+	index("customers_email_idx").on( table.email),
+	index("customers_phone_idx").on( table.phone),
+	uniqueIndex("customers_tenantId_email_key").on( table.tenantId, table.email),
+	index("customers_tenantId_idx").on( table.tenantId),
+	index("customers_tenantId_lastName_idx").on( table.tenantId, table.lastName),
 	foreignKey({
 		columns: [table.tenantId],
 		foreignColumns: [tenants.id],

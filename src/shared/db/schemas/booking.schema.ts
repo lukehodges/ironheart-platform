@@ -81,12 +81,12 @@ export const bookings = pgTable("bookings", {
 	confirmationTokenHash: text(),
 	version: integer().notNull().default(1),
 }, (table) => [
-	index("bookings_customerId_idx").using("btree", table.customerId.asc().nullsLast().op("uuid_ops")),
-	index("bookings_staffId_idx").using("btree", table.staffId.asc().nullsLast().op("uuid_ops")),
-	index("bookings_staffId_scheduledDate_idx").using("btree", table.staffId.asc().nullsLast().op("uuid_ops"), table.scheduledDate.asc().nullsLast().op("date_ops")),
-	index("bookings_tenantId_scheduledDate_idx").using("btree", table.tenantId.asc().nullsLast().op("uuid_ops"), table.scheduledDate.asc().nullsLast().op("date_ops")),
-	index("bookings_tenantId_status_idx").using("btree", table.tenantId.asc().nullsLast().op("enum_ops"), table.status.asc().nullsLast().op("enum_ops")),
-	index("bookings_tenantId_createdAt_idx").using("btree", table.tenantId.asc().nullsLast().op("uuid_ops"), table.createdAt.asc().nullsLast().op("timestamp_ops")),
+	index("bookings_customerId_idx").on( table.customerId),
+	index("bookings_staffId_idx").on( table.staffId),
+	index("bookings_staffId_scheduledDate_idx").on( table.staffId, table.scheduledDate),
+	index("bookings_tenantId_scheduledDate_idx").on( table.tenantId, table.scheduledDate),
+	index("bookings_tenantId_status_idx").on( table.tenantId, table.status),
+	index("bookings_tenantId_createdAt_idx").on( table.tenantId, table.createdAt),
 	foreignKey({
 		columns: [table.tenantId],
 		foreignColumns: [tenants.id],
@@ -138,7 +138,7 @@ export const bookingStatusHistory = pgTable("booking_status_history", {
 	changedById: uuid(),
 	createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 }, (table) => [
-	index("booking_status_history_bookingId_idx").using("btree", table.bookingId.asc().nullsLast().op("uuid_ops")),
+	index("booking_status_history_bookingId_idx").on( table.bookingId),
 	foreignKey({
 		columns: [table.bookingId],
 		foreignColumns: [bookings.id],
@@ -157,9 +157,9 @@ export const bookingAssignments = pgTable("booking_assignments", {
 	userId: uuid().notNull(),
 	createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 }, (table) => [
-	index("booking_assignments_bookingId_idx").using("btree", table.bookingId.asc().nullsLast().op("uuid_ops")),
-	uniqueIndex("booking_assignments_bookingId_userId_key").using("btree", table.bookingId.asc().nullsLast().op("uuid_ops"), table.userId.asc().nullsLast().op("uuid_ops")),
-	index("booking_assignments_userId_idx").using("btree", table.userId.asc().nullsLast().op("uuid_ops")),
+	index("booking_assignments_bookingId_idx").on( table.bookingId),
+	uniqueIndex("booking_assignments_bookingId_userId_key").on( table.bookingId, table.userId),
+	index("booking_assignments_userId_idx").on( table.userId),
 	foreignKey({
 		columns: [table.bookingId],
 		foreignColumns: [bookings.id],
@@ -190,11 +190,11 @@ export const appointmentCompletions = pgTable("appointment_completions", {
 	createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	updatedAt: timestamp({ precision: 3, mode: 'date' }).notNull(),
 }, (table) => [
-	index("appointment_completions_bookingId_idx").using("btree", table.bookingId.asc().nullsLast().op("uuid_ops")),
-	uniqueIndex("appointment_completions_bookingId_key").using("btree", table.bookingId.asc().nullsLast().op("uuid_ops")),
-	index("appointment_completions_completedAt_idx").using("btree", table.completedAt.asc().nullsLast().op("timestamp_ops")),
-	index("appointment_completions_customerId_idx").using("btree", table.customerId.asc().nullsLast().op("uuid_ops")),
-	index("appointment_completions_tenantId_idx").using("btree", table.tenantId.asc().nullsLast().op("uuid_ops")),
+	index("appointment_completions_bookingId_idx").on( table.bookingId),
+	uniqueIndex("appointment_completions_bookingId_key").on( table.bookingId),
+	index("appointment_completions_completedAt_idx").on( table.completedAt),
+	index("appointment_completions_customerId_idx").on( table.customerId),
+	index("appointment_completions_tenantId_idx").on( table.tenantId),
 	foreignKey({
 		columns: [table.tenantId],
 		foreignColumns: [tenants.id],
@@ -230,7 +230,7 @@ export const travelLogs = pgTable("travel_logs", {
 	createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	userId: uuid().notNull(),
 }, (table) => [
-	index("travel_logs_userId_date_idx").using("btree", table.userId.asc().nullsLast().op("date_ops"), table.date.asc().nullsLast().op("date_ops")),
+	index("travel_logs_userId_date_idx").on( table.userId, table.date),
 	foreignKey({
 		columns: [table.userId],
 		foreignColumns: [users.id],
@@ -249,7 +249,7 @@ export const customerNotes = pgTable("customer_notes", {
 	createdBy: uuid(),
 	updatedAt: timestamp({ precision: 3, mode: 'date' }).notNull(),
 }, (table) => [
-	index("customer_notes_customerId_idx").using("btree", table.customerId.asc().nullsLast().op("uuid_ops")),
+	index("customer_notes_customerId_idx").on( table.customerId),
 	foreignKey({
 		columns: [table.customerId],
 		foreignColumns: [customers.id],

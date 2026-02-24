@@ -34,8 +34,8 @@ export const stripeConnectAccounts = pgTable("stripe_connect_accounts", {
   createdAt: timestamp({ withTimezone: true, mode: 'date' }).notNull().default(sql`now()`),
   updatedAt: timestamp({ withTimezone: true, mode: 'date' }).notNull().default(sql`now()`),
 }, (table) => [
-  uniqueIndex("stripe_connect_accounts_stripeAccountId_key").using("btree", table.stripeAccountId.asc().nullsLast().op("text_ops")),
-  uniqueIndex("stripe_connect_accounts_tenantId_key").using("btree", table.tenantId.asc().nullsLast().op("uuid_ops")),
+  uniqueIndex("stripe_connect_accounts_stripeAccountId_key").on( table.stripeAccountId),
+  uniqueIndex("stripe_connect_accounts_tenantId_key").on( table.tenantId),
   foreignKey({
     columns: [table.tenantId],
     foreignColumns: [tenants.id],
@@ -61,7 +61,7 @@ export const pricingRules = pgTable("pricing_rules", {
   createdAt: timestamp({ withTimezone: true, mode: 'date' }).notNull().default(sql`now()`),
   updatedAt: timestamp({ withTimezone: true, mode: 'date' }).notNull().default(sql`now()`),
 }, (table) => [
-  index("pricing_rules_tenantId_enabled_idx").using("btree", table.tenantId.asc().nullsLast().op("uuid_ops"), table.enabled.asc().nullsLast().op("bool_ops")),
+  index("pricing_rules_tenantId_enabled_idx").on( table.tenantId, table.enabled),
   foreignKey({
     columns: [table.tenantId],
     foreignColumns: [tenants.id],
@@ -79,8 +79,8 @@ export const discountCodes = pgTable("discount_codes", {
   currentUses: integer().notNull().default(0),
   createdAt: timestamp({ withTimezone: true, mode: 'date' }).notNull().default(sql`now()`),
 }, (table) => [
-  uniqueIndex("discount_codes_tenantId_code_key").using("btree", table.tenantId.asc().nullsLast().op("uuid_ops"), table.code.asc().nullsLast().op("text_ops")),
-  index("discount_codes_tenantId_idx").using("btree", table.tenantId.asc().nullsLast().op("uuid_ops")),
+  uniqueIndex("discount_codes_tenantId_code_key").on( table.tenantId, table.code),
+  index("discount_codes_tenantId_idx").on( table.tenantId),
   foreignKey({
     columns: [table.tenantId],
     foreignColumns: [tenants.id],
@@ -105,7 +105,7 @@ export const taxRules = pgTable("tax_rules", {
   isReverseCharge: boolean().notNull().default(false),
   createdAt: timestamp({ withTimezone: true, mode: 'date' }).notNull().default(sql`now()`),
 }, (table) => [
-  index("tax_rules_tenantId_idx").using("btree", table.tenantId.asc().nullsLast().op("uuid_ops")),
+  index("tax_rules_tenantId_idx").on( table.tenantId),
   foreignKey({
     columns: [table.tenantId],
     foreignColumns: [tenants.id],
@@ -128,8 +128,8 @@ export const bookingWaitlist = pgTable("booking_waitlist", {
   expiresAt: timestamp({ withTimezone: true, mode: 'date' }).notNull(),
   createdAt: timestamp({ withTimezone: true, mode: 'date' }).notNull().default(sql`now()`),
 }, (table) => [
-  index("booking_waitlist_tenantId_status_idx").using("btree", table.tenantId.asc().nullsLast().op("uuid_ops"), table.status.asc().nullsLast().op("text_ops")),
-  index("booking_waitlist_customerId_idx").using("btree", table.customerId.asc().nullsLast().op("uuid_ops")),
+  index("booking_waitlist_tenantId_status_idx").on( table.tenantId, table.status),
+  index("booking_waitlist_customerId_idx").on( table.customerId),
   foreignKey({
     columns: [table.tenantId],
     foreignColumns: [tenants.id],
@@ -167,7 +167,7 @@ export const webhookEndpoints = pgTable("webhook_endpoints", {
   createdAt: timestamp({ withTimezone: true, mode: 'date' }).notNull().default(sql`now()`),
   updatedAt: timestamp({ withTimezone: true, mode: 'date' }).notNull().default(sql`now()`),
 }, (table) => [
-  index("webhook_endpoints_tenantId_idx").using("btree", table.tenantId.asc().nullsLast().op("uuid_ops")),
+  index("webhook_endpoints_tenantId_idx").on( table.tenantId),
   foreignKey({
     columns: [table.tenantId],
     foreignColumns: [tenants.id],
@@ -190,8 +190,8 @@ export const webhookDeliveries = pgTable("webhook_deliveries", {
   nextRetryAt: timestamp({ withTimezone: true, mode: 'date' }),
   createdAt: timestamp({ withTimezone: true, mode: 'date' }).notNull().default(sql`now()`),
 }, (table) => [
-  index("webhook_deliveries_endpointId_idx").using("btree", table.endpointId.asc().nullsLast().op("uuid_ops")),
-  index("webhook_deliveries_eventId_idx").using("btree", table.eventId.asc().nullsLast().op("text_ops")),
+  index("webhook_deliveries_endpointId_idx").on( table.endpointId),
+  index("webhook_deliveries_eventId_idx").on( table.eventId),
   foreignKey({
     columns: [table.endpointId],
     foreignColumns: [webhookEndpoints.id],
@@ -209,8 +209,8 @@ export const metricSnapshots = pgTable("metric_snapshots", {
   value: numeric().notNull(),
   createdAt: timestamp({ withTimezone: true, mode: 'date' }).notNull().default(sql`now()`),
 }, (table) => [
-  index("metric_snapshots_tenantId_metricKey_idx").using("btree", table.tenantId.asc().nullsLast().op("uuid_ops"), table.metricKey.asc().nullsLast().op("text_ops")),
-  index("metric_snapshots_tenantId_periodStart_idx").using("btree", table.tenantId.asc().nullsLast().op("uuid_ops"), table.periodStart.asc().nullsLast().op("timestamptz_ops")),
+  index("metric_snapshots_tenantId_metricKey_idx").on( table.tenantId, table.metricKey),
+  index("metric_snapshots_tenantId_periodStart_idx").on( table.tenantId, table.periodStart),
   foreignKey({
     columns: [table.tenantId],
     foreignColumns: [tenants.id],
@@ -230,8 +230,8 @@ export const sagaLog = pgTable("saga_log", {
   errorMessage: text(),
   requiresManualIntervention: boolean().notNull().default(false),
 }, (table) => [
-  index("saga_log_tenantId_status_idx").using("btree", table.tenantId.asc().nullsLast().op("uuid_ops"), table.status.asc().nullsLast().op("text_ops")),
-  index("saga_log_entityId_idx").using("btree", table.entityId.asc().nullsLast().op("uuid_ops")),
+  index("saga_log_tenantId_status_idx").on( table.tenantId, table.status),
+  index("saga_log_entityId_idx").on( table.entityId),
 ])
 
 export const impersonationSessions = pgTable("impersonation_sessions", {
@@ -245,8 +245,8 @@ export const impersonationSessions = pgTable("impersonation_sessions", {
   userAgent: text(),
   createdAt: timestamp({ withTimezone: true, mode: 'date' }).notNull().default(sql`now()`),
 }, (table) => [
-  index("impersonation_sessions_platformAdminId_idx").using("btree", table.platformAdminId.asc().nullsLast().op("uuid_ops")).where(sql`ended_at IS NULL`),
-  index("impersonation_sessions_tenantId_idx").using("btree", table.tenantId.asc().nullsLast().op("uuid_ops")),
+  index("impersonation_sessions_platformAdminId_idx").on( table.platformAdminId).where(sql`"endedAt" IS NULL`),
+  index("impersonation_sessions_tenantId_idx").on( table.tenantId),
   foreignKey({
     columns: [table.platformAdminId],
     foreignColumns: [users.id],
