@@ -10,9 +10,7 @@ export const schedulingManifest: ModuleManifest = {
   routes: [
     { path: '/admin/scheduling', label: 'Scheduling', permission: 'scheduling:read' },
   ],
-  sidebarItems: [
-    { title: 'Scheduling', href: '/admin/scheduling', icon: 'Clock', section: 'operations', permission: 'scheduling:read' },
-  ],
+  sidebarItems: [],
   analyticsWidgets: [],
   permissions: ['scheduling:read', 'scheduling:write'],
   eventsProduced: ['slot/reserved', 'slot/released'],

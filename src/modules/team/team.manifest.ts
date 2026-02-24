@@ -9,6 +9,7 @@ export const teamManifest: ModuleManifest = {
   dependencies: [],
   routes: [
     { path: '/admin/team', label: 'Team', permission: 'team:read' },
+    { path: '/admin/team/[id]', label: 'Staff Profile', permission: 'staff:read' },
   ],
   sidebarItems: [
     { title: 'Team', href: '/admin/team', icon: 'UserCheck', section: 'operations', permission: 'team:read' },
