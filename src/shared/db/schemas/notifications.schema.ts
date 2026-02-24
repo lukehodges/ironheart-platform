@@ -23,8 +23,6 @@ import { bookings } from "./booking.schema"
 
 export const messageChannel = pgEnum("MessageChannel", ['EMAIL', 'SMS', 'PUSH'])
 export const messageStatus = pgEnum("MessageStatus", ['QUEUED', 'SENT', 'DELIVERED', 'FAILED', 'BOUNCED'])
-export const messageTrigger = pgEnum("MessageTrigger", ['BOOKING_CREATED', 'BOOKING_CONFIRMED', 'BOOKING_CANCELLED', 'BOOKING_REMINDER_24H', 'BOOKING_REMINDER_2H', 'BOOKING_COMPLETED', 'APPROVAL_REQUIRED', 'BOOKING_APPROVED', 'BOOKING_REJECTED', 'PAYMENT_RECEIVED', 'INVOICE_SENT', 'REVIEW_REQUEST'])
-export const notificationType = pgEnum("NotificationType", ['BOOKING_CREATED', 'BOOKING_CONFIRMED', 'BOOKING_CANCELLED', 'BOOKING_REMINDER', 'BOOKING_RESCHEDULED', 'BOOKING_COMPLETED', 'PAYMENT_RECEIVED', 'PAYMENT_FAILED', 'INVOICE_SENT', 'INVOICE_OVERDUE', 'SHIFT_ASSIGNED', 'SHIFT_REMINDER', 'ROUTE_UPDATED', 'SYSTEM_ALERT', 'MAINTENANCE', 'FEATURE_UPDATE', 'PROMOTION', 'REVIEW_REQUEST'])
 
 // ---------------------------------------------------------------------------
 // Tables
@@ -34,7 +32,7 @@ export const messageTemplates = pgTable("message_templates", {
 	id: uuid().primaryKey().notNull(),
 	tenantId: uuid().notNull(),
 	name: text().notNull(),
-	trigger: messageTrigger().notNull(),
+	trigger: text().notNull(),
 	channel: messageChannel().notNull(),
 	subject: text(),
 	body: text().notNull(),
@@ -64,7 +62,7 @@ export const sentMessages = pgTable("sent_messages", {
 	tenantId: uuid().notNull(),
 	templateId: uuid(),
 	channel: messageChannel().notNull(),
-	trigger: messageTrigger(),
+	trigger: text(),
 	recipientType: text().notNull(),
 	recipientId: uuid().notNull(),
 	recipientEmail: text(),
@@ -103,7 +101,7 @@ export const sentMessages = pgTable("sent_messages", {
 export const notifications = pgTable("notifications", {
 	id: uuid().primaryKey().notNull(),
 	userId: uuid().notNull(),
-	type: notificationType().notNull(),
+	type: text().notNull(),
 	title: text().notNull(),
 	message: text().notNull(),
 	entityType: text(),
