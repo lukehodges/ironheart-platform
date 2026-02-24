@@ -15,16 +15,26 @@ export interface AuditLogInput {
   metadata?: Record<string, unknown>
 }
 
-export async function auditLog(input: AuditLogInput): Promise<void> {
-  try {
-    const oldValues = input.changes
-      ? Object.fromEntries(input.changes.map((c) => [c.field, c.before]))
-      : null
-    const newValues = input.changes
-      ? Object.fromEntries(input.changes.map((c) => [c.field, c.after]))
-      : null
+/**
+ * Write an audit log entry.
+ *
+ * @param input  - Audit entry data
+ * @param tx     - Optional Drizzle transaction. When provided, the audit entry
+ *                 commits/rolls back with the business operation and errors propagate.
+ *                 When omitted, falls back to fire-and-forget (errors are swallowed).
+ */
+export async function auditLog(input: AuditLogInput, tx?: { insert: typeof db.insert }): Promise<void> {
+  const conn = tx ?? db
 
-    await db.insert(auditLogs).values({
+  const oldValues = input.changes
+    ? Object.fromEntries(input.changes.map((c) => [c.field, c.before]))
+    : null
+  const newValues = input.changes
+    ? Object.fromEntries(input.changes.map((c) => [c.field, c.after]))
+    : null
+
+  const doInsert = () =>
+    conn.insert(auditLogs).values({
       id: crypto.randomUUID(),
       tenantId: input.tenantId,
       userId: input.actorId,
@@ -40,12 +50,23 @@ export async function auditLog(input: AuditLogInput): Promise<void> {
       createdAt: new Date(),
     })
 
+  if (tx) {
+    // Transactional mode — let errors propagate to roll back the transaction
+    await doInsert()
     log.info(
       { action: input.action, resourceType: input.resourceType, resourceId: input.resourceId },
-      'Audit log entry written'
+      'Audit log entry written (transactional)'
     )
-  } catch (error) {
-    // Fire-and-forget — audit logging must never break business logic
-    log.error({ error, input }, 'Failed to write audit log entry')
+  } else {
+    // Fire-and-forget — never break business logic
+    try {
+      await doInsert()
+      log.info(
+        { action: input.action, resourceType: input.resourceType, resourceId: input.resourceId },
+        'Audit log entry written'
+      )
+    } catch (error) {
+      log.error({ error, input }, 'Failed to write audit log entry')
+    }
   }
 }

@@ -55,7 +55,7 @@ describe('auditLog', () => {
     expect(mockInsert).toHaveBeenCalledTimes(1)
   })
 
-  it('does not throw on write failure (fire-and-forget)', async () => {
+  it('does not throw on write failure (fire-and-forget without tx)', async () => {
     mockValues.mockRejectedValue(new Error('DB error'))
     mockInsert.mockReturnValue({ values: mockValues })
 
@@ -69,5 +69,46 @@ describe('auditLog', () => {
         resourceName: 'Booking #BK-001',
       })
     ).resolves.toBeUndefined()
+  })
+
+  it('uses transaction when tx is provided', async () => {
+    const txValues = vi.fn().mockResolvedValue(undefined)
+    const txInsert = vi.fn().mockReturnValue({ values: txValues })
+    const tx = { insert: txInsert } as any
+
+    await auditLog(
+      {
+        tenantId: 'tenant-1',
+        actorId: 'user-1',
+        action: 'created',
+        resourceType: 'booking',
+        resourceId: 'booking-1',
+        resourceName: 'Booking #BK-001',
+      },
+      tx
+    )
+
+    expect(txInsert).toHaveBeenCalled()
+    expect(mockInsert).not.toHaveBeenCalled()
+  })
+
+  it('throws when insert fails with tx (transactional mode)', async () => {
+    const txValues = vi.fn().mockRejectedValue(new Error('DB error'))
+    const txInsert = vi.fn().mockReturnValue({ values: txValues })
+    const tx = { insert: txInsert } as any
+
+    await expect(
+      auditLog(
+        {
+          tenantId: 'tenant-1',
+          actorId: 'user-1',
+          action: 'created',
+          resourceType: 'booking',
+          resourceId: 'booking-1',
+          resourceName: 'Booking #BK-001',
+        },
+        tx
+      )
+    ).rejects.toThrow('DB error')
   })
 })
