@@ -58,23 +58,8 @@ export const users = pgTable("users", {
 	updatedAt: timestamp({ precision: 3, mode: 'date' }).notNull(),
 	deletedAt: timestamp({ precision: 3, mode: 'date' }),
 	invitedById: uuid(),
-	bio: text(),
-	dayRate: numeric({ precision: 10, scale: 2 }),
-	employeeType: employeeType(),
-	hourlyRate: numeric({ precision: 10, scale: 2 }),
-	isTeamMember: boolean().default(false).notNull(),
-	jobTitle: text(),
-	mileageRate: numeric({ precision: 10, scale: 4 }),
-	staffStatus: staffStatus(),
-	startDate: timestamp({ precision: 3, mode: 'date' }),
 	isPlatformAdmin: boolean().default(false).notNull(),
-	bankAccountName: text(),
-	bankSortCode: text(),
-	bankAccountNumber: text(),
 	workosUserId: text("workos_user_id").unique(),
-	lastAssignedAt: timestamp('last_assigned_at', { withTimezone: true, mode: 'date' }),
-	homeLatitude: numeric('home_latitude', { precision: 9, scale: 6 }),
-	homeLongitude: numeric('home_longitude', { precision: 9, scale: 6 }),
 }, (table) => [
 	index("users_email_idx").on( table.email),
 	index("users_status_idx").on( table.status),
@@ -91,6 +76,42 @@ export const users = pgTable("users", {
 		name: "users_invitedById_fkey"
 	}).onUpdate("cascade").onDelete("set null"),
 ])
+
+export const staffProfiles = pgTable("staff_profiles", {
+	userId: uuid().primaryKey().notNull(),
+	tenantId: uuid().notNull(),
+	bio: text(),
+	jobTitle: text(),
+	employeeType: employeeType(),
+	staffStatus: staffStatus().default('ACTIVE').notNull(),
+	startDate: timestamp({ precision: 3, mode: 'date' }),
+	dayRate: numeric({ precision: 10, scale: 2 }),
+	hourlyRate: numeric({ precision: 10, scale: 2 }),
+	mileageRate: numeric({ precision: 10, scale: 4 }),
+	bankAccountName: text(),
+	bankSortCode: text(),
+	bankAccountNumber: text(),
+	homeLatitude: numeric('home_latitude', { precision: 9, scale: 6 }),
+	homeLongitude: numeric('home_longitude', { precision: 9, scale: 6 }),
+	lastAssignedAt: timestamp('last_assigned_at', { withTimezone: true, mode: 'date' }),
+	createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+	updatedAt: timestamp({ precision: 3, mode: 'date' }).notNull(),
+}, (table) => [
+	index("staff_profiles_tenantId_idx").on(table.tenantId),
+	index("staff_profiles_staffStatus_idx").on(table.staffStatus),
+	foreignKey({
+		columns: [table.userId],
+		foreignColumns: [users.id],
+		name: "staff_profiles_userId_fkey"
+	}).onUpdate("cascade").onDelete("cascade"),
+	foreignKey({
+		columns: [table.tenantId],
+		foreignColumns: [tenants.id],
+		name: "staff_profiles_tenantId_fkey"
+	}).onUpdate("cascade").onDelete("cascade"),
+])
+
+export type StaffProfile = typeof staffProfiles.$inferSelect;
 
 export const roles = pgTable("roles", {
 	id: uuid().primaryKey().notNull(),
