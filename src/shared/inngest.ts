@@ -154,6 +154,21 @@ type IronheartEvents = {
       date: string;
     };
   };
+  "team/created": {
+    data: { userId: string; tenantId: string; employeeType: string };
+  };
+  "team/updated": {
+    data: { userId: string; tenantId: string; changes: string[] };
+  };
+  "team/deactivated": {
+    data: { userId: string; tenantId: string };
+  };
+  "team/onboarding.completed": {
+    data: { userId: string; tenantId: string; templateId: string };
+  };
+  "team/offboarding.completed": {
+    data: { userId: string; tenantId: string; templateId: string };
+  };
 };
 
 /**
