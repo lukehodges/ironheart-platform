@@ -13,7 +13,7 @@ import type { UserWithRoles } from "@/modules/auth/rbac";
 import { extractTenantSlugFromRequest } from "@/modules/auth/tenant";
 import { hasPermission } from "@/modules/auth/rbac";
 import { IronheartError, toTRPCError } from "@/shared/errors";
-import { initStartupTasks } from "@/shared/module-system/register-all";
+import { initStartupTasks } from "@/shared/module-system/startup";
 
 // ---------------------------------------------------------------------------
 // Internal helpers
