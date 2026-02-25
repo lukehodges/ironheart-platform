@@ -1002,6 +1002,158 @@ async function seedPortal(tenantId: string) {
 }
 
 // ---------------------------------------------------------------------------
+// 11. Resource Pool (skills, capacities, assignments for demo staff)
+// ---------------------------------------------------------------------------
+
+async function seedResourcePool(tenantId: string, staffIds: string[]) {
+  console.log("  → seeding resource pool...");
+
+  const now = new Date();
+
+  // Check if already seeded
+  const existingSkills = await db
+    .select({ id: schema.resourceSkills.id })
+    .from(schema.resourceSkills)
+    .where(eq(schema.resourceSkills.tenantId, tenantId))
+    .limit(1);
+
+  if (existingSkills[0]) {
+    console.log("    ✓ resource pool already seeded");
+    return;
+  }
+
+  // Skills for each staff member
+  const skillDefs = [
+    // Sarah Mitchell — Lead Physiotherapist
+    { userId: staffIds[2]!, skillType: "SERVICE" as const, skillId: "physiotherapy", skillName: "Physiotherapy", proficiency: "EXPERT" as const },
+    { userId: staffIds[2]!, skillType: "SERVICE" as const, skillId: "sports-massage", skillName: "Sports Massage", proficiency: "ADVANCED" as const },
+    { userId: staffIds[2]!, skillType: "CERTIFICATION" as const, skillId: "hcpc-reg", skillName: "HCPC Registration", proficiency: "EXPERT" as const, expiresAt: daysFromNow(180) },
+    { userId: staffIds[2]!, skillType: "CERTIFICATION" as const, skillId: "first-aid", skillName: "First Aid Level 3", proficiency: "ADVANCED" as const, expiresAt: daysFromNow(365) },
+    { userId: staffIds[2]!, skillType: "LANGUAGE" as const, skillId: "en", skillName: "English", proficiency: "EXPERT" as const },
+    // James Carter — Sports Therapist
+    { userId: staffIds[3]!, skillType: "SERVICE" as const, skillId: "sports-massage", skillName: "Sports Massage", proficiency: "EXPERT" as const },
+    { userId: staffIds[3]!, skillType: "SERVICE" as const, skillId: "wellness-assess", skillName: "Wellness Assessment", proficiency: "INTERMEDIATE" as const },
+    { userId: staffIds[3]!, skillType: "CERTIFICATION" as const, skillId: "first-aid", skillName: "First Aid Level 3", proficiency: "ADVANCED" as const, expiresAt: daysFromNow(90) },
+    { userId: staffIds[3]!, skillType: "EQUIPMENT" as const, skillId: "ultrasound", skillName: "Therapeutic Ultrasound", proficiency: "INTERMEDIATE" as const },
+    { userId: staffIds[3]!, skillType: "LANGUAGE" as const, skillId: "en", skillName: "English", proficiency: "EXPERT" as const },
+  ];
+
+  await db.insert(schema.resourceSkills).values(
+    skillDefs.map((s) => ({
+      id: uuid(),
+      tenantId,
+      userId: s.userId,
+      skillType: s.skillType,
+      skillId: s.skillId,
+      skillName: s.skillName,
+      proficiency: s.proficiency,
+      expiresAt: (s as any).expiresAt ?? null,
+      createdAt: now,
+      updatedAt: now,
+    }))
+  );
+  console.log(`    ✓ created ${skillDefs.length} resource skills`);
+
+  // Capacities for staff
+  const today = dateOnly(new Date());
+  const capacityDefs = [
+    { userId: staffIds[2]!, capacityType: "bookings", maxDaily: 8, maxConcurrent: 1, maxWeekly: 35 },
+    { userId: staffIds[3]!, capacityType: "bookings", maxDaily: 6, maxConcurrent: 1, maxWeekly: 28 },
+  ];
+
+  await db.insert(schema.resourceCapacities).values(
+    capacityDefs.map((c) => ({
+      id: uuid(),
+      tenantId,
+      userId: c.userId,
+      capacityType: c.capacityType,
+      maxDaily: c.maxDaily,
+      maxConcurrent: c.maxConcurrent,
+      maxWeekly: c.maxWeekly,
+      unit: "COUNT" as const,
+      effectiveFrom: today,
+      createdAt: now,
+      updatedAt: now,
+    }))
+  );
+  console.log(`    ✓ created ${capacityDefs.length} resource capacities`);
+}
+
+// ---------------------------------------------------------------------------
+// 12. Module settings (sync manifest settingsDefinitions to DB)
+// ---------------------------------------------------------------------------
+
+async function seedModuleSettingsFromManifests() {
+  console.log("  → seeding module settings from manifests...");
+
+  // Import all manifests that have settingsDefinitions
+  const { bookingManifest } = await import("../src/modules/booking/booking.manifest");
+  const { authManifest } = await import("../src/modules/auth/auth.manifest");
+  const { notificationManifest } = await import("../src/modules/notification/notification.manifest");
+  const { auditManifest } = await import("../src/modules/audit/audit.manifest");
+  const { analyticsManifest } = await import("../src/modules/analytics/analytics.manifest");
+  const { searchManifest } = await import("../src/modules/search/search.manifest");
+
+  const manifests = [
+    authManifest,
+    notificationManifest,
+    auditManifest,
+    analyticsManifest,
+    searchManifest,
+    bookingManifest,
+  ];
+
+  for (const manifest of manifests) {
+    if (!manifest.settingsDefinitions?.length) continue;
+
+    const [mod] = await db
+      .select({ id: schema.modules.id })
+      .from(schema.modules)
+      .where(eq(schema.modules.slug, manifest.slug))
+      .limit(1);
+
+    if (!mod) {
+      console.log(`    ⚠ module '${manifest.slug}' not found in modules table, skipping`);
+      continue;
+    }
+
+    let inserted = 0;
+    for (const def of manifest.settingsDefinitions) {
+      const existing = await db
+        .select({ id: schema.moduleSettings.id })
+        .from(schema.moduleSettings)
+        .where(
+          and(
+            eq(schema.moduleSettings.moduleId, mod.id),
+            eq(schema.moduleSettings.key, def.key)
+          )
+        )
+        .limit(1);
+
+      if (existing[0]) continue;
+
+      await db.insert(schema.moduleSettings).values({
+        id: uuid(),
+        moduleId: mod.id,
+        key: def.key,
+        label: def.label,
+        type: def.type.toUpperCase() as any,
+        defaultValue: def.defaultValue,
+        options: def.options ?? null,
+        validation: def.validation ?? null,
+        category: def.category ?? null,
+        order: def.order ?? 0,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+      inserted++;
+    }
+
+    console.log(`    ✓ ${manifest.slug}: ${inserted} settings inserted (${manifest.settingsDefinitions.length - inserted} already existed)`);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Database Reset (optional — run with --reset flag)
 // ---------------------------------------------------------------------------
 
@@ -1023,6 +1175,9 @@ async function resetDemoData() {
   const tenantId = demoTenant[0].id;
 
   // Delete in reverse dependency order
+  await client`DELETE FROM resource_assignments WHERE "tenantId" = ${tenantId}`;
+  await client`DELETE FROM resource_capacities WHERE "tenantId" = ${tenantId}`;
+  await client`DELETE FROM resource_skills WHERE "tenantId" = ${tenantId}`;
   await client`DELETE FROM bookings WHERE "tenantId" = ${tenantId}`;
   await client`DELETE FROM customers WHERE "tenantId" = ${tenantId}`;
   await client`DELETE FROM user_roles WHERE "userId" IN (SELECT id FROM users WHERE "tenantId" = ${tenantId})`;
@@ -1031,9 +1186,12 @@ async function resetDemoData() {
   await client`DELETE FROM service_categories WHERE "tenantId" = ${tenantId}`;
   await client`DELETE FROM venues WHERE "tenantId" = ${tenantId}`;
   await client`DELETE FROM tenant_portals WHERE "tenantId" = ${tenantId}`;
+  await client`DELETE FROM tenant_module_settings WHERE "tenantId" = ${tenantId}`;
   await client`DELETE FROM tenant_modules WHERE "tenantId" = ${tenantId}`;
   await client`DELETE FROM roles WHERE "tenantId" = ${tenantId}`;
+  await client`DELETE FROM staff_profiles WHERE "tenantId" = ${tenantId}`;
   await client`DELETE FROM organization_settings WHERE "tenantId" = ${tenantId}`;
+  await client`DELETE FROM module_settings WHERE TRUE`;
   await client`DELETE FROM tenants WHERE id = ${tenantId}`;
 
   console.log("    ✓ demo tenant data cleared");
@@ -1090,6 +1248,12 @@ async function main() {
 
     console.log("\n── Step 9: Portal");
     await seedPortal(demoTenantId);
+
+    console.log("\n── Step 10: Resource Pool");
+    await seedResourcePool(demoTenantId, staffIds);
+
+    console.log("\n── Step 11: Module Settings");
+    await seedModuleSettingsFromManifests();
 
     console.log("\n✅ Seed complete!\n");
     console.log("  Platform admin:  luke@theironheart.org  (platform-wide access)");

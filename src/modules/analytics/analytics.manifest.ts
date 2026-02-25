@@ -20,4 +20,8 @@ export const analyticsManifest: ModuleManifest = {
   isCore: true,
   availability: 'standard',
   auditResources: ['dashboard-layout'],
+  settingsDefinitions: [
+    { key: 'defaultPeriod', label: 'Default dashboard period', type: 'select', defaultValue: 'MONTH', category: 'Dashboard', order: 1, options: [{ label: 'Today', value: 'TODAY' }, { label: 'This week', value: 'WEEK' }, { label: 'This month', value: 'MONTH' }, { label: 'This quarter', value: 'QUARTER' }, { label: 'This year', value: 'YEAR' }] },
+    { key: 'cacheTtlSeconds', label: 'Dashboard cache duration (seconds)', type: 'number', defaultValue: 300, category: 'Performance', order: 2, validation: { min: 0, max: 3600 } },
+  ],
 }
