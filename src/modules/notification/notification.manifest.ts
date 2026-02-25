@@ -20,4 +20,7 @@ export const notificationManifest: ModuleManifest = {
   availability: 'standard',
   settingsTab: { slug: 'notification-settings', label: 'Notifications', icon: 'Bell', section: 'module' },
   auditResources: ['notification'],
+  settingsDefinitions: [
+    { key: 'emailEnabled', label: 'Enable email notifications', type: 'boolean', defaultValue: true, category: 'Channels', order: 1 },
+  ],
 }
