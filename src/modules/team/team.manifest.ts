@@ -3,7 +3,7 @@ import type { ModuleManifest } from '@/shared/module-system/types'
 export const teamManifest: ModuleManifest = {
   slug: 'team',
   name: 'Team',
-  description: 'Staff management, availability, and capacity',
+  description: 'Staff management, availability, capacity, departments, and onboarding',
   icon: 'UserCheck',
   category: 'operations',
   dependencies: [],
@@ -18,10 +18,21 @@ export const teamManifest: ModuleManifest = {
     { id: 'staff-utilization', type: 'heatmap', label: 'Staff Utilization', size: '2x2',
       dataSource: { procedure: 'team.analytics.utilization' } },
   ],
-  permissions: ['team:read', 'team:write', 'staff:read', 'staff:write'],
-  eventsProduced: [],
+  permissions: [
+    'team:read', 'team:write',
+    'staff:read', 'staff:write',
+    'staff:notes:read', 'staff:notes:write',
+    'staff:sensitive:read',
+    'staff:departments:write',
+    'staff:onboarding:write',
+    'staff:custom-fields:write',
+  ],
+  eventsProduced: [
+    'team/created', 'team/updated', 'team/deactivated',
+    'team/onboarding.completed', 'team/offboarding.completed',
+  ],
   eventsConsumed: [],
   isCore: false,
   availability: 'standard',
-  auditResources: ['team-member', 'availability'],
+  auditResources: ['team-member', 'availability', 'department', 'staff-note', 'pay-rate'],
 }
