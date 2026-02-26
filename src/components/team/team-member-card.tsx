@@ -146,6 +146,40 @@ function SkillChips({ memberId }: { memberId: string }) {
   )
 }
 
+function CustomFieldChips({ memberId }: { memberId: string }) {
+  const { data: definitions } = api.team.customFields.listDefinitions.useQuery(undefined, {
+    staleTime: 5 * 60 * 1000,
+  })
+  const { data: values } = api.team.customFields.getValues.useQuery(
+    { userId: memberId },
+    { staleTime: 60_000 }
+  )
+
+  if (!definitions || !values) return null
+
+  const cardFields = definitions.filter((d) => d.showOnCard)
+  if (cardFields.length === 0) return null
+
+  const valueMap = new Map(values.map((v) => [v.fieldDefinitionId, v.value]))
+
+  return (
+    <div className="flex flex-wrap items-center justify-center gap-1 mt-1">
+      {cardFields.map((def) => {
+        const val = valueMap.get(def.id)
+        if (val == null) return null
+        return (
+          <span
+            key={def.id}
+            className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground"
+          >
+            {def.label}: {String(val)}
+          </span>
+        )
+      })}
+    </div>
+  )
+}
+
 export function TeamMemberCard({ member, onClick }: TeamMemberCardProps) {
   const statusInfo = statusConfig[member.status]
 
@@ -192,6 +226,7 @@ export function TeamMemberCard({ member, onClick }: TeamMemberCardProps) {
           </Badge>
 
           <SkillChips memberId={member.id} />
+          <CustomFieldChips memberId={member.id} />
         </div>
       </CardContent>
 
