@@ -19,6 +19,8 @@ import {
   Package,
   Lock,
   AlertTriangle,
+  UserCog,
+  ClipboardCheck,
 } from "lucide-react"
 
 interface SettingsSidebarProps {
@@ -60,6 +62,16 @@ const SETTINGS_TABS: Array<{
     id: "security",
     label: "Security",
     icon: <Lock className="h-4 w-4" />,
+  },
+  {
+    id: "staff-custom-fields" as SettingsTab,
+    label: "Staff Custom Fields",
+    icon: <UserCog className="h-4 w-4" />,
+  },
+  {
+    id: "staff-onboarding" as SettingsTab,
+    label: "Onboarding Templates",
+    icon: <ClipboardCheck className="h-4 w-4" />,
   },
   {
     id: "danger",

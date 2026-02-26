@@ -1,13 +1,17 @@
 "use client"
 
-import { useState } from "react"
+import { lazy, Suspense, useState } from "react"
 import { format } from "date-fns"
-import { Pencil } from "lucide-react"
+import { Pencil, Building2, User, MapPin, AlertTriangle, DollarSign } from "lucide-react"
 import { toast } from "sonner"
 import { api } from "@/lib/trpc/react"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Progress } from "@/components/ui/progress"
+import { Separator } from "@/components/ui/separator"
+import { Skeleton } from "@/components/ui/skeleton"
 import {
   Dialog,
   DialogContent,
@@ -25,22 +29,26 @@ import {
 } from "@/components/ui/select"
 import type { StaffMember, EmployeeType } from "@/modules/team/team.types"
 
+const PayRatesDialog = lazy(() =>
+  import("@/components/team/profile/pay-rates-dialog").then((m) => ({ default: m.PayRatesDialog }))
+)
+
 interface OverviewTabProps {
   member: StaffMember
   onUpdate: () => void
 }
 
 function formatDate(date: Date | string | null | undefined): string {
-  if (!date) return "—"
+  if (!date) return "\u2014"
   try {
     return format(new Date(date), "d MMM yyyy")
   } catch {
-    return "—"
+    return "\u2014"
   }
 }
 
 function formatCurrency(value: number | null | undefined): string {
-  if (value == null) return "—"
+  if (value == null) return "\u2014"
   return new Intl.NumberFormat("en-GB", {
     style: "currency",
     currency: "GBP",
@@ -62,12 +70,202 @@ const EMPLOYEE_TYPES: { value: EmployeeType; label: string }[] = [
   { value: "CONTRACTOR", label: "Contractor" },
 ]
 
+function EmergencyContactSection({ member }: { member: StaffMember }) {
+  const hasContact = (member as any).emergencyContactName || (member as any).emergencyContactPhone
+  if (!hasContact) return null
+
+  return (
+    <div className="space-y-2">
+      <h4 className="text-sm font-medium flex items-center gap-2">
+        <AlertTriangle className="h-4 w-4 text-warning" />
+        Emergency Contact
+      </h4>
+      <div className="rounded-lg border border-border divide-y divide-border px-4">
+        {(member as any).emergencyContactName && (
+          <DetailRow label="Name" value={(member as any).emergencyContactName} />
+        )}
+        {(member as any).emergencyContactPhone && (
+          <DetailRow label="Phone" value={(member as any).emergencyContactPhone} />
+        )}
+        {(member as any).emergencyContactRelation && (
+          <DetailRow label="Relationship" value={(member as any).emergencyContactRelation} />
+        )}
+      </div>
+    </div>
+  )
+}
+
+function AddressSection({ member }: { member: StaffMember }) {
+  const m = member as any
+  const parts = [m.addressLine1, m.addressLine2, m.addressCity, m.addressPostcode, m.addressCountry].filter(Boolean)
+  if (parts.length === 0) return null
+
+  return (
+    <div className="space-y-2">
+      <h4 className="text-sm font-medium flex items-center gap-2">
+        <MapPin className="h-4 w-4" />
+        Address
+      </h4>
+      <div className="rounded-lg border border-border px-4 py-3">
+        <p className="text-sm text-foreground">{parts.join(", ")}</p>
+      </div>
+    </div>
+  )
+}
+
+function DepartmentBadges({ member }: { member: StaffMember }) {
+  const departments = (member as any).departments ?? []
+  if (departments.length === 0) return null
+
+  return (
+    <div className="space-y-2">
+      <h4 className="text-sm font-medium flex items-center gap-2">
+        <Building2 className="h-4 w-4" />
+        Departments
+      </h4>
+      <div className="flex flex-wrap gap-2">
+        {departments.map((dept: any) => (
+          <Badge
+            key={dept.departmentId}
+            variant={dept.isPrimary ? "default" : "secondary"}
+            className="text-xs"
+          >
+            {dept.departmentName}
+            {dept.isPrimary && <span className="ml-1 opacity-70">primary</span>}
+          </Badge>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function ReportingLine({ reportsTo }: { reportsTo: string | null }) {
+  const { data: manager } = api.team.getById.useQuery(
+    { userId: reportsTo! },
+    { enabled: !!reportsTo, staleTime: 5 * 60 * 1000 }
+  )
+  if (!reportsTo || !manager) return null
+
+  return (
+    <div className="space-y-2">
+      <h4 className="text-sm font-medium flex items-center gap-2">
+        <User className="h-4 w-4" />
+        Reports to
+      </h4>
+      <div className="rounded-lg border border-border px-4 py-3">
+        <p className="text-sm text-foreground">{manager.name}</p>
+        {(manager as any).jobTitle && (
+          <p className="text-xs text-muted-foreground">{(manager as any).jobTitle}</p>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function PayRateSection({ memberId, currentRate }: { memberId: string; currentRate: number | null }) {
+  const [historyOpen, setHistoryOpen] = useState(false)
+
+  return (
+    <div className="space-y-2">
+      <h4 className="text-sm font-medium flex items-center gap-2">
+        <DollarSign className="h-4 w-4" />
+        Pay Rate
+      </h4>
+      <div className="rounded-lg border border-border px-4 py-3 flex items-center justify-between">
+        <span className="text-sm text-foreground">
+          {currentRate != null ? formatCurrency(currentRate) : "Not set"}
+          {currentRate != null && <span className="text-xs text-muted-foreground ml-1">/hr</span>}
+        </span>
+        <Button size="sm" variant="ghost" className="text-xs h-7" onClick={() => setHistoryOpen(true)}>
+          View history
+        </Button>
+      </div>
+      {historyOpen && (
+        <Suspense fallback={<Skeleton className="h-32 w-full" />}>
+          <PayRatesDialog memberId={memberId} open={historyOpen} onOpenChange={setHistoryOpen} />
+        </Suspense>
+      )}
+    </div>
+  )
+}
+
+function OnboardingProgressSection({ memberId }: { memberId: string }) {
+  const { data: progress, isLoading } = api.team.onboarding.getProgress.useQuery(
+    { userId: memberId, type: "ONBOARDING" },
+    { staleTime: 30_000 }
+  )
+  if (isLoading) return <Skeleton className="h-16 w-full" />
+
+  const active = Array.isArray(progress) ? progress.find((p: any) => p.status !== "COMPLETED") : null
+  if (!active) return null
+
+  const totalRequired = active.items.filter((i: any) => i.isRequired).length
+  const completedRequired = active.items.filter((i: any) => i.isRequired && i.completedAt).length
+  const pct = totalRequired > 0 ? Math.round((completedRequired / totalRequired) * 100) : 0
+
+  return (
+    <div className="space-y-2">
+      <h4 className="text-sm font-medium">Onboarding Progress</h4>
+      <div className="rounded-lg border border-border p-4 space-y-2">
+        <div className="flex items-center justify-between">
+          <span className="text-xs text-muted-foreground">{active.templateName}</span>
+          <span className="text-xs font-medium">{pct}%</span>
+        </div>
+        <Progress value={pct} className="h-2" />
+        <p className="text-xs text-muted-foreground">
+          {completedRequired}/{totalRequired} required items complete
+        </p>
+      </div>
+    </div>
+  )
+}
+
+function CustomFieldsSection({ memberId }: { memberId: string }) {
+  const { data: values, isLoading } = api.team.customFields.getValues.useQuery(
+    { userId: memberId },
+    { staleTime: 60_000 }
+  )
+  if (isLoading) return <Skeleton className="h-16 w-full" />
+  if (!values || values.length === 0) return null
+
+  const grouped = new Map<string, typeof values>()
+  for (const v of values) {
+    const group = v.groupName ?? "Other"
+    const arr = grouped.get(group) ?? []
+    arr.push(v)
+    grouped.set(group, arr)
+  }
+
+  return (
+    <div className="space-y-4">
+      {Array.from(grouped.entries()).map(([group, fields]) => (
+        <div key={group} className="space-y-2">
+          <h4 className="text-sm font-medium">{group}</h4>
+          <div className="rounded-lg border border-border divide-y divide-border px-4">
+            {fields.map((f) => (
+              <DetailRow
+                key={f.fieldDefinitionId}
+                label={f.label}
+                value={f.value == null ? "\u2014" : String(f.value)}
+              />
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export function OverviewTab({ member, onUpdate }: OverviewTabProps) {
   const [editOpen, setEditOpen] = useState(false)
   const utils = api.useUtils()
 
   return (
     <div className="py-6 space-y-6">
+      {/* Onboarding progress (shows only if incomplete) */}
+      <OnboardingProgressSection memberId={member.id} />
+
+      {/* Profile details header */}
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-medium">Profile Details</h3>
         <Button size="sm" variant="outline" onClick={() => setEditOpen(true)}>
@@ -78,18 +276,35 @@ export function OverviewTab({ member, onUpdate }: OverviewTabProps) {
 
       <div className="rounded-lg border border-border divide-y divide-border px-4">
         <DetailRow label="Email" value={member.email} />
-        <DetailRow label="Phone" value={member.phone ?? "—"} />
+        <DetailRow label="Phone" value={member.phone ?? "\u2014"} />
+        <DetailRow label="Job title" value={(member as any).jobTitle ?? "\u2014"} />
         <DetailRow
           label="Employee type"
-          value={
-            member.employeeType
-              ? member.employeeType.replace("_", " ").toLowerCase()
-              : "—"
-          }
+          value={member.employeeType ? member.employeeType.replace("_", " ").toLowerCase() : "\u2014"}
         />
         <DetailRow label="Hourly rate" value={formatCurrency(member.hourlyRate)} />
         <DetailRow label="Joined" value={formatDate(member.createdAt)} />
       </div>
+
+      {/* Department badges */}
+      <DepartmentBadges member={member} />
+
+      {/* Reporting line */}
+      <ReportingLine reportsTo={(member as any).reportsTo ?? null} />
+
+      {/* Pay rate with history link */}
+      <PayRateSection memberId={member.id} currentRate={member.hourlyRate ?? null} />
+
+      <Separator />
+
+      {/* Emergency contact */}
+      <EmergencyContactSection member={member} />
+
+      {/* Address */}
+      <AddressSection member={member} />
+
+      {/* Custom fields */}
+      <CustomFieldsSection memberId={member.id} />
 
       <EditProfileDialog
         member={member}
@@ -125,6 +340,17 @@ function EditProfileDialog({
   const [hourlyRate, setHourlyRate] = useState(
     member.hourlyRate != null ? String(member.hourlyRate) : ""
   )
+  const [jobTitle, setJobTitle] = useState((member as any).jobTitle ?? "")
+  const [bio, setBio] = useState((member as any).bio ?? "")
+  const [reportsTo, setReportsTo] = useState<string>((member as any).reportsTo ?? "")
+  const [emergencyContactName, setEmergencyContactName] = useState((member as any).emergencyContactName ?? "")
+  const [emergencyContactPhone, setEmergencyContactPhone] = useState((member as any).emergencyContactPhone ?? "")
+  const [emergencyContactRelation, setEmergencyContactRelation] = useState((member as any).emergencyContactRelation ?? "")
+  const [addressLine1, setAddressLine1] = useState((member as any).addressLine1 ?? "")
+  const [addressLine2, setAddressLine2] = useState((member as any).addressLine2 ?? "")
+  const [addressCity, setAddressCity] = useState((member as any).addressCity ?? "")
+  const [addressPostcode, setAddressPostcode] = useState((member as any).addressPostcode ?? "")
+  const [addressCountry, setAddressCountry] = useState((member as any).addressCountry ?? "")
 
   const updateMutation = api.team.update.useMutation({
     onSuccess: () => {
@@ -146,6 +372,16 @@ function EditProfileDialog({
       phone: phone.trim() || undefined,
       employeeType: employeeType || undefined,
       hourlyRate: hourlyRate ? parseFloat(hourlyRate) : undefined,
+      jobTitle: jobTitle.trim() || undefined,
+      reportsTo: reportsTo || null,
+      emergencyContactName: emergencyContactName.trim() || null,
+      emergencyContactPhone: emergencyContactPhone.trim() || null,
+      emergencyContactRelation: emergencyContactRelation.trim() || null,
+      addressLine1: addressLine1.trim() || null,
+      addressLine2: addressLine2.trim() || null,
+      addressCity: addressCity.trim() || null,
+      addressPostcode: addressPostcode.trim() || null,
+      addressCountry: addressCountry.trim() || null,
     })
   }
 
@@ -186,6 +422,50 @@ function EditProfileDialog({
           <div className="space-y-2">
             <Label htmlFor="edit-rate">Hourly rate</Label>
             <Input id="edit-rate" type="number" step="0.01" min="0" value={hourlyRate} onChange={(e) => setHourlyRate(e.target.value)} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="edit-job-title">Job title</Label>
+            <Input id="edit-job-title" value={jobTitle} onChange={(e) => setJobTitle(e.target.value)} />
+          </div>
+
+          <Separator />
+          <p className="text-xs font-medium text-muted-foreground">Emergency Contact</p>
+          <div className="space-y-2">
+            <Label htmlFor="edit-ec-name">Contact name</Label>
+            <Input id="edit-ec-name" value={emergencyContactName} onChange={(e) => setEmergencyContactName(e.target.value)} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="edit-ec-phone">Contact phone</Label>
+            <Input id="edit-ec-phone" value={emergencyContactPhone} onChange={(e) => setEmergencyContactPhone(e.target.value)} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="edit-ec-relation">Relationship</Label>
+            <Input id="edit-ec-relation" value={emergencyContactRelation} onChange={(e) => setEmergencyContactRelation(e.target.value)} />
+          </div>
+
+          <Separator />
+          <p className="text-xs font-medium text-muted-foreground">Address</p>
+          <div className="space-y-2">
+            <Label htmlFor="edit-addr1">Address line 1</Label>
+            <Input id="edit-addr1" value={addressLine1} onChange={(e) => setAddressLine1(e.target.value)} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="edit-addr2">Address line 2</Label>
+            <Input id="edit-addr2" value={addressLine2} onChange={(e) => setAddressLine2(e.target.value)} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label htmlFor="edit-city">City</Label>
+              <Input id="edit-city" value={addressCity} onChange={(e) => setAddressCity(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-postcode">Postcode</Label>
+              <Input id="edit-postcode" value={addressPostcode} onChange={(e) => setAddressPostcode(e.target.value)} />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="edit-country">Country</Label>
+            <Input id="edit-country" value={addressCountry} onChange={(e) => setAddressCountry(e.target.value)} />
           </div>
 
           <DialogFooter>

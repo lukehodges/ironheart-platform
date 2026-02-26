@@ -227,6 +227,8 @@ function AddSkillDialog({
   const [proficiency, setProficiency] = useState<ProficiencyLevel>("INTERMEDIATE")
   const [expiresAt, setExpiresAt] = useState("")
 
+  const { data: catalog } = api.team.listSkillCatalog.useQuery(undefined, { staleTime: 60_000 })
+
   const addMutation = api.team.addSkill.useMutation({
     onSuccess: () => {
       toast.success("Skill added")
@@ -284,6 +286,27 @@ function AddSkillDialog({
           <div className="space-y-2">
             <Label htmlFor="skill-id">Skill ID</Label>
             <Input id="skill-id" value={skillId} onChange={(e) => setSkillId(e.target.value)} placeholder="e.g. forklift-class-b" />
+            {skillId && catalog && catalog.length > 0 && (
+              <div className="max-h-32 overflow-y-auto rounded-md border border-border bg-popover">
+                {catalog
+                  .filter((c) =>
+                    c.skillId.toLowerCase().includes(skillId.toLowerCase()) ||
+                    c.skillName.toLowerCase().includes(skillId.toLowerCase())
+                  )
+                  .slice(0, 5)
+                  .map((c) => (
+                    <button
+                      key={c.skillId}
+                      type="button"
+                      className="w-full text-left px-3 py-1.5 text-xs hover:bg-muted transition-colors"
+                      onClick={() => { setSkillId(c.skillId); setSkillName(c.skillName) }}
+                    >
+                      <span className="font-medium">{c.skillId}</span>
+                      <span className="text-muted-foreground ml-2">{c.skillName}</span>
+                    </button>
+                  ))}
+              </div>
+            )}
           </div>
           <div className="space-y-2">
             <Label htmlFor="skill-name">Name</Label>

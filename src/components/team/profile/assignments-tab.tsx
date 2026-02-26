@@ -4,6 +4,7 @@ import { useState } from "react"
 import { format } from "date-fns"
 import { api } from "@/lib/trpc/react"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -47,6 +48,7 @@ export function AssignmentsTab({ memberId }: { memberId: string }) {
   const [moduleFilter, setModuleFilter] = useState("")
   const [startDate, setStartDate] = useState("")
   const [endDate, setEndDate] = useState("")
+  const [cursor, setCursor] = useState<string | undefined>(undefined)
 
   const { data, isLoading } = api.team.listAssignments.useQuery({
     userId: memberId,
@@ -55,6 +57,7 @@ export function AssignmentsTab({ memberId }: { memberId: string }) {
     startDate: startDate || undefined,
     endDate: endDate || undefined,
     limit: PAGE_SIZE,
+    cursor,
   })
 
   const assignments = data?.rows ?? []
@@ -77,7 +80,7 @@ export function AssignmentsTab({ memberId }: { memberId: string }) {
       <div className="flex flex-wrap items-end gap-3">
         <div className="space-y-1">
           <Label className="text-xs">Status</Label>
-          <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as AssignmentStatus | "ALL")}>
+          <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v as AssignmentStatus | "ALL"); setCursor(undefined) }}>
             <SelectTrigger className="h-8 w-32 text-xs"><SelectValue /></SelectTrigger>
             <SelectContent>
               {STATUS_OPTIONS.map((s) => (
@@ -88,15 +91,15 @@ export function AssignmentsTab({ memberId }: { memberId: string }) {
         </div>
         <div className="space-y-1">
           <Label className="text-xs">Module</Label>
-          <Input className="h-8 w-32 text-xs" placeholder="e.g. bookings" value={moduleFilter} onChange={(e) => setModuleFilter(e.target.value)} />
+          <Input className="h-8 w-32 text-xs" placeholder="e.g. bookings" value={moduleFilter} onChange={(e) => { setModuleFilter(e.target.value); setCursor(undefined) }} />
         </div>
         <div className="space-y-1">
           <Label className="text-xs">From</Label>
-          <Input type="date" className="h-8 text-xs" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+          <Input type="date" className="h-8 text-xs" value={startDate} onChange={(e) => { setStartDate(e.target.value); setCursor(undefined) }} />
         </div>
         <div className="space-y-1">
           <Label className="text-xs">To</Label>
-          <Input type="date" className="h-8 text-xs" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+          <Input type="date" className="h-8 text-xs" value={endDate} onChange={(e) => { setEndDate(e.target.value); setCursor(undefined) }} />
         </div>
       </div>
 
@@ -144,11 +147,24 @@ export function AssignmentsTab({ memberId }: { memberId: string }) {
             </Table>
           </div>
 
-          <div className="flex items-center justify-end gap-2">
+          <div className="flex items-center justify-between">
             <span className="text-xs text-muted-foreground">
               {assignments.length} result{assignments.length !== 1 ? "s" : ""}
               {hasMore ? "+" : ""}
             </span>
+            {hasMore && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="text-xs"
+                onClick={() => {
+                  const last = assignments[assignments.length - 1]
+                  if (last) setCursor(last.id)
+                }}
+              >
+                Load more
+              </Button>
+            )}
           </div>
         </>
       )}

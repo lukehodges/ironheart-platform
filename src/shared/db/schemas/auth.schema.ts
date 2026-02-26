@@ -5,6 +5,7 @@ import {
   text,
   integer,
   boolean,
+  date,
   timestamp,
   bigint,
   numeric,
@@ -94,6 +95,18 @@ export const staffProfiles = pgTable("staff_profiles", {
 	homeLatitude: numeric('home_latitude', { precision: 9, scale: 6 }),
 	homeLongitude: numeric('home_longitude', { precision: 9, scale: 6 }),
 	lastAssignedAt: timestamp('last_assigned_at', { withTimezone: true, mode: 'date' }),
+	// --- Phase 7: Staff module enhancements ---
+	reportsTo: uuid('reports_to'),
+	dateOfBirth: date('date_of_birth', { mode: 'date' }),
+	taxId: text('tax_id'),
+	emergencyContactName: text('emergency_contact_name'),
+	emergencyContactPhone: text('emergency_contact_phone'),
+	emergencyContactRelation: text('emergency_contact_relation'),
+	addressLine1: text('address_line1'),
+	addressLine2: text('address_line2'),
+	addressCity: text('address_city'),
+	addressPostcode: text('address_postcode'),
+	addressCountry: text('address_country'),
 	createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	updatedAt: timestamp({ precision: 3, mode: 'date' }).notNull(),
 }, (table) => [
@@ -109,6 +122,11 @@ export const staffProfiles = pgTable("staff_profiles", {
 		foreignColumns: [tenants.id],
 		name: "staff_profiles_tenantId_fkey"
 	}).onUpdate("cascade").onDelete("cascade"),
+	foreignKey({
+		columns: [table.reportsTo],
+		foreignColumns: [users.id],
+		name: "staff_profiles_reportsTo_fkey",
+	}).onUpdate("cascade").onDelete("set null"),
 ])
 
 export type StaffProfile = typeof staffProfiles.$inferSelect;

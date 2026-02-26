@@ -14,6 +14,7 @@ import { CapacityTab } from "@/components/team/profile/capacity-tab"
 import { AvailabilityTab } from "@/components/team/profile/availability-tab"
 import { AssignmentsTab } from "@/components/team/profile/assignments-tab"
 import { ActivityTab } from "@/components/team/profile/activity-tab"
+import { NotesTab } from "@/components/team/profile/notes-tab"
 
 // ─── Loading skeleton ────────────────────────────────────────────────────────
 
@@ -133,15 +134,30 @@ export default function TeamMemberProfilePage({
       <Tabs defaultValue="overview">
         <TabsList className="w-full justify-start">
           <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="calendar">Calendar</TabsTrigger>
           <TabsTrigger value="skills">Skills</TabsTrigger>
           <TabsTrigger value="capacity">Capacity</TabsTrigger>
           <TabsTrigger value="availability">Availability</TabsTrigger>
           <TabsTrigger value="assignments">Assignments</TabsTrigger>
+          <TabsTrigger value="notes">Notes</TabsTrigger>
           <TabsTrigger value="activity">Activity</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="mt-4">
           <OverviewTab member={member} onUpdate={() => void refetch()} />
+        </TabsContent>
+
+        <TabsContent value="calendar" className="mt-4">
+          <div className="py-6">
+            <div className="rounded-lg border border-dashed border-border p-8 text-center">
+              <p className="text-sm text-muted-foreground">
+                Staff calendar will be available when the scheduling module is extended.
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                This tab will aggregate availability, bookings, and leave into a unified calendar view.
+              </p>
+            </div>
+          </div>
         </TabsContent>
 
         <TabsContent value="skills" className="mt-4">
@@ -158,6 +174,10 @@ export default function TeamMemberProfilePage({
 
         <TabsContent value="assignments" className="mt-4">
           <AssignmentsTab memberId={member.id} />
+        </TabsContent>
+
+        <TabsContent value="notes" className="mt-4">
+          <NotesTab memberId={member.id} />
         </TabsContent>
 
         <TabsContent value="activity" className="mt-4">

@@ -6,4 +6,10 @@ export type {
   StaffMember,
   AvailabilityEntry,
   TeamSchedule,
+  Department,
+  StaffNote,
+  PayRate,
+  ChecklistProgress,
+  CustomFieldDefinition,
+  CustomFieldValue,
 } from "./team.types";

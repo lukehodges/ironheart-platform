@@ -6,6 +6,9 @@ export type SettingsTab =
   | 'billing'
   | 'modules'
   | 'security'
+  | 'roles'
+  | 'staff-custom-fields'
+  | 'staff-onboarding'
   | 'danger';
 
 export interface GeneralSettings {

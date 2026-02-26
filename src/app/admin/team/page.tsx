@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { UserPlus } from "lucide-react"
+import { UserPlus, Building2 } from "lucide-react"
 import { api } from "@/lib/trpc/react"
 import { PageHeader } from "@/components/ui/page-header"
 import { Button } from "@/components/ui/button"
@@ -9,11 +9,16 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { Skeleton } from "@/components/ui/skeleton"
 import { EmptyState } from "@/components/ui/empty-state"
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible"
+import { Separator } from "@/components/ui/separator"
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu"
+import { Checkbox } from "@/components/ui/checkbox"
 import { TeamMemberCard } from "@/components/team/team-member-card"
 import { TeamMemberSheet } from "@/components/team/team-member-sheet"
 import { AddMemberDialog } from "@/components/team/add-member-dialog"
 import { cn } from "@/lib/utils"
-import type { StaffStatus } from "@/modules/team/team.types"
+import { toast } from "sonner"
+import type { StaffStatus, StaffMember } from "@/modules/team/team.types"
 
 // ─── Filter types ────────────────────────────────────────────────────────────
 
@@ -141,6 +146,80 @@ function AvailabilityBar({
   )
 }
 
+// ─── Department grouped view ─────────────────────────────────────────────────
+
+function DepartmentGroupedView({
+  members,
+  departments,
+  onSelectMember,
+  bulkMode,
+  selectedIds,
+  onToggleSelect,
+}: {
+  members: StaffMember[]
+  departments: any[]
+  onSelectMember: (id: string) => void
+  bulkMode: boolean
+  selectedIds: Set<string>
+  onToggleSelect: (id: string) => void
+}) {
+  // Group members by primary department
+  const grouped = new Map<string, StaffMember[]>()
+  const unassigned: StaffMember[] = []
+
+  for (const member of members) {
+    const depts = (member as any).departments ?? []
+    const primary = depts.find((d: any) => d.isPrimary)
+    if (primary) {
+      const arr = grouped.get(primary.departmentName) ?? []
+      arr.push(member)
+      grouped.set(primary.departmentName, arr)
+    } else if (depts.length > 0) {
+      const arr = grouped.get(depts[0].departmentName) ?? []
+      arr.push(member)
+      grouped.set(depts[0].departmentName, arr)
+    } else {
+      unassigned.push(member)
+    }
+  }
+
+  const sections = [...Array.from(grouped.entries()), ...(unassigned.length > 0 ? [["Unassigned", unassigned] as const] : [])]
+
+  return (
+    <div className="space-y-4">
+      {sections.map(([name, groupMembers]) => (
+        <Collapsible key={name} defaultOpen>
+          <CollapsibleTrigger className="flex items-center gap-2 w-full text-left py-2 hover:bg-muted/50 rounded-md px-2 transition-colors">
+            <span className="text-sm font-medium">{name}</span>
+            <Badge variant="secondary" className="text-[10px]">{groupMembers.length}</Badge>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 mt-2" role="list">
+              {groupMembers.map((member) => (
+                <div key={member.id} role="listitem" className="relative">
+                  {bulkMode && (
+                    <div className="absolute top-2 left-2 z-10">
+                      <Checkbox
+                        checked={selectedIds.has(member.id)}
+                        onCheckedChange={() => onToggleSelect(member.id)}
+                        aria-label={`Select ${member.name}`}
+                      />
+                    </div>
+                  )}
+                  <TeamMemberCard
+                    member={member}
+                    onClick={() => bulkMode ? onToggleSelect(member.id) : onSelectMember(member.id)}
+                  />
+                </div>
+              ))}
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+      ))}
+    </div>
+  )
+}
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function TeamPage() {
@@ -148,18 +227,31 @@ export default function TeamPage() {
   const [addDialogOpen, setAddDialogOpen] = useState(false)
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL")
   const [employeeTypeFilter, setEmployeeTypeFilter] = useState<EmployeeTypeFilter>("ALL")
+  const [groupByDepartment, setGroupByDepartment] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [bulkMode, setBulkMode] = useState(false)
 
   const { data, isLoading, refetch } = api.team.list.useQuery({
     limit: 100,
     status: statusFilter === "ALL" ? undefined : statusFilter,
+    employeeType: employeeTypeFilter === "ALL" ? undefined : employeeTypeFilter,
   })
 
   const members = data?.rows ?? []
 
-  // Client-side filter by employee type (since the router doesn't expose it as a query param)
-  const filteredMembers = members.filter((m) => {
-    if (employeeTypeFilter === "ALL") return true
-    return m.employeeType === employeeTypeFilter
+  const { data: departments } = api.team.departments.list.useQuery(undefined, {
+    enabled: groupByDepartment,
+    staleTime: 60_000,
+  })
+
+  const bulkUpdateMutation = api.team.update.useMutation({
+    onSuccess: () => {
+      toast.success("Members updated")
+      setSelectedIds(new Set())
+      setBulkMode(false)
+      void refetch()
+    },
+    onError: (err) => toast.error(err.message ?? "Failed to update"),
   })
 
   // Active members for the availability bar
@@ -227,13 +319,37 @@ export default function TeamPage() {
             </FilterChip>
           ))}
         </div>
+
+        {/* Action row */}
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant={groupByDepartment ? "default" : "outline"}
+            className="text-xs h-7"
+            onClick={() => setGroupByDepartment(!groupByDepartment)}
+          >
+            <Building2 className="h-3.5 w-3.5" />
+            Group by department
+          </Button>
+          <Button
+            size="sm"
+            variant={bulkMode ? "secondary" : "outline"}
+            className="text-xs h-7"
+            onClick={() => {
+              setBulkMode(!bulkMode)
+              setSelectedIds(new Set())
+            }}
+          >
+            {bulkMode ? "Cancel selection" : "Select"}
+          </Button>
+        </div>
       </div>
 
       {/* Results count */}
       {!isLoading && (
         <div className="flex items-center gap-2">
           <Badge variant="secondary" className="text-xs">
-            {filteredMembers.length} member{filteredMembers.length !== 1 ? "s" : ""}
+            {members.length} member{members.length !== 1 ? "s" : ""}
           </Badge>
           {(statusFilter !== "ALL" || employeeTypeFilter !== "ALL") && (
             <button
@@ -253,7 +369,7 @@ export default function TeamPage() {
       {/* Content */}
       {isLoading ? (
         <TeamGridSkeleton />
-      ) : filteredMembers.length === 0 ? (
+      ) : members.length === 0 ? (
         <EmptyState
           variant="users"
           title={
@@ -284,19 +400,96 @@ export default function TeamPage() {
           }
         />
       ) : (
-        <div
-          className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4"
-          role="list"
-          aria-label="Team members"
-        >
-          {filteredMembers.map((member) => (
-            <div key={member.id} role="listitem">
-              <TeamMemberCard
-                member={member}
-                onClick={() => setSelectedMemberId(member.id)}
-              />
-            </div>
-          ))}
+        groupByDepartment ? (
+          <DepartmentGroupedView
+            members={members}
+            departments={departments ?? []}
+            onSelectMember={(id) => setSelectedMemberId(id)}
+            bulkMode={bulkMode}
+            selectedIds={selectedIds}
+            onToggleSelect={(id) => {
+              setSelectedIds((prev) => {
+                const next = new Set(prev)
+                if (next.has(id)) next.delete(id)
+                else next.add(id)
+                return next
+              })
+            }}
+          />
+        ) : (
+          <div
+            className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4"
+            role="list"
+            aria-label="Team members"
+          >
+            {members.map((member) => (
+              <div key={member.id} role="listitem" className="relative">
+                {bulkMode && (
+                  <div className="absolute top-2 left-2 z-10">
+                    <Checkbox
+                      checked={selectedIds.has(member.id)}
+                      onCheckedChange={() => {
+                        setSelectedIds((prev) => {
+                          const next = new Set(prev)
+                          if (next.has(member.id)) next.delete(member.id)
+                          else next.add(member.id)
+                          return next
+                        })
+                      }}
+                      aria-label={`Select ${member.name}`}
+                    />
+                  </div>
+                )}
+                <TeamMemberCard
+                  member={member}
+                  onClick={() => bulkMode
+                    ? setSelectedIds((prev) => {
+                        const next = new Set(prev)
+                        if (next.has(member.id)) next.delete(member.id)
+                        else next.add(member.id)
+                        return next
+                      })
+                    : setSelectedMemberId(member.id)
+                  }
+                />
+              </div>
+            ))}
+          </div>
+        )
+      )}
+
+      {/* Bulk actions toolbar */}
+      {selectedIds.size > 0 && (
+        <div className="sticky bottom-4 z-10 mx-auto w-fit rounded-lg border border-border bg-card shadow-lg px-4 py-2 flex items-center gap-3">
+          <span className="text-xs font-medium">{selectedIds.size} selected</span>
+          <Separator orientation="vertical" className="h-5" />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="sm" variant="outline" className="text-xs h-7">Change status</Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              {(["ACTIVE", "INACTIVE", "SUSPENDED"] as const).map((s) => (
+                <DropdownMenuItem
+                  key={s}
+                  onClick={() => {
+                    for (const id of selectedIds) {
+                      bulkUpdateMutation.mutate({ id, status: s })
+                    }
+                  }}
+                >
+                  {s.charAt(0) + s.slice(1).toLowerCase()}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="text-xs h-7"
+            onClick={() => { setSelectedIds(new Set()); setBulkMode(false) }}
+          >
+            Cancel
+          </Button>
         </div>
       )}
 

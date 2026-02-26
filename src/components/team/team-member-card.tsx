@@ -32,15 +32,13 @@ const statusConfig: Record<
   SUSPENDED: { label: "Suspended", variant: "warning" },
 }
 
-function AvailabilityIndicator({ status }: { status: StaffStatus }) {
-  if (status === "ACTIVE") {
-    return (
-      <div className="flex items-center gap-1.5 text-xs text-success">
-        <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
-        <span>Available today</span>
-      </div>
-    )
-  }
+function AvailabilityIndicator({ memberId, status }: { memberId: string; status: StaffStatus }) {
+  const today = new Date().toISOString().split("T")[0]!
+  const { data: availability } = api.team.getAvailability.useQuery(
+    { userId: memberId, startDate: today },
+    { enabled: status === "ACTIVE", staleTime: 5 * 60 * 1000 }
+  )
+
   if (status === "SUSPENDED") {
     return (
       <div className="flex items-center gap-1.5 text-xs text-warning">
@@ -49,10 +47,52 @@ function AvailabilityIndicator({ status }: { status: StaffStatus }) {
       </div>
     )
   }
+
+  if (status !== "ACTIVE") {
+    return (
+      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+        <MinusCircle className="h-3.5 w-3.5" aria-hidden="true" />
+        <span>Inactive</span>
+      </div>
+    )
+  }
+
+  // Check if today has any RECURRING or SPECIFIC availability entries
+  const dayOfWeek = new Date().getDay()
+  const hasAvailability = availability?.some((entry) => {
+    if (entry.type === "RECURRING" && entry.dayOfWeek === dayOfWeek) return true
+    if (entry.type === "SPECIFIC" && entry.specificDate === today) return true
+    return false
+  })
+
+  // Check if today is blocked
+  const isBlocked = availability?.some((entry) => {
+    if (entry.type === "BLOCKED" && entry.specificDate === today) return true
+    return false
+  })
+
+  if (isBlocked) {
+    return (
+      <div className="flex items-center gap-1.5 text-xs text-warning">
+        <Clock className="h-3.5 w-3.5" aria-hidden="true" />
+        <span>Blocked today</span>
+      </div>
+    )
+  }
+
+  if (hasAvailability) {
+    return (
+      <div className="flex items-center gap-1.5 text-xs text-success">
+        <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
+        <span>Available today</span>
+      </div>
+    )
+  }
+
   return (
     <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
       <MinusCircle className="h-3.5 w-3.5" aria-hidden="true" />
-      <span>Inactive</span>
+      <span>No schedule today</span>
     </div>
   )
 }
@@ -106,6 +146,40 @@ function SkillChips({ memberId }: { memberId: string }) {
   )
 }
 
+function CustomFieldChips({ memberId }: { memberId: string }) {
+  const { data: definitions } = api.team.customFields.listDefinitions.useQuery(undefined, {
+    staleTime: 5 * 60 * 1000,
+  })
+  const { data: values } = api.team.customFields.getValues.useQuery(
+    { userId: memberId },
+    { staleTime: 60_000 }
+  )
+
+  if (!definitions || !values) return null
+
+  const cardFields = definitions.filter((d) => d.showOnCard)
+  if (cardFields.length === 0) return null
+
+  const valueMap = new Map(values.map((v) => [v.fieldDefinitionId, v.value]))
+
+  return (
+    <div className="flex flex-wrap items-center justify-center gap-1 mt-1">
+      {cardFields.map((def) => {
+        const val = valueMap.get(def.id)
+        if (val == null) return null
+        return (
+          <span
+            key={def.id}
+            className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground"
+          >
+            {def.label}: {String(val)}
+          </span>
+        )
+      })}
+    </div>
+  )
+}
+
 export function TeamMemberCard({ member, onClick }: TeamMemberCardProps) {
   const statusInfo = statusConfig[member.status]
 
@@ -152,11 +226,12 @@ export function TeamMemberCard({ member, onClick }: TeamMemberCardProps) {
           </Badge>
 
           <SkillChips memberId={member.id} />
+          <CustomFieldChips memberId={member.id} />
         </div>
       </CardContent>
 
       <CardFooter className="px-5 py-3 border-t border-border justify-between">
-        <AvailabilityIndicator status={member.status} />
+        <AvailabilityIndicator memberId={member.id} status={member.status} />
         <WorkloadBadge memberId={member.id} />
       </CardFooter>
     </Card>

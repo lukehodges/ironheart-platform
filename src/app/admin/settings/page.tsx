@@ -28,6 +28,12 @@ const SecurityTab = lazy(() =>
 const DangerTab = lazy(() =>
   import("@/components/settings/danger-tab").then((m) => ({ default: m.DangerTab }))
 )
+const StaffCustomFieldsTab = lazy(() =>
+  import("@/components/settings/staff-custom-fields").then((m) => ({ default: m.StaffCustomFieldsTab }))
+)
+const StaffOnboardingTemplatesTab = lazy(() =>
+  import("@/components/settings/staff-onboarding-templates").then((m) => ({ default: m.StaffOnboardingTemplatesTab }))
+)
 
 /**
  * Map tab IDs to display titles
@@ -39,6 +45,9 @@ const TAB_TITLES: Record<SettingsTab, string> = {
   billing: "Billing & Plans",
   modules: "Modules",
   security: "Security & API Keys",
+  roles: "Roles & Permissions",
+  "staff-custom-fields": "Staff Custom Fields",
+  "staff-onboarding": "Onboarding Templates",
   danger: "Danger Zone",
 }
 
@@ -134,7 +143,12 @@ export default function SettingsPage() {
    * Validate if string is a valid SettingsTab
    */
   function isValidTab(tab: string): boolean {
-    return ["general", "notifications", "integrations", "billing", "modules", "security", "danger"].includes(tab)
+    return [
+      "general", "notifications", "integrations", "billing",
+      "modules", "security", "roles",
+      "staff-custom-fields", "staff-onboarding",
+      "danger",
+    ].includes(tab)
   }
 
   return (
@@ -207,6 +221,20 @@ export default function SettingsPage() {
               <TabsContent value="security" className="mt-0 focus-visible:outline-none focus-visible:ring-0">
                 <Suspense fallback={<TabLoadingSkeleton />}>
                   <SecurityTab />
+                </Suspense>
+              </TabsContent>
+
+              {/* Staff Custom Fields Tab */}
+              <TabsContent value="staff-custom-fields" className="mt-0 focus-visible:outline-none focus-visible:ring-0">
+                <Suspense fallback={<TabLoadingSkeleton />}>
+                  <StaffCustomFieldsTab />
+                </Suspense>
+              </TabsContent>
+
+              {/* Staff Onboarding Tab */}
+              <TabsContent value="staff-onboarding" className="mt-0 focus-visible:outline-none focus-visible:ring-0">
+                <Suspense fallback={<TabLoadingSkeleton />}>
+                  <StaffOnboardingTemplatesTab />
                 </Suspense>
               </TabsContent>
 

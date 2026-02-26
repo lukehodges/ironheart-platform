@@ -1,7 +1,7 @@
 "use client"
 
 import { format } from "date-fns"
-import { Mail, Phone, Calendar, ChevronDown } from "lucide-react"
+import { Mail, Phone, Calendar, ChevronDown, User } from "lucide-react"
 import { toast } from "sonner"
 import { api } from "@/lib/trpc/react"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
@@ -49,6 +49,21 @@ function formatDate(date: Date | string | null | undefined): string {
   } catch {
     return "--"
   }
+}
+
+function ReportsToLine({ reportsTo }: { reportsTo: string }) {
+  const { data: manager } = api.team.getById.useQuery(
+    { userId: reportsTo },
+    { staleTime: 5 * 60 * 1000 }
+  )
+  if (!manager) return null
+
+  return (
+    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+      <User className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+      <span>Reports to {manager.name}</span>
+    </div>
+  )
 }
 
 // ─── Workload strip ──────────────────────────────────────────────────────────
@@ -145,6 +160,9 @@ export function ProfileHeader({ member, onUpdate }: ProfileHeaderProps) {
                 {member.employeeType.replace("_", " ").toLowerCase()}
               </p>
             )}
+            {(member as any).jobTitle && (
+              <p className="text-sm text-muted-foreground">{(member as any).jobTitle}</p>
+            )}
           </div>
 
           {/* Contact details */}
@@ -166,6 +184,10 @@ export function ProfileHeader({ member, onUpdate }: ProfileHeaderProps) {
               <span>Joined {formatDate(member.createdAt)}</span>
             </div>
           </div>
+
+          {(member as any).reportsTo && (
+            <ReportsToLine reportsTo={(member as any).reportsTo} />
+          )}
 
           {/* Status row + workload */}
           <div className="flex flex-wrap items-center gap-3">
@@ -223,6 +245,24 @@ export function ProfileHeader({ member, onUpdate }: ProfileHeaderProps) {
 
             {/* Workload strip */}
             <WorkloadStrip memberId={member.id} />
+
+            {/* Departments */}
+            {(member as any).departments?.length > 0 && (
+              <>
+                <div className="h-5 w-px bg-border hidden sm:block" aria-hidden="true" />
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {(member as any).departments.map((dept: any) => (
+                    <Badge
+                      key={dept.departmentId}
+                      variant={dept.isPrimary ? "default" : "outline"}
+                      className="text-[10px]"
+                    >
+                      {dept.departmentName}
+                    </Badge>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>

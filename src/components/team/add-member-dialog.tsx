@@ -35,6 +35,8 @@ interface FormState {
   email: string
   phone: string
   employeeType: EmployeeType | ""
+  jobTitle: string
+  departmentId: string
 }
 
 interface FormErrors {
@@ -49,6 +51,8 @@ const initialForm: FormState = {
   email: "",
   phone: "",
   employeeType: "",
+  jobTitle: "",
+  departmentId: "",
 }
 
 const EMPLOYEE_TYPE_LABELS: Record<EmployeeType, string> = {
@@ -67,6 +71,9 @@ export function AddMemberDialog({
   const [submitted, setSubmitted] = useState(false)
 
   const utils = api.useUtils()
+
+  const { data: deptData } = api.team.departments.list.useQuery(undefined, { staleTime: 60_000 })
+  const departmentOptions = deptData ?? []
 
   // team.create is the mutation to create a new staff member
   const createMutation = api.team.create.useMutation({
@@ -126,6 +133,8 @@ export function AddMemberDialog({
       email: form.email.trim(),
       phone: form.phone.trim() || undefined,
       employeeType: form.employeeType ? (form.employeeType as EmployeeType) : undefined,
+      jobTitle: form.jobTitle.trim() || undefined,
+      departmentId: form.departmentId || undefined,
     })
   }
 
@@ -244,6 +253,37 @@ export function AddMemberDialog({
                   {(Object.keys(EMPLOYEE_TYPE_LABELS) as EmployeeType[]).map((type) => (
                     <SelectItem key={type} value={type}>
                       {EMPLOYEE_TYPE_LABELS[type]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Job title */}
+            <div className="space-y-1.5">
+              <Label htmlFor="member-job-title">Job title</Label>
+              <Input
+                id="member-job-title"
+                placeholder="e.g. Senior Engineer"
+                value={form.jobTitle}
+                onChange={(e) => handleChange("jobTitle", e.target.value)}
+              />
+            </div>
+
+            {/* Department */}
+            <div className="space-y-1.5">
+              <Label htmlFor="member-department">Department</Label>
+              <Select
+                value={form.departmentId}
+                onValueChange={(val) => handleChange("departmentId", val)}
+              >
+                <SelectTrigger id="member-department" aria-label="Department">
+                  <SelectValue placeholder="Select department..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {departmentOptions.map((dept) => (
+                    <SelectItem key={dept.id} value={dept.id}>
+                      {dept.name}
                     </SelectItem>
                   ))}
                 </SelectContent>

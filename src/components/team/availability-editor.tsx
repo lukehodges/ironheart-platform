@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
 import { Plus, Trash2, Save } from "lucide-react"
 import { toast } from "sonner"
 import { api } from "@/lib/trpc/react"
@@ -67,20 +67,49 @@ export function AvailabilityEditor({ memberId, onSave }: AvailabilityEditorProps
   )
 
   // Grid state: map from "dayOfWeek-startTime" → enabled
-  const [grid, setGrid] = useState<Map<string, boolean>>(() => {
+  const [grid, setGrid] = useState<Map<string, boolean>>(new Map())
+
+  // Sync grid state when availability data loads or changes
+  useEffect(() => {
+    if (!availabilityData) return
     const m = new Map<string, boolean>()
-    if (availabilityData) {
-      for (const entry of availabilityData) {
-        if (entry.type === "RECURRING") {
-          m.set(getCellKey(entry.dayOfWeek, entry.startTime), true)
-        }
+    for (const entry of availabilityData) {
+      if (entry.type === "RECURRING") {
+        m.set(getCellKey(entry.dayOfWeek, entry.startTime), true)
       }
     }
-    return m
-  })
+    setGrid(m)
+  }, [availabilityData])
 
   // Specific date overrides
   const [overrides, setOverrides] = useState<SpecificOverride[]>([])
+
+  // Sync overrides from loaded availability data
+  useEffect(() => {
+    if (!availabilityData) return
+    const loaded: SpecificOverride[] = []
+    for (const entry of availabilityData) {
+      if (entry.type === "SPECIFIC") {
+        loaded.push({
+          id: crypto.randomUUID(),
+          specificDate: entry.specificDate,
+          status: "AVAILABLE",
+          startTime: entry.startTime,
+          endTime: entry.endTime,
+          isAllDay: false,
+        })
+      } else if (entry.type === "BLOCKED") {
+        loaded.push({
+          id: crypto.randomUUID(),
+          specificDate: entry.specificDate,
+          status: "BLOCKED",
+          isAllDay: entry.isAllDay,
+          reason: entry.reason,
+        })
+      }
+    }
+    if (loaded.length > 0) setOverrides(loaded)
+  }, [availabilityData])
 
   const setAvailabilityMutation = api.team.setAvailability.useMutation({
     onSuccess: () => {

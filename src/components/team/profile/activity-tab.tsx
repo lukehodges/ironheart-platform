@@ -1,15 +1,19 @@
 "use client"
 
+import { useState } from "react"
 import { format } from "date-fns"
 import { api } from "@/lib/trpc/react"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { EmptyState } from "@/components/ui/empty-state"
 import { ScrollText } from "lucide-react"
 
 export function ActivityTab({ memberId }: { memberId: string }) {
+  const [cursor, setCursor] = useState<string | undefined>(undefined)
+
   const { data, isLoading, isError } = api.audit.list.useQuery(
-    { userId: memberId, limit: 50 },
+    { userId: memberId, limit: 50, cursor },
     {
       retry: false,
     }
@@ -82,6 +86,21 @@ export function ActivityTab({ memberId }: { memberId: string }) {
             </span>
           </div>
         ))}
+        {data?.hasMore && (
+          <div className="flex justify-center pt-2">
+            <Button
+              size="sm"
+              variant="outline"
+              className="text-xs"
+              onClick={() => {
+                const last = entries[entries.length - 1]
+                if (last) setCursor(last.id)
+              }}
+            >
+              Load more
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   )
