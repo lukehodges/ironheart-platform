@@ -259,3 +259,127 @@ describe('resourcePoolRepository.assignments', () => {
     expect(result.hasMore).toBe(false)
   })
 })
+
+// ---------------------------------------------------------------------------
+// Skill Definitions (Catalog)
+// ---------------------------------------------------------------------------
+
+describe('resourcePoolRepository.skillDefinitions', () => {
+  it('createSkillDefinition inserts and returns the record', async () => {
+    const def = {
+      id: 'def-1', tenantId: TENANT, slug: 'pipe-fitting', name: 'Pipe Fitting',
+      skillType: 'QUALIFICATION', category: 'Trade Skills', description: null,
+      requiresVerification: false, requiresExpiry: false, isActive: true,
+      metadata: null, createdAt: new Date(), updatedAt: new Date(),
+    }
+    setInsertResult([def])
+
+    const result = await resourcePoolRepository.createSkillDefinition(TENANT, {
+      name: 'Pipe Fitting', skillType: 'QUALIFICATION', category: 'Trade Skills',
+    })
+
+    expect(result).toEqual(def)
+  })
+
+  it('createSkillDefinition auto-generates slug from name', async () => {
+    const def = {
+      id: 'def-2', tenantId: TENANT, slug: 'first-aid-certificate', name: 'First Aid Certificate',
+      skillType: 'CERTIFICATION', category: 'Safety', description: null,
+      requiresVerification: true, requiresExpiry: true, isActive: true,
+      metadata: null, createdAt: new Date(), updatedAt: new Date(),
+    }
+    setInsertResult([def])
+
+    const result = await resourcePoolRepository.createSkillDefinition(TENANT, {
+      name: 'First Aid Certificate', skillType: 'CERTIFICATION', category: 'Safety',
+      requiresVerification: true, requiresExpiry: true,
+    })
+
+    expect(result.slug).toBe('first-aid-certificate')
+  })
+
+  it('listSkillDefinitions returns definitions for a tenant', async () => {
+    const defs = [
+      { id: 'def-1', slug: 'pipe-fitting', name: 'Pipe Fitting' },
+      { id: 'def-2', slug: 'first-aid', name: 'First Aid' },
+    ]
+    setSelectQueue(defs)
+
+    const result = await resourcePoolRepository.listSkillDefinitions(TENANT)
+    expect(result).toHaveLength(2)
+  })
+
+  it('listSkillDefinitions filters by skillType', async () => {
+    setSelectQueue([{ id: 'def-1', skillType: 'CERTIFICATION' }])
+
+    const result = await resourcePoolRepository.listSkillDefinitions(TENANT, { skillType: 'CERTIFICATION' })
+    expect(result).toHaveLength(1)
+  })
+
+  it('listSkillDefinitions filters by isActive', async () => {
+    setSelectQueue([{ id: 'def-1', isActive: true }])
+
+    const result = await resourcePoolRepository.listSkillDefinitions(TENANT, { isActive: true })
+    expect(result).toHaveLength(1)
+  })
+
+  it('listSkillDefinitions filters by search term', async () => {
+    setSelectQueue([{ id: 'def-1', name: 'Pipe Fitting' }])
+
+    const result = await resourcePoolRepository.listSkillDefinitions(TENANT, { search: 'pipe' })
+    expect(result).toHaveLength(1)
+  })
+
+  it('getSkillDefinitionById returns the definition or null', async () => {
+    setSelectQueue([{ id: 'def-1', slug: 'pipe-fitting' }])
+
+    const result = await resourcePoolRepository.getSkillDefinitionById(TENANT, 'def-1')
+    expect(result).not.toBeNull()
+    expect(result!.slug).toBe('pipe-fitting')
+  })
+
+  it('getSkillDefinitionById returns null when not found', async () => {
+    setSelectQueue([])
+
+    const result = await resourcePoolRepository.getSkillDefinitionById(TENANT, 'nonexistent')
+    expect(result).toBeNull()
+  })
+
+  it('updateSkillDefinition updates and returns the record', async () => {
+    setUpdateResult([{ id: 'def-1', name: 'Updated Name', isActive: true }])
+
+    const result = await resourcePoolRepository.updateSkillDefinition(TENANT, 'def-1', { name: 'Updated Name' })
+    expect(result.name).toBe('Updated Name')
+  })
+
+  it('updateSkillDefinition throws NotFoundError when missing', async () => {
+    setUpdateResult([])
+
+    await expect(
+      resourcePoolRepository.updateSkillDefinition(TENANT, 'nonexistent', { name: 'X' })
+    ).rejects.toThrow('not found')
+  })
+
+  it('softDeleteSkillDefinition sets isActive to false', async () => {
+    setUpdateResult([{ id: 'def-1', isActive: false }])
+
+    const result = await resourcePoolRepository.softDeleteSkillDefinition(TENANT, 'def-1')
+    expect(result.isActive).toBe(false)
+  })
+
+  it('upsertSkillDefinitionBySlug is idempotent', async () => {
+    // First call inserts
+    setInsertResult([{ id: 'def-1', slug: 'haircut', name: 'Haircut' }])
+    const first = await resourcePoolRepository.upsertSkillDefinitionBySlug(TENANT, {
+      slug: 'haircut', name: 'Haircut', skillType: 'SERVICE',
+    })
+    expect(first).not.toBeNull()
+
+    // Second call with conflict returns null (no-op)
+    setInsertResult([])
+    const second = await resourcePoolRepository.upsertSkillDefinitionBySlug(TENANT, {
+      slug: 'haircut', name: 'Haircut', skillType: 'SERVICE',
+    })
+    expect(second).toBeNull()
+  })
+})
