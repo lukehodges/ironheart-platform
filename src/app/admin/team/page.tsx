@@ -152,15 +152,10 @@ export default function TeamPage() {
   const { data, isLoading, refetch } = api.team.list.useQuery({
     limit: 100,
     status: statusFilter === "ALL" ? undefined : statusFilter,
+    employeeType: employeeTypeFilter === "ALL" ? undefined : employeeTypeFilter,
   })
 
   const members = data?.rows ?? []
-
-  // Client-side filter by employee type (since the router doesn't expose it as a query param)
-  const filteredMembers = members.filter((m) => {
-    if (employeeTypeFilter === "ALL") return true
-    return m.employeeType === employeeTypeFilter
-  })
 
   // Active members for the availability bar
   const activeMembers = members.filter((m) => m.status === "ACTIVE")
@@ -233,7 +228,7 @@ export default function TeamPage() {
       {!isLoading && (
         <div className="flex items-center gap-2">
           <Badge variant="secondary" className="text-xs">
-            {filteredMembers.length} member{filteredMembers.length !== 1 ? "s" : ""}
+            {members.length} member{members.length !== 1 ? "s" : ""}
           </Badge>
           {(statusFilter !== "ALL" || employeeTypeFilter !== "ALL") && (
             <button
@@ -253,7 +248,7 @@ export default function TeamPage() {
       {/* Content */}
       {isLoading ? (
         <TeamGridSkeleton />
-      ) : filteredMembers.length === 0 ? (
+      ) : members.length === 0 ? (
         <EmptyState
           variant="users"
           title={
@@ -289,7 +284,7 @@ export default function TeamPage() {
           role="list"
           aria-label="Team members"
         >
-          {filteredMembers.map((member) => (
+          {members.map((member) => (
             <div key={member.id} role="listitem">
               <TeamMemberCard
                 member={member}
