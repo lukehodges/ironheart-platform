@@ -383,3 +383,82 @@ describe('resourcePoolRepository.skillDefinitions', () => {
     expect(second).toBeNull()
   })
 })
+
+// ---------------------------------------------------------------------------
+// Capacity Type Definitions (Registry)
+// ---------------------------------------------------------------------------
+
+describe('resourcePoolRepository.capacityTypeDefinitions', () => {
+  it('upsertCapacityTypeDefinition inserts and returns the record', async () => {
+    const capType = {
+      id: 'ct-1', tenantId: TENANT, slug: 'bookings', name: 'Bookings',
+      description: null, unit: 'COUNT', defaultMaxDaily: 8,
+      defaultMaxWeekly: null, defaultMaxConcurrent: null,
+      registeredByModule: 'booking', isActive: true,
+      createdAt: new Date(), updatedAt: new Date(),
+    }
+    setInsertResult([capType])
+
+    const result = await resourcePoolRepository.upsertCapacityTypeDefinition(TENANT, 'booking', {
+      slug: 'bookings', name: 'Bookings', defaultMaxDaily: 8,
+    })
+
+    expect(result).toEqual(capType)
+  })
+
+  it('upsertCapacityTypeDefinition is idempotent', async () => {
+    setInsertResult([])
+
+    const result = await resourcePoolRepository.upsertCapacityTypeDefinition(TENANT, 'booking', {
+      slug: 'bookings', name: 'Bookings', defaultMaxDaily: 8,
+    })
+
+    expect(result).toBeNull()
+  })
+
+  it('listCapacityTypeDefinitions returns all for tenant', async () => {
+    setSelectQueue([
+      { id: 'ct-1', slug: 'bookings' },
+      { id: 'ct-2', slug: 'projects' },
+    ])
+
+    const result = await resourcePoolRepository.listCapacityTypeDefinitions(TENANT)
+    expect(result).toHaveLength(2)
+  })
+
+  it('listCapacityTypeDefinitions filters by isActive', async () => {
+    setSelectQueue([{ id: 'ct-1', slug: 'bookings', isActive: true }])
+
+    const result = await resourcePoolRepository.listCapacityTypeDefinitions(TENANT, true)
+    expect(result).toHaveLength(1)
+  })
+
+  it('getCapacityTypeDefinitionById returns the record or null', async () => {
+    setSelectQueue([{ id: 'ct-1', slug: 'bookings' }])
+
+    const result = await resourcePoolRepository.getCapacityTypeDefinitionById(TENANT, 'ct-1')
+    expect(result).not.toBeNull()
+  })
+
+  it('getCapacityTypeDefinitionById returns null when not found', async () => {
+    setSelectQueue([])
+
+    const result = await resourcePoolRepository.getCapacityTypeDefinitionById(TENANT, 'nonexistent')
+    expect(result).toBeNull()
+  })
+
+  it('updateCapacityTypeDefinition updates defaults', async () => {
+    setUpdateResult([{ id: 'ct-1', defaultMaxDaily: 10 }])
+
+    const result = await resourcePoolRepository.updateCapacityTypeDefinition(TENANT, 'ct-1', { defaultMaxDaily: 10 })
+    expect(result.defaultMaxDaily).toBe(10)
+  })
+
+  it('updateCapacityTypeDefinition throws NotFoundError when missing', async () => {
+    setUpdateResult([])
+
+    await expect(
+      resourcePoolRepository.updateCapacityTypeDefinition(TENANT, 'nonexistent', { defaultMaxDaily: 5 })
+    ).rejects.toThrow('not found')
+  })
+})
