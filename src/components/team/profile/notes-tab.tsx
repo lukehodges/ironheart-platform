@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { format } from "date-fns"
 import { Pin, PinOff, Pencil, Trash2, Plus } from "lucide-react"
 import { toast } from "sonner"
@@ -28,6 +28,7 @@ export function NotesTab({ memberId }: { memberId: string }) {
   const [editContent, setEditContent] = useState("")
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [cursor, setCursor] = useState<string | undefined>(undefined)
+  const [allNotes, setAllNotes] = useState<Array<{ id: string; authorName: string; content: string; isPinned: boolean; createdAt: Date }>>([])
 
   const utils = api.useUtils()
 
@@ -36,6 +37,21 @@ export function NotesTab({ memberId }: { memberId: string }) {
     limit: 20,
     cursor,
   })
+
+  useEffect(() => {
+    if (!data?.rows) return
+    if (cursor === undefined) {
+      // Initial load or filter reset — replace
+      setAllNotes(data.rows)
+    } else {
+      // Pagination — append new rows that aren't already present
+      setAllNotes((prev) => {
+        const existingIds = new Set(prev.map((n) => n.id))
+        const newRows = data.rows.filter((n) => !existingIds.has(n.id))
+        return [...prev, ...newRows]
+      })
+    }
+  }, [data?.rows, cursor])
 
   const createMutation = api.team.notes.create.useMutation({
     onSuccess: () => {
@@ -102,7 +118,7 @@ export function NotesTab({ memberId }: { memberId: string }) {
     )
   }
 
-  const notes = data?.rows ?? []
+  const notes = allNotes
   const hasMore = data?.hasMore ?? false
   const pinnedNotes = notes.filter((n) => n.isPinned)
   const unpinnedNotes = notes.filter((n) => !n.isPinned)

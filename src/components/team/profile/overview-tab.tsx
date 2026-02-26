@@ -1,6 +1,7 @@
 "use client"
 
 import { lazy, Suspense, useState } from "react"
+import Link from "next/link"
 import { format } from "date-fns"
 import { Pencil, Building2, User, MapPin, AlertTriangle, DollarSign } from "lucide-react"
 import { toast } from "sonner"
@@ -31,6 +32,10 @@ import type { StaffMember, EmployeeType } from "@/modules/team/team.types"
 
 const PayRatesDialog = lazy(() =>
   import("@/components/team/profile/pay-rates-dialog").then((m) => ({ default: m.PayRatesDialog }))
+)
+
+const CustomFieldsEditor = lazy(() =>
+  import("@/components/team/profile/custom-fields-editor").then((m) => ({ default: m.CustomFieldsEditor }))
 )
 
 interface OverviewTabProps {
@@ -71,7 +76,7 @@ const EMPLOYEE_TYPES: { value: EmployeeType; label: string }[] = [
 ]
 
 function EmergencyContactSection({ member }: { member: StaffMember }) {
-  const hasContact = (member as any).emergencyContactName || (member as any).emergencyContactPhone
+  const hasContact = member.emergencyContactName || member.emergencyContactPhone
   if (!hasContact) return null
 
   return (
@@ -81,14 +86,14 @@ function EmergencyContactSection({ member }: { member: StaffMember }) {
         Emergency Contact
       </h4>
       <div className="rounded-lg border border-border divide-y divide-border px-4">
-        {(member as any).emergencyContactName && (
-          <DetailRow label="Name" value={(member as any).emergencyContactName} />
+        {member.emergencyContactName && (
+          <DetailRow label="Name" value={member.emergencyContactName} />
         )}
-        {(member as any).emergencyContactPhone && (
-          <DetailRow label="Phone" value={(member as any).emergencyContactPhone} />
+        {member.emergencyContactPhone && (
+          <DetailRow label="Phone" value={member.emergencyContactPhone} />
         )}
-        {(member as any).emergencyContactRelation && (
-          <DetailRow label="Relationship" value={(member as any).emergencyContactRelation} />
+        {member.emergencyContactRelation && (
+          <DetailRow label="Relationship" value={member.emergencyContactRelation} />
         )}
       </div>
     </div>
@@ -96,8 +101,7 @@ function EmergencyContactSection({ member }: { member: StaffMember }) {
 }
 
 function AddressSection({ member }: { member: StaffMember }) {
-  const m = member as any
-  const parts = [m.addressLine1, m.addressLine2, m.addressCity, m.addressPostcode, m.addressCountry].filter(Boolean)
+  const parts = [member.addressLine1, member.addressLine2, member.addressCity, member.addressPostcode, member.addressCountry].filter(Boolean)
   if (parts.length === 0) return null
 
   return (
@@ -114,7 +118,7 @@ function AddressSection({ member }: { member: StaffMember }) {
 }
 
 function DepartmentBadges({ member }: { member: StaffMember }) {
-  const departments = (member as any).departments ?? []
+  const departments = member.departments ?? []
   if (departments.length === 0) return null
 
   return (
@@ -124,7 +128,7 @@ function DepartmentBadges({ member }: { member: StaffMember }) {
         Departments
       </h4>
       <div className="flex flex-wrap gap-2">
-        {departments.map((dept: any) => (
+        {departments.map((dept) => (
           <Badge
             key={dept.departmentId}
             variant={dept.isPrimary ? "default" : "secondary"}
@@ -154,8 +158,8 @@ function ReportingLine({ reportsTo }: { reportsTo: string | null }) {
       </h4>
       <div className="rounded-lg border border-border px-4 py-3">
         <p className="text-sm text-foreground">{manager.name}</p>
-        {(manager as any).jobTitle && (
-          <p className="text-xs text-muted-foreground">{(manager as any).jobTitle}</p>
+        {manager.jobTitle && (
+          <p className="text-xs text-muted-foreground">{manager.jobTitle}</p>
         )}
       </div>
     </div>
@@ -221,6 +225,7 @@ function OnboardingProgressSection({ memberId }: { memberId: string }) {
 }
 
 function CustomFieldsSection({ memberId }: { memberId: string }) {
+  const [editOpen, setEditOpen] = useState(false)
   const { data: values, isLoading } = api.team.customFields.getValues.useQuery(
     { userId: memberId },
     { staleTime: 60_000 }
@@ -238,6 +243,14 @@ function CustomFieldsSection({ memberId }: { memberId: string }) {
 
   return (
     <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-medium">Custom Fields</h3>
+        <Button size="sm" variant="ghost" className="text-xs h-7" onClick={() => setEditOpen(true)}>
+          <Pencil className="h-3.5 w-3.5" />
+          Edit
+        </Button>
+      </div>
+
       {Array.from(grouped.entries()).map(([group, fields]) => (
         <div key={group} className="space-y-2">
           <h4 className="text-sm font-medium">{group}</h4>
@@ -252,6 +265,16 @@ function CustomFieldsSection({ memberId }: { memberId: string }) {
           </div>
         </div>
       ))}
+
+      {editOpen && (
+        <Suspense fallback={<Skeleton className="h-32 w-full" />}>
+          <CustomFieldsEditor
+            memberId={memberId}
+            open={editOpen}
+            onOpenChange={setEditOpen}
+          />
+        </Suspense>
+      )}
     </div>
   )
 }
@@ -277,7 +300,7 @@ export function OverviewTab({ member, onUpdate }: OverviewTabProps) {
       <div className="rounded-lg border border-border divide-y divide-border px-4">
         <DetailRow label="Email" value={member.email} />
         <DetailRow label="Phone" value={member.phone ?? "\u2014"} />
-        <DetailRow label="Job title" value={(member as any).jobTitle ?? "\u2014"} />
+        <DetailRow label="Job title" value={member.jobTitle ?? "\u2014"} />
         <DetailRow
           label="Employee type"
           value={member.employeeType ? member.employeeType.replace("_", " ").toLowerCase() : "\u2014"}
@@ -286,11 +309,45 @@ export function OverviewTab({ member, onUpdate }: OverviewTabProps) {
         <DetailRow label="Joined" value={formatDate(member.createdAt)} />
       </div>
 
+      {/* Bio */}
+      {member.bio && (
+        <div className="space-y-1">
+          <Label className="text-xs text-muted-foreground">Bio</Label>
+          <p className="text-sm text-foreground whitespace-pre-wrap">{member.bio}</p>
+        </div>
+      )}
+
       {/* Department badges */}
-      <DepartmentBadges member={member} />
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <h4 className="text-sm font-medium flex items-center gap-2">
+            <Building2 className="h-4 w-4" />
+            Departments
+          </h4>
+          <Button size="sm" variant="ghost" className="text-xs h-7" asChild>
+            <Link href="/admin/team/departments">Edit</Link>
+          </Button>
+        </div>
+        {member.departments?.length > 0 ? (
+          <div className="flex flex-wrap gap-2">
+            {member.departments.map((dept) => (
+              <Badge
+                key={dept.departmentId}
+                variant={dept.isPrimary ? "default" : "secondary"}
+                className="text-xs"
+              >
+                {dept.departmentName}
+                {dept.isPrimary && <span className="ml-1 opacity-70">primary</span>}
+              </Badge>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">Not assigned to any department.</p>
+        )}
+      </div>
 
       {/* Reporting line */}
-      <ReportingLine reportsTo={(member as any).reportsTo ?? null} />
+      <ReportingLine reportsTo={member.reportsTo ?? null} />
 
       {/* Pay rate with history link */}
       <PayRateSection memberId={member.id} currentRate={member.hourlyRate ?? null} />
@@ -340,17 +397,17 @@ function EditProfileDialog({
   const [hourlyRate, setHourlyRate] = useState(
     member.hourlyRate != null ? String(member.hourlyRate) : ""
   )
-  const [jobTitle, setJobTitle] = useState((member as any).jobTitle ?? "")
-  const [bio, setBio] = useState((member as any).bio ?? "")
-  const [reportsTo, setReportsTo] = useState<string>((member as any).reportsTo ?? "")
-  const [emergencyContactName, setEmergencyContactName] = useState((member as any).emergencyContactName ?? "")
-  const [emergencyContactPhone, setEmergencyContactPhone] = useState((member as any).emergencyContactPhone ?? "")
-  const [emergencyContactRelation, setEmergencyContactRelation] = useState((member as any).emergencyContactRelation ?? "")
-  const [addressLine1, setAddressLine1] = useState((member as any).addressLine1 ?? "")
-  const [addressLine2, setAddressLine2] = useState((member as any).addressLine2 ?? "")
-  const [addressCity, setAddressCity] = useState((member as any).addressCity ?? "")
-  const [addressPostcode, setAddressPostcode] = useState((member as any).addressPostcode ?? "")
-  const [addressCountry, setAddressCountry] = useState((member as any).addressCountry ?? "")
+  const [jobTitle, setJobTitle] = useState(member.jobTitle ?? "")
+  const [bio, setBio] = useState(member.bio ?? "")
+  const [reportsTo, setReportsTo] = useState<string>(member.reportsTo ?? "")
+  const [emergencyContactName, setEmergencyContactName] = useState(member.emergencyContactName ?? "")
+  const [emergencyContactPhone, setEmergencyContactPhone] = useState(member.emergencyContactPhone ?? "")
+  const [emergencyContactRelation, setEmergencyContactRelation] = useState(member.emergencyContactRelation ?? "")
+  const [addressLine1, setAddressLine1] = useState(member.addressLine1 ?? "")
+  const [addressLine2, setAddressLine2] = useState(member.addressLine2 ?? "")
+  const [addressCity, setAddressCity] = useState(member.addressCity ?? "")
+  const [addressPostcode, setAddressPostcode] = useState(member.addressPostcode ?? "")
+  const [addressCountry, setAddressCountry] = useState(member.addressCountry ?? "")
 
   const updateMutation = api.team.update.useMutation({
     onSuccess: () => {

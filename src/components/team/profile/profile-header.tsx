@@ -1,13 +1,24 @@
 "use client"
 
+import { useState } from "react"
 import { format } from "date-fns"
-import { Mail, Phone, Calendar, ChevronDown, User } from "lucide-react"
+import { Mail, Phone, Calendar, ChevronDown, User, UserMinus } from "lucide-react"
 import { toast } from "sonner"
 import { api } from "@/lib/trpc/react"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -119,6 +130,17 @@ function WorkloadStrip({ memberId }: { memberId: string }) {
 
 export function ProfileHeader({ member, onUpdate }: ProfileHeaderProps) {
   const utils = api.useUtils()
+  const [deactivateOpen, setDeactivateOpen] = useState(false)
+
+  const deactivateMutation = api.team.deactivate.useMutation({
+    onSuccess: () => {
+      toast.success("Staff member deactivated")
+      void utils.team.getById.invalidate({ userId: member.id })
+      void utils.team.list.invalidate()
+      onUpdate()
+    },
+    onError: (err) => toast.error(err.message ?? "Failed to deactivate"),
+  })
 
   const updateMutation = api.team.update.useMutation({
     onSuccess: () => {
@@ -160,8 +182,8 @@ export function ProfileHeader({ member, onUpdate }: ProfileHeaderProps) {
                 {member.employeeType.replace("_", " ").toLowerCase()}
               </p>
             )}
-            {(member as any).jobTitle && (
-              <p className="text-sm text-muted-foreground">{(member as any).jobTitle}</p>
+            {member.jobTitle && (
+              <p className="text-sm text-muted-foreground">{member.jobTitle}</p>
             )}
           </div>
 
@@ -185,8 +207,8 @@ export function ProfileHeader({ member, onUpdate }: ProfileHeaderProps) {
             </div>
           </div>
 
-          {(member as any).reportsTo && (
-            <ReportsToLine reportsTo={(member as any).reportsTo} />
+          {member.reportsTo && (
+            <ReportsToLine reportsTo={member.reportsTo} />
           )}
 
           {/* Status row + workload */}
@@ -240,6 +262,18 @@ export function ProfileHeader({ member, onUpdate }: ProfileHeaderProps) {
               </DropdownMenuContent>
             </DropdownMenu>
 
+            {member.status === "ACTIVE" && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 text-xs gap-1 text-destructive hover:text-destructive"
+                onClick={() => setDeactivateOpen(true)}
+              >
+                <UserMinus className="h-3 w-3" aria-hidden="true" />
+                Deactivate
+              </Button>
+            )}
+
             {/* Divider */}
             <div className="h-5 w-px bg-border hidden sm:block" aria-hidden="true" />
 
@@ -247,11 +281,11 @@ export function ProfileHeader({ member, onUpdate }: ProfileHeaderProps) {
             <WorkloadStrip memberId={member.id} />
 
             {/* Departments */}
-            {(member as any).departments?.length > 0 && (
+            {member.departments?.length > 0 && (
               <>
                 <div className="h-5 w-px bg-border hidden sm:block" aria-hidden="true" />
                 <div className="flex flex-wrap items-center gap-1.5">
-                  {(member as any).departments.map((dept: any) => (
+                  {member.departments.map((dept) => (
                     <Badge
                       key={dept.departmentId}
                       variant={dept.isPrimary ? "default" : "outline"}
@@ -266,6 +300,26 @@ export function ProfileHeader({ member, onUpdate }: ProfileHeaderProps) {
           </div>
         </div>
       </div>
+
+      <AlertDialog open={deactivateOpen} onOpenChange={setDeactivateOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Deactivate staff member</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to deactivate {member.name}? They will lose access and be removed from schedules.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deactivateMutation.mutate({ userId: member.id })}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Deactivate
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
