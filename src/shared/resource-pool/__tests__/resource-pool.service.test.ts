@@ -16,6 +16,24 @@ const mockRepo = vi.hoisted(() => ({
   cancelAssignment: vi.fn(),
   listAssignments: vi.fn(),
   getStaffWorkloadForDate: vi.fn(),
+  // Skill catalog methods
+  listSkillDefinitions: vi.fn(),
+  getSkillDefinitionById: vi.fn(),
+  createSkillDefinition: vi.fn(),
+  updateSkillDefinition: vi.fn(),
+  softDeleteSkillDefinition: vi.fn(),
+  upsertSkillDefinitionBySlug: vi.fn(),
+  assignSkillFromCatalog: vi.fn(),
+  unassignSkillFromCatalog: vi.fn(),
+  listSkillsForUser: vi.fn(),
+  // Capacity type methods
+  listCapacityTypeDefinitions: vi.fn(),
+  getCapacityTypeDefinitionById: vi.fn(),
+  upsertCapacityTypeDefinition: vi.fn(),
+  updateCapacityTypeDefinition: vi.fn(),
+  deactivateCapacityTypeByModule: vi.fn(),
+  reactivateCapacityTypeByModule: vi.fn(),
+  getSkillDefinitionBySlug: vi.fn(),
 }))
 
 vi.mock('../resource-pool.repository', () => ({
@@ -169,5 +187,94 @@ describe('resourcePoolService.getStaffWorkload', () => {
     expect(result.capacities).toEqual([
       { capacityType: 'bookings', used: 5, max: 8, available: 3, isOver: false },
     ])
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Skill Catalog (service delegation)
+// ---------------------------------------------------------------------------
+
+describe('resourcePoolService.skillCatalog', () => {
+  it('createSkillDefinition delegates to repo', async () => {
+    const def = { id: 'def-1', name: 'Pipe Fitting', slug: 'pipe-fitting' }
+    mockRepo.createSkillDefinition.mockResolvedValue(def)
+
+    const result = await resourcePoolService.createSkillDefinition(TENANT, {
+      name: 'Pipe Fitting', skillType: 'QUALIFICATION',
+    })
+
+    expect(result).toEqual(def)
+    expect(mockRepo.createSkillDefinition).toHaveBeenCalledWith(TENANT, {
+      name: 'Pipe Fitting', skillType: 'QUALIFICATION',
+    })
+  })
+
+  it('listSkillDefinitions delegates to repo with filter', async () => {
+    mockRepo.listSkillDefinitions.mockResolvedValue([{ id: 'def-1' }])
+
+    const result = await resourcePoolService.listSkillDefinitions(TENANT, { skillType: 'SERVICE' })
+
+    expect(result).toHaveLength(1)
+    expect(mockRepo.listSkillDefinitions).toHaveBeenCalledWith(TENANT, { skillType: 'SERVICE' })
+  })
+
+  it('softDeleteSkillDefinition delegates to repo', async () => {
+    mockRepo.softDeleteSkillDefinition.mockResolvedValue({ id: 'def-1', isActive: false })
+
+    const result = await resourcePoolService.softDeleteSkillDefinition(TENANT, 'def-1')
+    expect(result.isActive).toBe(false)
+  })
+
+  it('assignSkillFromCatalog delegates to repo', async () => {
+    const skill = { id: 'rs-1', userId: USER, skillDefinitionId: 'def-1' }
+    mockRepo.assignSkillFromCatalog.mockResolvedValue(skill)
+
+    const result = await resourcePoolService.assignSkillFromCatalog(TENANT, USER, 'def-1', {
+      proficiency: 'EXPERT',
+    })
+
+    expect(result).toEqual(skill)
+    expect(mockRepo.assignSkillFromCatalog).toHaveBeenCalledWith(TENANT, USER, 'def-1', {
+      proficiency: 'EXPERT',
+    })
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Module Integration
+// ---------------------------------------------------------------------------
+
+describe('resourcePoolService.moduleIntegration', () => {
+  it('registerModuleCapacity reactivates and upserts', async () => {
+    mockRepo.reactivateCapacityTypeByModule.mockResolvedValue(undefined)
+    mockRepo.upsertCapacityTypeDefinition.mockResolvedValue({ id: 'ct-1' })
+
+    await resourcePoolService.registerModuleCapacity(TENANT, 'booking', {
+      slug: 'bookings', name: 'Bookings', unit: 'COUNT',
+      defaultMaxDaily: 8, defaultMaxWeekly: null, defaultMaxConcurrent: null,
+    })
+
+    expect(mockRepo.reactivateCapacityTypeByModule).toHaveBeenCalledWith(TENANT, 'booking')
+    expect(mockRepo.upsertCapacityTypeDefinition).toHaveBeenCalledWith(TENANT, 'booking', expect.objectContaining({
+      slug: 'bookings',
+    }))
+  })
+
+  it('deactivateModuleCapacity delegates to repo', async () => {
+    mockRepo.deactivateCapacityTypeByModule.mockResolvedValue(undefined)
+
+    await resourcePoolService.deactivateModuleCapacity(TENANT, 'booking')
+    expect(mockRepo.deactivateCapacityTypeByModule).toHaveBeenCalledWith(TENANT, 'booking')
+  })
+
+  it('seedSuggestedSkills calls upsert for each skill', async () => {
+    mockRepo.upsertSkillDefinitionBySlug.mockResolvedValue(null)
+
+    await resourcePoolService.seedSuggestedSkills(TENANT, [
+      { slug: 'haircut', name: 'Haircut', skillType: 'SERVICE' },
+      { slug: 'color', name: 'Color Treatment', skillType: 'SERVICE' },
+    ])
+
+    expect(mockRepo.upsertSkillDefinitionBySlug).toHaveBeenCalledTimes(2)
   })
 })
