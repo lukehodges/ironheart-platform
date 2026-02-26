@@ -225,6 +225,22 @@ export function TeamMemberCard({ member, onClick }: TeamMemberCardProps) {
             {statusInfo.label}
           </Badge>
 
+          {/* Department badges */}
+          {member.departments?.length > 0 && (
+            <div className="flex flex-wrap items-center justify-center gap-1">
+              {member.departments.slice(0, 2).map((d) => (
+                <Badge key={d.departmentId} variant="outline" className="text-[10px]">
+                  {d.departmentName}
+                </Badge>
+              ))}
+              {member.departments.length > 2 && (
+                <span className="text-[10px] text-muted-foreground">
+                  +{member.departments.length - 2}
+                </span>
+              )}
+            </div>
+          )}
+
           <SkillChips memberId={member.id} />
           <CustomFieldChips memberId={member.id} />
         </div>

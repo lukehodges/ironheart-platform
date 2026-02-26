@@ -10,9 +10,11 @@ export const teamManifest: ModuleManifest = {
   routes: [
     { path: '/admin/team', label: 'Team', permission: 'team:read' },
     { path: '/admin/team/[id]', label: 'Staff Profile', permission: 'staff:read' },
+    { path: '/admin/team/departments', label: 'Departments', permission: 'staff:departments:write' },
   ],
   sidebarItems: [
     { title: 'Team', href: '/admin/team', icon: 'UserCheck', section: 'operations', permission: 'team:read' },
+    { title: 'Departments', href: '/admin/team/departments', icon: 'Network', section: 'operations', permission: 'staff:departments:write' },
   ],
   analyticsWidgets: [
     { id: 'staff-utilization', type: 'heatmap', label: 'Staff Utilization', size: '2x2',

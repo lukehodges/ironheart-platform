@@ -1,7 +1,8 @@
 "use client"
 
-import { useState } from "react"
-import { UserPlus, Building2 } from "lucide-react"
+import { useState, useEffect } from "react"
+import Link from "next/link"
+import { UserPlus, Building2, Network, Search } from "lucide-react"
 import { api } from "@/lib/trpc/react"
 import { PageHeader } from "@/components/ui/page-header"
 import { Button } from "@/components/ui/button"
@@ -13,6 +14,8 @@ import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/component
 import { Separator } from "@/components/ui/separator"
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Input } from "@/components/ui/input"
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select"
 import { TeamMemberCard } from "@/components/team/team-member-card"
 import { TeamMemberSheet } from "@/components/team/team-member-sheet"
 import { AddMemberDialog } from "@/components/team/add-member-dialog"
@@ -168,8 +171,8 @@ function DepartmentGroupedView({
   const unassigned: StaffMember[] = []
 
   for (const member of members) {
-    const depts = (member as any).departments ?? []
-    const primary = depts.find((d: any) => d.isPrimary)
+    const depts = member.departments ?? []
+    const primary = depts.find((d) => d.isPrimary)
     if (primary) {
       const arr = grouped.get(primary.departmentName) ?? []
       arr.push(member)
@@ -230,32 +233,79 @@ export default function TeamPage() {
   const [groupByDepartment, setGroupByDepartment] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [bulkMode, setBulkMode] = useState(false)
+  const [search, setSearch] = useState("")
+  const [debouncedSearch, setDebouncedSearch] = useState("")
+  const [departmentId, setDepartmentId] = useState<string | undefined>(undefined)
+  const [cursor, setCursor] = useState<string | undefined>(undefined)
 
-  const { data, isLoading, refetch } = api.team.list.useQuery({
-    limit: 100,
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search)
+      setCursor(undefined) // reset pagination on search change
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [search])
+
+  useEffect(() => {
+    setCursor(undefined)
+  }, [statusFilter, employeeTypeFilter, departmentId])
+
+  const { data, isLoading } = api.team.list.useQuery({
+    limit: 25,
+    search: debouncedSearch || undefined,
+    departmentId,
     status: statusFilter === "ALL" ? undefined : statusFilter,
     employeeType: employeeTypeFilter === "ALL" ? undefined : employeeTypeFilter,
+    cursor,
   })
 
   const members = data?.rows ?? []
 
   const { data: departments } = api.team.departments.list.useQuery(undefined, {
-    enabled: groupByDepartment,
     staleTime: 60_000,
   })
 
+  const utils = api.useUtils()
+
   const bulkUpdateMutation = api.team.update.useMutation({
-    onSuccess: () => {
-      toast.success("Members updated")
-      setSelectedIds(new Set())
-      setBulkMode(false)
-      void refetch()
-    },
     onError: (err) => toast.error(err.message ?? "Failed to update"),
   })
 
+  const [bulkUpdating, setBulkUpdating] = useState(false)
+
+  async function handleBulkStatusChange(status: StaffStatus) {
+    const ids = Array.from(selectedIds)
+    setBulkUpdating(true)
+    try {
+      for (const id of ids) {
+        await bulkUpdateMutation.mutateAsync({ id, status })
+      }
+      toast.success(`Updated ${ids.length} member${ids.length !== 1 ? "s" : ""}`)
+      setSelectedIds(new Set())
+      setBulkMode(false)
+      void utils.team.list.invalidate()
+    } catch {
+      // onError handler already shows toast
+    } finally {
+      setBulkUpdating(false)
+    }
+  }
+
   // Active members for the availability bar
   const activeMembers = members.filter((m) => m.status === "ACTIVE")
+
+  function flattenDepts(depts: typeof departments): Array<{ id: string; name: string }> {
+    if (!depts) return []
+    const result: Array<{ id: string; name: string }> = []
+    function walk(list: typeof depts, prefix = "") {
+      for (const d of list!) {
+        result.push({ id: d.id, name: prefix ? `${prefix} / ${d.name}` : d.name })
+        if (d.children?.length) walk(d.children, prefix ? `${prefix} / ${d.name}` : d.name)
+      }
+    }
+    walk(depts)
+    return result
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -284,6 +334,17 @@ export default function TeamPage() {
 
       {/* Filter row */}
       <div className="space-y-2">
+        {/* Search input */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search staff by name..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+
         {/* Status filters */}
         <div
           className="flex flex-wrap items-center gap-2"
@@ -322,6 +383,12 @@ export default function TeamPage() {
 
         {/* Action row */}
         <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" className="text-xs h-7" asChild>
+            <Link href="/admin/team/departments">
+              <Network className="h-3.5 w-3.5" />
+              Departments
+            </Link>
+          </Button>
           <Button
             size="sm"
             variant={groupByDepartment ? "default" : "outline"}
@@ -331,6 +398,20 @@ export default function TeamPage() {
             <Building2 className="h-3.5 w-3.5" />
             Group by department
           </Button>
+          <Select
+            value={departmentId ?? "ALL"}
+            onValueChange={(v) => setDepartmentId(v === "ALL" ? undefined : v)}
+          >
+            <SelectTrigger className="h-7 w-[180px] text-xs">
+              <SelectValue placeholder="All departments" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All departments</SelectItem>
+              {flattenDepts(departments).map((dept) => (
+                <SelectItem key={dept.id} value={dept.id}>{dept.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Button
             size="sm"
             variant={bulkMode ? "secondary" : "outline"}
@@ -351,13 +432,15 @@ export default function TeamPage() {
           <Badge variant="secondary" className="text-xs">
             {members.length} member{members.length !== 1 ? "s" : ""}
           </Badge>
-          {(statusFilter !== "ALL" || employeeTypeFilter !== "ALL") && (
+          {(statusFilter !== "ALL" || employeeTypeFilter !== "ALL" || departmentId !== undefined || search !== "") && (
             <button
               type="button"
               className="text-xs text-muted-foreground hover:text-foreground underline-offset-2 hover:underline transition-colors"
               onClick={() => {
                 setStatusFilter("ALL")
                 setEmployeeTypeFilter("ALL")
+                setDepartmentId(undefined)
+                setSearch("")
               }}
             >
               Clear filters
@@ -373,27 +456,29 @@ export default function TeamPage() {
         <EmptyState
           variant="users"
           title={
-            statusFilter !== "ALL" || employeeTypeFilter !== "ALL"
+            statusFilter !== "ALL" || employeeTypeFilter !== "ALL" || departmentId !== undefined || search !== ""
               ? "No members match your filters"
               : "No team members yet"
           }
           description={
-            statusFilter !== "ALL" || employeeTypeFilter !== "ALL"
+            statusFilter !== "ALL" || employeeTypeFilter !== "ALL" || departmentId !== undefined || search !== ""
               ? "Try adjusting the filters above."
               : "Add your first team member to get started."
           }
           action={
-            statusFilter === "ALL" && employeeTypeFilter === "ALL"
+            statusFilter === "ALL" && employeeTypeFilter === "ALL" && departmentId === undefined && search === ""
               ? { label: "Add Member", onClick: () => setAddDialogOpen(true) }
               : undefined
           }
           secondaryAction={
-            statusFilter !== "ALL" || employeeTypeFilter !== "ALL"
+            statusFilter !== "ALL" || employeeTypeFilter !== "ALL" || departmentId !== undefined || search !== ""
               ? {
                   label: "Clear filters",
                   onClick: () => {
                     setStatusFilter("ALL")
                     setEmployeeTypeFilter("ALL")
+                    setDepartmentId(undefined)
+                    setSearch("")
                   },
                 }
               : undefined
@@ -458,6 +543,22 @@ export default function TeamPage() {
         )
       )}
 
+      {/* Load more */}
+      {data?.hasMore && (
+        <div className="flex justify-center pt-4">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              const lastMember = members[members.length - 1]
+              if (lastMember) setCursor(lastMember.id)
+            }}
+          >
+            Load more
+          </Button>
+        </div>
+      )}
+
       {/* Bulk actions toolbar */}
       {selectedIds.size > 0 && (
         <div className="sticky bottom-4 z-10 mx-auto w-fit rounded-lg border border-border bg-card shadow-lg px-4 py-2 flex items-center gap-3">
@@ -465,17 +566,15 @@ export default function TeamPage() {
           <Separator orientation="vertical" className="h-5" />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button size="sm" variant="outline" className="text-xs h-7">Change status</Button>
+              <Button size="sm" variant="outline" className="text-xs h-7" disabled={bulkUpdating}>
+                {bulkUpdating ? "Updating..." : "Change status"}
+              </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent>
               {(["ACTIVE", "INACTIVE", "SUSPENDED"] as const).map((s) => (
                 <DropdownMenuItem
                   key={s}
-                  onClick={() => {
-                    for (const id of selectedIds) {
-                      bulkUpdateMutation.mutate({ id, status: s })
-                    }
-                  }}
+                  onClick={() => void handleBulkStatusChange(s)}
                 >
                   {s.charAt(0) + s.slice(1).toLowerCase()}
                 </DropdownMenuItem>
@@ -503,7 +602,7 @@ export default function TeamPage() {
       <AddMemberDialog
         open={addDialogOpen}
         onOpenChange={setAddDialogOpen}
-        onSuccess={() => void refetch()}
+        onSuccess={() => void utils.team.list.invalidate()}
       />
     </div>
   )

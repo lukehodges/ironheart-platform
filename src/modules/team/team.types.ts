@@ -28,6 +28,19 @@ export interface StaffMember {
   jobTitle: string | null
   bio: string | null
   reportsTo: string | null
+  emergencyContactName: string | null
+  emergencyContactPhone: string | null
+  emergencyContactRelation: string | null
+  addressLine1: string | null
+  addressLine2: string | null
+  addressCity: string | null
+  addressPostcode: string | null
+  addressCountry: string | null
+  dateOfBirth: Date | null
+  taxId: string | null
+  dayRate: number | null
+  mileageRate: number | null
+  startDate: Date | null
   departments: StaffDepartmentMembership[]
   createdAt: Date
   updatedAt: Date

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { ChevronRight, Plus, Pencil, Archive } from "lucide-react"
+import { ChevronRight, Plus, Pencil, Archive, Users } from "lucide-react"
 import { toast } from "sonner"
 import { api } from "@/lib/trpc/react"
 import { Button } from "@/components/ui/button"
@@ -13,6 +13,17 @@ import {
   CollapsibleTrigger,
   CollapsibleContent,
 } from "@/components/ui/collapsible"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { DepartmentMembersDialog } from "./department-members-dialog"
 import type { Department } from "@/modules/team/team.types"
 
 interface DepartmentTreeProps {
@@ -26,12 +37,14 @@ function DepartmentTreeNode({
   onEdit,
   onCreate,
   onArchive,
+  onMembers,
 }: {
   department: Department
   depth: number
   onEdit: (dept: Department) => void
   onCreate: (parentId?: string) => void
   onArchive: (dept: Department) => void
+  onMembers: (dept: Department) => void
 }) {
   const [open, setOpen] = useState(true)
   const hasChildren = department.children.length > 0
@@ -99,6 +112,15 @@ function DepartmentTreeNode({
             variant="ghost"
             size="icon"
             className="h-6 w-6"
+            onClick={() => onMembers(department)}
+            aria-label={`Manage members of ${department.name}`}
+          >
+            <Users className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6"
             onClick={() => onArchive(department)}
             aria-label={`Archive ${department.name}`}
           >
@@ -117,6 +139,7 @@ function DepartmentTreeNode({
               onEdit={onEdit}
               onCreate={onCreate}
               onArchive={onArchive}
+              onMembers={onMembers}
             />
           ))}
         </CollapsibleContent>
@@ -141,6 +164,8 @@ function TreeSkeleton() {
 }
 
 export function DepartmentTree({ onEdit, onCreate }: DepartmentTreeProps) {
+  const [archiveTarget, setArchiveTarget] = useState<Department | null>(null)
+  const [membersTarget, setMembersTarget] = useState<Department | null>(null)
   const utils = api.useUtils()
   const { data: departments, isLoading } = api.team.departments.list.useQuery()
 
@@ -155,7 +180,14 @@ export function DepartmentTree({ onEdit, onCreate }: DepartmentTreeProps) {
   })
 
   function handleArchive(dept: Department) {
-    deleteMutation.mutate({ id: dept.id })
+    setArchiveTarget(dept)
+  }
+
+  function confirmArchive() {
+    if (archiveTarget) {
+      deleteMutation.mutate({ id: archiveTarget.id })
+      setArchiveTarget(null)
+    }
   }
 
   if (isLoading) {
@@ -173,17 +205,50 @@ export function DepartmentTree({ onEdit, onCreate }: DepartmentTreeProps) {
   }
 
   return (
-    <div className="rounded-lg border border-border p-2">
-      {departments.map((dept) => (
-        <DepartmentTreeNode
-          key={dept.id}
-          department={dept}
-          depth={0}
-          onEdit={onEdit}
-          onCreate={onCreate}
-          onArchive={handleArchive}
+    <>
+      <div className="rounded-lg border border-border p-2">
+        {departments.map((dept) => (
+          <DepartmentTreeNode
+            key={dept.id}
+            department={dept}
+            depth={0}
+            onEdit={onEdit}
+            onCreate={onCreate}
+            onArchive={handleArchive}
+            onMembers={(dept) => setMembersTarget(dept)}
+          />
+        ))}
+      </div>
+
+      {/* Archive confirmation */}
+      <AlertDialog open={archiveTarget !== null} onOpenChange={(open) => { if (!open) setArchiveTarget(null) }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Archive department</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to archive {archiveTarget?.name}? This will unassign all members.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmArchive}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Archive
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Members dialog */}
+      {membersTarget && (
+        <DepartmentMembersDialog
+          open={!!membersTarget}
+          onOpenChange={(open) => { if (!open) setMembersTarget(null) }}
+          department={membersTarget}
         />
-      ))}
-    </div>
+      )}
+    </>
   )
 }
