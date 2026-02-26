@@ -1,5 +1,5 @@
 import { db } from '@/shared/db'
-import { auditLogs } from '@/shared/db/schema'
+import { auditLogs, users } from '@/shared/db/schema'
 import { logger } from '@/shared/logger'
 import { eq, and, lte, gte, desc, sql } from 'drizzle-orm'
 import type { AuditLogEntry, AuditLogFilters } from './audit.types'
@@ -10,23 +10,39 @@ const log = logger.child({ module: 'audit.repository' })
 // Mapper
 // ---------------------------------------------------------------------------
 
-function mapAuditLog(row: typeof auditLogs.$inferSelect): AuditLogEntry {
+function mapAuditLog(row: {
+  auditLog: typeof auditLogs.$inferSelect
+  user: typeof users.$inferSelect | null
+}): AuditLogEntry {
+  const { auditLog, user } = row
   return {
-    id: row.id,
-    tenantId: row.tenantId,
-    userId: row.userId ?? null,
-    action: row.action,
-    entityType: row.entityType ?? null,
-    entityId: row.entityId ?? null,
-    oldValues: (row.oldValues as Record<string, unknown> | null) ?? null,
-    newValues: (row.newValues as Record<string, unknown> | null) ?? null,
-    ipAddress: row.ipAddress ?? null,
-    userAgent: row.userAgent ?? null,
-    sessionId: row.sessionId ?? null,
-    requestId: row.requestId ?? null,
-    severity: row.severity,
-    metadata: (row.metadata as Record<string, unknown> | null) ?? null,
-    createdAt: row.createdAt,
+    id: auditLog.id,
+    tenantId: auditLog.tenantId,
+    userId: auditLog.userId ?? null,
+    action: auditLog.action,
+    entityType: auditLog.entityType ?? null,
+    entityId: auditLog.entityId ?? null,
+    oldValues: (auditLog.oldValues as Record<string, unknown> | null) ?? null,
+    newValues: (auditLog.newValues as Record<string, unknown> | null) ?? null,
+    ipAddress: auditLog.ipAddress ?? null,
+    userAgent: auditLog.userAgent ?? null,
+    sessionId: auditLog.sessionId ?? null,
+    requestId: auditLog.requestId ?? null,
+    severity: auditLog.severity,
+    metadata: (auditLog.metadata as Record<string, unknown> | null) ?? null,
+    createdAt: auditLog.createdAt,
+    actor: user
+      ? {
+          id: user.id,
+          name: user.displayName ?? `${user.firstName} ${user.lastName}`.trim(),
+          email: user.email,
+        }
+      : {
+          id: auditLog.userId ?? 'system',
+          name: 'System',
+          email: '',
+        },
+    resourceName: (auditLog.metadata as any)?.resourceName ?? '',
   }
 }
 
@@ -80,8 +96,9 @@ export const auditRepository = {
     }
 
     const rows = await db
-      .select()
+      .select({ auditLog: auditLogs, user: users })
       .from(auditLogs)
+      .leftJoin(users, eq(auditLogs.userId, users.id))
       .where(and(...conditions))
       .orderBy(desc(auditLogs.createdAt))
       .limit(limit + 1)
@@ -127,8 +144,9 @@ export const auditRepository = {
     const conditions = buildConditions(tenantId, filters)
 
     const rows = await db
-      .select()
+      .select({ auditLog: auditLogs, user: users })
       .from(auditLogs)
+      .leftJoin(users, eq(auditLogs.userId, users.id))
       .where(and(...conditions))
       .orderBy(desc(auditLogs.createdAt))
       .limit(maxRows)

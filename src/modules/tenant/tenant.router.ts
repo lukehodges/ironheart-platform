@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { router, tenantProcedure, permissionProcedure, publicProcedure } from "@/shared/trpc";
 import { tenantService } from "./tenant.service";
+import { moduleSettingsService } from "@/modules/settings/module-settings.service";
 import {
   updateOrganizationSettingsSchema,
   updateModuleConfigSchema,
@@ -37,6 +38,24 @@ export const tenantRouter = router({
   updateModuleConfig: permissionProcedure("tenant:write")
     .input(updateModuleConfigSchema)
     .mutation(({ ctx, input }) => tenantService.updateModuleConfig(ctx, input)),
+
+  getModuleSettings: tenantProcedure
+    .input(z.object({ moduleSlug: z.string() }))
+    .query(async ({ ctx, input }) => {
+      return moduleSettingsService.getModuleSettings(ctx.tenantId, input.moduleSlug)
+    }),
+
+  updateModuleSettings: permissionProcedure("tenant:write")
+    .input(z.object({
+      moduleSlug: z.string(),
+      settings: z.record(z.string(), z.unknown()),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      for (const [key, value] of Object.entries(input.settings)) {
+        await moduleSettingsService.updateModuleSetting(ctx.tenantId, input.moduleSlug, key, value)
+      }
+      return { success: true }
+    }),
 
   // Venues
   listVenues: tenantProcedure

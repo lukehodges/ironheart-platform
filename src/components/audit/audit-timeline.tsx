@@ -12,7 +12,7 @@ import {
 import { EmptyState } from '@/components/ui/empty-state';
 import { Separator } from '@/components/ui/separator';
 import { ChevronDown, Loader2, FileText } from 'lucide-react';
-import type { AuditLogEntry } from '@/types/audit-log';
+import type { AuditLogEntry } from '@/modules/audit/audit.types';
 
 export interface AuditTimelineProps {
   entries: AuditLogEntry[];
@@ -75,10 +75,29 @@ export function AuditTimeline({
       .slice(0, 2);
   };
 
+  /** Derive field-level changes from oldValues / newValues */
+  const getChanges = (
+    entry: AuditLogEntry
+  ): Array<{ field: string; before: unknown; after: unknown }> => {
+    const changes: Array<{ field: string; before: unknown; after: unknown }> = [];
+    const allKeys = new Set([
+      ...Object.keys(entry.oldValues ?? {}),
+      ...Object.keys(entry.newValues ?? {}),
+    ]);
+    for (const key of allKeys) {
+      const before = (entry.oldValues as Record<string, unknown> | null)?.[key];
+      const after = (entry.newValues as Record<string, unknown> | null)?.[key];
+      if (before !== after) {
+        changes.push({ field: key, before, after });
+      }
+    }
+    return changes;
+  };
+
   const renderChangesDiff = (
-    changes: Array<{ field: string; before: unknown; after: unknown }> | undefined
+    changes: Array<{ field: string; before: unknown; after: unknown }>
   ) => {
-    if (!changes || changes.length === 0) {
+    if (changes.length === 0) {
       return null;
     }
 
@@ -91,7 +110,7 @@ export function AuditTimeline({
               <div className="text-destructive/80 break-words">
                 {typeof change.before === 'object'
                   ? JSON.stringify(change.before, null, 2)
-                  : String(change.before)}
+                  : String(change.before ?? '')}
               </div>
             </div>
             <div className="rounded-md bg-success/10 p-2 text-xs">
@@ -99,7 +118,7 @@ export function AuditTimeline({
               <div className="text-success/80 break-words">
                 {typeof change.after === 'object'
                   ? JSON.stringify(change.after, null, 2)
-                  : String(change.after)}
+                  : String(change.after ?? '')}
               </div>
             </div>
           </div>
@@ -141,7 +160,7 @@ export function AuditTimeline({
                     <div className="flex items-center gap-3 flex-wrap flex-1">
                       {/* Timestamp */}
                       <span className="text-xs text-muted-foreground whitespace-nowrap">
-                        {formatDistanceToNow(new Date(entry.timestamp), {
+                        {formatDistanceToNow(new Date(entry.createdAt), {
                           addSuffix: true,
                         })}
                       </span>
@@ -172,34 +191,42 @@ export function AuditTimeline({
 
                   {/* Resource info */}
                   <div className="flex items-center gap-2 text-sm">
-                    <span className="text-muted-foreground">
-                      {entry.resourceType.charAt(0).toUpperCase() +
-                        entry.resourceType.slice(1)}
-                    </span>
+                    {entry.entityType && (
+                      <span className="text-muted-foreground">
+                        {entry.entityType.charAt(0).toUpperCase() +
+                          entry.entityType.slice(1)}
+                      </span>
+                    )}
                     <span className="font-medium text-foreground">
-                      {entry.resourceName || `#${entry.resourceId}`}
+                      {entry.resourceName || (entry.entityId ? `#${entry.entityId}` : '')}
                     </span>
                   </div>
 
                   {/* Changes collapsible section */}
-                  {entry.changes && entry.changes.length > 0 && (
-                    <CollapsibleTrigger className="flex items-center gap-2 text-xs font-medium text-primary hover:text-primary/80 transition-colors group/trigger w-fit">
-                      <ChevronDown className="h-4 w-4 transition-transform duration-200 group-data-[state=open]/trigger:rotate-180" />
-                      View changes ({entry.changes.length})
-                    </CollapsibleTrigger>
-                  )}
+                  {(() => {
+                    const changes = getChanges(entry);
+                    return changes.length > 0 ? (
+                      <CollapsibleTrigger className="flex items-center gap-2 text-xs font-medium text-primary hover:text-primary/80 transition-colors group/trigger w-fit">
+                        <ChevronDown className="h-4 w-4 transition-transform duration-200 group-data-[state=open]/trigger:rotate-180" />
+                        View changes ({changes.length})
+                      </CollapsibleTrigger>
+                    ) : null;
+                  })()}
                 </div>
               </div>
             </div>
 
             {/* Expandable changes section */}
-            {entry.changes && entry.changes.length > 0 && (
-              <CollapsibleContent className="px-4 pb-4">
-                <div className="ml-7 rounded-md border border-border bg-muted/30 p-4 space-y-3">
-                  {renderChangesDiff(entry.changes)}
-                </div>
-              </CollapsibleContent>
-            )}
+            {(() => {
+              const changes = getChanges(entry);
+              return changes.length > 0 ? (
+                <CollapsibleContent className="px-4 pb-4">
+                  <div className="ml-7 rounded-md border border-border bg-muted/30 p-4 space-y-3">
+                    {renderChangesDiff(changes)}
+                  </div>
+                </CollapsibleContent>
+              ) : null;
+            })()}
           </Collapsible>
 
           {index < entries.length - 1 && <Separator className="my-0" />}

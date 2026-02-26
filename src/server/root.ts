@@ -21,6 +21,7 @@ import { developerRouter } from "@/modules/developer";
 import { searchRouter } from "@/modules/search";
 import { settingsRouter } from "@/modules/settings";
 import { auditRouter } from "@/modules/audit";
+import { rbacRouter } from "@/modules/rbac";
 
 /**
  * Root tRPC router.
@@ -57,6 +58,7 @@ export const appRouter = router({
   search: searchRouter,
   settings: settingsRouter,
   audit: auditRouter,
+  rbac: rbacRouter,
 });
 
 export type AppRouter = typeof appRouter;

@@ -4,7 +4,7 @@ import { Download } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
 import { format } from "date-fns"
-import type { AuditLogFilters } from "@/types/audit-log"
+import type { AuditLogFilters } from "@/modules/audit/audit.types"
 
 interface ExportAuditLogProps {
   /** Current audit log filters to apply to export */

@@ -390,10 +390,27 @@ type IronheartEvents = {
 
 **8d. Create a module manifest** (`loyalty.manifest.ts`) and register in `register-all.ts`.
 
-## Step 9: Create tests
+## Step 9: Add search provider (optional)
+
+If your module has data that should appear in global search results, create a search provider. See [15-search-providers.md](./15-search-providers.md) for the full guide.
+
+```typescript
+// src/modules/loyalty/loyalty.search-provider.ts
+export const loyaltySearchProvider: SearchProvider = {
+  moduleSlug: 'loyalty',
+  resultType: 'loyalty_program',
+  label: 'Loyalty Programs',
+  search: async (tenantId, query, limit) => { /* ... */ },
+  mapResult: (hit) => ({ type: 'loyalty_program', id: hit.id, label: ..., secondary: ... }),
+}
+```
+
+Then register it in `register-all.ts` alongside your module manifest.
+
+## Step 10: Create tests
 
 See testing.md for the full pattern.
 
-## Step 10: Create admin page
+## Step 11: Create admin page
 
 See frontend-patterns.md for the full pattern.

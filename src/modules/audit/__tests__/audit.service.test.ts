@@ -56,6 +56,12 @@ function makeAuditEntry(overrides: Partial<AuditLogEntry> = {}): AuditLogEntry {
     severity: 'INFO',
     metadata: null,
     createdAt: new Date('2026-01-15T12:00:00.000Z'),
+    actor: {
+      id: USER_ID,
+      name: 'Test User',
+      email: 'test@example.com',
+    },
+    resourceName: '',
     ...overrides,
   }
 }

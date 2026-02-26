@@ -18,6 +18,7 @@ import {
   CreditCard,
   Package,
   Lock,
+  Shield,
   AlertTriangle,
   UserCog,
   ClipboardCheck,
@@ -62,6 +63,11 @@ const SETTINGS_TABS: Array<{
     id: "security",
     label: "Security",
     icon: <Lock className="h-4 w-4" />,
+  },
+  {
+    id: "roles",
+    label: "Roles & Permissions",
+    icon: <Shield className="h-4 w-4" />,
   },
   {
     id: "staff-custom-fields" as SettingsTab,

@@ -1,6 +1,6 @@
 import type { NotificationTriggerDefinition } from './types'
 
-interface RegisteredTrigger extends NotificationTriggerDefinition {
+export interface RegisteredTrigger extends NotificationTriggerDefinition {
   moduleSlug: string
 }
 
@@ -29,6 +29,10 @@ export class NotificationTriggerRegistry {
   }
 
   getAllTriggers(): NotificationTriggerDefinition[] {
+    return Array.from(this.triggers.values())
+  }
+
+  getAllRegisteredTriggers(): RegisteredTrigger[] {
     return Array.from(this.triggers.values())
   }
 

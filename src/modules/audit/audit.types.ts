@@ -19,6 +19,12 @@ export interface AuditLogEntry {
   severity: 'DEBUG' | 'INFO' | 'WARNING' | 'ERROR' | 'CRITICAL'
   metadata: Record<string, unknown> | null
   createdAt: Date
+  actor: {
+    id: string
+    name: string
+    email: string
+  }
+  resourceName: string
 }
 
 /** Filters for querying audit logs. */
@@ -28,6 +34,12 @@ export interface AuditLogFilters {
   userId?: string
   dateFrom?: Date
   dateTo?: Date
+  /** Alias for userId — used by the filters UI actor dropdown. */
+  actorId?: string
+  /** Alias for dateFrom — used by the filters UI date range picker. */
+  from?: Date
+  /** Alias for dateTo — used by the filters UI date range picker. */
+  to?: Date
 }
 
 /** Available filter options for the audit log UI. */

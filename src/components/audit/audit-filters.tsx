@@ -14,7 +14,7 @@ import {
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Checkbox } from "@/components/ui/checkbox"
 import { DateRangePicker } from "@/components/analytics/date-range-picker"
-import type { AuditLogFilters } from "@/types/audit-log"
+import type { AuditLogFilters } from "@/modules/audit/audit.types"
 import type { DateRange } from "@/components/analytics/date-range-picker"
 import { cn } from "@/lib/utils"
 

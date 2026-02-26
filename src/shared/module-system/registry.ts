@@ -1,6 +1,7 @@
 import type {
   ModuleManifest,
   ModuleSidebarItem,
+  ModuleQuickAction,
   AnalyticsWidgetDefinition,
   ModuleRoute,
 } from './types'
@@ -127,6 +128,12 @@ export class ModuleRegistry {
 
   getSidebarItems(enabledSlugs: string[]): ModuleSidebarItem[] {
     return this.getEnabledManifests(enabledSlugs).flatMap((m) => m.sidebarItems)
+  }
+
+  getQuickActions(enabledSlugs: string[]): (ModuleQuickAction & { moduleSlug: string })[] {
+    return this.getEnabledManifests(enabledSlugs).flatMap((m) =>
+      (m.quickActions ?? []).map((a) => ({ ...a, moduleSlug: m.slug }))
+    )
   }
 
   getAnalyticsWidgets(enabledSlugs: string[]): AnalyticsWidgetDefinition[] {

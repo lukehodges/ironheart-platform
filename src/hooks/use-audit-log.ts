@@ -2,7 +2,7 @@
 
 import { api } from '@/lib/trpc/react'
 import { useState, useMemo, useCallback } from 'react'
-import type { AuditLogFilters } from '@/types/audit-log'
+import type { AuditLogFilters } from '@/modules/audit/audit.types'
 
 /**
  * Audit log hook
@@ -34,8 +34,6 @@ export function useAuditLog() {
   const [filters, setFiltersRaw] = useState<AuditLogFilters>({})
   const [cursor, setCursor] = useState<string | undefined>()
   const [allEntries, setAllEntries] = useState<any[]>([])
-  const [isExporting, setIsExporting] = useState(false)
-
   // Map the AuditLogFilters to the audit.list input shape
   const queryInput = useMemo(
     () => ({
@@ -74,44 +72,10 @@ export function useAuditLog() {
     setCursor(data.nextCursor)
   }, [data?.rows, data?.nextCursor, entries])
 
-  // Client-side CSV generation (no backend endpoint exists yet)
-  const exportCsv = useMemo(
-    () => ({
-      mutate: () => {
-        void exportCsvAsync()
-      },
-      mutateAsync: exportCsvAsync,
-      isPending: isExporting,
-    }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [entries, isExporting],
-  )
-
-  async function exportCsvAsync() {
-    setIsExporting(true)
-    try {
-      const rows = entries.length > 0 ? entries : data?.rows ?? []
-      if (rows.length === 0) return
-
-      const headers = ['ID', 'Timestamp', 'Action', 'Entity Type', 'Entity ID', 'Severity', 'User ID']
-      const csvRows = rows.map((entry: any) => [
-        entry.id ?? '',
-        entry.createdAt ? new Date(entry.createdAt).toISOString() : '',
-        entry.action ?? '',
-        entry.entityType ?? '',
-        entry.entityId ?? '',
-        entry.severity ?? '',
-        entry.userId ?? '',
-      ])
-
-      const csvContent = [
-        headers.join(','),
-        ...csvRows.map((row: string[]) =>
-          row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','),
-        ),
-      ].join('\n')
-
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+  // Backend CSV export mutation
+  const exportCsv = api.audit.exportCsv.useMutation({
+    onSuccess: (csvString) => {
+      const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' })
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
@@ -120,10 +84,8 @@ export function useAuditLog() {
       link.click()
       document.body.removeChild(link)
       URL.revokeObjectURL(url)
-    } finally {
-      setIsExporting(false)
-    }
-  }
+    },
+  })
 
   // Reset cursor and accumulated entries when filters change
   const setFilters = useCallback((newFilters: AuditLogFilters) => {

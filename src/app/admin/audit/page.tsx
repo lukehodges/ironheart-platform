@@ -1,12 +1,13 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { Filter, Download, Loader2, AlertCircle } from "lucide-react"
 import { PageHeader } from "@/components/ui/page-header"
 import { Button } from "@/components/ui/button"
 import { AuditFilters } from "@/components/audit/audit-filters"
 import { AuditTimeline } from "@/components/audit/audit-timeline"
 import { useAuditLog } from "@/hooks/use-audit-log"
+import { api } from "@/lib/trpc/react"
 import { toast } from "sonner"
 import { SkeletonList } from "@/components/ui/skeleton"
 
@@ -62,6 +63,18 @@ export default function AuditLogPage() {
     exportCsv,
   } = useAuditLog()
 
+  // Fetch team members for actor dropdown
+  const { data: teamData, isLoading: loadingUsers } = api.team.list.useQuery({ limit: 100 })
+  const users = useMemo(
+    () =>
+      (teamData?.rows ?? []).map((member) => ({
+        id: member.id,
+        name: member.name,
+        email: member.email,
+      })),
+    [teamData?.rows],
+  )
+
   /**
    * Handle filter changes from AuditFilters component
    */
@@ -81,7 +94,13 @@ export default function AuditLogPage() {
    */
   const handleExport = async () => {
     try {
-      await exportCsv.mutateAsync()
+      await exportCsv.mutateAsync({
+        action: filters.action,
+        resourceType: filters.resourceType,
+        userId: filters.userId ?? filters.actorId,
+        dateFrom: filters.dateFrom ?? filters.from,
+        dateTo: filters.dateTo ?? filters.to,
+      })
       toast.success("Audit log exported successfully")
     } catch (err) {
       toast.error("Failed to export audit log")
@@ -141,6 +160,8 @@ export default function AuditLogPage() {
               filters={filters}
               onFiltersChange={handleFiltersChange}
               onReset={handleResetFilters}
+              users={users}
+              loadingUsers={loadingUsers}
               defaultOpen={true}
             />
           )}

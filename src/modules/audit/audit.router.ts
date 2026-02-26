@@ -24,7 +24,7 @@ export const auditRouter = router({
    */
   exportCsv: permissionProcedure('audit:read')
     .input(exportCsvSchema)
-    .query(({ ctx, input }) =>
+    .mutation(({ ctx, input }) =>
       auditService.exportCsv(ctx.tenantId, input)
     ),
 

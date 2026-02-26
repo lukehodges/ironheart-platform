@@ -309,5 +309,6 @@ export const resourcePoolRepository = {
         inArray(resourceAssignments.status, ['ASSIGNED', 'ACTIVE']),
         eq(resourceAssignments.scheduledDate, targetDate),
       ))
+      .groupBy(resourceAssignments.moduleSlug)
   },
 }

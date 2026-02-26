@@ -11,4 +11,11 @@ export { notificationRouter } from './notification.router'
 export { notificationFunctions } from './notification.events'
 export { notificationService } from './notification.service'
 export { notificationRepository } from './notification.repository'
-export type { MessageTrigger, MessageChannel, TemplateVariables, SendResult } from './notification.types'
+export type {
+  MessageTrigger,
+  MessageChannel,
+  TemplateVariables,
+  SendResult,
+  NotificationTriggerWithModule,
+  TemplateListItem,
+} from './notification.types'

@@ -84,6 +84,7 @@ export default function TeamMemberProfilePage({
 }) {
   const { id } = use(params)
   const router = useRouter()
+  const isValidId = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
 
   const {
     data: member,
@@ -92,8 +93,19 @@ export default function TeamMemberProfilePage({
     refetch,
   } = api.team.getById.useQuery(
     { userId: id },
-    { enabled: !!id }
+    { enabled: isValidId }
   )
+
+  if (!isValidId) {
+    return (
+      <div className="animate-fade-in">
+        <ProfileError
+          onRetry={() => router.push("/admin/team")}
+          onBack={() => router.push("/admin/team")}
+        />
+      </div>
+    )
+  }
 
   if (isLoading) {
     return (

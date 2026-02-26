@@ -13,6 +13,9 @@ export const customerManifest: ModuleManifest = {
   sidebarItems: [
     { title: 'Customers', href: '/admin/customers', icon: 'Users', section: 'operations', permission: 'customers:read' },
   ],
+  quickActions: [
+    { title: 'New Customer', href: '/admin/customers/new', permission: 'customers:write' },
+  ],
   analyticsWidgets: [
     { id: 'new-customers', type: 'kpi', label: 'New Customers', size: '1x1',
       dataSource: { procedure: 'customer.analytics.newThisWeek' } },

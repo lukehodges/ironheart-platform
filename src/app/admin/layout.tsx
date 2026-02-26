@@ -4,7 +4,7 @@ import { AdminSidebar } from "@/components/layout/admin-sidebar"
 import { AdminTopbar } from "@/components/layout/admin-topbar"
 import { ImpersonationBanner } from "@/components/platform/impersonation-banner"
 import { db } from "@/shared/db"
-import { users } from "@/shared/db/schemas/auth.schema"
+import { users, userRoles, rolePermissions, permissions as permissionsTable } from "@/shared/db/schemas/auth.schema"
 import { eq } from "drizzle-orm"
 import { tenantRepository } from "@/modules/tenant/tenant.repository"
 import { redis } from "@/shared/redis"
@@ -61,6 +61,25 @@ export default async function AdminLayout({
     // OWNER and ADMIN user types have implicit full access (matches rbac.ts)
     if (!isPlatformAdmin && dbUser?.type && (dbUser.type === "OWNER" || dbUser.type === "ADMIN")) {
       permissions = ["*:*"]
+    }
+
+    // MEMBER users: load actual permissions from DB via userRoles → rolePermissions → permissions
+    if (dbUser && permissions.length === 0) {
+      const rows = await db
+        .select({
+          resource: permissionsTable.resource,
+          action: permissionsTable.action,
+        })
+        .from(userRoles)
+        .innerJoin(rolePermissions, eq(rolePermissions.roleId, userRoles.roleId))
+        .innerJoin(permissionsTable, eq(permissionsTable.id, rolePermissions.permissionId))
+        .where(eq(userRoles.userId, dbUser.id))
+
+      const permSet = new Set<string>()
+      for (const row of rows) {
+        permSet.add(`${row.resource}:${row.action}`)
+      }
+      permissions = Array.from(permSet)
     }
 
     // Load enabled modules for sidebar navigation

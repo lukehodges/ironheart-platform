@@ -32,7 +32,7 @@ import {
 import { Separator } from "@/components/ui/separator"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { MobileSidebar } from "./mobile-sidebar"
-import { CommandPalette, useCommandPalette } from "./command-palette"
+import { useCommandPalette } from "./command-palette"
 
 interface AdminTopbarUser {
   name?: string | null
@@ -116,7 +116,12 @@ export function AdminTopbar({
 }: AdminTopbarProps) {
   const router = useRouter()
   const breadcrumbs = useBreadcrumbs()
-  const { open: openCommand } = useCommandPalette()
+  const { open: openCommand, configure: configureCommand } = useCommandPalette()
+
+  // Push tenant context into the command palette so it can derive items dynamically
+  React.useEffect(() => {
+    configureCommand({ enabledModuleSlugs, permissions, isPlatformAdmin })
+  }, [configureCommand, enabledModuleSlugs, permissions, isPlatformAdmin])
 
   // ⌘K / Ctrl+K shortcut
   React.useEffect(() => {

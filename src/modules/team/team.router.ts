@@ -53,7 +53,7 @@ export const teamRouter = router({
     .query(({ ctx, input }) => teamService.listStaff(ctx, input)),
 
   getById: moduleProcedure
-    .input(z.object({ userId: z.string() }))
+    .input(z.object({ userId: z.uuid() }))
     .query(({ ctx, input }) => teamService.getStaffMember(ctx, input.userId)),
 
   create: modulePermission("staff:write")
@@ -65,7 +65,7 @@ export const teamRouter = router({
     .mutation(({ ctx, input }) => teamService.updateStaff(ctx, input.id, input)),
 
   deactivate: modulePermission("staff:write")
-    .input(z.object({ userId: z.string() }))
+    .input(z.object({ userId: z.uuid() }))
     .mutation(({ ctx, input }) => teamService.deactivateStaff(ctx, input.userId)),
 
   // Availability

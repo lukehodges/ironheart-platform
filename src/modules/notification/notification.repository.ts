@@ -6,7 +6,7 @@
  */
 
 import { db } from '@/shared/db'
-import { and, eq, isNull, or } from 'drizzle-orm'
+import { and, desc, eq, isNull, or } from 'drizzle-orm'
 import {
   bookings,
   customers,
@@ -16,11 +16,13 @@ import {
   tenants,
   users,
 } from '@/shared/db/schema'
+import { NotFoundError } from '@/shared/errors'
 import type { BookingForVariables } from './lib/variable-builder'
 import type {
   MessageChannel,
   MessageTemplateRecord,
   MessageTrigger,
+  TemplateListItem,
 } from './notification.types'
 
 // ─── Idempotency ───────────────────────────────────────────────────────────────
@@ -192,6 +194,143 @@ export const notificationRepository = {
       bodyHtml: row.bodyHtml ?? null,
       serviceId: row.serviceId ?? null,
       isActive: row.active,
+    }
+  },
+
+  // ─── Template CRUD ──────────────────────────────────────────────────────────
+
+  async listTemplates(
+    tenantId: string,
+    filters?: { trigger?: string; channel?: string; active?: boolean }
+  ): Promise<TemplateListItem[]> {
+    const conditions = [eq(messageTemplates.tenantId, tenantId)]
+
+    if (filters?.trigger) {
+      conditions.push(eq(messageTemplates.trigger, filters.trigger))
+    }
+    if (filters?.channel) {
+      conditions.push(
+        eq(messageTemplates.channel, filters.channel as typeof messageTemplates.channel._.data)
+      )
+    }
+    if (filters?.active !== undefined) {
+      conditions.push(eq(messageTemplates.active, filters.active))
+    }
+
+    const rows = await db
+      .select()
+      .from(messageTemplates)
+      .where(and(...conditions))
+      .orderBy(desc(messageTemplates.createdAt))
+
+    return rows.map((row) => ({
+      id: row.id,
+      tenantId: row.tenantId,
+      name: row.name,
+      trigger: row.trigger,
+      channel: row.channel,
+      subject: row.subject ?? null,
+      body: row.body,
+      active: row.active,
+      isSystem: row.isSystem,
+      serviceId: row.serviceId ?? null,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+    }))
+  },
+
+  async getTemplateById(
+    tenantId: string,
+    id: string
+  ): Promise<TemplateListItem | null> {
+    const rows = await db
+      .select()
+      .from(messageTemplates)
+      .where(and(eq(messageTemplates.id, id), eq(messageTemplates.tenantId, tenantId)))
+      .limit(1)
+
+    const row = rows[0]
+    if (!row) return null
+
+    return {
+      id: row.id,
+      tenantId: row.tenantId,
+      name: row.name,
+      trigger: row.trigger,
+      channel: row.channel,
+      subject: row.subject ?? null,
+      body: row.body,
+      active: row.active,
+      isSystem: row.isSystem,
+      serviceId: row.serviceId ?? null,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+    }
+  },
+
+  async createTemplate(
+    tenantId: string,
+    data: {
+      name: string
+      trigger: string
+      channel: string
+      subject?: string
+      body: string
+      active: boolean
+    }
+  ): Promise<{ id: string }> {
+    const id = crypto.randomUUID()
+    const now = new Date()
+
+    await db.insert(messageTemplates).values({
+      id,
+      tenantId,
+      name: data.name,
+      trigger: data.trigger,
+      channel: data.channel as typeof messageTemplates.channel._.data,
+      subject: data.subject ?? null,
+      body: data.body,
+      active: data.active,
+      isSystem: false,
+      createdAt: now,
+      updatedAt: now,
+    })
+
+    return { id }
+  },
+
+  async updateTemplate(
+    tenantId: string,
+    id: string,
+    data: {
+      name?: string
+      subject?: string
+      body?: string
+      active?: boolean
+    }
+  ): Promise<void> {
+    const rows = await db
+      .update(messageTemplates)
+      .set({
+        ...data,
+        updatedAt: new Date(),
+      })
+      .where(and(eq(messageTemplates.id, id), eq(messageTemplates.tenantId, tenantId)))
+      .returning({ id: messageTemplates.id })
+
+    if (rows.length === 0) {
+      throw new NotFoundError('MessageTemplate', id)
+    }
+  },
+
+  async deleteTemplate(tenantId: string, id: string): Promise<void> {
+    const rows = await db
+      .delete(messageTemplates)
+      .where(and(eq(messageTemplates.id, id), eq(messageTemplates.tenantId, tenantId)))
+      .returning({ id: messageTemplates.id })
+
+    if (rows.length === 0) {
+      throw new NotFoundError('MessageTemplate', id)
     }
   },
 

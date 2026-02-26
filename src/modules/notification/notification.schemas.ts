@@ -112,3 +112,36 @@ export const sendTestNotificationSchema = z.object({
   recipientEmail: z.string().email().optional(),
   recipientPhone: z.string().optional(),
 })
+
+// ─── Template CRUD Schemas ───────────────────────────────────────────────────
+
+/** Create a new message template */
+export const createTemplateSchema = z.object({
+  name: z.string().min(1),
+  trigger: z.string(),
+  channel: z.string(),
+  subject: z.string().optional(),
+  body: z.string().min(1),
+  active: z.boolean().default(true),
+})
+
+/** Update an existing message template */
+export const updateTemplateSchema = z.object({
+  id: z.uuid(),
+  name: z.string().min(1).optional(),
+  subject: z.string().optional(),
+  body: z.string().min(1).optional(),
+  active: z.boolean().optional(),
+})
+
+/** Delete a message template */
+export const deleteTemplateSchema = z.object({
+  id: z.uuid(),
+})
+
+/** List message templates with optional filters */
+export const listTemplatesSchema = z.object({
+  trigger: z.string().optional(),
+  channel: z.string().optional(),
+  active: z.boolean().optional(),
+})

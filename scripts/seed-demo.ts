@@ -1088,14 +1088,12 @@ async function seedModuleSettingsFromManifests() {
 
   // Import all manifests that have settingsDefinitions
   const { bookingManifest } = await import("../src/modules/booking/booking.manifest");
-  const { authManifest } = await import("../src/modules/auth/auth.manifest");
   const { notificationManifest } = await import("../src/modules/notification/notification.manifest");
   const { auditManifest } = await import("../src/modules/audit/audit.manifest");
   const { analyticsManifest } = await import("../src/modules/analytics/analytics.manifest");
   const { searchManifest } = await import("../src/modules/search/search.manifest");
 
   const manifests = [
-    authManifest,
     notificationManifest,
     auditManifest,
     analyticsManifest,

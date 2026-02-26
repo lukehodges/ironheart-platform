@@ -13,6 +13,9 @@ export const workflowManifest: ModuleManifest = {
   sidebarItems: [
     { title: 'Workflows', href: '/admin/workflows', icon: 'Zap', section: 'automation', permission: 'workflows:read' },
   ],
+  quickActions: [
+    { title: 'New Workflow', href: '/admin/workflows/new', permission: 'workflows:write' },
+  ],
   analyticsWidgets: [
     { id: 'workflow-executions', type: 'kpi', label: 'Workflow Runs', size: '1x1',
       dataSource: { procedure: 'workflow.analytics.executionCount' } },

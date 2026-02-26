@@ -91,6 +91,36 @@ export interface MessageTemplateRecord {
   isActive: boolean
 }
 
+// ─── Trigger With Module (for UI) ─────────────────────────────────────────────
+
+export interface NotificationTriggerWithModule {
+  key: string
+  label: string
+  description: string
+  defaultChannels: string[]
+  variables: string[]
+  moduleSlug: string
+  moduleName: string
+  moduleEnabled: boolean
+}
+
+// ─── Template List Item (for UI) ──────────────────────────────────────────────
+
+export interface TemplateListItem {
+  id: string
+  tenantId: string
+  name: string
+  trigger: string
+  channel: string
+  subject: string | null
+  body: string
+  active: boolean
+  isSystem: boolean
+  serviceId: string | null
+  createdAt: Date
+  updatedAt: Date
+}
+
 // ─── Send Request Types ────────────────────────────────────────────────────────
 
 export interface EmailSendRequest {

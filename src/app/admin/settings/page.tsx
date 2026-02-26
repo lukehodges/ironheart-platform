@@ -25,6 +25,9 @@ const ModulesTab = lazy(() =>
 const SecurityTab = lazy(() =>
   import("@/components/settings/security-tab").then((m) => ({ default: m.SecurityTab }))
 )
+const RolesTab = lazy(() =>
+  import("@/components/settings/roles-tab").then((m) => ({ default: m.RolesTab }))
+)
 const DangerTab = lazy(() =>
   import("@/components/settings/danger-tab").then((m) => ({ default: m.DangerTab }))
 )
@@ -221,6 +224,13 @@ export default function SettingsPage() {
               <TabsContent value="security" className="mt-0 focus-visible:outline-none focus-visible:ring-0">
                 <Suspense fallback={<TabLoadingSkeleton />}>
                   <SecurityTab />
+                </Suspense>
+              </TabsContent>
+
+              {/* Roles & Permissions Tab */}
+              <TabsContent value="roles" className="mt-0 focus-visible:outline-none focus-visible:ring-0">
+                <Suspense fallback={<TabLoadingSkeleton />}>
+                  <RolesTab />
                 </Suspense>
               </TabsContent>
 

@@ -27,7 +27,11 @@ import { BookingApprovedEmail } from './templates/email/booking-approved'
 import { BookingRejectedEmail } from './templates/email/booking-rejected'
 import { ReviewRequestEmail } from './templates/email/review-request'
 import { PortalInviteEmail } from './templates/email/portal-invite'
-import type { MessageTrigger } from './notification.types'
+import { notificationTriggerRegistry } from '@/shared/module-system/notification-trigger-registry'
+import { moduleRegistry } from '@/shared/module-system/register-all'
+import { tenantService } from '@/modules/tenant/tenant.service'
+import { BadRequestError, NotFoundError } from '@/shared/errors'
+import type { MessageTrigger, NotificationTriggerWithModule, TemplateListItem } from './notification.types'
 import type { TemplateVariables } from './notification.types'
 
 const log = logger.child({ module: 'notification.service' })
@@ -233,6 +237,110 @@ async function renderSystemEmailTemplate(
 // ─── Service ──────────────────────────────────────────────────────────────────
 
 export const notificationService = {
+  // ─── Trigger & Template Management ─────────────────────────────────────────
+
+  /**
+   * List all registered notification triggers enriched with module information.
+   * Used by the settings UI to show available triggers grouped by module.
+   */
+  async listTriggersWithModules(
+    tenantId: string
+  ): Promise<NotificationTriggerWithModule[]> {
+    const registeredTriggers = notificationTriggerRegistry.getAllRegisteredTriggers()
+
+    const result: NotificationTriggerWithModule[] = []
+
+    for (const trigger of registeredTriggers) {
+      const manifest = moduleRegistry.getManifest(trigger.moduleSlug)
+      const moduleName = manifest?.name ?? trigger.moduleSlug
+
+      // Core modules are always enabled; feature modules need a DB check
+      let moduleEnabled = manifest?.isCore ?? false
+      if (!moduleEnabled) {
+        moduleEnabled = await tenantService.isModuleEnabled(tenantId, trigger.moduleSlug)
+      }
+
+      result.push({
+        key: trigger.key,
+        label: trigger.label,
+        description: trigger.description,
+        defaultChannels: trigger.defaultChannels,
+        variables: trigger.variables,
+        moduleSlug: trigger.moduleSlug,
+        moduleName,
+        moduleEnabled,
+      })
+    }
+
+    return result
+  },
+
+  /**
+   * List message templates for a tenant with optional filters.
+   */
+  async listTemplates(
+    tenantId: string,
+    filters?: { trigger?: string; channel?: string; active?: boolean }
+  ): Promise<TemplateListItem[]> {
+    return notificationRepository.listTemplates(tenantId, filters)
+  },
+
+  /**
+   * Get a single template by ID.
+   */
+  async getTemplate(tenantId: string, id: string): Promise<TemplateListItem> {
+    const template = await notificationRepository.getTemplateById(tenantId, id)
+    if (!template) {
+      throw new NotFoundError('MessageTemplate', id)
+    }
+    return template
+  },
+
+  /**
+   * Create a new message template. Validates that the trigger exists in the registry.
+   */
+  async createTemplate(
+    tenantId: string,
+    data: {
+      name: string
+      trigger: string
+      channel: string
+      subject?: string
+      body: string
+      active: boolean
+    }
+  ): Promise<{ id: string }> {
+    const trigger = notificationTriggerRegistry.getTrigger(data.trigger)
+    if (!trigger) {
+      throw new BadRequestError(`Unknown notification trigger: ${data.trigger}`)
+    }
+
+    log.info({ tenantId, trigger: data.trigger, channel: data.channel }, 'Creating message template')
+    return notificationRepository.createTemplate(tenantId, data)
+  },
+
+  /**
+   * Update an existing message template.
+   */
+  async updateTemplate(
+    tenantId: string,
+    id: string,
+    data: { name?: string; subject?: string; body?: string; active?: boolean }
+  ): Promise<void> {
+    log.info({ tenantId, templateId: id }, 'Updating message template')
+    return notificationRepository.updateTemplate(tenantId, id, data)
+  },
+
+  /**
+   * Delete a message template.
+   */
+  async deleteTemplate(tenantId: string, id: string): Promise<void> {
+    log.info({ tenantId, templateId: id }, 'Deleting message template')
+    return notificationRepository.deleteTemplate(tenantId, id)
+  },
+
+  // ─── Notification Delivery ─────────────────────────────────────────────────
+
   /**
    * Send all relevant notifications for a booking event.
    *
