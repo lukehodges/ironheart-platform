@@ -98,8 +98,9 @@ export const getWorkloadSchema = z.object({
 
 export const findAvailableStaffSchema = z.object({
   requiredSkills: z.array(z.object({
-    skillType: z.enum(['SERVICE', 'CERTIFICATION', 'LANGUAGE', 'QUALIFICATION', 'EQUIPMENT', 'CUSTOM']),
-    skillId: z.string(),
+    skillDefinitionId: z.string().optional(),
+    skillType: z.enum(['SERVICE', 'CERTIFICATION', 'LANGUAGE', 'QUALIFICATION', 'EQUIPMENT', 'CUSTOM']).optional(),
+    skillId: z.string().optional(),
     minProficiency: z.enum(['BEGINNER', 'INTERMEDIATE', 'ADVANCED', 'EXPERT']).optional(),
   })).optional(),
   capacityType: z.string().min(1),
@@ -110,4 +111,86 @@ export const findAvailableStaffSchema = z.object({
     lat: z.number(),
     lng: z.number(),
   }).optional(),
+})
+
+// ---------------------------------------------------------------------------
+// Skill Definitions (Catalog)
+// ---------------------------------------------------------------------------
+
+export const listSkillDefinitionsSchema = z.object({
+  search: z.string().optional(),
+  skillType: z.enum(['SERVICE', 'CERTIFICATION', 'LANGUAGE', 'QUALIFICATION', 'EQUIPMENT', 'CUSTOM']).optional(),
+  category: z.string().optional(),
+  isActive: z.boolean().optional(),
+})
+
+export const getSkillDefinitionSchema = z.object({
+  id: z.string(),
+})
+
+export const createSkillDefinitionSchema = z.object({
+  slug: z.string().min(1).max(100).regex(/^[a-z0-9-]+$/, 'Slug must be lowercase alphanumeric with hyphens').optional(),
+  name: z.string().min(1).max(255),
+  skillType: z.enum(['SERVICE', 'CERTIFICATION', 'LANGUAGE', 'QUALIFICATION', 'EQUIPMENT', 'CUSTOM']),
+  category: z.string().max(100).nullable().optional(),
+  description: z.string().max(1000).nullable().optional(),
+  requiresVerification: z.boolean().default(false),
+  requiresExpiry: z.boolean().default(false),
+  metadata: z.record(z.string(), z.unknown()).nullable().optional(),
+})
+
+export const updateSkillDefinitionSchema = z.object({
+  id: z.string(),
+  name: z.string().min(1).max(255).optional(),
+  skillType: z.enum(['SERVICE', 'CERTIFICATION', 'LANGUAGE', 'QUALIFICATION', 'EQUIPMENT', 'CUSTOM']).optional(),
+  category: z.string().max(100).nullable().optional(),
+  description: z.string().max(1000).nullable().optional(),
+  requiresVerification: z.boolean().optional(),
+  requiresExpiry: z.boolean().optional(),
+  isActive: z.boolean().optional(),
+  metadata: z.record(z.string(), z.unknown()).nullable().optional(),
+})
+
+export const deleteSkillDefinitionSchema = z.object({
+  id: z.string(),
+})
+
+// ---------------------------------------------------------------------------
+// Capacity Type Definitions (Registry)
+// ---------------------------------------------------------------------------
+
+export const listCapacityTypesSchema = z.object({
+  isActive: z.boolean().optional(),
+})
+
+export const getCapacityTypeSchema = z.object({
+  id: z.string(),
+})
+
+export const updateCapacityTypeSchema = z.object({
+  id: z.string(),
+  defaultMaxDaily: z.number().int().min(0).nullable().optional(),
+  defaultMaxWeekly: z.number().int().min(0).nullable().optional(),
+  defaultMaxConcurrent: z.number().int().min(0).nullable().optional(),
+})
+
+// ---------------------------------------------------------------------------
+// Enhanced Skill Assignment (catalog-aware)
+// ---------------------------------------------------------------------------
+
+export const assignSkillSchema = z.object({
+  userId: z.string(),
+  skillDefinitionId: z.string(),
+  proficiency: z.enum(['BEGINNER', 'INTERMEDIATE', 'ADVANCED', 'EXPERT']).default('INTERMEDIATE'),
+  expiresAt: z.string().datetime().optional(),
+  verifiedBy: z.string().optional(),
+})
+
+export const unassignSkillSchema = z.object({
+  userId: z.string(),
+  skillDefinitionId: z.string(),
+})
+
+export const listUserSkillsSchema = z.object({
+  userId: z.string(),
 })
