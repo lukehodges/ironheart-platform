@@ -1,6 +1,9 @@
 // src/shared/resource-pool/resource-pool.service.ts
 import { logger } from "@/shared/logger"
 import { resourcePoolRepository } from "./resource-pool.repository"
+import { db } from "@/shared/db"
+import { resourceSkills } from "@/shared/db/schema"
+import { eq, and, inArray } from "drizzle-orm"
 import type {
   ResourceSkillInput,
   ResourceCapacityInput,
@@ -9,7 +12,20 @@ import type {
   WorkloadSummary,
   CapacityUsage,
   CapacityEnforcementMode,
+  SkillDefinitionInput,
+  SkillDefinitionFilter,
+  CapacityTypeInput,
+  FindAvailableStaffInput,
+  RankedStaffCandidate,
+  ManifestCapacityType,
+  ManifestSuggestedSkill,
 } from "./resource-pool.types"
+
+function getProficiencyLevelsAbove(min: string): string[] {
+  const levels = ['BEGINNER', 'INTERMEDIATE', 'ADVANCED', 'EXPERT']
+  const idx = levels.indexOf(min)
+  return idx >= 0 ? levels.slice(idx) : levels
+}
 
 const log = logger.child({ module: "resource-pool.service" })
 
@@ -42,6 +58,50 @@ export const resourcePoolService = {
 
   checkSkillValid(tenantId: string, userId: string, skillType: string, skillId: string) {
     return resourcePoolRepository.checkSkillValid(tenantId, userId, skillType, skillId)
+  },
+
+  // -------------------------------------------------------------------------
+  // Skill Definitions (Catalog)
+  // -------------------------------------------------------------------------
+
+  listSkillDefinitions(tenantId: string, filter: SkillDefinitionFilter = {}) {
+    return resourcePoolRepository.listSkillDefinitions(tenantId, filter)
+  },
+
+  getSkillDefinitionById(tenantId: string, id: string) {
+    return resourcePoolRepository.getSkillDefinitionById(tenantId, id)
+  },
+
+  createSkillDefinition(tenantId: string, input: SkillDefinitionInput) {
+    return resourcePoolRepository.createSkillDefinition(tenantId, input)
+  },
+
+  updateSkillDefinition(tenantId: string, id: string, updates: Partial<SkillDefinitionInput> & { isActive?: boolean }) {
+    return resourcePoolRepository.updateSkillDefinition(tenantId, id, updates)
+  },
+
+  softDeleteSkillDefinition(tenantId: string, id: string) {
+    return resourcePoolRepository.softDeleteSkillDefinition(tenantId, id)
+  },
+
+  // -------------------------------------------------------------------------
+  // Catalog-aware Skill Assignment
+  // -------------------------------------------------------------------------
+
+  assignSkillFromCatalog(tenantId: string, userId: string, skillDefinitionId: string, opts: {
+    proficiency?: string
+    expiresAt?: Date
+    verifiedBy?: string
+  } = {}) {
+    return resourcePoolRepository.assignSkillFromCatalog(tenantId, userId, skillDefinitionId, opts)
+  },
+
+  unassignSkillFromCatalog(tenantId: string, userId: string, skillDefinitionId: string) {
+    return resourcePoolRepository.unassignSkillFromCatalog(tenantId, userId, skillDefinitionId)
+  },
+
+  listSkillsForUser(tenantId: string, userId: string) {
+    return resourcePoolRepository.listSkillsForUser(tenantId, userId)
   },
 
   // -------------------------------------------------------------------------
@@ -213,5 +273,180 @@ export const resourcePoolService = {
     }
 
     return { userId, date, capacities }
+  },
+
+  // -------------------------------------------------------------------------
+  // Capacity Type Definitions (Registry)
+  // -------------------------------------------------------------------------
+
+  listCapacityTypeDefinitions(tenantId: string, isActive?: boolean) {
+    return resourcePoolRepository.listCapacityTypeDefinitions(tenantId, isActive)
+  },
+
+  getCapacityTypeDefinitionById(tenantId: string, id: string) {
+    return resourcePoolRepository.getCapacityTypeDefinitionById(tenantId, id)
+  },
+
+  updateCapacityTypeDefinition(tenantId: string, id: string, updates: { defaultMaxDaily?: number | null; defaultMaxWeekly?: number | null; defaultMaxConcurrent?: number | null }) {
+    return resourcePoolRepository.updateCapacityTypeDefinition(tenantId, id, updates)
+  },
+
+  // -------------------------------------------------------------------------
+  // Module Integration
+  // -------------------------------------------------------------------------
+
+  async registerModuleCapacity(tenantId: string, moduleSlug: string, config: ManifestCapacityType) {
+    await resourcePoolRepository.reactivateCapacityTypeByModule(tenantId, moduleSlug)
+
+    await resourcePoolRepository.upsertCapacityTypeDefinition(tenantId, moduleSlug, {
+      slug: config.slug,
+      name: config.name,
+      unit: config.unit,
+      defaultMaxDaily: config.defaultMaxDaily,
+      defaultMaxWeekly: config.defaultMaxWeekly,
+      defaultMaxConcurrent: config.defaultMaxConcurrent,
+    })
+
+    log.info({ tenantId, moduleSlug, slug: config.slug }, "Module capacity registered")
+  },
+
+  async deactivateModuleCapacity(tenantId: string, moduleSlug: string) {
+    await resourcePoolRepository.deactivateCapacityTypeByModule(tenantId, moduleSlug)
+    log.info({ tenantId, moduleSlug }, "Module capacity deactivated")
+  },
+
+  async seedSuggestedSkills(tenantId: string, skills: ManifestSuggestedSkill[]) {
+    for (const skill of skills) {
+      await resourcePoolRepository.upsertSkillDefinitionBySlug(tenantId, {
+        slug: skill.slug,
+        name: skill.name,
+        skillType: skill.skillType,
+      })
+    }
+    log.info({ tenantId, count: skills.length }, "Suggested skills seeded")
+  },
+
+  // -------------------------------------------------------------------------
+  // Matching Engine
+  // -------------------------------------------------------------------------
+
+  async findAvailableStaff(tenantId: string, input: FindAvailableStaffInput): Promise<{ candidates: RankedStaffCandidate[]; totalMatched: number }> {
+    let candidateUserIds: string[] = await this.getTeamMemberIds(tenantId)
+
+    if (candidateUserIds.length === 0) {
+      return { candidates: [], totalMatched: 0 }
+    }
+
+    if (input.requiredSkills && input.requiredSkills.length > 0) {
+      candidateUserIds = await this.filterBySkills(tenantId, candidateUserIds, input.requiredSkills)
+      if (candidateUserIds.length === 0) {
+        return { candidates: [], totalMatched: 0 }
+      }
+    }
+
+    const capacityCandidates = await this.filterByCapacity(
+      tenantId, candidateUserIds, input.capacityType, input.date, input.minAvailableCapacity ?? 1
+    )
+    if (capacityCandidates.length === 0) {
+      return { candidates: [], totalMatched: 0 }
+    }
+
+    const ranked = this.rankCandidates(capacityCandidates, input.sortBy ?? 'LEAST_LOADED')
+
+    return { candidates: ranked, totalMatched: ranked.length }
+  },
+
+  async getTeamMemberIds(tenantId: string): Promise<string[]> {
+    const { users } = await import("@/shared/db/schema")
+    const rows = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(and(
+        eq(users.tenantId, tenantId),
+        inArray(users.type, ['OWNER', 'ADMIN', 'MEMBER']),
+      ))
+    return rows.map(r => r.id)
+  },
+
+  async filterBySkills(tenantId: string, userIds: string[], requirements: FindAvailableStaffInput['requiredSkills']): Promise<string[]> {
+    if (!requirements || requirements.length === 0) return userIds
+
+    let filtered = new Set(userIds)
+
+    for (const req of requirements) {
+      const matching = new Set<string>()
+
+      if (req.skillDefinitionId) {
+        const rows = await db
+          .select({ userId: resourceSkills.userId })
+          .from(resourceSkills)
+          .where(and(
+            eq(resourceSkills.tenantId, tenantId),
+            eq(resourceSkills.skillDefinitionId, req.skillDefinitionId),
+            ...(req.minProficiency ? [inArray(resourceSkills.proficiency, getProficiencyLevelsAbove(req.minProficiency) as any[])] : []),
+          ))
+
+        for (const row of rows) {
+          if (filtered.has(row.userId)) matching.add(row.userId)
+        }
+      } else if (req.skillType && req.skillId) {
+        const users = await resourcePoolRepository.findUsersWithSkill(
+          tenantId, req.skillType, req.skillId, req.minProficiency
+        )
+        for (const uid of users) {
+          if (filtered.has(uid)) matching.add(uid)
+        }
+      }
+
+      filtered = matching
+      if (filtered.size === 0) break
+    }
+
+    return Array.from(filtered)
+  },
+
+  async filterByCapacity(tenantId: string, userIds: string[], capacityType: string, date: string, minAvailable: number): Promise<RankedStaffCandidate[]> {
+    const results: RankedStaffCandidate[] = []
+
+    for (const userId of userIds) {
+      const usage = await this.getCapacityUsage(tenantId, userId, capacityType, date)
+      const available = usage.available ?? Infinity
+
+      if (available >= minAvailable) {
+        results.push({
+          userId,
+          name: '',
+          score: 0,
+          reasons: [],
+          capacityUsage: usage,
+        })
+      }
+    }
+
+    return results
+  },
+
+  rankCandidates(candidates: RankedStaffCandidate[], strategy: string): RankedStaffCandidate[] {
+    const sorted = [...candidates]
+
+    switch (strategy) {
+      case 'LEAST_LOADED':
+        sorted.sort((a, b) => {
+          const aRatio = a.capacityUsage ? (a.capacityUsage.used / (a.capacityUsage.max ?? Infinity)) : 0
+          const bRatio = b.capacityUsage ? (b.capacityUsage.used / (b.capacityUsage.max ?? Infinity)) : 0
+          return aRatio - bRatio
+        })
+        break
+      case 'MOST_SKILLED':
+        sorted.sort((a, b) => b.score - a.score)
+        break
+      case 'ROUND_ROBIN':
+        sorted.sort((a, b) => a.score - b.score)
+        break
+      default:
+        break
+    }
+
+    return sorted.map((c, i) => ({ ...c, score: candidates.length - i }))
   },
 }
