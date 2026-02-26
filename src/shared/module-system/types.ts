@@ -88,4 +88,19 @@ export interface ModuleManifest {
   auditResources?: string[]
   settingsDefinitions?: ModuleSettingDefinition[]
   notificationTriggers?: NotificationTriggerDefinition[]
+  resourcePool?: {
+    capacityType?: {
+      slug: string
+      name: string
+      unit: 'COUNT' | 'HOURS' | 'POINTS'
+      defaultMaxDaily: number | null
+      defaultMaxWeekly: number | null
+      defaultMaxConcurrent: number | null
+    }
+    suggestedSkills?: {
+      slug: string
+      name: string
+      skillType: 'SERVICE' | 'CERTIFICATION' | 'LANGUAGE' | 'QUALIFICATION' | 'EQUIPMENT' | 'CUSTOM'
+    }[]
+  }
 }
