@@ -214,7 +214,7 @@ export function StaffOnboardingTemplatesTab() {
             createMutation.mutate({
               name: data.name,
               type: data.type,
-              employeeType: data.employeeType || undefined,
+              employeeType: (data.employeeType || undefined) as "EMPLOYED" | "SELF_EMPLOYED" | "CONTRACTOR" | undefined,
               items: data.items,
               isDefault: data.isDefault,
             })
