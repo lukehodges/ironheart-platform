@@ -6,12 +6,17 @@ import {
   resourceSkills,
   resourceCapacities,
   resourceAssignments,
+  skillDefinitions,
+  capacityTypeDefinitions,
 } from "@/shared/db/schema"
-import { eq, and, or, lte, gte, isNull, inArray, sql, desc } from "drizzle-orm"
+import { eq, and, or, lte, gte, isNull, inArray, sql, desc, ilike } from "drizzle-orm"
 import type {
   ResourceSkillInput,
   ResourceCapacityInput,
   AssignmentRequest,
+  SkillDefinitionInput,
+  SkillDefinitionFilter,
+  CapacityTypeInput,
 } from "./resource-pool.types"
 
 const log = logger.child({ module: "resource-pool.repository" })
@@ -114,6 +119,217 @@ export const resourcePoolRepository = {
   },
 
   // -------------------------------------------------------------------------
+  // Skill Definitions (Catalog)
+  // -------------------------------------------------------------------------
+
+  async listSkillDefinitions(tenantId: string, filter: SkillDefinitionFilter = {}) {
+    const conditions = [eq(skillDefinitions.tenantId, tenantId)]
+
+    if (filter.skillType) {
+      conditions.push(eq(skillDefinitions.skillType, filter.skillType as any))
+    }
+    if (filter.category) {
+      conditions.push(eq(skillDefinitions.category, filter.category))
+    }
+    if (filter.isActive !== undefined) {
+      conditions.push(eq(skillDefinitions.isActive, filter.isActive))
+    }
+    if (filter.search) {
+      conditions.push(ilike(skillDefinitions.name, `%${filter.search}%`))
+    }
+
+    return db
+      .select()
+      .from(skillDefinitions)
+      .where(and(...conditions))
+      .orderBy(skillDefinitions.name)
+  },
+
+  async getSkillDefinitionById(tenantId: string, id: string) {
+    const [row] = await db
+      .select()
+      .from(skillDefinitions)
+      .where(and(
+        eq(skillDefinitions.tenantId, tenantId),
+        eq(skillDefinitions.id, id),
+      ))
+      .limit(1)
+
+    return row ?? null
+  },
+
+  async getSkillDefinitionBySlug(tenantId: string, slug: string) {
+    const [row] = await db
+      .select()
+      .from(skillDefinitions)
+      .where(and(
+        eq(skillDefinitions.tenantId, tenantId),
+        eq(skillDefinitions.slug, slug),
+      ))
+      .limit(1)
+
+    return row ?? null
+  },
+
+  async createSkillDefinition(tenantId: string, input: SkillDefinitionInput) {
+    const now = new Date()
+    const slug = input.slug ?? input.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+
+    const [row] = await db
+      .insert(skillDefinitions)
+      .values({
+        id: crypto.randomUUID(),
+        tenantId,
+        slug,
+        name: input.name,
+        skillType: input.skillType,
+        category: input.category ?? null,
+        description: input.description ?? null,
+        requiresVerification: input.requiresVerification ?? false,
+        requiresExpiry: input.requiresExpiry ?? false,
+        isActive: true,
+        metadata: input.metadata ?? null,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning()
+
+    log.info({ tenantId, slug, skillType: input.skillType }, "Skill definition created")
+    return row!
+  },
+
+  async updateSkillDefinition(tenantId: string, id: string, updates: Partial<SkillDefinitionInput> & { isActive?: boolean }) {
+    const now = new Date()
+    const setValues: Record<string, unknown> = { updatedAt: now }
+
+    if (updates.name !== undefined) setValues.name = updates.name
+    if (updates.skillType !== undefined) setValues.skillType = updates.skillType
+    if (updates.category !== undefined) setValues.category = updates.category
+    if (updates.description !== undefined) setValues.description = updates.description
+    if (updates.requiresVerification !== undefined) setValues.requiresVerification = updates.requiresVerification
+    if (updates.requiresExpiry !== undefined) setValues.requiresExpiry = updates.requiresExpiry
+    if (updates.isActive !== undefined) setValues.isActive = updates.isActive
+    if (updates.metadata !== undefined) setValues.metadata = updates.metadata
+
+    const [row] = await db
+      .update(skillDefinitions)
+      .set(setValues)
+      .where(and(
+        eq(skillDefinitions.tenantId, tenantId),
+        eq(skillDefinitions.id, id),
+      ))
+      .returning()
+
+    if (!row) throw new NotFoundError("SkillDefinition", id)
+    log.info({ tenantId, id }, "Skill definition updated")
+    return row
+  },
+
+  async softDeleteSkillDefinition(tenantId: string, id: string) {
+    const [row] = await db
+      .update(skillDefinitions)
+      .set({ isActive: false, updatedAt: new Date() })
+      .where(and(
+        eq(skillDefinitions.tenantId, tenantId),
+        eq(skillDefinitions.id, id),
+      ))
+      .returning()
+
+    if (!row) throw new NotFoundError("SkillDefinition", id)
+    log.info({ tenantId, id }, "Skill definition soft-deleted")
+    return row
+  },
+
+  async upsertSkillDefinitionBySlug(tenantId: string, input: SkillDefinitionInput) {
+    const now = new Date()
+    const slug = input.slug ?? input.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+
+    const [row] = await db
+      .insert(skillDefinitions)
+      .values({
+        id: crypto.randomUUID(),
+        tenantId,
+        slug,
+        name: input.name,
+        skillType: input.skillType,
+        category: input.category ?? null,
+        description: input.description ?? null,
+        requiresVerification: input.requiresVerification ?? false,
+        requiresExpiry: input.requiresExpiry ?? false,
+        isActive: true,
+        metadata: input.metadata ?? null,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .onConflictDoNothing()
+      .returning()
+
+    if (row) {
+      log.info({ tenantId, slug }, "Skill definition seeded")
+    }
+    return row ?? null
+  },
+
+  // -------------------------------------------------------------------------
+  // Catalog-aware Skill Assignment
+  // -------------------------------------------------------------------------
+
+  async assignSkillFromCatalog(tenantId: string, userId: string, skillDefinitionId: string, opts: {
+    proficiency?: string
+    expiresAt?: Date
+    verifiedBy?: string
+  }) {
+    const def = await this.getSkillDefinitionById(tenantId, skillDefinitionId)
+    if (!def) throw new NotFoundError("SkillDefinition", skillDefinitionId)
+
+    const now = new Date()
+    const [row] = await db
+      .insert(resourceSkills)
+      .values({
+        id: crypto.randomUUID(),
+        tenantId,
+        userId,
+        skillType: def.skillType,
+        skillId: def.slug,
+        skillName: def.name,
+        skillDefinitionId: def.id,
+        proficiency: (opts.proficiency ?? 'INTERMEDIATE') as any,
+        verifiedAt: opts.verifiedBy ? now : null,
+        verifiedBy: opts.verifiedBy ?? null,
+        expiresAt: opts.expiresAt ?? null,
+        metadata: null,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning()
+
+    log.info({ tenantId, userId, skillDefinitionId, slug: def.slug }, "Skill assigned from catalog")
+    return row!
+  },
+
+  async unassignSkillFromCatalog(tenantId: string, userId: string, skillDefinitionId: string) {
+    await db
+      .delete(resourceSkills)
+      .where(and(
+        eq(resourceSkills.tenantId, tenantId),
+        eq(resourceSkills.userId, userId),
+        eq(resourceSkills.skillDefinitionId, skillDefinitionId),
+      ))
+
+    log.info({ tenantId, userId, skillDefinitionId }, "Skill unassigned from catalog")
+  },
+
+  async listSkillsForUser(tenantId: string, userId: string) {
+    return db
+      .select()
+      .from(resourceSkills)
+      .where(and(
+        eq(resourceSkills.tenantId, tenantId),
+        eq(resourceSkills.userId, userId),
+      ))
+  },
+
+  // -------------------------------------------------------------------------
   // Capacities
   // -------------------------------------------------------------------------
 
@@ -171,6 +387,103 @@ export const resourcePoolRepository = {
         eq(resourceCapacities.userId, userId),
       ))
       .orderBy(desc(resourceCapacities.effectiveFrom))
+  },
+
+  // -------------------------------------------------------------------------
+  // Capacity Type Definitions (Registry)
+  // -------------------------------------------------------------------------
+
+  async listCapacityTypeDefinitions(tenantId: string, isActive?: boolean) {
+    const conditions = [eq(capacityTypeDefinitions.tenantId, tenantId)]
+    if (isActive !== undefined) {
+      conditions.push(eq(capacityTypeDefinitions.isActive, isActive))
+    }
+
+    return db
+      .select()
+      .from(capacityTypeDefinitions)
+      .where(and(...conditions))
+      .orderBy(capacityTypeDefinitions.name)
+  },
+
+  async getCapacityTypeDefinitionById(tenantId: string, id: string) {
+    const [row] = await db
+      .select()
+      .from(capacityTypeDefinitions)
+      .where(and(
+        eq(capacityTypeDefinitions.tenantId, tenantId),
+        eq(capacityTypeDefinitions.id, id),
+      ))
+      .limit(1)
+
+    return row ?? null
+  },
+
+  async upsertCapacityTypeDefinition(tenantId: string, moduleSlug: string, input: CapacityTypeInput) {
+    const now = new Date()
+    const [row] = await db
+      .insert(capacityTypeDefinitions)
+      .values({
+        id: crypto.randomUUID(),
+        tenantId,
+        slug: input.slug,
+        name: input.name,
+        description: input.description ?? null,
+        unit: input.unit ?? 'COUNT',
+        defaultMaxDaily: input.defaultMaxDaily ?? null,
+        defaultMaxWeekly: input.defaultMaxWeekly ?? null,
+        defaultMaxConcurrent: input.defaultMaxConcurrent ?? null,
+        registeredByModule: moduleSlug,
+        isActive: true,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .onConflictDoNothing()
+      .returning()
+
+    if (row) {
+      log.info({ tenantId, slug: input.slug, moduleSlug }, "Capacity type definition registered")
+    }
+    return row ?? null
+  },
+
+  async updateCapacityTypeDefinition(tenantId: string, id: string, updates: { defaultMaxDaily?: number | null; defaultMaxWeekly?: number | null; defaultMaxConcurrent?: number | null }) {
+    const [row] = await db
+      .update(capacityTypeDefinitions)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(and(
+        eq(capacityTypeDefinitions.tenantId, tenantId),
+        eq(capacityTypeDefinitions.id, id),
+      ))
+      .returning()
+
+    if (!row) throw new NotFoundError("CapacityTypeDefinition", id)
+    log.info({ tenantId, id }, "Capacity type definition updated")
+    return row
+  },
+
+  async deactivateCapacityTypeByModule(tenantId: string, moduleSlug: string) {
+    await db
+      .update(capacityTypeDefinitions)
+      .set({ isActive: false, updatedAt: new Date() })
+      .where(and(
+        eq(capacityTypeDefinitions.tenantId, tenantId),
+        eq(capacityTypeDefinitions.registeredByModule, moduleSlug),
+      ))
+
+    log.info({ tenantId, moduleSlug }, "Capacity type definitions deactivated for module")
+  },
+
+  async reactivateCapacityTypeByModule(tenantId: string, moduleSlug: string) {
+    await db
+      .update(capacityTypeDefinitions)
+      .set({ isActive: true, updatedAt: new Date() })
+      .where(and(
+        eq(capacityTypeDefinitions.tenantId, tenantId),
+        eq(capacityTypeDefinitions.registeredByModule, moduleSlug),
+      ))
+
+    log.info({ tenantId, moduleSlug }, "Capacity type definitions reactivated for module")
   },
 
   // -------------------------------------------------------------------------

@@ -114,8 +114,9 @@ export interface WorkloadSummary {
 }
 
 export interface SkillRequirement {
-  skillType: SkillType
-  skillId: string
+  skillDefinitionId?: string
+  skillType?: SkillType
+  skillId?: string
   minProficiency?: ProficiencyLevel
 }
 
@@ -136,4 +137,96 @@ export interface RankedStaffCandidate {
   score: number
   reasons: string[]
   capacityUsage: CapacityUsage | null
+}
+
+// ---------------------------------------------------------------------------
+// Skill Catalog
+// ---------------------------------------------------------------------------
+
+export interface SkillDefinitionInput {
+  slug?: string
+  name: string
+  skillType: SkillType
+  category?: string | null
+  description?: string | null
+  requiresVerification?: boolean
+  requiresExpiry?: boolean
+  metadata?: Record<string, unknown> | null
+}
+
+export interface SkillDefinitionRecord {
+  id: string
+  tenantId: string
+  slug: string
+  name: string
+  skillType: SkillType
+  category: string | null
+  description: string | null
+  requiresVerification: boolean
+  requiresExpiry: boolean
+  isActive: boolean
+  metadata: Record<string, unknown> | null
+  createdAt: Date
+  updatedAt: Date
+}
+
+export interface SkillDefinitionFilter {
+  search?: string
+  skillType?: SkillType
+  category?: string
+  isActive?: boolean
+}
+
+// ---------------------------------------------------------------------------
+// Capacity Type Registry
+// ---------------------------------------------------------------------------
+
+export interface CapacityTypeInput {
+  slug: string
+  name: string
+  description?: string | null
+  unit?: CapacityUnit
+  defaultMaxDaily?: number | null
+  defaultMaxWeekly?: number | null
+  defaultMaxConcurrent?: number | null
+}
+
+export interface CapacityTypeRecord {
+  id: string
+  tenantId: string
+  slug: string
+  name: string
+  description: string | null
+  unit: CapacityUnit
+  defaultMaxDaily: number | null
+  defaultMaxWeekly: number | null
+  defaultMaxConcurrent: number | null
+  registeredByModule: string | null
+  isActive: boolean
+  createdAt: Date
+  updatedAt: Date
+}
+
+// ---------------------------------------------------------------------------
+// Module Manifest Integration
+// ---------------------------------------------------------------------------
+
+export interface ManifestCapacityType {
+  slug: string
+  name: string
+  unit: CapacityUnit
+  defaultMaxDaily: number | null
+  defaultMaxWeekly: number | null
+  defaultMaxConcurrent: number | null
+}
+
+export interface ManifestSuggestedSkill {
+  slug: string
+  name: string
+  skillType: SkillType
+}
+
+export interface ResourcePoolManifestConfig {
+  capacityType?: ManifestCapacityType
+  suggestedSkills?: ManifestSuggestedSkill[]
 }

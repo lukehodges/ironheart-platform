@@ -45,4 +45,19 @@ export const bookingManifest: ModuleManifest = {
     { key: 'availabilityMode', label: 'Availability Mode', type: 'select', defaultValue: 'CALENDAR_BASED', options: [{ label: 'Calendar Based', value: 'CALENDAR_BASED' }, { label: 'Slot Based', value: 'SLOT_BASED' }, { label: 'Hybrid', value: 'HYBRID' }], category: 'Mode', order: 1 },
     { key: 'capacityMode', label: 'Capacity Mode', type: 'select', defaultValue: 'TENANT_LEVEL', options: [{ label: 'Tenant Level', value: 'TENANT_LEVEL' }, { label: 'Calendar Level', value: 'CALENDAR_LEVEL' }, { label: 'Staff Level', value: 'STAFF_LEVEL' }], category: 'Mode', order: 2 },
   ],
+  resourcePool: {
+    capacityType: {
+      slug: 'bookings',
+      name: 'Bookings',
+      unit: 'COUNT',
+      defaultMaxDaily: 8,
+      defaultMaxWeekly: null,
+      defaultMaxConcurrent: null,
+    },
+    suggestedSkills: [
+      { slug: 'haircut', name: 'Haircut', skillType: 'SERVICE' },
+      { slug: 'color-treatment', name: 'Color Treatment', skillType: 'SERVICE' },
+      { slug: 'beard-trim', name: 'Beard Trim', skillType: 'SERVICE' },
+    ],
+  },
 }

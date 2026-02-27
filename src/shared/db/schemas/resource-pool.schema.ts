@@ -5,6 +5,7 @@ import {
   text,
   integer,
   numeric,
+  boolean,
   date,
   jsonb,
   timestamp,
@@ -39,6 +40,63 @@ export const capacityEnforcementMode = pgEnum("CapacityEnforcementMode", [
 ])
 
 // ---------------------------------------------------------------------------
+// Skill Catalog
+// ---------------------------------------------------------------------------
+
+export const skillDefinitions = pgTable("skill_definitions", {
+  id: uuid().primaryKey().notNull(),
+  tenantId: uuid().notNull(),
+  slug: text().notNull(),
+  name: text().notNull(),
+  skillType: skillType().notNull(),
+  category: text(),
+  description: text(),
+  requiresVerification: boolean().default(false).notNull(),
+  requiresExpiry: boolean().default(false).notNull(),
+  isActive: boolean().default(true).notNull(),
+  metadata: jsonb(),
+  createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp({ precision: 3, mode: 'date' }).notNull(),
+}, (table) => [
+  uniqueIndex("skill_definitions_tenant_slug_key").on(table.tenantId, table.slug),
+  index("skill_definitions_tenantId_idx").on(table.tenantId),
+  index("skill_definitions_tenantId_skillType_idx").on(table.tenantId, table.skillType),
+  foreignKey({
+    columns: [table.tenantId],
+    foreignColumns: [tenants.id],
+    name: "skill_definitions_tenantId_fkey"
+  }).onUpdate("cascade").onDelete("cascade"),
+])
+
+// ---------------------------------------------------------------------------
+// Capacity Type Registry
+// ---------------------------------------------------------------------------
+
+export const capacityTypeDefinitions = pgTable("capacity_type_definitions", {
+  id: uuid().primaryKey().notNull(),
+  tenantId: uuid().notNull(),
+  slug: text().notNull(),
+  name: text().notNull(),
+  description: text(),
+  unit: capacityUnit().default('COUNT').notNull(),
+  defaultMaxDaily: integer(),
+  defaultMaxWeekly: integer(),
+  defaultMaxConcurrent: integer(),
+  registeredByModule: text(),
+  isActive: boolean().default(true).notNull(),
+  createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp({ precision: 3, mode: 'date' }).notNull(),
+}, (table) => [
+  uniqueIndex("capacity_type_definitions_tenant_slug_key").on(table.tenantId, table.slug),
+  index("capacity_type_definitions_tenantId_idx").on(table.tenantId),
+  foreignKey({
+    columns: [table.tenantId],
+    foreignColumns: [tenants.id],
+    name: "capacity_type_definitions_tenantId_fkey"
+  }).onUpdate("cascade").onDelete("cascade"),
+])
+
+// ---------------------------------------------------------------------------
 // Tables
 // ---------------------------------------------------------------------------
 
@@ -53,6 +111,7 @@ export const resourceSkills = pgTable("resource_skills", {
   verifiedAt: timestamp({ precision: 3, mode: 'date' }),
   verifiedBy: uuid(),
   expiresAt: timestamp({ precision: 3, mode: 'date' }),
+  skillDefinitionId: uuid(),
   metadata: jsonb(),
   createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
   updatedAt: timestamp({ precision: 3, mode: 'date' }).notNull(),
@@ -80,6 +139,11 @@ export const resourceSkills = pgTable("resource_skills", {
     columns: [table.verifiedBy],
     foreignColumns: [users.id],
     name: "resource_skills_verifiedBy_fkey"
+  }).onUpdate("cascade").onDelete("set null"),
+  foreignKey({
+    columns: [table.skillDefinitionId],
+    foreignColumns: [skillDefinitions.id],
+    name: "resource_skills_skillDefinitionId_fkey"
   }).onUpdate("cascade").onDelete("set null"),
 ])
 
@@ -165,3 +229,5 @@ export const resourceAssignments = pgTable("resource_assignments", {
 export type ResourceSkill = typeof resourceSkills.$inferSelect
 export type ResourceCapacity = typeof resourceCapacities.$inferSelect
 export type ResourceAssignment = typeof resourceAssignments.$inferSelect
+export type SkillDefinition = typeof skillDefinitions.$inferSelect
+export type CapacityTypeDefinition = typeof capacityTypeDefinitions.$inferSelect

@@ -22,6 +22,7 @@ import { searchRouter } from "@/modules/search";
 import { settingsRouter } from "@/modules/settings";
 import { auditRouter } from "@/modules/audit";
 import { rbacRouter } from "@/modules/rbac";
+import { resourcePoolRouter } from "@/shared/resource-pool/resource-pool.router";
 
 /**
  * Root tRPC router.
@@ -59,6 +60,7 @@ export const appRouter = router({
   settings: settingsRouter,
   audit: auditRouter,
   rbac: rbacRouter,
+  resourcePool: resourcePoolRouter,
 });
 
 export type AppRouter = typeof appRouter;
