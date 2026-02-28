@@ -147,17 +147,17 @@ export function DataGrid<T extends { id: string }>({
     const csvColumns = columns.filter((col) => col.csvValue)
     if (csvColumns.length === 0) return
 
-    const header = csvColumns.map((col) => col.label).join(",")
+    const escapeCsvField = (value: string): string => {
+      if (value.includes(",") || value.includes('"') || value.includes("\n")) {
+        return `"${value.replace(/"/g, '""')}"`
+      }
+      return value
+    }
+
+    const header = csvColumns.map((col) => escapeCsvField(col.label)).join(",")
     const rows = data.map((row) =>
       csvColumns
-        .map((col) => {
-          const value = col.csvValue!(row)
-          // Escape commas and quotes in CSV
-          if (value.includes(",") || value.includes('"') || value.includes("\n")) {
-            return `"${value.replace(/"/g, '""')}"`
-          }
-          return value
-        })
+        .map((col) => escapeCsvField(col.csvValue!(row)))
         .join(",")
     )
 
@@ -195,18 +195,28 @@ export function DataGrid<T extends { id: string }>({
               <span className="text-sm text-muted-foreground">
                 {selectedRows.length} selected
               </span>
-              {bulkActions.map((action) => (
-                <Button
-                  key={action.label}
-                  size="sm"
-                  variant={action.variant === "destructive" ? "destructive" : "outline"}
-                  onClick={() => action.onAction(selectedRows)}
-                  disabled={action.isPending}
-                >
-                  {action.icon && <action.icon className="h-4 w-4" />}
-                  {action.label}
-                </Button>
-              ))}
+              {bulkActions.map((action) => {
+                const applicableRows = action.isApplicable
+                  ? selectedRows.filter(action.isApplicable)
+                  : selectedRows
+                return (
+                  <Button
+                    key={action.label}
+                    size="sm"
+                    variant={action.variant === "destructive" ? "destructive" : "outline"}
+                    onClick={() => action.onAction(applicableRows)}
+                    disabled={action.isPending || applicableRows.length === 0}
+                  >
+                    {action.icon && <action.icon className="h-4 w-4" />}
+                    {action.label}
+                    {action.isApplicable && applicableRows.length !== selectedRows.length && (
+                      <span className="ml-1 text-muted-foreground">
+                        ({applicableRows.length})
+                      </span>
+                    )}
+                  </Button>
+                )
+              })}
             </>
           )}
         </div>
@@ -262,7 +272,19 @@ export function DataGrid<T extends { id: string }>({
                 </TableHead>
               )}
               {visibleColumns.map((col) => (
-                <TableHead key={col.id} style={col.width ? { width: col.width } : undefined}>
+                <TableHead
+                  key={col.id}
+                  className={col.width}
+                  aria-sort={
+                    col.sortable && onSortChange
+                      ? sort?.field === col.id
+                        ? sort.direction === "asc"
+                          ? "ascending"
+                          : "descending"
+                        : "none"
+                      : undefined
+                  }
+                >
                   {col.sortable && onSortChange ? (
                     <Button
                       variant="ghost"
