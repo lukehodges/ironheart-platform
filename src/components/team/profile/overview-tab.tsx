@@ -146,7 +146,7 @@ function DepartmentBadges({ member }: { member: StaffMember }) {
 function ReportingLine({ reportsTo }: { reportsTo: string | null }) {
   const { data: manager } = api.team.getById.useQuery(
     { userId: reportsTo! },
-    { enabled: !!reportsTo, staleTime: 5 * 60 * 1000 }
+    { enabled: !!reportsTo, staleTime: 5 * 60 * 1000, retry: false }
   )
   if (!reportsTo || !manager) return null
 

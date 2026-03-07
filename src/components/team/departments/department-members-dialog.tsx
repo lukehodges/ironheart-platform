@@ -38,7 +38,7 @@ export function DepartmentMembersDialog({
 
   // Fetch all staff to populate the "add" dropdown
   const { data: staffData } = api.team.list.useQuery(
-    { limit: 200, status: "ACTIVE" },
+    { limit: 100, status: "ACTIVE" },
     { enabled: open, staleTime: 30_000 }
   )
 

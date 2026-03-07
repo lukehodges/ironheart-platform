@@ -29,6 +29,7 @@ import {
   Shield,
   Bell,
   Globe,
+  Layers,
   type LucideIcon,
 } from "lucide-react"
 
@@ -59,6 +60,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   Shield,
   Bell,
   Globe,
+  Layers,
 }
 
 function resolveIcon(iconName: string): LucideIcon {
@@ -87,6 +89,19 @@ function buildStaticDashboardSection(): NavSection {
   return {
     items: [
       { title: "Dashboard", href: "/admin", icon: "LayoutDashboard" },
+    ],
+  }
+}
+
+function buildStaticDemoSection(): NavSection {
+  return {
+    title: "BP2 Demo",
+    items: [
+      { title: "Demo Overview",          href: "/admin/bp2-demo",                            icon: "Layers" },
+      { title: "Deals Pipeline",         href: "/admin/bp2-demo/deals-pipeline",              icon: "BarChart3" },
+      { title: "Property Stock",         href: "/admin/bp2-demo/property-stock",              icon: "Building2" },
+      { title: "Lease Calendar",         href: "/admin/bp2-demo/lease-calendar",              icon: "CalendarDays" },
+      { title: "Requirements Matcher",   href: "/admin/bp2-demo/requirements-matcher",        icon: "Search" },
     ],
   }
 }
@@ -132,6 +147,8 @@ export function SidebarNav({
 
   // Merge: if nav-builder already produced an "Account" section (e.g. Settings from tenant manifest),
   // append our static account items into it rather than duplicating
+  const demoSection = buildStaticDemoSection()
+
   const sections: NavSection[] = [dashboardSection]
 
   for (const section of moduleSections) {
@@ -151,6 +168,9 @@ export function SidebarNav({
   if (!hasAccountFromModules && accountSection) {
     sections.push(accountSection)
   }
+
+  // BP2 demo section — always shown
+  sections.push(demoSection)
 
   return (
     <nav className="flex-1 overflow-y-auto py-4 scrollbar-thin" aria-label="Main navigation">

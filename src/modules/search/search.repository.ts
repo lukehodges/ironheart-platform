@@ -2,6 +2,7 @@ import { db } from '@/shared/db'
 import { and, eq, sql, isNull } from 'drizzle-orm'
 import { customers } from '@/shared/db/schemas/customer.schema'
 import { bookings } from '@/shared/db/schemas/booking.schema'
+import { users, staffProfiles } from '@/shared/db/schemas/auth.schema'
 
 export async function fullTextSearchCustomers(
   tenantId: string,
@@ -87,4 +88,30 @@ export async function fullTextSearchBookings(
       )
       .limit(limit)
   }
+}
+
+export async function fullTextSearchStaff(
+  tenantId: string,
+  query: string,
+  limit: number
+) {
+  const pattern = `%${query}%`
+  return db
+    .select({
+      id:        users.id,
+      firstName: users.firstName,
+      lastName:  users.lastName,
+      email:     users.email,
+      jobTitle:  staffProfiles.jobTitle,
+    })
+    .from(users)
+    .innerJoin(staffProfiles, eq(staffProfiles.userId, users.id))
+    .where(
+      and(
+        eq(users.tenantId, tenantId),
+        isNull(users.deletedAt),
+        sql`(${users.firstName} || ' ' || ${users.lastName} || ' ' || COALESCE(${users.email}, '')) ILIKE ${pattern}`
+      )
+    )
+    .limit(limit)
 }

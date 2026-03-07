@@ -13,7 +13,7 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as schema from "../src/shared/db/schema";
 import * as relations from "../src/shared/db/relations";
-import { eq, inArray } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 
 const client = postgres(process.env.DATABASE_URL!, { max: 1 });
 const db = drizzle(client, { schema: { ...schema, ...relations } });
@@ -773,10 +773,10 @@ async function seedFeatureFlags(tenantId: string) {
 
 async function seedWebhooks(tenantId: string) {
   log("seeding webhooks...");
-  
+
   const existing = await db.select({ id: schema.webhookEndpoints.id }).from(schema.webhookEndpoints)
     .where(eq(schema.webhookEndpoints.tenantId, tenantId));
-  
+
   if (existing.length > 0) return;
 
   await db.insert(schema.webhookEndpoints).values({
@@ -785,6 +785,408 @@ async function seedWebhooks(tenantId: string) {
     status: "ACTIVE" as const, failureCount: 0,
     createdAt: now, updatedAt: now,
   });
+}
+
+// ---------------------------------------------------------------------------
+// 19. Staff Module — Departments
+// ---------------------------------------------------------------------------
+
+async function seedDepartments(tenantId: string, staffIds: string[]) {
+  log("seeding departments...");
+
+  // Check for seed-specific marker (not user-created data)
+  const existing = await db.select({ id: schema.staffDepartments.id }).from(schema.staffDepartments)
+    .where(and(eq(schema.staffDepartments.tenantId, tenantId), eq(schema.staffDepartments.slug, "clinical")));
+
+  if (existing.length > 0) {
+    log("seed departments already exist");
+    const all = await db.select({ id: schema.staffDepartments.id }).from(schema.staffDepartments)
+      .where(eq(schema.staffDepartments.tenantId, tenantId));
+    return { deptIds: all.map(d => d.id) };
+  }
+
+  // Top-level departments
+  const clinicalId = uuid();
+  const adminDeptId = uuid();
+  const wellnessId = uuid();
+
+  // Sub-departments
+  const physioId = uuid();
+  const sportsId = uuid();
+  const massageId = uuid();
+
+  const depts = [
+    { id: clinicalId, name: "Clinical", slug: "clinical", description: "Clinical therapy and patient care", parentId: null, managerId: staffIds[1] ?? null, color: "#0F766E", sortOrder: 0 },
+    { id: adminDeptId, name: "Administration", slug: "administration", description: "Office management and operations", parentId: null, managerId: staffIds[0] ?? null, color: "#0284C7", sortOrder: 1 },
+    { id: wellnessId, name: "Wellness & Recovery", slug: "wellness-recovery", description: "Holistic wellness programmes", parentId: null, managerId: null, color: "#7C3AED", sortOrder: 2 },
+    { id: physioId, name: "Physiotherapy", slug: "physiotherapy", description: "Musculoskeletal and rehabilitation", parentId: clinicalId, managerId: staffIds[1] ?? null, color: "#059669", sortOrder: 0 },
+    { id: sportsId, name: "Sports Therapy", slug: "sports-therapy", description: "Sports injury treatment and prevention", parentId: clinicalId, managerId: staffIds[2] ?? null, color: "#D97706", sortOrder: 1 },
+    { id: massageId, name: "Massage Therapy", slug: "massage-therapy", description: "Therapeutic and relaxation massage", parentId: wellnessId, managerId: staffIds[3] ?? null, color: "#DC2626", sortOrder: 0 },
+  ];
+
+  // Insert parents first, then children (FK constraint)
+  const parents = depts.filter(d => !d.parentId);
+  const children = depts.filter(d => d.parentId);
+
+  await db.insert(schema.staffDepartments).values(parents.map(d => ({
+    ...d, tenantId, isActive: true, createdAt: now, updatedAt: now,
+  })));
+  await db.insert(schema.staffDepartments).values(children.map(d => ({
+    ...d, tenantId, isActive: true, createdAt: now, updatedAt: now,
+  })));
+
+  // Department members
+  const members = [
+    // Sarah Mitchell → Clinical (primary), Physiotherapy
+    { userId: staffIds[1]!, departmentId: clinicalId, isPrimary: true },
+    { userId: staffIds[1]!, departmentId: physioId, isPrimary: false },
+    // James Carter → Sports Therapy (primary), Clinical
+    { userId: staffIds[2]!, departmentId: sportsId, isPrimary: true },
+    { userId: staffIds[2]!, departmentId: clinicalId, isPrimary: false },
+    // Emma Davies → Massage Therapy (primary), Wellness
+    { userId: staffIds[3]!, departmentId: massageId, isPrimary: true },
+    { userId: staffIds[3]!, departmentId: wellnessId, isPrimary: false },
+    // Luke → Administration (primary)
+    { userId: staffIds[0]!, departmentId: adminDeptId, isPrimary: true },
+  ].filter(m => m.userId);
+
+  if (members.length > 0) {
+    await db.insert(schema.staffDepartmentMembers).values(members.map(m => ({
+      id: uuid(), tenantId, ...m, joinedAt: now,
+    })));
+  }
+
+  log(`created ${depts.length} departments, ${members.length} memberships`);
+  return { deptIds: depts.map(d => d.id) };
+}
+
+// ---------------------------------------------------------------------------
+// 20. Staff Module — Enhanced Profiles (employee type, reporting, address, emergency)
+// ---------------------------------------------------------------------------
+
+async function seedEnhancedProfiles(tenantId: string, staffIds: string[]) {
+  log("seeding enhanced staff profiles...");
+
+  // Update Sarah Mitchell — Lead Physiotherapist
+  if (staffIds[1]) {
+    await db.update(schema.staffProfiles).set({
+      employeeType: "EMPLOYEE" as const,
+      reportsTo: staffIds[0]!, // reports to Luke
+      bio: "Senior physiotherapist with 12 years of experience specialising in musculoskeletal rehabilitation and post-operative recovery.",
+      dateOfBirth: new Date("1988-03-15"),
+      taxId: "AB123456C",
+      emergencyContactName: "David Mitchell",
+      emergencyContactPhone: "07700 800001",
+      emergencyContactRelation: "Spouse",
+      addressLine1: "42 Woodstock Road",
+      addressCity: "Oxford",
+      addressPostcode: "OX2 6HT",
+      addressCountry: "GB",
+      hourlyRate: "60",
+      mileageRate: "0.45",
+      updatedAt: now,
+    }).where(eq(schema.staffProfiles.userId, staffIds[1]));
+  }
+
+  // Update James Carter — Sports Therapist
+  if (staffIds[2]) {
+    await db.update(schema.staffProfiles).set({
+      employeeType: "EMPLOYEE" as const,
+      reportsTo: staffIds[1]!, // reports to Sarah
+      bio: "Certified sports therapist working with amateur and professional athletes. Specialises in soft tissue injury and biomechanical assessment.",
+      dateOfBirth: new Date("1992-07-22"),
+      taxId: "CD789012E",
+      emergencyContactName: "Linda Carter",
+      emergencyContactPhone: "07700 800002",
+      emergencyContactRelation: "Mother",
+      addressLine1: "8 Banbury Road",
+      addressLine2: "Flat 3",
+      addressCity: "Oxford",
+      addressPostcode: "OX2 7BY",
+      addressCountry: "GB",
+      hourlyRate: "45",
+      mileageRate: "0.45",
+      updatedAt: now,
+    }).where(eq(schema.staffProfiles.userId, staffIds[2]));
+  }
+
+  // Update Emma Davies — Massage Therapist (Contractor)
+  if (staffIds[3]) {
+    await db.update(schema.staffProfiles).set({
+      employeeType: "CONTRACTOR" as const,
+      reportsTo: staffIds[1]!, // reports to Sarah
+      bio: "Experienced massage therapist offering deep tissue, sports, and Swedish massage. ITEC Level 4 qualified.",
+      dateOfBirth: new Date("1990-11-08"),
+      emergencyContactName: "Tom Davies",
+      emergencyContactPhone: "07700 800003",
+      emergencyContactRelation: "Brother",
+      addressLine1: "15 Iffley Road",
+      addressCity: "Oxford",
+      addressPostcode: "OX4 1EA",
+      addressCountry: "GB",
+      hourlyRate: "35",
+      updatedAt: now,
+    }).where(eq(schema.staffProfiles.userId, staffIds[3]));
+  }
+
+  log("updated 3 staff profiles with enhanced data");
+}
+
+// ---------------------------------------------------------------------------
+// 21. Staff Module — Pay Rates
+// ---------------------------------------------------------------------------
+
+async function seedPayRates(tenantId: string, staffIds: string[]) {
+  log("seeding pay rates...");
+
+  // Check for seed-specific marker
+  const existing = await db.select({ id: schema.staffPayRates.id }).from(schema.staffPayRates)
+    .where(and(eq(schema.staffPayRates.tenantId, tenantId), eq(schema.staffPayRates.reason, "Initial contract")));
+
+  if (existing.length > 0) {
+    log("seed pay rates already exist");
+    return;
+  }
+
+  const rates = [
+    // Sarah — salary, had a raise 3 months ago
+    { userId: staffIds[1]!, rateType: "SALARY" as const, amount: "42000", effectiveFrom: dateOnly(daysAgo(365)), effectiveUntil: dateOnly(daysAgo(91)), reason: "Initial contract", createdBy: staffIds[0]! },
+    { userId: staffIds[1]!, rateType: "SALARY" as const, amount: "48000", effectiveFrom: dateOnly(daysAgo(90)), effectiveUntil: null, reason: "Annual review — promoted to Lead", createdBy: staffIds[0]! },
+    // James — hourly, recent starter
+    { userId: staffIds[2]!, rateType: "HOURLY" as const, amount: "28.50", effectiveFrom: dateOnly(daysAgo(180)), effectiveUntil: null, reason: "Initial contract", createdBy: staffIds[0]! },
+    // Emma — daily rate (contractor)
+    { userId: staffIds[3]!, rateType: "DAILY" as const, amount: "220", effectiveFrom: dateOnly(daysAgo(270)), effectiveUntil: dateOnly(daysAgo(31)), reason: "Initial contractor rate", createdBy: staffIds[0]! },
+    { userId: staffIds[3]!, rateType: "DAILY" as const, amount: "280", effectiveFrom: dateOnly(daysAgo(30)), effectiveUntil: null, reason: "Rate renegotiation", createdBy: staffIds[0]! },
+  ].filter(r => r.userId);
+
+  if (rates.length > 0) {
+    await db.insert(schema.staffPayRates).values(rates.map(r => ({
+      id: uuid(), tenantId, ...r, currency: "GBP", createdAt: now,
+    })));
+  }
+
+  log(`created ${rates.length} pay rate records`);
+}
+
+// ---------------------------------------------------------------------------
+// 22. Staff Module — Notes
+// ---------------------------------------------------------------------------
+
+async function seedStaffNotes(tenantId: string, staffIds: string[]) {
+  log("seeding staff notes...");
+
+  // Check for seed-specific marker
+  const existing = await db.select({ id: schema.staffNotes.id }).from(schema.staffNotes)
+    .where(and(eq(schema.staffNotes.tenantId, tenantId), eq(schema.staffNotes.content, "Sarah has been exceptional leading the physiotherapy team. Consider for clinic manager role in Q3.")));
+
+  if (existing.length > 0) {
+    log("seed staff notes already exist");
+    return;
+  }
+
+  const notes = [
+    // Notes about Sarah
+    { userId: staffIds[1]!, authorId: staffIds[0]!, content: "Sarah has been exceptional leading the physiotherapy team. Consider for clinic manager role in Q3.", isPinned: true, createdAt: daysAgo(14) },
+    { userId: staffIds[1]!, authorId: staffIds[0]!, content: "Completed advanced manual therapy certification. Updated CPD records.", isPinned: false, createdAt: daysAgo(45) },
+    // Notes about James
+    { userId: staffIds[2]!, authorId: staffIds[1]!, content: "James is settling in well. His sports rehab knowledge is a great addition to the team.", isPinned: false, createdAt: daysAgo(60) },
+    { userId: staffIds[2]!, authorId: staffIds[0]!, content: "Received positive feedback from 3 patients this week. Excellent bedside manner.", isPinned: true, createdAt: daysAgo(7) },
+    { userId: staffIds[2]!, authorId: staffIds[1]!, content: "Needs to complete safeguarding refresher before end of month.", isPinned: false, createdAt: daysAgo(3) },
+    // Notes about Emma
+    { userId: staffIds[3]!, authorId: staffIds[1]!, content: "Emma's contract renewal due in 4 weeks. She's expressed interest in increasing hours from 3 to 4 days per week.", isPinned: true, createdAt: daysAgo(10) },
+    { userId: staffIds[3]!, authorId: staffIds[0]!, content: "Insurance documentation verified and filed. Valid until March 2027.", isPinned: false, createdAt: daysAgo(30) },
+  ].filter(n => n.userId && n.authorId);
+
+  if (notes.length > 0) {
+    await db.insert(schema.staffNotes).values(notes.map(n => ({
+      id: uuid(), tenantId, userId: n.userId, authorId: n.authorId,
+      content: n.content, isPinned: n.isPinned,
+      createdAt: n.createdAt, updatedAt: n.createdAt,
+    })));
+  }
+
+  log(`created ${notes.length} staff notes`);
+}
+
+// ---------------------------------------------------------------------------
+// 23. Staff Module — Checklist Templates & Progress
+// ---------------------------------------------------------------------------
+
+async function seedChecklists(tenantId: string, staffIds: string[]) {
+  log("seeding checklist templates & progress...");
+
+  // Check for seed-specific marker
+  const existing = await db.select({ id: schema.staffChecklistTemplates.id }).from(schema.staffChecklistTemplates)
+    .where(and(eq(schema.staffChecklistTemplates.tenantId, tenantId), eq(schema.staffChecklistTemplates.name, "Standard Onboarding")));
+
+  if (existing.length > 0) {
+    log("seed checklists already exist");
+    return;
+  }
+
+  // Onboarding template
+  const onboardingId = uuid();
+  const onboardingItems = [
+    { key: "welcome-pack", label: "Send welcome pack", description: "Email starter pack with handbook, policies, and first-day info", isRequired: true, order: 0 },
+    { key: "it-setup", label: "IT setup", description: "Create email account, system login, and calendar access", isRequired: true, order: 1 },
+    { key: "dbs-check", label: "DBS check submitted", description: "Enhanced DBS check application submitted and reference received", isRequired: true, order: 2 },
+    { key: "uniform", label: "Uniform ordered", description: "Order clinic polo shirts and name badge", isRequired: false, order: 3 },
+    { key: "health-safety", label: "Health & safety induction", description: "Fire exits, first aid, manual handling awareness", isRequired: true, order: 4 },
+    { key: "shadow-session", label: "Shadow session completed", description: "Shadow an experienced team member for one full day", isRequired: true, order: 5 },
+    { key: "policies-signed", label: "Policies signed", description: "Confidentiality, data protection, and safeguarding policies signed", isRequired: true, order: 6 },
+    { key: "probation-meeting", label: "Probation review scheduled", description: "Book 3-month probation review meeting", isRequired: false, order: 7 },
+  ];
+
+  // Offboarding template
+  const offboardingId = uuid();
+  const offboardingItems = [
+    { key: "exit-interview", label: "Exit interview", description: "Schedule and conduct exit interview", isRequired: true, order: 0 },
+    { key: "it-access", label: "Revoke IT access", description: "Disable email, system logins, and calendar", isRequired: true, order: 1 },
+    { key: "equipment-return", label: "Equipment returned", description: "Collect keys, badge, uniform, and any clinic equipment", isRequired: true, order: 2 },
+    { key: "final-pay", label: "Final pay calculated", description: "Calculate outstanding pay, holiday accrual, and expenses", isRequired: true, order: 3 },
+    { key: "references", label: "Reference letter prepared", description: "Draft reference letter for departing staff member", isRequired: false, order: 4 },
+  ];
+
+  // Contractor onboarding (different process)
+  const contractorOnboardingId = uuid();
+  const contractorItems = [
+    { key: "contract-signed", label: "Contract signed", description: "Signed contractor agreement with rate and terms", isRequired: true, order: 0 },
+    { key: "insurance-verified", label: "Insurance verified", description: "Professional indemnity and public liability insurance on file", isRequired: true, order: 1 },
+    { key: "qualifications", label: "Qualifications verified", description: "Verify and file professional qualifications and registration", isRequired: true, order: 2 },
+    { key: "system-access", label: "System access granted", description: "Booking system and calendar access set up", isRequired: true, order: 3 },
+    { key: "orientation", label: "Clinic orientation", description: "Tour of facilities, introduction to team, room allocation", isRequired: false, order: 4 },
+  ];
+
+  await db.insert(schema.staffChecklistTemplates).values([
+    { id: onboardingId, tenantId, name: "Standard Onboarding", type: "ONBOARDING" as const, employeeType: "EMPLOYEE", items: onboardingItems, isDefault: true, createdAt: now, updatedAt: now },
+    { id: offboardingId, tenantId, name: "Standard Offboarding", type: "OFFBOARDING" as const, employeeType: null, items: offboardingItems, isDefault: true, createdAt: now, updatedAt: now },
+    { id: contractorOnboardingId, tenantId, name: "Contractor Onboarding", type: "ONBOARDING" as const, employeeType: "CONTRACTOR", items: contractorItems, isDefault: false, createdAt: now, updatedAt: now },
+  ]);
+
+  // Progress — James is mid-onboarding, Emma completed contractor onboarding
+  if (staffIds[2]) {
+    const jamesProgress = onboardingItems.map((item, i) => ({
+      ...item,
+      completedAt: i < 5 ? daysAgo(180 - i * 2).toISOString() : null,
+      completedBy: i < 5 ? (i < 3 ? staffIds[0]! : staffIds[1]!) : null,
+    }));
+
+    await db.insert(schema.staffChecklistProgress).values({
+      id: uuid(), tenantId, userId: staffIds[2], templateId: onboardingId,
+      status: "IN_PROGRESS" as const, items: jamesProgress,
+      startedAt: daysAgo(180), completedAt: null,
+      createdAt: daysAgo(180), updatedAt: now,
+    });
+  }
+
+  if (staffIds[3]) {
+    const emmaProgress = contractorItems.map((item, i) => ({
+      ...item,
+      completedAt: daysAgo(270 - i * 3).toISOString(),
+      completedBy: staffIds[0]!,
+    }));
+
+    await db.insert(schema.staffChecklistProgress).values({
+      id: uuid(), tenantId, userId: staffIds[3], templateId: contractorOnboardingId,
+      status: "COMPLETED" as const, items: emmaProgress,
+      startedAt: daysAgo(270), completedAt: daysAgo(258),
+      createdAt: daysAgo(270), updatedAt: daysAgo(258),
+    });
+  }
+
+  log("created 3 checklist templates, 2 progress records");
+}
+
+// ---------------------------------------------------------------------------
+// 24. Staff Module — Custom Field Definitions & Values
+// ---------------------------------------------------------------------------
+
+async function seedCustomFields(tenantId: string, staffIds: string[]) {
+  log("seeding custom field definitions & values...");
+
+  // Check for seed-specific marker
+  const existing = await db.select({ id: schema.staffCustomFieldDefinitions.id }).from(schema.staffCustomFieldDefinitions)
+    .where(and(eq(schema.staffCustomFieldDefinitions.tenantId, tenantId), eq(schema.staffCustomFieldDefinitions.fieldKey, "ni-number")));
+
+  if (existing.length > 0) {
+    log("seed custom fields already exist");
+    return;
+  }
+
+  const niiId = uuid();
+  const specId = uuid();
+  const regBodyId = uuid();
+  const regNumId = uuid();
+  const shirtId = uuid();
+  const allergiesId = uuid();
+  const vehicleId = uuid();
+  const linkedinId = uuid();
+
+  const definitions = [
+    { id: niiId, fieldKey: "ni-number", label: "NI Number", fieldType: "TEXT" as const, options: null, isRequired: true, showOnCard: false, showOnProfile: true, sortOrder: 0, groupName: "Employment" },
+    { id: specId, fieldKey: "specialisation", label: "Specialisation", fieldType: "SELECT" as const, options: [
+      { value: "msk", label: "Musculoskeletal" },
+      { value: "neuro", label: "Neurological" },
+      { value: "sports", label: "Sports Rehabilitation" },
+      { value: "paediatric", label: "Paediatric" },
+      { value: "womens-health", label: "Women's Health" },
+      { value: "massage", label: "Massage Therapy" },
+    ], isRequired: false, showOnCard: true, showOnProfile: true, sortOrder: 1, groupName: "Clinical" },
+    { id: regBodyId, fieldKey: "registration-body", label: "Registration Body", fieldType: "SELECT" as const, options: [
+      { value: "hcpc", label: "HCPC" },
+      { value: "csp", label: "CSP" },
+      { value: "cnhc", label: "CNHC" },
+      { value: "isrm", label: "ISRM" },
+      { value: "other", label: "Other" },
+    ], isRequired: false, showOnCard: true, showOnProfile: true, sortOrder: 2, groupName: "Clinical" },
+    { id: regNumId, fieldKey: "registration-number", label: "Registration Number", fieldType: "TEXT" as const, options: null, isRequired: false, showOnCard: false, showOnProfile: true, sortOrder: 3, groupName: "Clinical" },
+    { id: shirtId, fieldKey: "shirt-size", label: "Shirt Size", fieldType: "SELECT" as const, options: [
+      { value: "xs", label: "XS" }, { value: "s", label: "S" }, { value: "m", label: "M" },
+      { value: "l", label: "L" }, { value: "xl", label: "XL" }, { value: "xxl", label: "XXL" },
+    ], isRequired: false, showOnCard: false, showOnProfile: true, sortOrder: 4, groupName: "Personal" },
+    { id: allergiesId, fieldKey: "allergies", label: "Known Allergies", fieldType: "TEXT" as const, options: null, isRequired: false, showOnCard: false, showOnProfile: true, sortOrder: 5, groupName: "Personal" },
+    { id: vehicleId, fieldKey: "has-vehicle", label: "Has Vehicle", fieldType: "BOOLEAN" as const, options: null, isRequired: false, showOnCard: false, showOnProfile: true, sortOrder: 6, groupName: "Personal" },
+    { id: linkedinId, fieldKey: "linkedin-profile", label: "LinkedIn Profile", fieldType: "URL" as const, options: null, isRequired: false, showOnCard: false, showOnProfile: true, sortOrder: 7, groupName: "Contact" },
+  ];
+
+  await db.insert(schema.staffCustomFieldDefinitions).values(definitions.map(d => ({
+    ...d, tenantId, createdAt: now, updatedAt: now,
+  })));
+
+  // Values for each staff member
+  const values = [
+    // Sarah Mitchell
+    { userId: staffIds[1]!, fieldDefinitionId: niiId, value: "QQ 12 34 56 C" },
+    { userId: staffIds[1]!, fieldDefinitionId: specId, value: "msk" },
+    { userId: staffIds[1]!, fieldDefinitionId: regBodyId, value: "hcpc" },
+    { userId: staffIds[1]!, fieldDefinitionId: regNumId, value: "PH12345" },
+    { userId: staffIds[1]!, fieldDefinitionId: shirtId, value: "m" },
+    { userId: staffIds[1]!, fieldDefinitionId: vehicleId, value: true },
+    { userId: staffIds[1]!, fieldDefinitionId: linkedinId, value: "https://linkedin.com/in/sarah-mitchell-physio" },
+    // James Carter
+    { userId: staffIds[2]!, fieldDefinitionId: niiId, value: "AB 98 76 54 D" },
+    { userId: staffIds[2]!, fieldDefinitionId: specId, value: "sports" },
+    { userId: staffIds[2]!, fieldDefinitionId: regBodyId, value: "csp" },
+    { userId: staffIds[2]!, fieldDefinitionId: regNumId, value: "ST67890" },
+    { userId: staffIds[2]!, fieldDefinitionId: shirtId, value: "l" },
+    { userId: staffIds[2]!, fieldDefinitionId: allergiesId, value: "Latex" },
+    { userId: staffIds[2]!, fieldDefinitionId: vehicleId, value: true },
+    // Emma Davies
+    { userId: staffIds[3]!, fieldDefinitionId: specId, value: "massage" },
+    { userId: staffIds[3]!, fieldDefinitionId: regBodyId, value: "cnhc" },
+    { userId: staffIds[3]!, fieldDefinitionId: regNumId, value: "MT11223" },
+    { userId: staffIds[3]!, fieldDefinitionId: shirtId, value: "s" },
+    { userId: staffIds[3]!, fieldDefinitionId: vehicleId, value: false },
+  ].filter(v => v.userId);
+
+  if (values.length > 0) {
+    await db.insert(schema.staffCustomFieldValues).values(values.map(v => ({
+      id: uuid(), tenantId, userId: v.userId, fieldDefinitionId: v.fieldDefinitionId,
+      value: v.value, createdAt: now, updatedAt: now,
+    })));
+  }
+
+  log(`created ${definitions.length} custom field definitions, ${values.length} values`);
 }
 
 // ---------------------------------------------------------------------------
@@ -813,6 +1215,14 @@ async function main() {
     await seedPricing(tenantId);
     await seedFeatureFlags(tenantId);
     await seedWebhooks(tenantId);
+
+    // Staff module enhancements
+    await seedDepartments(tenantId, staffIds);
+    await seedEnhancedProfiles(tenantId, staffIds);
+    await seedPayRates(tenantId, staffIds);
+    await seedStaffNotes(tenantId, staffIds);
+    await seedChecklists(tenantId, staffIds);
+    await seedCustomFields(tenantId, staffIds);
 
     console.log("\n✅ Seed V2 complete!\n");
     console.log(`  Platform: ${platformId}`);

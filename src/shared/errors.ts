@@ -86,34 +86,44 @@ export class SkillExpiredError extends IronheartError {
   }
 }
 
+/** Map IronheartError.code → tRPC error code. */
+const IRONHEART_TO_TRPC: Record<string, TRPCError["code"]> = {
+  NOT_FOUND: "NOT_FOUND",
+  FORBIDDEN: "FORBIDDEN",
+  UNAUTHORIZED: "UNAUTHORIZED",
+  VALIDATION_ERROR: "BAD_REQUEST",
+  CONFLICT: "CONFLICT",
+  BAD_REQUEST: "BAD_REQUEST",
+  CAPACITY_EXCEEDED: "CONFLICT",
+  SKILL_EXPIRED: "BAD_REQUEST",
+};
+
+/**
+ * Returns true if the error is an IronheartError (or duck-types as one).
+ * Uses the code property instead of instanceof to survive Next.js HMR/bundling
+ * where class identity can differ across module instances.
+ */
+export function isIronheartError(error: unknown): error is IronheartError {
+  return (
+    error instanceof IronheartError ||
+    (error instanceof Error &&
+      "code" in error &&
+      typeof (error as IronheartError).code === "string" &&
+      (error as IronheartError).code in IRONHEART_TO_TRPC)
+  );
+}
+
 /**
  * Convert a domain error to a tRPC error.
- * Call this in router catch blocks: catch (e) { throw toTRPCError(e); }
+ * Uses code-based dispatch (resilient to instanceof failures from HMR/bundling).
  */
 export function toTRPCError(error: unknown): TRPCError {
-  if (error instanceof NotFoundError) {
-    return new TRPCError({ code: "NOT_FOUND", message: error.message });
-  }
-  if (error instanceof ForbiddenError) {
-    return new TRPCError({ code: "FORBIDDEN", message: error.message });
-  }
-  if (error instanceof UnauthorizedError) {
-    return new TRPCError({ code: "UNAUTHORIZED", message: error.message });
-  }
-  if (error instanceof ValidationError) {
-    return new TRPCError({ code: "BAD_REQUEST", message: error.message });
-  }
-  if (error instanceof ConflictError) {
-    return new TRPCError({ code: "CONFLICT", message: error.message });
-  }
-  if (error instanceof BadRequestError) {
-    return new TRPCError({ code: "BAD_REQUEST", message: error.message });
-  }
-  if (error instanceof CapacityExceededError) {
-    return new TRPCError({ code: "CONFLICT", message: error.message });
-  }
   if (error instanceof TRPCError) {
     return error;
+  }
+  if (isIronheartError(error)) {
+    const trpcCode = IRONHEART_TO_TRPC[error.code] ?? "INTERNAL_SERVER_ERROR";
+    return new TRPCError({ code: trpcCode, message: error.message });
   }
   return new TRPCError({
     code: "INTERNAL_SERVER_ERROR",

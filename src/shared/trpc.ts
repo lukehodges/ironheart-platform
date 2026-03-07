@@ -12,7 +12,7 @@ import type { WorkOSSession } from "@/modules/auth/auth.config";
 import type { UserWithRoles } from "@/modules/auth/rbac";
 import { extractTenantSlugFromRequest } from "@/modules/auth/tenant";
 import { hasPermission } from "@/modules/auth/rbac";
-import { IronheartError, toTRPCError } from "@/shared/errors";
+import { isIronheartError, toTRPCError } from "@/shared/errors";
 import { initStartupTasks } from "@/shared/module-system/startup";
 
 // ---------------------------------------------------------------------------
@@ -182,6 +182,14 @@ export async function createContext({
 
     if (resolvedTenantId) {
       tenantId = resolvedTenantId;
+    } else {
+      // Slug was provided but resolution failed (DB timeout or slug not found).
+      // Do NOT fall through with tenantId="default" — it's not a valid UUID
+      // and will cause cascading Postgres errors.
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: `Unable to resolve tenant: ${tenantSlug}`,
+      });
     }
   }
 
@@ -256,7 +264,7 @@ const errorConversionMiddleware = t.middleware(async ({ next }) => {
   try {
     return await next();
   } catch (error) {
-    if (error instanceof IronheartError) {
+    if (isIronheartError(error)) {
       throw toTRPCError(error);
     }
     throw error;

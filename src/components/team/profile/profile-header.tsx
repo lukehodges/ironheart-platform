@@ -65,7 +65,7 @@ function formatDate(date: Date | string | null | undefined): string {
 function ReportsToLine({ reportsTo }: { reportsTo: string }) {
   const { data: manager } = api.team.getById.useQuery(
     { userId: reportsTo },
-    { staleTime: 5 * 60 * 1000 }
+    { staleTime: 5 * 60 * 1000, retry: false }
   )
   if (!manager) return null
 

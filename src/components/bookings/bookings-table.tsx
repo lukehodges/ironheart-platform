@@ -1,94 +1,22 @@
 "use client"
 
-// NOTE: @tanstack/react-table is not installed in this project.
-// The table is implemented using the existing Table UI components
-// with simple array-based rendering and a column-config object pattern.
-
-import { useState, useMemo, useCallback } from "react"
+import { useState, useMemo } from "react"
 import { keepPreviousData } from "@tanstack/react-query"
 import { toast } from "sonner"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Skeleton } from "@/components/ui/skeleton"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { EmptyState } from "@/components/ui/empty-state"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-  DropdownMenuCheckboxItem,
-  DropdownMenuLabel,
-} from "@/components/ui/dropdown-menu"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { cn } from "@/lib/utils"
+import { DataGrid } from "@/components/data-grid"
+import type {
+  DataGridColumn,
+  DataGridRowAction,
+  DataGridBulkAction,
+  DataGridSortState,
+} from "@/components/data-grid"
 import { api } from "@/lib/trpc/react"
 import { useDebounce } from "@/hooks/use-debounce"
 import BookingStatusBadge from "@/components/bookings/booking-status-badge"
 import type { BookingRecord } from "@/modules/booking/booking.types"
-import {
-  MoreHorizontal,
-  Eye,
-  CheckCircle,
-  XCircle,
-  CalendarClock,
-  ChevronLeft,
-  ChevronRight,
-  ArrowUpDown,
-  ArrowUp,
-  ArrowDown,
-  Columns,
-  CheckSquare,
-  X,
-  Download,
-} from "lucide-react"
+import { Eye, CheckCircle, XCircle, CalendarClock, CheckSquare, X } from "lucide-react"
 import type { BookingFilters } from "@/components/bookings/bookings-filters"
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-type SortField = "scheduledDate" | "createdAt" | "status"
-type SortDir = "asc" | "desc"
-
-interface SortState {
-  field: SortField
-  dir: SortDir
-}
-
-interface ColumnDef {
-  id: string
-  label: string
-  hideable: boolean
-}
-
-const COLUMN_DEFS: ColumnDef[] = [
-  { id: "select", label: "Select", hideable: false },
-  { id: "status", label: "Status", hideable: true },
-  { id: "customer", label: "Customer", hideable: true },
-  { id: "service", label: "Service", hideable: true },
-  { id: "staff", label: "Staff", hideable: true },
-  { id: "datetime", label: "Date / Time", hideable: true },
-  { id: "created", label: "Created", hideable: true },
-  { id: "actions", label: "Actions", hideable: false },
-]
-
-const PAGE_SIZE_OPTIONS = [10, 25, 50, 100]
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -132,192 +60,96 @@ function formatRelativeTime(date: Date | string): string {
   return `${Math.floor(diffMonths / 12)} years ago`
 }
 
-function exportCsv(rows: BookingRecord[], filename = "bookings.csv") {
-  const headers = [
-    "Booking Number",
-    "Status",
-    "Customer",
-    "Service",
-    "Staff",
-    "Date",
-    "Time",
-    "Duration (min)",
-    "Price",
-    "Created At",
-  ]
+// ---------------------------------------------------------------------------
+// Column definitions
+// ---------------------------------------------------------------------------
 
-  const csvRows = [
-    headers.join(","),
-    ...rows.map((r) =>
-      [
-        r.bookingNumber,
-        r.status,
-        r.customerName ?? r.customerId,
-        r.customServiceName ?? r.serviceName ?? r.serviceId,
-        r.staffName ?? r.staffId ?? "",
-        new Date(r.scheduledDate).toISOString().slice(0, 10),
-        r.scheduledTime,
-        r.durationMinutes,
-        r.price ?? "",
-        new Date(r.createdAt).toISOString(),
-      ]
-        .map((v) => `"${String(v).replace(/"/g, '""')}"`)
-        .join(",")
+const columns: DataGridColumn<BookingRecord>[] = [
+  {
+    id: "status",
+    label: "Status",
+    hideable: true,
+    sortable: true,
+    width: "w-28",
+    cell: (row) => <BookingStatusBadge status={row.status} />,
+    csvValue: (row) => row.status,
+  },
+  {
+    id: "customer",
+    label: "Customer",
+    hideable: true,
+    width: "min-w-[160px]",
+    cell: (row) => (
+      <div className="flex items-center gap-2 min-w-0">
+        <Avatar className="h-6 w-6 shrink-0 text-[10px]">
+          <AvatarFallback>{getInitials(row.customerName ?? "?")}</AvatarFallback>
+        </Avatar>
+        <div className="min-w-0">
+          <p className="truncate text-sm font-medium text-foreground">
+            {row.customerName ?? "Unknown customer"}
+          </p>
+          <p className="truncate text-xs text-muted-foreground">#{row.bookingNumber}</p>
+        </div>
+      </div>
     ),
-  ]
-
-  const blob = new Blob([csvRows.join("\n")], { type: "text/csv;charset=utf-8;" })
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement("a")
-  link.setAttribute("href", url)
-  link.setAttribute("download", filename)
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
-  URL.revokeObjectURL(url)
-}
-
-// ---------------------------------------------------------------------------
-// Sort button sub-component
-// ---------------------------------------------------------------------------
-
-interface SortButtonProps {
-  field: SortField
-  sort: SortState
-  onSort: (field: SortField) => void
-  children: React.ReactNode
-}
-
-function SortButton({ field, sort, onSort, children }: SortButtonProps) {
-  const isActive = sort.field === field
-  const Icon = isActive ? (sort.dir === "asc" ? ArrowUp : ArrowDown) : ArrowUpDown
-
-  return (
-    <button
-      type="button"
-      onClick={() => onSort(field)}
-      className={cn(
-        "inline-flex items-center gap-1 hover:text-foreground transition-colors",
-        isActive ? "text-foreground" : "text-muted-foreground"
-      )}
-      aria-sort={isActive ? (sort.dir === "asc" ? "ascending" : "descending") : "none"}
-    >
-      {children}
-      <Icon className="h-3 w-3" aria-hidden="true" />
-    </button>
-  )
-}
-
-// ---------------------------------------------------------------------------
-// Loading skeleton
-// ---------------------------------------------------------------------------
-
-function TableSkeleton({ colCount }: { colCount: number }) {
-  return (
-    <>
-      {Array.from({ length: 10 }).map((_, rowIdx) => (
-        <TableRow key={rowIdx} aria-hidden="true">
-          {Array.from({ length: colCount }).map((_, colIdx) => (
-            <TableCell key={colIdx} className="py-3">
-              <Skeleton
-                className={cn(
-                  "h-4",
-                  colIdx === 0 && "w-4",
-                  colIdx === 1 && "w-16",
-                  colIdx === 2 && "w-32",
-                  colIdx === 3 && "w-24",
-                  colIdx === 4 && "w-20",
-                  colIdx === 5 && "w-28",
-                  colIdx === 6 && "w-16",
-                  colIdx === 7 && "w-8",
-                  ![0, 1, 2, 3, 4, 5, 6, 7].includes(colIdx) && "w-16"
-                )}
-              />
-            </TableCell>
-          ))}
-        </TableRow>
-      ))}
-    </>
-  )
-}
-
-// ---------------------------------------------------------------------------
-// Row actions dropdown
-// ---------------------------------------------------------------------------
-
-interface RowActionsProps {
-  booking: BookingRecord
-  onView: () => void
-  onConfirm: () => void
-  onCancel: () => void
-  isConfirming: boolean
-  isCancelling: boolean
-}
-
-function RowActions({
-  booking,
-  onView,
-  onConfirm,
-  onCancel,
-  isConfirming,
-  isCancelling,
-}: RowActionsProps) {
-  const canConfirm =
-    booking.status === "PENDING" ||
-    booking.status === "APPROVED" ||
-    booking.status === "RESERVED"
-  const canCancel =
-    booking.status !== "CANCELLED" &&
-    booking.status !== "COMPLETED" &&
-    booking.status !== "NO_SHOW"
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          size="icon-sm"
-          variant="ghost"
-          aria-label={`Actions for booking ${booking.bookingNumber}`}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <MoreHorizontal className="h-4 w-4" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-        <DropdownMenuItem onClick={onView}>
-          <Eye className="h-4 w-4" />
-          View
-        </DropdownMenuItem>
-        {canConfirm && (
-          <DropdownMenuItem
-            onClick={onConfirm}
-            disabled={isConfirming}
-          >
-            <CheckCircle className="h-4 w-4" />
-            Confirm
-          </DropdownMenuItem>
-        )}
-        <DropdownMenuItem disabled>
-          <CalendarClock className="h-4 w-4" />
-          Reschedule
-        </DropdownMenuItem>
-        {canCancel && (
-          <>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              destructive
-              onClick={onCancel}
-              disabled={isCancelling}
-            >
-              <XCircle className="h-4 w-4" />
-              Cancel
-            </DropdownMenuItem>
-          </>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  )
-}
+    csvValue: (row) => row.customerName ?? row.customerId,
+  },
+  {
+    id: "service",
+    label: "Service",
+    hideable: true,
+    cell: (row) => (
+      <span className="text-sm text-foreground">
+        {row.customServiceName ?? row.serviceName ?? "Unknown service"}
+      </span>
+    ),
+    csvValue: (row) => row.customServiceName ?? row.serviceName ?? row.serviceId,
+  },
+  {
+    id: "staff",
+    label: "Staff",
+    hideable: true,
+    cell: (row) =>
+      row.staffId ? (
+        <div className="flex items-center gap-2 min-w-0">
+          <Avatar className="h-6 w-6 shrink-0 text-[10px]">
+            <AvatarImage src={row.staffAvatarUrl ?? undefined} alt={row.staffName ?? "Staff"} />
+            <AvatarFallback>{getInitials(row.staffName ?? "?")}</AvatarFallback>
+          </Avatar>
+          <span className="truncate text-sm text-foreground">
+            {row.staffName ?? "Unknown staff"}
+          </span>
+        </div>
+      ) : (
+        <span className="text-xs text-muted-foreground">Unassigned</span>
+      ),
+    csvValue: (row) => row.staffName ?? row.staffId ?? "",
+  },
+  {
+    id: "scheduledDate",
+    label: "Date / Time",
+    hideable: true,
+    sortable: true,
+    width: "min-w-[160px]",
+    cell: (row) => (
+      <span className="text-sm text-foreground">
+        {formatDateTime(row.scheduledDate, row.scheduledTime)}
+      </span>
+    ),
+    csvValue: (row) =>
+      `${new Date(row.scheduledDate).toISOString().slice(0, 10)} ${row.scheduledTime}`,
+  },
+  {
+    id: "createdAt",
+    label: "Created",
+    hideable: true,
+    sortable: true,
+    cell: (row) => (
+      <span className="text-xs text-muted-foreground">{formatRelativeTime(row.createdAt)}</span>
+    ),
+    csvValue: (row) => new Date(row.createdAt).toISOString(),
+  },
+]
 
 // ---------------------------------------------------------------------------
 // Main component
@@ -331,17 +163,17 @@ interface BookingsTableProps {
 export function BookingsTable({ filters, onRowClick }: BookingsTableProps) {
   const utils = api.useUtils()
 
-  // Local state
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
-  const [sort, setSort] = useState<SortState>({ field: "scheduledDate", dir: "desc" })
-  const [hiddenColumns, setHiddenColumns] = useState<Set<string>>(new Set())
+  // Pagination state
   const [currentCursor, setCurrentCursor] = useState<string | undefined>(undefined)
-  const [cursorStack, setCursorStack] = useState<string[]>([]) // for prev page navigation
+  const [cursorStack, setCursorStack] = useState<string[]>([])
 
-  // Debounce search to avoid firing a query on every keypress
+  // Sort state
+  const [sort, setSort] = useState<DataGridSortState>({ field: "scheduledDate", direction: "desc" })
+
+  // Debounce search
   const debouncedSearch = useDebounce(filters.search, 300)
 
-  // Build query input — matches listBookingsSchema exactly
+  // Build query input
   const queryInput = useMemo(() => {
     const input: {
       limit: number
@@ -360,61 +192,42 @@ export function BookingsTable({ filters, onRowClick }: BookingsTableProps) {
     if (filters.staffId) input.staffId = filters.staffId
     if (filters.dateFrom) input.startDate = new Date(filters.dateFrom + "T00:00:00")
     if (filters.dateTo) input.endDate = new Date(filters.dateTo + "T23:59:59")
-    // Note: the schema only supports a single status filter. When multiple are
-    // selected we use the first one; the badge-filter UI is still useful
-    // for the common single-status case.
     if (filters.statuses.length === 1) {
       input.status = filters.statuses[0] as BookingRecord["status"]
     }
 
     return input
-  }, [
-    filters.limit,
-    filters.staffId,
-    filters.dateFrom,
-    filters.dateTo,
-    filters.statuses,
-    debouncedSearch,
-    currentCursor,
-  ])
+  }, [filters.limit, filters.staffId, filters.dateFrom, filters.dateTo, filters.statuses, debouncedSearch, currentCursor])
 
-  const {
-    data,
-    isLoading,
-    error,
-  } = api.booking.list.useQuery(queryInput, {
+  const { data, isLoading, error } = api.booking.list.useQuery(queryInput, {
     staleTime: 30_000,
     placeholderData: keepPreviousData,
   })
 
-  // The list endpoint returns { rows, hasMore } (cursor-based pagination pattern)
   const rows: BookingRecord[] = (data as unknown as { rows?: BookingRecord[] })?.rows ?? []
   const hasMore: boolean = (data as unknown as { hasMore?: boolean })?.hasMore ?? false
 
-  // Client-side sort (server handles primary filtering; we sort the current page)
+  // Client-side sort
   const sortedRows = useMemo(() => {
     return [...rows].sort((a, b) => {
-      let aVal: number
-      let bVal: number
       if (sort.field === "scheduledDate") {
-        aVal = new Date(a.scheduledDate).getTime()
-        bVal = new Date(b.scheduledDate).getTime()
-      } else if (sort.field === "createdAt") {
-        aVal = new Date(a.createdAt).getTime()
-        bVal = new Date(b.createdAt).getTime()
-      } else {
-        // status — alphabetical
-        aVal = 0
-        bVal = 0
-        return sort.dir === "asc"
-          ? a.status.localeCompare(b.status)
-          : b.status.localeCompare(a.status)
+        const aVal = new Date(a.scheduledDate).getTime()
+        const bVal = new Date(b.scheduledDate).getTime()
+        return sort.direction === "asc" ? aVal - bVal : bVal - aVal
       }
-      return sort.dir === "asc" ? aVal - bVal : bVal - aVal
+      if (sort.field === "createdAt") {
+        const aVal = new Date(a.createdAt).getTime()
+        const bVal = new Date(b.createdAt).getTime()
+        return sort.direction === "asc" ? aVal - bVal : bVal - aVal
+      }
+      // status — alphabetical
+      return sort.direction === "asc"
+        ? a.status.localeCompare(b.status)
+        : b.status.localeCompare(a.status)
     })
   }, [rows, sort])
 
-  // Multi-status client-side filter (when >1 status selected, filter on client)
+  // Multi-status client-side filter
   const displayRows = useMemo(() => {
     if (filters.statuses.length <= 1) return sortedRows
     return sortedRows.filter((r) => filters.statuses.includes(r.status))
@@ -437,526 +250,93 @@ export function BookingsTable({ filters, onRowClick }: BookingsTableProps) {
     onError: (err) => toast.error(err.message ?? "Failed to cancel booking"),
   })
 
-  // ---------------------------------------------------------------------------
-  // Selection helpers
-  // ---------------------------------------------------------------------------
+  // Row actions
+  const rowActions: DataGridRowAction<BookingRecord>[] = [
+    {
+      label: "View",
+      icon: Eye,
+      onClick: (row) => onRowClick(row.id),
+    },
+    {
+      label: "Confirm",
+      icon: CheckCircle,
+      onClick: (row) => confirmMutation.mutate({ bookingId: row.id }),
+      isVisible: (row) => ["PENDING", "APPROVED", "RESERVED"].includes(row.status),
+      isPending: (row) => confirmMutation.isPending && confirmMutation.variables?.bookingId === row.id,
+    },
+    {
+      label: "Reschedule",
+      icon: CalendarClock,
+      isDisabled: () => true,
+      onClick: () => {},
+    },
+    {
+      label: "Cancel",
+      icon: XCircle,
+      variant: "destructive",
+      separator: true,
+      onClick: (row) => cancelMutation.mutate({ id: row.id }),
+      isVisible: (row) => !["CANCELLED", "COMPLETED", "NO_SHOW"].includes(row.status),
+      isPending: (row) => cancelMutation.isPending && cancelMutation.variables?.id === row.id,
+    },
+  ]
 
-  const allSelected =
-    displayRows.length > 0 && displayRows.every((r) => selectedIds.has(r.id))
-  const someSelected = displayRows.some((r) => selectedIds.has(r.id))
-
-  function toggleAll() {
-    if (allSelected) {
-      setSelectedIds(new Set())
-    } else {
-      setSelectedIds(new Set(displayRows.map((r) => r.id)))
-    }
-  }
-
-  function toggleRow(id: string) {
-    setSelectedIds((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) {
-        next.delete(id)
-      } else {
-        next.add(id)
-      }
-      return next
-    })
-  }
-
-  const selectedRows = useMemo(
-    () => displayRows.filter((r) => selectedIds.has(r.id)),
-    [displayRows, selectedIds]
-  )
-
-  // ---------------------------------------------------------------------------
-  // Sort handler
-  // ---------------------------------------------------------------------------
-
-  function handleSort(field: SortField) {
-    setSort((prev) =>
-      prev.field === field
-        ? { field, dir: prev.dir === "asc" ? "desc" : "asc" }
-        : { field, dir: "asc" }
-    )
-  }
-
-  // ---------------------------------------------------------------------------
-  // Pagination
-  // ---------------------------------------------------------------------------
-
-  function handleNextPage() {
-    if (!hasMore || rows.length === 0) return
-    const lastRow = rows[rows.length - 1]
-    setCursorStack((prev) => [...prev, currentCursor ?? ""])
-    setCurrentCursor(lastRow.id)
-    setSelectedIds(new Set())
-  }
-
-  function handlePrevPage() {
-    const newStack = [...cursorStack]
-    const prevCursor = newStack.pop()
-    setCursorStack(newStack)
-    setCurrentCursor(prevCursor === "" ? undefined : prevCursor)
-    setSelectedIds(new Set())
-  }
-
-  // ---------------------------------------------------------------------------
   // Bulk actions
-  // ---------------------------------------------------------------------------
-
-  function handleBulkApprove() {
-    const toApprove = selectedRows.filter(
-      (r) =>
-        r.status === "PENDING" ||
-        r.status === "APPROVED" ||
-        r.status === "RESERVED"
-    )
-    if (toApprove.length === 0) {
-      toast.info("No bookings can be approved with current selection")
-      return
-    }
-
-    toApprove.forEach((r) => {
-      confirmMutation.mutate({ bookingId: r.id })
-    })
-    setSelectedIds(new Set())
-    toast.success(`Approving ${toApprove.length} bookings…`)
-  }
-
-  function handleBulkCancel() {
-    const toCancel = selectedRows.filter(
-      (r) =>
-        r.status !== "CANCELLED" &&
-        r.status !== "COMPLETED" &&
-        r.status !== "NO_SHOW"
-    )
-    if (toCancel.length === 0) {
-      toast.info("No bookings can be cancelled with current selection")
-      return
-    }
-
-    toCancel.forEach((r) => {
-      cancelMutation.mutate({ id: r.id })
-    })
-    setSelectedIds(new Set())
-    toast.success(`Cancelling ${toCancel.length} bookings…`)
-  }
-
-  function handleExportCsv() {
-    exportCsv(selectedRows)
-    toast.success(`Exported ${selectedRows.length} bookings to CSV`)
-  }
-
-  // ---------------------------------------------------------------------------
-  // Column visibility
-  // ---------------------------------------------------------------------------
-
-  function toggleColumn(colId: string) {
-    setHiddenColumns((prev) => {
-      const next = new Set(prev)
-      if (next.has(colId)) {
-        next.delete(colId)
-      } else {
-        next.add(colId)
-      }
-      return next
-    })
-  }
-
-  const visibleColumns = COLUMN_DEFS.filter((c) => !hiddenColumns.has(c.id))
-
-  // ---------------------------------------------------------------------------
-  // Row mutation state helpers
-  // ---------------------------------------------------------------------------
-
-  const confirmingId = useCallback(
-    (id: string) => confirmMutation.isPending && confirmMutation.variables?.bookingId === id,
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [confirmMutation.isPending, confirmMutation.variables]
-  )
-
-  const cancellingId = useCallback(
-    (id: string) => cancelMutation.isPending && cancelMutation.variables?.id === id,
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [cancelMutation.isPending, cancelMutation.variables]
-  )
-
-  // ---------------------------------------------------------------------------
-  // Render
-  // ---------------------------------------------------------------------------
-
-  const isPageOne = cursorStack.length === 0
-
-  if (error) {
-    return (
-      <div className="flex h-40 items-center justify-center rounded-md border border-border">
-        <p className="text-sm text-destructive">
-          {error.message ?? "Failed to load bookings"}
-        </p>
-      </div>
-    )
-  }
+  const bulkActions: DataGridBulkAction<BookingRecord>[] = [
+    {
+      label: "Approve",
+      icon: CheckSquare,
+      isPending: confirmMutation.isPending,
+      isApplicable: (row) => ["PENDING", "APPROVED", "RESERVED"].includes(row.status),
+      onAction: (rows) => {
+        rows.forEach((r) => confirmMutation.mutate({ bookingId: r.id }))
+        toast.success(`Approving ${rows.length} bookings...`)
+      },
+    },
+    {
+      label: "Cancel",
+      icon: X,
+      variant: "destructive",
+      isPending: cancelMutation.isPending,
+      isApplicable: (row) => !["CANCELLED", "COMPLETED", "NO_SHOW"].includes(row.status),
+      onAction: (rows) => {
+        rows.forEach((r) => cancelMutation.mutate({ id: r.id }))
+        toast.success(`Cancelling ${rows.length} bookings...`)
+      },
+    },
+  ]
 
   return (
-    <div className="space-y-3">
-      {/* Toolbar row: bulk actions + column visibility */}
-      <div className="flex items-center justify-between gap-2 min-h-[32px]">
-        {/* Bulk actions — only visible when ≥1 row selected */}
-        {selectedIds.size > 0 ? (
-          <div
-            className="flex items-center gap-2"
-            role="toolbar"
-            aria-label={`Bulk actions for ${selectedIds.size} selected bookings`}
-          >
-            <span className="text-xs font-medium text-muted-foreground">
-              {selectedIds.size} selected
-            </span>
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-7 gap-1 text-xs"
-              onClick={handleBulkApprove}
-              disabled={confirmMutation.isPending}
-              aria-label="Approve selected bookings"
-            >
-              <CheckSquare className="h-3.5 w-3.5" />
-              Approve
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-7 gap-1 text-xs text-destructive hover:text-destructive"
-              onClick={handleBulkCancel}
-              disabled={cancelMutation.isPending}
-              aria-label="Cancel selected bookings"
-            >
-              <X className="h-3.5 w-3.5" />
-              Cancel
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-7 gap-1 text-xs"
-              onClick={handleExportCsv}
-              aria-label="Export selected bookings to CSV"
-            >
-              <Download className="h-3.5 w-3.5" />
-              Export CSV
-            </Button>
-          </div>
-        ) : (
-          <div />
-        )}
-
-        {/* Column visibility */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-7 gap-1 text-xs"
-              aria-label="Toggle column visibility"
-            >
-              <Columns className="h-3.5 w-3.5" />
-              Columns
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Toggle columns</DropdownMenuLabel>
-            {COLUMN_DEFS.filter((c) => c.hideable).map((col) => (
-              <DropdownMenuCheckboxItem
-                key={col.id}
-                checked={!hiddenColumns.has(col.id)}
-                onCheckedChange={() => toggleColumn(col.id)}
-              >
-                {col.label}
-              </DropdownMenuCheckboxItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-
-      {/* Table */}
-      <div className="rounded-md border border-border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              {/* Checkbox */}
-              {!hiddenColumns.has("select") && (
-                <TableHead className="w-10">
-                  <Checkbox
-                    checked={allSelected ? true : someSelected ? "indeterminate" : false}
-                    onCheckedChange={toggleAll}
-                    aria-label="Select all bookings"
-                    disabled={isLoading || displayRows.length === 0}
-                  />
-                </TableHead>
-              )}
-
-              {/* Status */}
-              {!hiddenColumns.has("status") && (
-                <TableHead className="w-28">
-                  <SortButton field="status" sort={sort} onSort={handleSort}>
-                    Status
-                  </SortButton>
-                </TableHead>
-              )}
-
-              {/* Customer */}
-              {!hiddenColumns.has("customer") && (
-                <TableHead className="min-w-[160px]">Customer</TableHead>
-              )}
-
-              {/* Service */}
-              {!hiddenColumns.has("service") && (
-                <TableHead>Service</TableHead>
-              )}
-
-              {/* Staff */}
-              {!hiddenColumns.has("staff") && (
-                <TableHead>Staff</TableHead>
-              )}
-
-              {/* Date / Time */}
-              {!hiddenColumns.has("datetime") && (
-                <TableHead className="min-w-[160px]">
-                  <SortButton field="scheduledDate" sort={sort} onSort={handleSort}>
-                    Date / Time
-                  </SortButton>
-                </TableHead>
-              )}
-
-              {/* Created */}
-              {!hiddenColumns.has("created") && (
-                <TableHead>
-                  <SortButton field="createdAt" sort={sort} onSort={handleSort}>
-                    Created
-                  </SortButton>
-                </TableHead>
-              )}
-
-              {/* Actions */}
-              {!hiddenColumns.has("actions") && (
-                <TableHead className="w-10" aria-label="Row actions" />
-              )}
-            </TableRow>
-          </TableHeader>
-
-          <TableBody>
-            {isLoading ? (
-              <TableSkeleton colCount={visibleColumns.length} />
-            ) : displayRows.length === 0 ? (
-              <TableRow>
-                <TableCell
-                  colSpan={visibleColumns.length}
-                  className="p-0"
-                >
-                  <EmptyState
-                    variant="calendar"
-                    title="No bookings found"
-                    description="Try adjusting your filters or create a new booking."
-                    className="py-16"
-                  />
-                </TableCell>
-              </TableRow>
-            ) : (
-              displayRows.map((booking) => {
-                const isSelected = selectedIds.has(booking.id)
-                const isConfirming = confirmingId(booking.id)
-                const isCancelling = cancellingId(booking.id)
-
-                return (
-                  <TableRow
-                    key={booking.id}
-                    data-state={isSelected ? "selected" : undefined}
-                    className={cn(
-                      "cursor-pointer",
-                      (isConfirming || isCancelling) && "opacity-60"
-                    )}
-                    onClick={() => onRowClick(booking.id)}
-                    role="row"
-                    aria-selected={isSelected}
-                  >
-                    {/* Checkbox */}
-                    {!hiddenColumns.has("select") && (
-                      <TableCell
-                        onClick={(e) => e.stopPropagation()}
-                        className="py-3"
-                      >
-                        <Checkbox
-                          checked={isSelected}
-                          onCheckedChange={() => toggleRow(booking.id)}
-                          aria-label={`Select booking ${booking.bookingNumber}`}
-                        />
-                      </TableCell>
-                    )}
-
-                    {/* Status */}
-                    {!hiddenColumns.has("status") && (
-                      <TableCell className="py-3">
-                        <BookingStatusBadge status={booking.status} />
-                      </TableCell>
-                    )}
-
-                    {/* Customer */}
-                    {!hiddenColumns.has("customer") && (
-                      <TableCell className="py-3">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <Avatar className="h-6 w-6 shrink-0 text-[10px]">
-                            <AvatarFallback>
-                              {getInitials(booking.customerName ?? "?")}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="min-w-0">
-                            <p className="truncate text-sm font-medium text-foreground">
-                              {booking.customerName ?? "Unknown customer"}
-                            </p>
-                            <p className="truncate text-xs text-muted-foreground">
-                              #{booking.bookingNumber}
-                            </p>
-                          </div>
-                        </div>
-                      </TableCell>
-                    )}
-
-                    {/* Service */}
-                    {!hiddenColumns.has("service") && (
-                      <TableCell className="py-3">
-                        <span className="text-sm text-foreground">
-                          {booking.customServiceName ?? booking.serviceName ?? "Unknown service"}
-                        </span>
-                      </TableCell>
-                    )}
-
-                    {/* Staff */}
-                    {!hiddenColumns.has("staff") && (
-                      <TableCell className="py-3">
-                        {booking.staffId ? (
-                          <div className="flex items-center gap-2 min-w-0">
-                            <Avatar className="h-6 w-6 shrink-0 text-[10px]">
-                              <AvatarImage
-                                src={booking.staffAvatarUrl ?? undefined}
-                                alt={booking.staffName ?? "Staff"}
-                              />
-                              <AvatarFallback>
-                                {getInitials(booking.staffName ?? "?")}
-                              </AvatarFallback>
-                            </Avatar>
-                            <span className="truncate text-sm text-foreground">
-                              {booking.staffName ?? "Unknown staff"}
-                            </span>
-                          </div>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">Unassigned</span>
-                        )}
-                      </TableCell>
-                    )}
-
-                    {/* Date / Time */}
-                    {!hiddenColumns.has("datetime") && (
-                      <TableCell className="py-3">
-                        <span className="text-sm text-foreground">
-                          {formatDateTime(booking.scheduledDate, booking.scheduledTime)}
-                        </span>
-                      </TableCell>
-                    )}
-
-                    {/* Created */}
-                    {!hiddenColumns.has("created") && (
-                      <TableCell className="py-3">
-                        <span className="text-xs text-muted-foreground">
-                          {formatRelativeTime(booking.createdAt)}
-                        </span>
-                      </TableCell>
-                    )}
-
-                    {/* Actions */}
-                    {!hiddenColumns.has("actions") && (
-                      <TableCell className="py-3">
-                        <RowActions
-                          booking={booking}
-                          onView={() => onRowClick(booking.id)}
-                          onConfirm={() =>
-                            confirmMutation.mutate({ bookingId: booking.id })
-                          }
-                          onCancel={() =>
-                            cancelMutation.mutate({ id: booking.id })
-                          }
-                          isConfirming={isConfirming}
-                          isCancelling={isCancelling}
-                        />
-                      </TableCell>
-                    )}
-                  </TableRow>
-                )
-              })
-            )}
-          </TableBody>
-        </Table>
-      </div>
-
-      {/* Pagination footer */}
-      <div className="flex items-center justify-between gap-4">
-        {/* Page size */}
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground">Rows per page</span>
-          <Select
-            value={String(filters.limit)}
-            onValueChange={(v) => {
-              // Reset pagination when limit changes — parent handles this via onChange,
-              // but BookingsTable owns limit prop indirectly through filters.
-              // We fire onRowClick with a sentinel to signal the parent isn't practical here;
-              // instead manage limit in the parent via a passed-down setter.
-              // As a pragmatic solution, we reset cursor locally and re-use the existing
-              // filters.limit. A full solution would pass onLimitChange from parent.
-              void v // limit change requires parent cooperation — handled in page.tsx
-            }}
-          >
-            <SelectTrigger className="h-7 w-[70px] text-xs" aria-label="Rows per page">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {PAGE_SIZE_OPTIONS.map((n) => (
-                <SelectItem key={n} value={String(n)}>
-                  {n}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Prev / Next */}
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground">
-            {isLoading ? "Loading…" : `${displayRows.length} row${displayRows.length !== 1 ? "s" : ""}`}
-          </span>
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-7 gap-1 px-2 text-xs"
-            onClick={handlePrevPage}
-            disabled={isPageOne || isLoading}
-            aria-label="Previous page"
-          >
-            <ChevronLeft className="h-3.5 w-3.5" />
-            Prev
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-7 gap-1 px-2 text-xs"
-            onClick={handleNextPage}
-            disabled={!hasMore || isLoading}
-            aria-label="Next page"
-          >
-            Next
-            <ChevronRight className="h-3.5 w-3.5" />
-          </Button>
-        </div>
-      </div>
-    </div>
+    <DataGrid
+      columns={columns}
+      data={displayRows}
+      hasMore={hasMore}
+      isLoading={isLoading}
+      error={error?.message ?? null}
+      onRowClick={(row) => onRowClick(row.id)}
+      sort={sort}
+      onSortChange={setSort}
+      pageSize={filters.limit}
+      onNextPage={(cursor) => {
+        setCursorStack((prev) => [...prev, currentCursor ?? ""])
+        setCurrentCursor(cursor)
+      }}
+      onPrevPage={() => {
+        const newStack = [...cursorStack]
+        const prev = newStack.pop()
+        setCursorStack(newStack)
+        setCurrentCursor(prev === "" ? undefined : prev)
+      }}
+      isFirstPage={cursorStack.length === 0}
+      selectable
+      bulkActions={bulkActions}
+      rowActions={rowActions}
+      emptyState={{
+        title: "No bookings found",
+        description: "Try adjusting your filters or create a new booking.",
+      }}
+      csvFilename="bookings.csv"
+    />
   )
 }
 

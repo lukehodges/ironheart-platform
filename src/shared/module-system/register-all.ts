@@ -18,7 +18,7 @@ import { settingsManifest } from '@/modules/settings/settings.manifest'
 // ---------------------------------------------------------------------------
 // import { customerManifest } from '@/modules/customer/customer.manifest'
 // import { bookingManifest } from '@/modules/booking/booking.manifest'
-// import { teamManifest } from '@/modules/team/team.manifest'
+import { teamManifest } from '@/modules/team/team.manifest'
 // import { schedulingManifest } from '@/modules/scheduling/scheduling.manifest'
 // import { portalManifest } from '@/modules/portal/portal.manifest'
 // import { staffManifest } from '@/modules/staff/staff.manifest'
@@ -49,7 +49,7 @@ moduleRegistry.register(settingsManifest)
 // searchProviderRegistry.register(customerSearchProvider)
 // moduleRegistry.register(bookingManifest)
 // searchProviderRegistry.register(bookingSearchProvider)
-// moduleRegistry.register(teamManifest)
+moduleRegistry.register(teamManifest)
 // moduleRegistry.register(schedulingManifest)
 // moduleRegistry.register(portalManifest)
 // moduleRegistry.register(staffManifest)

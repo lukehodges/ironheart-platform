@@ -3,6 +3,11 @@
 import { syncPermissions } from './permission-seeder'
 import { moduleSettingsService } from '@/modules/settings/module-settings.service'
 import { moduleRegistry } from './register-all'
+import { searchProviderRegistry } from './search-registry'
+import { teamSearchProvider } from '@/modules/team/team.search-provider'
+
+// --- Search providers (server-only, import DB) ---
+searchProviderRegistry.register(teamSearchProvider)
 
 let startupDone = false
 
