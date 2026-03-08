@@ -106,6 +106,20 @@ function buildStaticDemoSection(): NavSection {
   }
 }
 
+function buildStaticBrokerageSection(): NavSection {
+  return {
+    title: "Brokerage Mockups",
+    items: [
+      { title: "Brokerage Home",   href: "/admin/brokerage-mockups",              icon: "Globe" },
+      { title: "Dashboard",        href: "/admin/brokerage-mockups/dashboard",    icon: "LayoutDashboard" },
+      { title: "Deals",            href: "/admin/brokerage-mockups/deals",        icon: "BarChart3" },
+      { title: "Sites",            href: "/admin/brokerage-mockups/sites",        icon: "Globe" },
+      { title: "Contacts",         href: "/admin/brokerage-mockups/contacts",     icon: "Users" },
+      { title: "Demo Walkthrough", href: "/admin/brokerage-mockups/demo",         icon: "Zap" },
+    ],
+  }
+}
+
 function buildStaticAccountSection(permissions: string[]): NavSection | null {
   const items: NavSection["items"] = []
 
@@ -171,6 +185,10 @@ export function SidebarNav({
 
   // BP2 demo section — always shown
   sections.push(demoSection)
+
+  // Brokerage mockups section — always shown
+  const brokerageSection = buildStaticBrokerageSection()
+  sections.push(brokerageSection)
 
   return (
     <nav className="flex-1 overflow-y-auto py-4 scrollbar-thin" aria-label="Main navigation">
