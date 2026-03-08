@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useMemo } from "react"
+import Link from "next/link"
 import {
   Search,
   Plus,
@@ -16,7 +17,7 @@ import {
   Handshake,
   LayoutList,
   Columns2,
-  Contact,
+  Contact as ContactIcon,
   Clock,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -46,290 +47,8 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
 import { Switch } from "@/components/ui/switch"
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-type ContactSide = "supply" | "demand"
-type ContactType = "Landowner" | "Farmer" | "Developer" | "Housebuilder"
-
-interface MockContact {
-  id: string
-  name: string
-  company: string | null
-  type: ContactType
-  side: ContactSide
-  email: string
-  phone: string
-  location: string
-  activeDeals: number
-  tags: string[]
-  lastActivity: string
-  initials: string
-  avatarColor: string
-}
-
-// ---------------------------------------------------------------------------
-// Mock Data
-// ---------------------------------------------------------------------------
-
-const AVATAR_COLORS = [
-  "bg-emerald-600",
-  "bg-blue-600",
-  "bg-amber-600",
-  "bg-purple-600",
-  "bg-rose-600",
-  "bg-indigo-600",
-  "bg-teal-600",
-  "bg-orange-600",
-  "bg-cyan-600",
-  "bg-pink-600",
-  "bg-lime-600",
-  "bg-sky-600",
-  "bg-violet-600",
-  "bg-fuchsia-600",
-  "bg-red-600",
-]
-
-function getInitials(name: string): string {
-  return name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2)
-}
-
-const contacts: MockContact[] = [
-  // SUPPLY (8)
-  {
-    id: "c-001",
-    name: "Robert Whiteley",
-    company: "Whiteley Farm Estate",
-    type: "Landowner",
-    side: "supply",
-    email: "r.whiteley@whiteleyfarm.co.uk",
-    phone: "07700 900123",
-    location: "Whiteley, Hampshire",
-    activeDeals: 1,
-    tags: ["landowner", "nitrogen"],
-    lastActivity: "5 Mar 2026",
-    initials: "RW",
-    avatarColor: AVATAR_COLORS[0],
-  },
-  {
-    id: "c-002",
-    name: "Margaret Thornton",
-    company: "Thornton Land",
-    type: "Landowner",
-    side: "supply",
-    email: "m.thornton@thorntonland.co.uk",
-    phone: "07700 900234",
-    location: "Botley, Hampshire",
-    activeDeals: 1,
-    tags: ["landowner", "nitrogen"],
-    lastActivity: "4 Mar 2026",
-    initials: "MT",
-    avatarColor: AVATAR_COLORS[1],
-  },
-  {
-    id: "c-003",
-    name: "John Hamble",
-    company: "Hamble Estate Ltd",
-    type: "Landowner",
-    side: "supply",
-    email: "j.hamble@hambleestate.co.uk",
-    phone: "07700 900345",
-    location: "Hamble, Hampshire",
-    activeDeals: 1,
-    tags: ["landowner", "bng"],
-    lastActivity: "3 Mar 2026",
-    initials: "JH",
-    avatarColor: AVATAR_COLORS[2],
-  },
-  {
-    id: "c-004",
-    name: "David Ashford",
-    company: "Ashford Farm Estate",
-    type: "Landowner",
-    side: "supply",
-    email: "d.ashford@ashfordfarm.co.uk",
-    phone: "07700 900456",
-    location: "Kings Worthy, Winchester",
-    activeDeals: 1,
-    tags: ["landowner", "nitrogen"],
-    lastActivity: "5 Mar 2026",
-    initials: "DA",
-    avatarColor: AVATAR_COLORS[3],
-  },
-  {
-    id: "c-005",
-    name: "Susan Marsh",
-    company: null,
-    type: "Farmer",
-    side: "supply",
-    email: "s.marsh@gmail.com",
-    phone: "07700 900567",
-    location: "Fareham, Hampshire",
-    activeDeals: 1,
-    tags: ["farmer", "nitrogen"],
-    lastActivity: "1 Mar 2026",
-    initials: "SM",
-    avatarColor: AVATAR_COLORS[4],
-  },
-  {
-    id: "c-006",
-    name: "Ian Stockbridge",
-    company: "Stockbridge Estates",
-    type: "Landowner",
-    side: "supply",
-    email: "i.stockbridge@stockbridge.co.uk",
-    phone: "07700 900678",
-    location: "Stockbridge, Hampshire",
-    activeDeals: 1,
-    tags: ["landowner", "nitrogen"],
-    lastActivity: "28 Feb 2026",
-    initials: "IS",
-    avatarColor: AVATAR_COLORS[5],
-  },
-  {
-    id: "c-007",
-    name: "Helen Wickham",
-    company: null,
-    type: "Farmer",
-    side: "supply",
-    email: "h.wickham@outlook.com",
-    phone: "07700 900789",
-    location: "Wickham, Hampshire",
-    activeDeals: 1,
-    tags: ["farmer", "bng", "solar"],
-    lastActivity: "27 Feb 2026",
-    initials: "HW",
-    avatarColor: AVATAR_COLORS[6],
-  },
-  {
-    id: "c-008",
-    name: "William Curdridge",
-    company: "Curdridge Hall Farm",
-    type: "Landowner",
-    side: "supply",
-    email: "w.curdridge@curdridgehall.co.uk",
-    phone: "07700 900890",
-    location: "Curdridge, Hampshire",
-    activeDeals: 1,
-    tags: ["landowner", "nitrogen"],
-    lastActivity: "25 Feb 2026",
-    initials: "WC",
-    avatarColor: AVATAR_COLORS[7],
-  },
-  // DEMAND (7)
-  {
-    id: "c-009",
-    name: "Rachel Morrison",
-    company: "Taylor Wimpey Southern",
-    type: "Developer",
-    side: "demand",
-    email: "r.morrison@taylorwimpey.com",
-    phone: "020 7000 1234",
-    location: "London",
-    activeDeals: 2,
-    tags: ["developer", "nitrogen"],
-    lastActivity: "5 Mar 2026",
-    initials: "RM",
-    avatarColor: AVATAR_COLORS[8],
-  },
-  {
-    id: "c-010",
-    name: "Simon Barratt",
-    company: "Barratt Homes Hampshire",
-    type: "Housebuilder",
-    side: "demand",
-    email: "s.barratt@barrattdev.co.uk",
-    phone: "020 7000 2345",
-    location: "Southampton",
-    activeDeals: 1,
-    tags: ["housebuilder", "nitrogen"],
-    lastActivity: "4 Mar 2026",
-    initials: "SB",
-    avatarColor: AVATAR_COLORS[9],
-  },
-  {
-    id: "c-011",
-    name: "James Bellway",
-    company: "Bellway Homes South",
-    type: "Housebuilder",
-    side: "demand",
-    email: "j.bellway@bellway.co.uk",
-    phone: "020 7000 3456",
-    location: "Basingstoke",
-    activeDeals: 1,
-    tags: ["housebuilder", "nitrogen"],
-    lastActivity: "2 Mar 2026",
-    initials: "JB",
-    avatarColor: AVATAR_COLORS[10],
-  },
-  {
-    id: "c-012",
-    name: "Karen Persimmon",
-    company: "Persimmon Homes Solent",
-    type: "Developer",
-    side: "demand",
-    email: "k.persimmon@persimmonhomes.com",
-    phone: "023 8000 4567",
-    location: "Southampton",
-    activeDeals: 1,
-    tags: ["developer", "nitrogen"],
-    lastActivity: "1 Mar 2026",
-    initials: "KP",
-    avatarColor: AVATAR_COLORS[11],
-  },
-  {
-    id: "c-013",
-    name: "Mark Linden",
-    company: "Linden Homes South",
-    type: "Housebuilder",
-    side: "demand",
-    email: "m.linden@lindenhomes.co.uk",
-    phone: "020 7000 5678",
-    location: "Southampton",
-    activeDeals: 1,
-    tags: ["housebuilder", "nitrogen"],
-    lastActivity: "28 Feb 2026",
-    initials: "ML",
-    avatarColor: AVATAR_COLORS[12],
-  },
-  {
-    id: "c-014",
-    name: "Paul Miller",
-    company: "Miller Homes Southern",
-    type: "Housebuilder",
-    side: "demand",
-    email: "p.miller@millerhomes.co.uk",
-    phone: "023 8000 6789",
-    location: "Eastleigh",
-    activeDeals: 1,
-    tags: ["housebuilder", "nitrogen"],
-    lastActivity: "26 Feb 2026",
-    initials: "PM",
-    avatarColor: AVATAR_COLORS[13],
-  },
-  {
-    id: "c-015",
-    name: "Sarah Wilson",
-    company: "David Wilson Homes",
-    type: "Housebuilder",
-    side: "demand",
-    email: "s.wilson@dwh.co.uk",
-    phone: "023 8000 7890",
-    location: "Winchester",
-    activeDeals: 1,
-    tags: ["housebuilder", "nitrogen", "bng"],
-    lastActivity: "24 Feb 2026",
-    initials: "SW",
-    avatarColor: AVATAR_COLORS[14],
-  },
-]
+import { contacts } from "../_mock-data"
+import type { Contact, ContactSide, ContactType } from "../_mock-data"
 
 // ---------------------------------------------------------------------------
 // Badge helpers
@@ -358,10 +77,12 @@ function TypeBadge({ type }: { type: ContactType }) {
     Farmer: "border-emerald-200 bg-emerald-50 text-emerald-700",
     Developer: "border-blue-200 bg-blue-50 text-blue-700",
     Housebuilder: "border-indigo-200 bg-indigo-50 text-indigo-700",
+    "Land Agent": "border-violet-200 bg-violet-50 text-violet-700",
+    Assessor: "border-teal-200 bg-teal-50 text-teal-700",
   }
   return (
     <span
-      className={`inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium ${styles[type]}`}
+      className={`inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium ${styles[type] ?? "border-border bg-muted text-muted-foreground"}`}
     >
       {type}
     </span>
@@ -406,7 +127,7 @@ function V1DataTable({
   activeDealsOnly,
   setActiveDealsOnly,
 }: {
-  filteredContacts: MockContact[]
+  filteredContacts: Contact[]
   sideTab: string
   setSideTab: (v: string) => void
   searchQuery: string
@@ -435,10 +156,12 @@ function V1DataTable({
               <Download className="h-3.5 w-3.5" />
               Export
             </Button>
-            <Button size="sm">
-              <Plus className="h-3.5 w-3.5" />
-              New Contact
-            </Button>
+            <Link href="/admin/brokerage-mockups/contacts/new">
+              <Button size="sm">
+                <Plus className="h-3.5 w-3.5" />
+                New Contact
+              </Button>
+            </Link>
           </div>
         </div>
 
@@ -463,6 +186,8 @@ function V1DataTable({
               <SelectItem value="Farmer">Farmer</SelectItem>
               <SelectItem value="Developer">Developer</SelectItem>
               <SelectItem value="Housebuilder">Housebuilder</SelectItem>
+              <SelectItem value="Land Agent">Land Agent</SelectItem>
+              <SelectItem value="Assessor">Assessor</SelectItem>
             </SelectContent>
           </Select>
           <div className="flex items-center gap-2 text-sm">
@@ -507,9 +232,12 @@ function V1DataTable({
                           <TableCell>
                             <div className="flex items-center gap-3">
                               <InitialsAvatar initials={c.initials} color={c.avatarColor} size="sm" />
-                              <span className="font-medium text-foreground group-hover:text-primary transition-colors">
+                              <Link
+                                href={`/admin/brokerage-mockups/contacts/${c.id}`}
+                                className="font-medium text-foreground group-hover:text-primary transition-colors"
+                              >
                                 {c.name}
-                              </span>
+                              </Link>
                             </div>
                           </TableCell>
                           <TableCell className="text-muted-foreground">
@@ -610,7 +338,7 @@ function V2SplitCards({
   activeDealsOnly,
   setActiveDealsOnly,
 }: {
-  filteredContacts: MockContact[]
+  filteredContacts: Contact[]
   searchQuery: string
   setSearchQuery: (v: string) => void
   typeFilter: string
@@ -688,7 +416,7 @@ function V2SplitCards({
                       <InitialsAvatar initials={c.initials} color={c.avatarColor} />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="font-semibold text-sm group-hover:text-primary transition-colors">{c.name}</span>
+                          <Link href={`/admin/brokerage-mockups/contacts/${c.id}`} className="font-semibold text-sm group-hover:text-primary transition-colors">{c.name}</Link>
                           <TypeBadge type={c.type} />
                         </div>
                         {c.company && (
@@ -758,7 +486,7 @@ function V2SplitCards({
                       <InitialsAvatar initials={c.initials} color={c.avatarColor} />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="font-semibold text-sm group-hover:text-primary transition-colors">{c.name}</span>
+                          <Link href={`/admin/brokerage-mockups/contacts/${c.id}`} className="font-semibold text-sm group-hover:text-primary transition-colors">{c.name}</Link>
                           <TypeBadge type={c.type} />
                         </div>
                         {c.company && (
@@ -821,7 +549,7 @@ function V3CrmList({
   activeDealsOnly,
   setActiveDealsOnly,
 }: {
-  filteredContacts: MockContact[]
+  filteredContacts: Contact[]
   searchQuery: string
   setSearchQuery: (v: string) => void
   typeFilter: string
@@ -899,9 +627,9 @@ function V3CrmList({
                   {/* Main info */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2.5 mb-0.5">
-                      <span className="text-base font-semibold group-hover:text-primary transition-colors">
+                      <Link href={`/admin/brokerage-mockups/contacts/${c.id}`} className="text-base font-semibold group-hover:text-primary transition-colors">
                         {c.name}
-                      </span>
+                      </Link>
                       <SideBadge side={c.side} />
                       <TypeBadge type={c.type} />
                     </div>
@@ -1094,7 +822,7 @@ export default function ContactsPage() {
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            <Contact className="h-3.5 w-3.5" />
+            <ContactIcon className="h-3.5 w-3.5" />
             V3: CRM
           </button>
         </div>
@@ -1110,7 +838,7 @@ export default function ContactsPage() {
                 <p className="text-2xl font-bold mt-0.5">{contacts.length}</p>
               </div>
               <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center">
-                <Contact className="h-5 w-5 text-muted-foreground" />
+                <ContactIcon className="h-5 w-5 text-muted-foreground" />
               </div>
             </div>
           </CardContent>

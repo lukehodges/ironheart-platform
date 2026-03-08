@@ -21,6 +21,14 @@ import {
   TreePine,
   TrendingDown,
 } from "lucide-react"
+
+import {
+  sites,
+  totalNitrogenCredits,
+  availableNitrogenCredits,
+  totalBNGUnits,
+  availableBNGUnits,
+} from "../_mock-data"
 import {
   PieChart,
   Pie,
@@ -587,44 +595,51 @@ function DonutGaugeV1({
 }
 
 function VariationOne() {
+  const nSites = sites.filter((s) => s.unitType === "Nitrogen").length
+  const bngSites = sites.filter((s) => s.unitType === "BNG").length
+  const nAvailPct = totalNitrogenCredits > 0 ? ((availableNitrogenCredits / totalNitrogenCredits) * 100).toFixed(1) : "0"
+  const bngAvailPct = totalBNGUnits > 0 ? ((availableBNGUnits / totalBNGUnits) * 100).toFixed(1) : "0"
+  const allocatedN = totalNitrogenCredits - availableNitrogenCredits
+  const allocatedBNG = totalBNGUnits - availableBNGUnits
+
   return (
     <div className="space-y-6">
       {/* Stat cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCardV1
           label="Total Nitrogen Credits"
-          value="555 kg/yr"
-          detail="across 5 sites"
+          value={`${totalNitrogenCredits} kg/yr`}
+          detail={`across ${nSites} sites`}
           icon={Droplets}
           accent="bg-blue-500/10 text-blue-600 dark:text-blue-400"
-          ratio={53.2}
+          ratio={Number(nAvailPct)}
           ratioColor="bg-blue-500"
         />
         <StatCardV1
           label="Available Nitrogen"
-          value="295 kg/yr"
-          detail="53.2% of total"
+          value={`${availableNitrogenCredits} kg/yr`}
+          detail={`${nAvailPct}% of total`}
           icon={Leaf}
           accent="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-          ratio={53.2}
+          ratio={Number(nAvailPct)}
           ratioColor="bg-emerald-500"
         />
         <StatCardV1
           label="Total BNG Units"
-          value="22.5 units"
-          detail="across 1 site"
+          value={`${totalBNGUnits} units`}
+          detail={`across ${bngSites} site${bngSites !== 1 ? "s" : ""}`}
           icon={TreePine}
           accent="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-          ratio={100}
+          ratio={Number(bngAvailPct)}
           ratioColor="bg-emerald-500"
         />
         <StatCardV1
           label="Available BNG"
-          value="22.5 units"
-          detail="100% (none allocated)"
+          value={`${availableBNGUnits} units`}
+          detail={`${bngAvailPct}% ${allocatedBNG === 0 ? "(none allocated)" : "of total"}`}
           icon={Package}
           accent="bg-green-500/10 text-green-600 dark:text-green-400"
-          ratio={100}
+          ratio={Number(bngAvailPct)}
           ratioColor="bg-green-500"
         />
       </div>
@@ -1012,29 +1027,29 @@ function VariationThree() {
         {[
           {
             label: "Total Nitrogen",
-            value: "555 kg/yr",
-            sub: "5 sites",
+            value: `${totalNitrogenCredits} kg/yr`,
+            sub: `${sites.filter((s) => s.unitType === "Nitrogen").length} sites`,
             color: "text-blue-600 dark:text-blue-400",
             bg: "bg-blue-50 dark:bg-blue-950/30",
           },
           {
             label: "Available Nitrogen",
-            value: "295 kg/yr",
-            sub: "53.2%",
+            value: `${availableNitrogenCredits} kg/yr`,
+            sub: `${totalNitrogenCredits > 0 ? ((availableNitrogenCredits / totalNitrogenCredits) * 100).toFixed(1) : 0}%`,
             color: "text-emerald-600 dark:text-emerald-400",
             bg: "bg-emerald-50 dark:bg-emerald-950/30",
           },
           {
             label: "Total BNG",
-            value: "22.5 units",
-            sub: "1 site",
+            value: `${totalBNGUnits} units`,
+            sub: `${sites.filter((s) => s.unitType === "BNG").length} site${sites.filter((s) => s.unitType === "BNG").length !== 1 ? "s" : ""}`,
             color: "text-emerald-600 dark:text-emerald-400",
             bg: "bg-emerald-50 dark:bg-emerald-950/30",
           },
           {
             label: "Available BNG",
-            value: "22.5 units",
-            sub: "100%",
+            value: `${availableBNGUnits} units`,
+            sub: `${totalBNGUnits > 0 ? ((availableBNGUnits / totalBNGUnits) * 100).toFixed(1) : 0}%`,
             color: "text-green-600 dark:text-green-400",
             bg: "bg-green-50 dark:bg-green-950/30",
           },

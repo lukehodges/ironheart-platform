@@ -29,6 +29,14 @@ import {
 } from "lucide-react"
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts"
 
+import {
+  sites as sharedSites,
+  assessments as sharedAssessments,
+  deals as sharedDeals,
+  documents as sharedDocuments,
+  contacts as sharedContacts,
+} from "../../_mock-data"
+
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -386,7 +394,7 @@ function OwnerCard() {
             </div>
           </div>
           <Button variant="ghost" size="icon-sm" asChild>
-            <Link href="/admin/brokerage-mockups/contacts/C-0004">
+            <Link href={`/admin/brokerage-mockups/contacts/${sharedSites.find((s) => s.ref === site.ref)?.contact ?? "C-005"}`}>
               <ExternalLink className="w-3.5 h-3.5" />
             </Link>
           </Button>
@@ -660,6 +668,117 @@ function LinkedDealsSection() {
   )
 }
 
+function AssessmentHistorySection() {
+  const siteAssessments = sharedAssessments.filter((a) => a.siteRef === site.ref)
+  if (siteAssessments.length === 0) return null
+
+  const assessmentStatusColor: Record<string, string> = {
+    Approved: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800",
+    Scheduled: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-800",
+    "In Progress": "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800",
+    "Under Review": "bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/30 dark:text-indigo-400 dark:border-indigo-800",
+    "Revision Requested": "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/30 dark:text-red-400 dark:border-red-800",
+    "Data Submitted": "bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-950/30 dark:text-sky-400 dark:border-sky-800",
+  }
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-sm font-semibold flex items-center gap-2">
+            <ClipboardCheck className="w-4 h-4 text-muted-foreground" />
+            Assessment History
+          </CardTitle>
+          <Badge variant="secondary" className="text-[10px]">{siteAssessments.length} assessments</Badge>
+        </div>
+      </CardHeader>
+      <CardContent className="px-0 pb-0">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="text-xs">Type</TableHead>
+              <TableHead className="text-xs">Date</TableHead>
+              <TableHead className="text-xs">Assessor</TableHead>
+              <TableHead className="text-xs">Status</TableHead>
+              <TableHead className="text-xs">Credit Yield</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {siteAssessments.map((a) => (
+              <TableRow key={a.id}>
+                <TableCell className="text-xs font-medium">{a.type}</TableCell>
+                <TableCell className="text-xs text-muted-foreground">{a.date}</TableCell>
+                <TableCell className="text-xs text-muted-foreground">{a.assessorName}</TableCell>
+                <TableCell>
+                  <Badge className={`text-[10px] border ${assessmentStatusColor[a.status] ?? "bg-muted text-muted-foreground border-border"}`}>
+                    {a.status}
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-xs font-medium">
+                  {a.creditYieldLabel ?? <span className="text-muted-foreground italic">Pending</span>}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  )
+}
+
+function LegalStatusSection() {
+  const siteDocs = sharedDocuments.filter(
+    (d) => d.linkedEntityType === "site" && d.linkedEntityId === site.ref
+  )
+  if (siteDocs.length === 0) return null
+
+  const docStatusColor: Record<string, string> = {
+    Completed: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800",
+    Signed: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-800",
+    Draft: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800",
+    Sent: "bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/30 dark:text-indigo-400 dark:border-indigo-800",
+  }
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm font-semibold flex items-center gap-2">
+          <Shield className="w-4 h-4 text-muted-foreground" />
+          Legal Status
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="px-0 pb-0">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="text-xs">Document</TableHead>
+              <TableHead className="text-xs">Type</TableHead>
+              <TableHead className="text-xs">Status</TableHead>
+              <TableHead className="text-xs">Uploaded</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {siteDocs.map((d) => (
+              <TableRow key={d.id}>
+                <TableCell className="text-xs font-medium">{d.name}</TableCell>
+                <TableCell>
+                  <Badge variant="secondary" className="text-[10px]">{d.type}</Badge>
+                </TableCell>
+                <TableCell>
+                  <Badge className={`text-[10px] border ${docStatusColor[d.status] ?? "bg-muted text-muted-foreground border-border"}`}>
+                    {d.status}
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-xs text-muted-foreground">{d.uploadedDate}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  )
+}
+
 function CapacityPanel() {
   const siteData = SITES_DATA[site.ref] ?? SITES_DATA[DEFAULT_SITE_REF]
   const total = siteData.capacityTotal
@@ -834,6 +953,8 @@ function TwoColumnLayout() {
           <RegistrationSection />
           <BaselineSection />
           <AllocationsTable />
+          <AssessmentHistorySection />
+          <LegalStatusSection />
           <DocumentsSection />
           <ActivityTimeline />
           <LinkedDealsSection />

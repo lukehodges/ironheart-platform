@@ -37,6 +37,7 @@ import {
   ArrowDown,
   X,
 } from "lucide-react"
+import { deals as sharedDeals } from "../_mock-data"
 
 // ─── Types ─────────────────────────────────────────────────────────
 
@@ -122,28 +123,54 @@ const UNIT_TYPE_STYLES: Record<UnitType, string> = {
   BNG: "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20",
 }
 
-// ─── Mock Deals ────────────────────────────────────────────────────
+// ─── Stage Mapping (shared mock data stage → pipeline stage) ──────
 
-const DEALS: Deal[] = [
-  { id: "D-0035", title: "Whiteley Farm Nitrogen Credits", stage: "Completed", contact: "Robert Whiteley", side: "supply", unitType: "Nitrogen", units: "120 kg N/yr", catchment: "Solent", value: 360000, displayValue: "£360,000", probability: 100, broker: "James Harris", brokerInitials: "JH", expectedClose: "Nov 2025" },
-  { id: "D-0036", title: "Botley Meadows Phase 1", stage: "NE Registered", contact: "Margaret Thornton", side: "supply", unitType: "Nitrogen", units: "85 kg N/yr", catchment: "Solent", value: 212500, displayValue: "£212,500", probability: 75, broker: "James Harris", brokerInitials: "JH", expectedClose: "Apr 2026" },
-  { id: "D-0037", title: "Hamble Wetlands BNG", stage: "S106 In Progress", contact: "John Hamble", side: "supply", unitType: "BNG", units: "14.2 BNG units", catchment: "Solent", value: 198800, displayValue: "£198,800", probability: 65, broker: "James Harris", brokerInitials: "JH", expectedClose: "May 2026" },
-  { id: "D-0038", title: "Manor Fields N Credits", stage: "Credits Reserved", contact: "Taylor Wimpey", side: "demand", unitType: "Nitrogen", units: "45 kg N/yr", catchment: "Solent", value: 135000, displayValue: "£135,000", probability: 80, broker: "James Harris", brokerInitials: "JH", expectedClose: "Mar 2026" },
-  { id: "D-0039", title: "Riverside Meadows", stage: "Assessment Booked", contact: "Susan Marsh", side: "supply", unitType: "Nitrogen", units: "TBD", catchment: "Solent", value: 180000, displayValue: "Est. £180,000", probability: 40, broker: "Sarah Croft", brokerInitials: "SC", expectedClose: "Jun 2026" },
-  { id: "D-0040", title: "Fareham Creek Wetland", stage: "Qualified", contact: "Peter Langstone", side: "supply", unitType: "Nitrogen", units: "Est. 60 kg N/yr", catchment: "Solent", value: 150000, displayValue: "£150,000", probability: 35, broker: "Sarah Croft", brokerInitials: "SC", expectedClose: "Jul 2026" },
-  { id: "D-0041", title: "Bellway Whiteley Development", stage: "Quote Sent", contact: "Bellway Homes", side: "demand", unitType: "Nitrogen", units: "55 kg N/yr", catchment: "Solent", value: 165000, displayValue: "£165,000", probability: 70, broker: "James Harris", brokerInitials: "JH", expectedClose: "Apr 2026" },
-  { id: "D-0042", title: "Taylor Wimpey Hedge End", stage: "Matched", contact: "Taylor Wimpey", side: "demand", unitType: "Nitrogen", units: "30 kg N/yr", catchment: "Solent", value: 90000, displayValue: "£90,000", probability: 60, broker: "James Harris", brokerInitials: "JH", expectedClose: "May 2026" },
-  { id: "D-0043", title: "Eastleigh Meadow P Credits", stage: "Lead", contact: "George Palmer", side: "supply", unitType: "Phosphorus", units: "Est. 40 kg P/yr", catchment: "Solent", value: 100000, displayValue: "Est. £100,000", probability: 15, broker: "Sarah Croft", brokerInitials: "SC", expectedClose: "Aug 2026" },
-  { id: "D-0044", title: "Wickham Solar Farm BNG", stage: "Lead", contact: "Helen Wickham", side: "supply", unitType: "BNG", units: "Est. 8 BNG", catchment: "Solent", value: 96000, displayValue: "Est. £96,000", probability: 20, broker: "Tom Jenkins", brokerInitials: "TJ", expectedClose: "Sep 2026" },
-  { id: "D-0045", title: "Persimmon North Whiteley", stage: "Qualified", contact: "Persimmon Homes", side: "demand", unitType: "Nitrogen", units: "75 kg N/yr", catchment: "Solent", value: 225000, displayValue: "£225,000", probability: 40, broker: "James Harris", brokerInitials: "JH", expectedClose: "Jun 2026" },
-  { id: "D-0046", title: "Test Valley Grassland", stage: "Assessment Complete", contact: "Ian Stockbridge", side: "supply", unitType: "Nitrogen", units: "95 kg N/yr", catchment: "Test Valley", value: 237500, displayValue: "£237,500", probability: 55, broker: "Tom Jenkins", brokerInitials: "TJ", expectedClose: "May 2026" },
-  { id: "D-0047", title: "Havant Coastal Wetland", stage: "Lead", contact: "Claire Brighton", side: "supply", unitType: "Nitrogen", units: "Est. 50 kg N/yr", catchment: "Solent", value: 125000, displayValue: "Est. £125,000", probability: 10, broker: "Sarah Croft", brokerInitials: "SC", expectedClose: "Oct 2026" },
-  { id: "D-0048", title: "Linden Homes Botley", stage: "Contract Signed", contact: "Linden Homes", side: "demand", unitType: "Nitrogen", units: "38 kg N/yr", catchment: "Solent", value: 114000, displayValue: "£114,000", probability: 90, broker: "James Harris", brokerInitials: "JH", expectedClose: "Mar 2026" },
-  { id: "D-0049", title: "Curdridge Farm Conversion", stage: "Qualified", contact: "William Curdridge", side: "supply", unitType: "Nitrogen", units: "Est. 70 kg N/yr", catchment: "Solent", value: 175000, displayValue: "£175,000", probability: 30, broker: "Sarah Croft", brokerInitials: "SC", expectedClose: "Jul 2026" },
-  { id: "D-0050", title: "Miller Homes Fair Oak", stage: "Payment Received", contact: "Miller Homes", side: "demand", unitType: "Nitrogen", units: "25 kg N/yr", catchment: "Solent", value: 75000, displayValue: "£75,000", probability: 95, broker: "James Harris", brokerInitials: "JH", expectedClose: "Mar 2026" },
-  { id: "D-0051", title: "Hedge End Extension BNG", stage: "Credits Allocated", contact: "David Wilson Homes", side: "demand", unitType: "BNG", units: "6.5 BNG", catchment: "Solent", value: 78000, displayValue: "£78,000", probability: 98, broker: "Sarah Croft", brokerInitials: "SC", expectedClose: "Mar 2026" },
-  { id: "D-0052", title: "Bishop's Waltham Pasture", stage: "Assessment Booked", contact: "Catherine Wells", side: "supply", unitType: "Nitrogen", units: "TBD", catchment: "Solent", value: 200000, displayValue: "Est. £200,000", probability: 35, broker: "Tom Jenkins", brokerInitials: "TJ", expectedClose: "Jun 2026" },
-]
+const STAGE_MAP: Record<string, Stage> = {
+  "Prospecting": "Lead",
+  "Initial Contact": "Qualified",
+  "Requirements Gathered": "Assessment Booked",
+  "Site Matched": "Assessment Complete",
+  "Quote Sent": "Quote Sent",
+  "Quote Accepted": "Credits Reserved",
+  "Legal Drafting": "S106 In Progress",
+  "Legal Review": "NE Registered",
+  "Contracts Signed": "Contract Signed",
+  "Payment Pending": "Payment Received",
+  "Payment Received": "Payment Received",
+  "Credits Allocated": "Credits Allocated",
+  "LPA Confirmed": "Credits Allocated",
+  "Completed": "Completed",
+}
+
+function formatDisplayValue(value: number): string {
+  return `£${value.toLocaleString("en-GB")}`
+}
+
+function formatExpectedClose(date: string): string {
+  const d = new Date(date)
+  return d.toLocaleDateString("en-GB", { month: "short", year: "numeric" })
+}
+
+// ─── Mock Deals (mapped from shared data) ─────────────────────────
+
+const DEALS: Deal[] = sharedDeals.map((d) => ({
+  id: d.id,
+  title: d.title,
+  stage: STAGE_MAP[d.stage] ?? "Lead",
+  contact: d.side === "demand"
+    ? (d.demandContactName || d.supplyContactName)
+    : (d.supplyContactName || d.demandContactName),
+  side: d.side === "matched" ? "demand" : d.side as Side,
+  unitType: d.unitType as UnitType,
+  units: d.unitsLabel,
+  catchment: d.catchment as Catchment,
+  value: d.value,
+  displayValue: formatDisplayValue(d.value),
+  probability: Math.round(d.probability * 100),
+  broker: d.broker,
+  brokerInitials: d.brokerInitials,
+  expectedClose: formatExpectedClose(d.expectedClose),
+}))
 
 // ─── Utility Functions ─────────────────────────────────────────────
 
@@ -826,10 +853,12 @@ export default function DealsPipelinePage() {
                 <Download className="h-3 w-3" />
                 Export
               </Button>
-              <Button size="sm" className="text-xs gap-1.5">
-                <Plus className="h-3 w-3" />
-                New Deal
-              </Button>
+              <Link href="/admin/brokerage-mockups/deals/new">
+                <Button size="sm" className="text-xs gap-1.5">
+                  <Plus className="h-3 w-3" />
+                  New Deal
+                </Button>
+              </Link>
             </div>
           </div>
 

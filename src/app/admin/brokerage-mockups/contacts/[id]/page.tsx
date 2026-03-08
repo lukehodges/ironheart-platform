@@ -7,6 +7,7 @@ import {
   ArrowLeft,
   Building2,
   Calendar,
+  CheckCircle2,
   ChevronRight,
   Clock,
   Edit,
@@ -21,11 +22,17 @@ import {
   Pencil,
   Phone,
   Plus,
+  Star,
+  Tag,
+  TrendingUp,
+  User,
+  X,
   Zap,
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   Table,
@@ -35,1295 +42,182 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { contacts, sites, deals, assessments } from "../../_mock-data"
 
 // ============================================================================
-// TYPES
+// HELPERS
 // ============================================================================
 
-type ContactSide = "supply" | "demand"
-type ContactType = "Landowner" | "Farmer" | "Developer" | "Housebuilder"
-
-interface ContactDetail {
-  id: string
-  slug: string
-  name: string
-  company: string | null
-  type: ContactType
-  side: ContactSide
-  email: string
-  phone: string
-  address: string
-  location: string
-  initials: string
-  avatarColor: string
-  tags: string[]
-  createdDate: string
-  lastActivity: string
+function stageColor(stage: string): string {
+  const colors: Record<string, string> = {
+    Prospecting: "bg-slate-100 text-slate-700 border-slate-200",
+    "Initial Contact": "bg-slate-100 text-slate-700 border-slate-200",
+    "Requirements Gathered": "bg-blue-50 text-blue-700 border-blue-200",
+    "Site Matched": "bg-blue-50 text-blue-700 border-blue-200",
+    "Quote Sent": "bg-amber-50 text-amber-700 border-amber-200",
+    "Quote Accepted": "bg-amber-50 text-amber-700 border-amber-200",
+    "Legal Drafting": "bg-violet-50 text-violet-700 border-violet-200",
+    "Legal Review": "bg-violet-50 text-violet-700 border-violet-200",
+    "Contracts Signed": "bg-emerald-50 text-emerald-700 border-emerald-200",
+    "Payment Pending": "bg-orange-50 text-orange-700 border-orange-200",
+    "Payment Received": "bg-emerald-50 text-emerald-700 border-emerald-200",
+    "Credits Allocated": "bg-emerald-50 text-emerald-700 border-emerald-200",
+    "LPA Confirmed": "bg-emerald-50 text-emerald-700 border-emerald-200",
+    Completed: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  }
+  return colors[stage] ?? "bg-muted text-muted-foreground border-border"
 }
 
-interface ContactDeal {
-  id: string
-  ref: string
-  title: string
-  stage: string
-  stageColor: string
-  value: string
-  role: "supply" | "demand"
-  date: string
-  linkedSite: string | null
-  linkedSiteRef: string | null
+function siteStatusColor(status: string): string {
+  const colors: Record<string, string> = {
+    Active: "bg-emerald-50 text-emerald-700 border-emerald-200",
+    Registered: "bg-blue-50 text-blue-700 border-blue-200",
+    "Under Assessment": "bg-amber-50 text-amber-700 border-amber-200",
+    "Legal In Progress": "bg-violet-50 text-violet-700 border-violet-200",
+    Prospecting: "bg-slate-100 text-slate-700 border-slate-200",
+    "Fully Allocated": "bg-slate-100 text-slate-700 border-slate-200",
+  }
+  return colors[status] ?? "bg-muted text-muted-foreground border-border"
 }
 
-interface ContactSite {
-  ref: string
-  name: string
-  status: string
-  statusColor: string
-  catchment: string
-  unitType: string
-  totalCapacity: string
-  available: string
-  unitPrice: string
-}
+// ============================================================================
+// HARDCODED COMMUNICATION LOG
+// ============================================================================
 
-interface ContactNote {
+interface CommEntry {
   id: number
+  type: "call" | "email" | "note" | "meeting"
+  title: string
+  description: string
+  date: string
   author: string
   authorInitials: string
-  authorColor: string
-  date: string
-  time: string
-  content: string
 }
 
-interface ActivityItem {
-  id: number
-  type: "deal" | "note" | "email" | "system" | "site"
-  date: string
-  time: string
-  user: string
-  initials: string
-  description: string
-  detail: string
-}
+const supplyCommunications: CommEntry[] = [
+  { id: 1, type: "call", title: "Follow-up call re: annual monitoring", description: "Discussed upcoming monitoring visit scheduled for March. Landowner confirmed access via eastern gate.", date: "2026-03-05", author: "James Harris", authorInitials: "JH" },
+  { id: 2, type: "email", title: "Sent updated credit allocation summary", description: "Emailed Q1 2026 allocation report showing 50 kg/yr allocated of 95 kg/yr total.", date: "2026-02-28", author: "James Harris", authorInitials: "JH" },
+  { id: 3, type: "meeting", title: "On-site visit with assessor", description: "Accompanied Sarah Chen for annual monitoring visit. Buffer strips establishing well.", date: "2026-02-15", author: "Sarah Croft", authorInitials: "SC" },
+  { id: 4, type: "note", title: "Landowner interested in BNG", description: "Robert mentioned interest in exploring BNG credits for the woodland parcel to the north. Worth a follow-up assessment.", date: "2026-01-20", author: "James Harris", authorInitials: "JH" },
+  { id: 5, type: "email", title: "S106 agreement renewal reminder", description: "Sent reminder about upcoming 5-year review of the S106 agreement terms.", date: "2025-12-10", author: "Tom Jenkins", authorInitials: "TJ" },
+  { id: 6, type: "call", title: "Initial onboarding call", description: "Welcome call to discuss nutrient neutrality programme and next steps for baseline assessment.", date: "2025-05-01", author: "James Harris", authorInitials: "JH" },
+]
 
-interface FinancialSummary {
-  totalDealValue: string
-  totalCommission: string
-  commissionRate: string
-  paidCommission: string
-  outstandingCommission: string
-  paymentStatus: string
-  paymentStatusColor: string
-  invoiceCount: number
-}
-
-interface ContactData {
-  contact: ContactDetail
-  deals: ContactDeal[]
-  sites: ContactSite[]
-  notes: ContactNote[]
-  activity: ActivityItem[]
-  financials: FinancialSummary
-}
+const demandCommunications: CommEntry[] = [
+  { id: 1, type: "call", title: "Discussed credit requirements for Phase 2", description: "Developer needs additional 45 kg/yr nitrogen credits for expanded planning application.", date: "2026-03-07", author: "James Harris", authorInitials: "JH" },
+  { id: 2, type: "email", title: "Sent quote for Botley Meadows credits", description: "Formal quote issued for 45 kg/yr at £3,000/kg. Awaiting response.", date: "2026-03-01", author: "James Harris", authorInitials: "JH" },
+  { id: 3, type: "meeting", title: "Planning strategy meeting", description: "Met with planning team to discuss credit procurement timeline aligned with LPA submission dates.", date: "2026-02-20", author: "Sarah Croft", authorInitials: "SC" },
+  { id: 4, type: "note", title: "Budget approved for Q2 credit purchases", description: "Rachel confirmed internal budget approval for up to £200k in credit purchases this quarter.", date: "2026-02-10", author: "James Harris", authorInitials: "JH" },
+  { id: 5, type: "email", title: "Credit certificate for Phase 1 delivered", description: "Sent final credit allocation certificate for the Whiteley Farm deal (30 kg/yr).", date: "2026-01-15", author: "Tom Jenkins", authorInitials: "TJ" },
+  { id: 6, type: "call", title: "Initial enquiry about nutrient credits", description: "First contact about nitrogen credit requirements for planned development near Eastleigh.", date: "2025-11-05", author: "James Harris", authorInitials: "JH" },
+]
 
 // ============================================================================
-// HARDCODED DATA
+// HARDCODED DEMAND PROJECTS
 // ============================================================================
 
-const CONTACTS_DATA: Record<string, ContactData> = {
-  "david-ashford": {
-    contact: {
-      id: "c-004",
-      slug: "david-ashford",
-      name: "David Ashford",
-      company: "Ashford Farm Estate",
-      type: "Landowner",
-      side: "supply",
-      email: "d.ashford@ashfordfarm.co.uk",
-      phone: "07700 900456",
-      address: "Manor Farm Lane, Kings Worthy, Winchester, SO21 1HR",
-      location: "Kings Worthy, Winchester",
-      initials: "DA",
-      avatarColor: "bg-purple-600",
-      tags: ["landowner", "nitrogen"],
-      createdDate: "12 Sep 2024",
-      lastActivity: "5 Mar 2026",
-    },
-    deals: [
-      {
-        id: "d-0038",
-        ref: "D-0038",
-        title: "Manor Fields Nitrogen Credits",
-        stage: "Credits Reserved",
-        stageColor: "bg-amber-50 text-amber-700 border-amber-200",
-        value: "\u00A3135,000",
-        role: "supply",
-        date: "15 Feb 2026",
-        linkedSite: "Manor Fields",
-        linkedSiteRef: "S-0005",
-      },
-    ],
-    sites: [
-      {
-        ref: "S-0005",
-        name: "Manor Fields",
-        status: "Active",
-        statusColor: "bg-emerald-50 text-emerald-700 border-emerald-200",
-        catchment: "Solent",
-        unitType: "Nitrogen Credit (kg/yr)",
-        totalCapacity: "95 kg N/yr",
-        available: "45 kg N/yr",
-        unitPrice: "\u00A33,000 / kg",
-      },
-    ],
-    notes: [
-      {
-        id: 1,
-        author: "James Harris",
-        authorInitials: "JH",
-        authorColor: "bg-amber-100 text-amber-700",
-        date: "5 Mar 2026",
-        time: "15:20",
-        content:
-          "Spoke with David about the Taylor Wimpey reservation. He is happy with the agreed price of \u00A33,000/kg and confirmed he will sign the contract once TW deposit clears.",
-      },
-      {
-        id: 2,
-        author: "Sarah Croft",
-        authorInitials: "SC",
-        authorColor: "bg-purple-100 text-purple-700",
-        date: "28 Feb 2026",
-        time: "10:45",
-        content:
-          "David confirmed boundary adjustments with neighbouring farm are complete. No issues with the NE registration boundary plan.",
-      },
-      {
-        id: 3,
-        author: "James Harris",
-        authorInitials: "JH",
-        authorColor: "bg-amber-100 text-amber-700",
-        date: "8 Oct 2025",
-        time: "14:00",
-        content:
-          "Site assessment completed by Tom Jenkins. Baseline data confirmed: 12.4 ha, arable to grassland conversion. Estimated 95 kg N/yr total mitigation capacity.",
-      },
-      {
-        id: 4,
-        author: "James Harris",
-        authorInitials: "JH",
-        authorColor: "bg-amber-100 text-amber-700",
-        date: "12 Sep 2024",
-        time: "09:30",
-        content:
-          "Initial meeting with David Ashford at Manor Farm. Discussed nitrogen credit opportunities. Very interested in land-use change on Manor Fields (12 ha). Follow-up assessment to be booked.",
-      },
-    ],
-    activity: [
-      {
-        id: 1,
-        type: "deal",
-        date: "5 Mar 2026",
-        time: "14:32",
-        user: "James Harris",
-        initials: "JH",
-        description: "Deal D-0038 moved to Credits Reserved",
-        detail:
-          "Manor Fields Nitrogen Credits deal advanced to Credits Reserved stage after Taylor Wimpey deposit confirmation.",
-      },
-      {
-        id: 2,
-        type: "note",
-        date: "5 Mar 2026",
-        time: "15:20",
-        user: "James Harris",
-        initials: "JH",
-        description: "Note added",
-        detail:
-          "Spoke with David about the Taylor Wimpey reservation and contract signing timeline.",
-      },
-      {
-        id: 3,
-        type: "email",
-        date: "28 Feb 2026",
-        time: "11:00",
-        user: "James Harris",
-        initials: "JH",
-        description: "Email sent to David Ashford",
-        detail:
-          "Credit Reservation Confirmation for 45 kg N/yr at Manor Fields. Awaiting Taylor Wimpey deposit.",
-      },
-      {
-        id: 4,
-        type: "deal",
-        date: "25 Feb 2026",
-        time: "16:20",
-        user: "James Harris",
-        initials: "JH",
-        description: "Deal D-0038 matched",
-        detail:
-          "Manor Fields supply matched to Taylor Wimpey demand: 45 kg N/yr in Solent catchment.",
-      },
-      {
-        id: 5,
-        type: "site",
-        date: "14 Nov 2024",
-        time: "10:00",
-        user: "System",
-        initials: "SY",
-        description: "Site S-0005 registered with Natural England",
-        detail:
-          "Manor Fields registered under NE ref NE-SOL-2024-0087. 95 kg N/yr total capacity confirmed.",
-      },
-      {
-        id: 6,
-        type: "site",
-        date: "8 Oct 2024",
-        time: "09:00",
-        user: "Tom Jenkins",
-        initials: "TJ",
-        description: "Site assessment completed",
-        detail:
-          "Nutrient site assessment completed at Manor Fields. 12.4 ha arable to grassland conversion.",
-      },
-      {
-        id: 7,
-        type: "system",
-        date: "12 Sep 2024",
-        time: "09:30",
-        user: "James Harris",
-        initials: "JH",
-        description: "Contact created",
-        detail:
-          "David Ashford added as supply-side contact (Landowner) from Ashford Farm Estate.",
-      },
-    ],
-    financials: {
-      totalDealValue: "\u00A3135,000",
-      totalCommission: "\u00A327,000",
-      commissionRate: "20%",
-      paidCommission: "\u00A30",
-      outstandingCommission: "\u00A327,000",
-      paymentStatus: "Awaiting Deposit",
-      paymentStatusColor: "bg-amber-50 text-amber-700 border-amber-200",
-      invoiceCount: 1,
-    },
-  },
-
-  "rachel-morrison": {
-    contact: {
-      id: "c-009",
-      slug: "rachel-morrison",
-      name: "Rachel Morrison",
-      company: "Taylor Wimpey Southern",
-      type: "Developer",
-      side: "demand",
-      email: "r.morrison@taylorwimpey.com",
-      phone: "020 7000 1234",
-      address: "Gate House, Turnpike Road, High Wycombe, HP12 3NR",
-      location: "London",
-      initials: "RM",
-      avatarColor: "bg-cyan-600",
-      tags: ["developer", "nitrogen"],
-      createdDate: "18 Feb 2026",
-      lastActivity: "5 Mar 2026",
-    },
-    deals: [
-      {
-        id: "d-0038",
-        ref: "D-0038",
-        title: "Manor Fields Nitrogen Credits",
-        stage: "Credits Reserved",
-        stageColor: "bg-amber-50 text-amber-700 border-amber-200",
-        value: "\u00A3135,000",
-        role: "demand",
-        date: "15 Feb 2026",
-        linkedSite: "Manor Fields",
-        linkedSiteRef: "S-0005",
-      },
-      {
-        id: "d-0042",
-        ref: "D-0042",
-        title: "Taylor Wimpey Hedge End",
-        stage: "Matched",
-        stageColor: "bg-blue-50 text-blue-700 border-blue-200",
-        value: "\u00A390,000",
-        role: "demand",
-        date: "22 Feb 2026",
-        linkedSite: null,
-        linkedSiteRef: null,
-      },
-    ],
-    sites: [],
-    notes: [
-      {
-        id: 1,
-        author: "James Harris",
-        authorInitials: "JH",
-        authorColor: "bg-amber-100 text-amber-700",
-        date: "5 Mar 2026",
-        time: "16:00",
-        content:
-          "Rachel confirmed that Taylor Wimpey legal team are satisfied with the credit reservation terms. Deposit payment should be processed within 5 business days.",
-      },
-      {
-        id: 2,
-        author: "James Harris",
-        authorInitials: "JH",
-        authorColor: "bg-amber-100 text-amber-700",
-        date: "28 Feb 2026",
-        time: "09:45",
-        content:
-          "Sent credit reservation confirmation email to Rachel. She acknowledged receipt and is passing to their legal department.",
-      },
-      {
-        id: 3,
-        author: "James Harris",
-        authorInitials: "JH",
-        authorColor: "bg-amber-100 text-amber-700",
-        date: "22 Feb 2026",
-        time: "11:30",
-        content:
-          "Rachel submitted second enquiry for Hedge End development. Needs 30 kg N/yr in Solent catchment. Separate planning application from the Manor Fields deal.",
-      },
-      {
-        id: 4,
-        author: "James Harris",
-        authorInitials: "JH",
-        authorColor: "bg-amber-100 text-amber-700",
-        date: "18 Feb 2026",
-        time: "10:30",
-        content:
-          "New enquiry from Rachel Morrison at Taylor Wimpey. Looking for 30-50 kg N/yr nitrogen credits in Solent catchment for upcoming development.",
-      },
-    ],
-    activity: [
-      {
-        id: 1,
-        type: "deal",
-        date: "5 Mar 2026",
-        time: "14:32",
-        user: "James Harris",
-        initials: "JH",
-        description: "Deal D-0038 moved to Credits Reserved",
-        detail:
-          "Manor Fields Nitrogen Credits deal advanced after deposit confirmation from Taylor Wimpey.",
-      },
-      {
-        id: 2,
-        type: "email",
-        date: "28 Feb 2026",
-        time: "09:45",
-        user: "James Harris",
-        initials: "JH",
-        description: "Email sent to Rachel Morrison",
-        detail:
-          "Credit Reservation Confirmation for 45 kg N/yr at Manor Fields.",
-      },
-      {
-        id: 3,
-        type: "deal",
-        date: "25 Feb 2026",
-        time: "16:20",
-        user: "James Harris",
-        initials: "JH",
-        description: "Deal D-0038 matched",
-        detail:
-          "Manor Fields supply matched to Taylor Wimpey demand: 45 kg N/yr in Solent catchment.",
-      },
-      {
-        id: 4,
-        type: "deal",
-        date: "22 Feb 2026",
-        time: "11:30",
-        user: "James Harris",
-        initials: "JH",
-        description: "Deal D-0042 created",
-        detail:
-          "Taylor Wimpey Hedge End deal created. 30 kg N/yr needed in Solent catchment.",
-      },
-      {
-        id: 5,
-        type: "email",
-        date: "18 Feb 2026",
-        time: "10:30",
-        user: "Rachel Morrison",
-        initials: "RM",
-        description: "Enquiry received",
-        detail:
-          "Rachel Morrison (Taylor Wimpey Southern) submitted enquiry: 30-50 kg N/yr needed in Solent catchment.",
-      },
-      {
-        id: 6,
-        type: "system",
-        date: "18 Feb 2026",
-        time: "10:31",
-        user: "System",
-        initials: "SY",
-        description: "Contact created",
-        detail:
-          "Rachel Morrison added as demand-side contact (Developer) from Taylor Wimpey Southern.",
-      },
-    ],
-    financials: {
-      totalDealValue: "\u00A3225,000",
-      totalCommission: "\u00A345,000",
-      commissionRate: "20%",
-      paidCommission: "\u00A30",
-      outstandingCommission: "\u00A345,000",
-      paymentStatus: "Awaiting Payment",
-      paymentStatusColor: "bg-amber-50 text-amber-700 border-amber-200",
-      invoiceCount: 2,
-    },
-  },
-
-  "robert-whiteley": {
-    contact: {
-      id: "c-001",
-      slug: "robert-whiteley",
-      name: "Robert Whiteley",
-      company: "Whiteley Farm Estate",
-      type: "Landowner",
-      side: "supply",
-      email: "r.whiteley@whiteleyfarm.co.uk",
-      phone: "07700 900123",
-      address: "Whiteley Farm, Whiteley Lane, Fareham, PO15 7LJ",
-      location: "Whiteley, Hampshire",
-      initials: "RW",
-      avatarColor: "bg-emerald-600",
-      tags: ["landowner", "nitrogen"],
-      createdDate: "15 Mar 2024",
-      lastActivity: "5 Mar 2026",
-    },
-    deals: [
-      {
-        id: "d-0035",
-        ref: "D-0035",
-        title: "Whiteley Farm Nitrogen Credits",
-        stage: "Completed",
-        stageColor: "bg-emerald-50 text-emerald-700 border-emerald-200",
-        value: "\u00A3360,000",
-        role: "supply",
-        date: "10 Jun 2025",
-        linkedSite: "Whiteley Farm",
-        linkedSiteRef: "S-0001",
-      },
-    ],
-    sites: [
-      {
-        ref: "S-0001",
-        name: "Whiteley Farm",
-        status: "Active",
-        statusColor: "bg-emerald-50 text-emerald-700 border-emerald-200",
-        catchment: "Solent",
-        unitType: "Nitrogen Credit (kg/yr)",
-        totalCapacity: "180 kg N/yr",
-        available: "15 kg N/yr",
-        unitPrice: "\u00A33,200 / kg",
-      },
-    ],
-    notes: [
-      {
-        id: 1,
-        author: "James Harris",
-        authorInitials: "JH",
-        authorColor: "bg-amber-100 text-amber-700",
-        date: "5 Mar 2026",
-        time: "11:00",
-        content:
-          "Annual review call with Robert. Whiteley Farm site performing well. Only 15 kg N/yr remaining. Discussed potential second site on adjacent land (approx 8 ha).",
-      },
-      {
-        id: 2,
-        author: "Tom Jenkins",
-        authorInitials: "TJ",
-        authorColor: "bg-teal-100 text-teal-700",
-        date: "28 Feb 2026",
-        time: "14:30",
-        content:
-          "Annual habitat monitoring visit completed. Site in good condition. Grassland establishment progressing well. Report filed with NE.",
-      },
-      {
-        id: 3,
-        author: "James Harris",
-        authorInitials: "JH",
-        authorColor: "bg-amber-100 text-amber-700",
-        date: "15 Nov 2025",
-        time: "10:00",
-        content:
-          "Final allocation delivered to Barratt Homes. Deal D-0035 completed. Robert received full payment of \u00A3288,000 (net of 20% commission).",
-      },
-      {
-        id: 4,
-        author: "Sarah Croft",
-        authorInitials: "SC",
-        authorColor: "bg-purple-100 text-purple-700",
-        date: "10 Jun 2025",
-        time: "16:00",
-        content:
-          "Contract signed with Barratt Homes for 120 kg N/yr. Largest single allocation to date. Robert very pleased with the terms.",
-      },
-      {
-        id: 5,
-        author: "James Harris",
-        authorInitials: "JH",
-        authorColor: "bg-amber-100 text-amber-700",
-        date: "15 Mar 2024",
-        time: "09:00",
-        content:
-          "First meeting with Robert Whiteley. He owns 25 ha at Whiteley Farm. Interested in converting 18 ha of arable to permanent grassland for nitrogen credits. Very keen to proceed.",
-      },
-    ],
-    activity: [
-      {
-        id: 1,
-        type: "note",
-        date: "5 Mar 2026",
-        time: "11:00",
-        user: "James Harris",
-        initials: "JH",
-        description: "Annual review call with Robert Whiteley",
-        detail:
-          "Discussed site performance and potential second site on adjacent land.",
-      },
-      {
-        id: 2,
-        type: "site",
-        date: "28 Feb 2026",
-        time: "14:30",
-        user: "Tom Jenkins",
-        initials: "TJ",
-        description: "Annual habitat monitoring completed",
-        detail:
-          "Whiteley Farm monitoring visit completed. Site in good condition.",
-      },
-      {
-        id: 3,
-        type: "deal",
-        date: "15 Nov 2025",
-        time: "10:00",
-        user: "James Harris",
-        initials: "JH",
-        description: "Deal D-0035 completed",
-        detail:
-          "Whiteley Farm Nitrogen Credits deal completed. 120 kg N/yr delivered to Barratt Homes. \u00A3360,000 total value.",
-      },
-      {
-        id: 4,
-        type: "email",
-        date: "15 Nov 2025",
-        time: "10:30",
-        user: "System",
-        initials: "SY",
-        description: "Payment processed for Robert Whiteley",
-        detail:
-          "\u00A3288,000 transferred to Robert Whiteley (Whiteley Farm Estate). Commission of \u00A372,000 retained.",
-      },
-      {
-        id: 5,
-        type: "deal",
-        date: "10 Jun 2025",
-        time: "16:00",
-        user: "Sarah Croft",
-        initials: "SC",
-        description: "Contract signed for D-0035",
-        detail:
-          "Barratt Homes signed contract for 120 kg N/yr from Whiteley Farm.",
-      },
-      {
-        id: 6,
-        type: "site",
-        date: "20 Apr 2024",
-        time: "09:00",
-        user: "System",
-        initials: "SY",
-        description: "Site S-0001 registered with Natural England",
-        detail:
-          "Whiteley Farm registered. 180 kg N/yr total capacity confirmed.",
-      },
-      {
-        id: 7,
-        type: "system",
-        date: "15 Mar 2024",
-        time: "09:00",
-        user: "James Harris",
-        initials: "JH",
-        description: "Contact created",
-        detail:
-          "Robert Whiteley added as supply-side contact (Landowner) from Whiteley Farm Estate.",
-      },
-    ],
-    financials: {
-      totalDealValue: "\u00A3360,000",
-      totalCommission: "\u00A372,000",
-      commissionRate: "20%",
-      paidCommission: "\u00A372,000",
-      outstandingCommission: "\u00A30",
-      paymentStatus: "Fully Paid",
-      paymentStatusColor: "bg-emerald-50 text-emerald-700 border-emerald-200",
-      invoiceCount: 1,
-    },
-  },
+interface DemandProject {
+  id: string
+  name: string
+  planningRef: string
+  status: string
+  statusColor: string
+  units: number
+  location: string
 }
 
-// Fallback data for unknown IDs
-const FALLBACK_CONTACT: ContactData = CONTACTS_DATA["david-ashford"]
+const demandProjects: DemandProject[] = [
+  { id: "P-001", name: "Eastleigh Gateway Phase 1", planningRef: "O/22/89432", status: "Approved", statusColor: "bg-emerald-50 text-emerald-700 border-emerald-200", units: 120, location: "Eastleigh" },
+  { id: "P-002", name: "Eastleigh Gateway Phase 2", planningRef: "O/23/12456", status: "Pending", statusColor: "bg-amber-50 text-amber-700 border-amber-200", units: 200, location: "Eastleigh" },
+  { id: "P-003", name: "Whiteley Meadows", planningRef: "F/24/56789", status: "Pre-application", statusColor: "bg-slate-100 text-slate-700 border-slate-200", units: 85, location: "Whiteley" },
+]
+
+interface CreditRequirement {
+  type: string
+  needed: number
+  fulfilled: number
+  unit: string
+}
+
+const creditRequirements: CreditRequirement[] = [
+  { type: "Nitrogen", needed: 75, fulfilled: 30, unit: "kg/yr" },
+  { type: "Phosphorus", needed: 20, fulfilled: 0, unit: "kg/yr" },
+  { type: "BNG", needed: 15, fulfilled: 0, unit: "units" },
+]
 
 // ============================================================================
-// HELPER COMPONENTS
+// SUB-COMPONENTS
 // ============================================================================
 
-function getActivityIcon(type: string) {
+function CommIcon({ type }: { type: CommEntry["type"] }) {
   switch (type) {
-    case "deal":
-      return <Handshake className="w-3.5 h-3.5" />
-    case "note":
-      return <Pencil className="w-3.5 h-3.5" />
+    case "call":
+      return <Phone className="h-3.5 w-3.5" />
     case "email":
-      return <Mail className="w-3.5 h-3.5" />
-    case "system":
-      return <Zap className="w-3.5 h-3.5" />
-    case "site":
-      return <Leaf className="w-3.5 h-3.5" />
-    default:
-      return <FileText className="w-3.5 h-3.5" />
+      return <Mail className="h-3.5 w-3.5" />
+    case "meeting":
+      return <Calendar className="h-3.5 w-3.5" />
+    case "note":
+      return <FileText className="h-3.5 w-3.5" />
   }
 }
 
-function getActivityColor(type: string) {
+function commTypeLabel(type: CommEntry["type"]): string {
   switch (type) {
-    case "deal":
-      return "bg-blue-100 text-blue-600"
-    case "note":
-      return "bg-amber-100 text-amber-600"
-    case "email":
-      return "bg-purple-100 text-purple-600"
-    case "system":
-      return "bg-emerald-100 text-emerald-600"
-    case "site":
-      return "bg-teal-100 text-teal-600"
-    default:
-      return "bg-gray-100 text-gray-600"
+    case "call": return "Phone Call"
+    case "email": return "Email"
+    case "meeting": return "Meeting"
+    case "note": return "Note"
   }
 }
 
-function SideBadge({ side }: { side: ContactSide }) {
-  if (side === "supply") {
-    return (
-      <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-xs">
-        <Leaf className="w-3 h-3 mr-1" />
-        Supply
-      </Badge>
-    )
-  }
-  return (
-    <Badge className="bg-blue-50 text-blue-700 border-blue-200 text-xs">
-      <Building2 className="w-3 h-3 mr-1" />
-      Demand
-    </Badge>
-  )
-}
-
-function TypeBadge({ type }: { type: ContactType }) {
-  const styles: Record<ContactType, string> = {
-    Landowner: "border-amber-200 bg-amber-50 text-amber-700",
-    Farmer: "border-emerald-200 bg-emerald-50 text-emerald-700",
-    Developer: "border-blue-200 bg-blue-50 text-blue-700",
-    Housebuilder: "border-indigo-200 bg-indigo-50 text-indigo-700",
-  }
-  return (
-    <Badge
-      className={`${styles[type]} text-xs`}
-    >
-      {type}
-    </Badge>
-  )
-}
-
-// ============================================================================
-// CONTACT INFO CARD
-// ============================================================================
-
-function ContactInfoCard({ contact }: { contact: ContactDetail }) {
-  return (
-    <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="text-sm font-semibold">Contact Information</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <div className="flex items-center gap-3">
-          <Mail className="w-4 h-4 text-muted-foreground shrink-0" />
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Email
-            </p>
-            <p className="text-sm">{contact.email}</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <Phone className="w-4 h-4 text-muted-foreground shrink-0" />
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Phone
-            </p>
-            <p className="text-sm">{contact.phone}</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <MapPin className="w-4 h-4 text-muted-foreground shrink-0" />
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Address
-            </p>
-            <p className="text-sm">{contact.address}</p>
-          </div>
-        </div>
-        {contact.company && (
-          <div className="flex items-center gap-3">
-            <Building2 className="w-4 h-4 text-muted-foreground shrink-0" />
-            <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Company
-              </p>
-              <p className="text-sm">{contact.company}</p>
-              <p className="text-xs text-muted-foreground">{contact.type}</p>
-            </div>
-          </div>
-        )}
-        <div className="pt-3 border-t border-border">
-          <div className="flex items-center gap-3">
-            <Calendar className="w-4 h-4 text-muted-foreground shrink-0" />
-            <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Contact Since
-              </p>
-              <p className="text-sm">{contact.createdDate}</p>
-            </div>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <Clock className="w-4 h-4 text-muted-foreground shrink-0" />
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Last Activity
-            </p>
-            <p className="text-sm">{contact.lastActivity}</p>
-          </div>
-        </div>
-        {contact.tags.length > 0 && (
-          <div className="pt-3 border-t border-border">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-              Tags
-            </p>
-            <div className="flex flex-wrap gap-1.5">
-              {contact.tags.map((tag) => (
-                <span
-                  key={tag}
-                  className="rounded-md bg-muted px-2 py-0.5 text-[11px] text-muted-foreground"
-                >
-                  {tag}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  )
-}
-
-// ============================================================================
-// FINANCIAL SUMMARY CARD
-// ============================================================================
-
-function FinancialSummaryCard({ financials, contact }: { financials: FinancialSummary; contact: ContactDetail }) {
-  const isPaid = financials.paymentStatus === "Fully Paid"
-
-  return (
-    <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="text-sm font-semibold">Financial Summary</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-muted-foreground">Total Deal Value</span>
-            <span className="text-sm font-semibold tabular-nums">
-              {financials.totalDealValue}
-            </span>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-muted-foreground">Commission Rate</span>
-            <span className="text-sm font-semibold">{financials.commissionRate}</span>
-          </div>
-          <div className="flex items-center justify-between pt-2 border-t border-border">
-            <span className="text-xs font-semibold">Total Commission</span>
-            <span className="text-base font-bold text-emerald-600 tabular-nums">
-              {financials.totalCommission}
-            </span>
-          </div>
-        </div>
-
-        <div className="space-y-3 pt-3 border-t border-border">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-muted-foreground">Paid</span>
-            <span className="text-sm font-medium tabular-nums text-emerald-600">
-              {financials.paidCommission}
-            </span>
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-muted-foreground">Outstanding</span>
-            <span className={`text-sm font-medium tabular-nums ${isPaid ? "text-muted-foreground" : "text-amber-600"}`}>
-              {financials.outstandingCommission}
-            </span>
-          </div>
-          {/* Progress bar */}
-          <div>
-            <div className="h-2 rounded-full bg-muted overflow-hidden">
-              <div
-                className={`h-full rounded-full ${isPaid ? "bg-emerald-500" : "bg-amber-400"}`}
-                style={{
-                  width: isPaid ? "100%" : "0%",
-                }}
-              />
-            </div>
-            <p className="text-[10px] text-muted-foreground mt-1">
-              {isPaid ? "All commissions collected" : "Pending collection"}
-            </p>
-          </div>
-        </div>
-
-        <div className="pt-3 border-t border-border flex items-center justify-between">
-          <span className="text-xs text-muted-foreground">Payment Status</span>
-          <Badge className={`${financials.paymentStatusColor} text-[10px]`}>
-            {financials.paymentStatus}
-          </Badge>
-        </div>
-
-        <div className="flex items-center justify-between">
-          <span className="text-xs text-muted-foreground">Invoices</span>
-          <span className="text-sm font-medium">{financials.invoiceCount}</span>
-        </div>
-
-        {/* Payment flow for supply contacts */}
-        {contact.side === "supply" && (
-          <div className="pt-3 border-t border-border">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-3">
-              Payment Flow
-            </p>
-            <div className="space-y-2">
-              <div className="h-5 rounded-lg overflow-hidden flex">
-                <div
-                  className="bg-emerald-500 flex items-center justify-center"
-                  style={{ width: "20%" }}
-                >
-                  <span className="text-[8px] font-bold text-white">20%</span>
-                </div>
-                <div
-                  className="bg-indigo-400 flex items-center justify-center"
-                  style={{ width: "80%" }}
-                >
-                  <span className="text-[8px] font-bold text-white">80%</span>
-                </div>
-              </div>
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-1.5">
-                  <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                  <span className="text-[10px] text-muted-foreground">
-                    Platform
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <div className="w-2 h-2 rounded-full bg-indigo-400" />
-                  <span className="text-[10px] text-muted-foreground">
-                    Landowner
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  )
-}
-
-// ============================================================================
-// DEALS TAB
-// ============================================================================
-
-function DealsTab({ deals }: { deals: ContactDeal[] }) {
-  if (deals.length === 0) {
-    return (
-      <Card>
-        <CardContent className="p-8 text-center">
-          <Handshake className="w-8 h-8 text-muted-foreground/30 mx-auto mb-3" />
-          <p className="text-sm text-muted-foreground">No deals associated with this contact.</p>
-          <Button variant="outline" size="sm" className="mt-4">
-            <Plus className="w-3.5 h-3.5 mr-1.5" />
-            Create Deal
-          </Button>
-        </CardContent>
-      </Card>
-    )
-  }
-
+function CommunicationLog({ entries }: { entries: CommEntry[] }) {
   return (
     <Card>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-sm font-semibold">
-            Deals ({deals.length})
-          </CardTitle>
+          <CardTitle className="text-base">Communication Log</CardTitle>
           <Button variant="outline" size="sm">
-            <Plus className="w-3.5 h-3.5 mr-1.5" />
-            New Deal
+            <Plus className="h-3.5 w-3.5" />
+            Add Entry
           </Button>
         </div>
-      </CardHeader>
-      <CardContent className="p-0">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-[90px]">Ref</TableHead>
-              <TableHead>Title</TableHead>
-              <TableHead className="w-[140px]">Stage</TableHead>
-              <TableHead className="w-[80px]">Role</TableHead>
-              <TableHead className="w-[110px] text-right">Value</TableHead>
-              <TableHead className="w-[110px]">Date</TableHead>
-              <TableHead className="w-[140px]">Linked Site</TableHead>
-              <TableHead className="w-[40px]" />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {deals.map((deal) => (
-              <TableRow key={deal.id} className="group">
-                <TableCell>
-                  <Link
-                    href={`/admin/brokerage-mockups/deals/${deal.id}`}
-                    className="text-sm font-medium text-primary hover:underline"
-                  >
-                    {deal.ref}
-                  </Link>
-                </TableCell>
-                <TableCell>
-                  <Link
-                    href={`/admin/brokerage-mockups/deals/${deal.id}`}
-                    className="text-sm font-medium text-foreground hover:text-primary transition-colors"
-                  >
-                    {deal.title}
-                  </Link>
-                </TableCell>
-                <TableCell>
-                  <Badge className={`${deal.stageColor} text-[10px]`}>
-                    {deal.stage}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  {deal.role === "supply" ? (
-                    <span className="inline-flex items-center gap-1 text-xs text-emerald-700">
-                      <Leaf className="w-3 h-3" />
-                      Supply
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1 text-xs text-blue-700">
-                      <Building2 className="w-3 h-3" />
-                      Demand
-                    </span>
-                  )}
-                </TableCell>
-                <TableCell className="text-right">
-                  <span className="text-sm font-semibold tabular-nums">
-                    {deal.value}
-                  </span>
-                </TableCell>
-                <TableCell className="text-xs text-muted-foreground">
-                  {deal.date}
-                </TableCell>
-                <TableCell>
-                  {deal.linkedSite && deal.linkedSiteRef ? (
-                    <Link
-                      href={`/admin/brokerage-mockups/sites/${deal.linkedSiteRef}`}
-                      className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
-                    >
-                      <Leaf className="w-3 h-3" />
-                      {deal.linkedSite}
-                    </Link>
-                  ) : (
-                    <span className="text-xs text-muted-foreground/50 italic">
-                      --
-                    </span>
-                  )}
-                </TableCell>
-                <TableCell>
-                  <Link
-                    href={`/admin/brokerage-mockups/deals/${deal.id}`}
-                    className="p-1.5 rounded hover:bg-muted transition-colors inline-flex opacity-0 group-hover:opacity-100"
-                  >
-                    <ExternalLink className="w-3.5 h-3.5 text-muted-foreground" />
-                  </Link>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </CardContent>
-    </Card>
-  )
-}
-
-// ============================================================================
-// SITES TAB
-// ============================================================================
-
-function SitesTab({ sites, isSupply }: { sites: ContactSite[]; isSupply: boolean }) {
-  if (!isSupply) {
-    return (
-      <Card>
-        <CardContent className="p-8 text-center">
-          <Leaf className="w-8 h-8 text-muted-foreground/30 mx-auto mb-3" />
-          <p className="text-sm text-muted-foreground">
-            Sites are only associated with supply-side contacts.
-          </p>
-        </CardContent>
-      </Card>
-    )
-  }
-
-  if (sites.length === 0) {
-    return (
-      <Card>
-        <CardContent className="p-8 text-center">
-          <Leaf className="w-8 h-8 text-muted-foreground/30 mx-auto mb-3" />
-          <p className="text-sm text-muted-foreground">
-            No sites associated with this contact.
-          </p>
-          <Button variant="outline" size="sm" className="mt-4">
-            <Plus className="w-3.5 h-3.5 mr-1.5" />
-            Add Site
-          </Button>
-        </CardContent>
-      </Card>
-    )
-  }
-
-  return (
-    <Card>
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-sm font-semibold">
-            Sites ({sites.length})
-          </CardTitle>
-          <Button variant="outline" size="sm">
-            <Plus className="w-3.5 h-3.5 mr-1.5" />
-            Add Site
-          </Button>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-3 p-4 pt-0">
-        {sites.map((site) => (
-          <div
-            key={site.ref}
-            className="rounded-lg border border-border p-4 hover:bg-muted/50 transition-colors"
-          >
-            <div className="flex items-start justify-between mb-3">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                  <Leaf className="w-4 h-4" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <Link
-                      href={`/admin/brokerage-mockups/sites/${site.ref}`}
-                      className="text-sm font-semibold hover:text-primary transition-colors"
-                    >
-                      {site.name}
-                    </Link>
-                    <span className="text-xs text-muted-foreground">
-                      {site.ref}
-                    </span>
-                    <Badge className={`${site.statusColor} text-[10px]`}>
-                      {site.status}
-                    </Badge>
-                  </div>
-                  <div className="flex items-center gap-3 mt-1">
-                    <span className="text-xs text-muted-foreground flex items-center gap-1">
-                      <span className="inline-block w-2 h-2 rounded-full bg-blue-400" />
-                      {site.catchment}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {site.unitType}
-                    </span>
-                  </div>
-                </div>
-              </div>
-              <Link
-                href={`/admin/brokerage-mockups/sites/${site.ref}`}
-                className="p-2 rounded-lg hover:bg-muted transition-colors"
-              >
-                <ExternalLink className="w-4 h-4 text-muted-foreground" />
-              </Link>
-            </div>
-            <div className="grid grid-cols-3 gap-4">
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-0.5">
-                  Total Capacity
-                </p>
-                <p className="text-sm font-medium">{site.totalCapacity}</p>
-              </div>
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-0.5">
-                  Available
-                </p>
-                <p className="text-sm font-medium text-emerald-600">
-                  {site.available}
-                </p>
-              </div>
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-0.5">
-                  Unit Price
-                </p>
-                <p className="text-sm font-medium">{site.unitPrice}</p>
-              </div>
-            </div>
-            {/* Capacity bar */}
-            <div className="mt-3">
-              <div className="h-2 rounded-full bg-muted overflow-hidden">
-                <div
-                  className="h-full rounded-full bg-blue-500"
-                  style={{
-                    width:
-                      site.name === "Manor Fields"
-                        ? "52.6%"
-                        : site.name === "Whiteley Farm"
-                        ? "91.7%"
-                        : "50%",
-                  }}
-                />
-              </div>
-              <div className="flex items-center justify-between mt-1">
-                <span className="text-[10px] text-muted-foreground">
-                  Allocated
-                </span>
-                <span className="text-[10px] text-muted-foreground">
-                  Available
-                </span>
-              </div>
-            </div>
-          </div>
-        ))}
-      </CardContent>
-    </Card>
-  )
-}
-
-// ============================================================================
-// NOTES TAB
-// ============================================================================
-
-function NotesTab({ notes }: { notes: ContactNote[] }) {
-  return (
-    <Card>
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-sm font-semibold">
-            Notes ({notes.length})
-          </CardTitle>
-          <Button variant="outline" size="sm">
-            <Plus className="w-3.5 h-3.5 mr-1.5" />
-            Add Note
-          </Button>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-0 p-0">
-        <div className="divide-y divide-border">
-          {notes.map((note) => (
-            <div key={note.id} className="p-4 hover:bg-muted/30 transition-colors">
-              <div className="flex items-start gap-3">
-                <div
-                  className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${note.authorColor}`}
-                >
-                  {note.authorInitials}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-sm font-medium">{note.author}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {note.date} at {note.time}
-                    </span>
-                  </div>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    {note.content}
-                  </p>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </CardContent>
-    </Card>
-  )
-}
-
-// ============================================================================
-// ACTIVITY TIMELINE
-// ============================================================================
-
-function ActivityTimeline({ activity }: { activity: ActivityItem[] }) {
-  return (
-    <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="text-sm font-semibold">Activity Timeline</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="relative">
-          {/* Vertical line */}
-          <div className="absolute left-[15px] top-4 bottom-4 w-px bg-border" />
+          {/* Timeline line */}
+          <div className="absolute left-[17px] top-2 bottom-2 w-px bg-border" />
 
-          <div className="flex flex-col gap-5">
-            {activity.map((item) => (
-              <div key={item.id} className="flex gap-3 relative">
-                {/* Icon circle */}
-                <div
-                  className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 z-10 ${getActivityColor(
-                    item.type
-                  )}`}
-                >
-                  {getActivityIcon(item.type)}
+          <div className="space-y-4">
+            {entries.map((entry) => (
+              <div key={entry.id} className="relative flex gap-3">
+                <div className="relative z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border bg-card text-muted-foreground">
+                  <CommIcon type={entry.type} />
                 </div>
-                <div className="flex-1 min-w-0 pt-0.5">
-                  <div className="flex items-center gap-2 flex-wrap mb-0.5">
-                    <span className="text-sm font-medium">
-                      {item.description}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      &middot;
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {item.date} at {item.time}
-                    </span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <span className="font-medium text-sm text-foreground">{entry.title}</span>
+                    <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                      {commTypeLabel(entry.type)}
+                    </Badge>
                   </div>
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    {item.detail}
-                  </p>
-                  <div className="flex items-center gap-1.5 mt-1.5">
-                    <div
-                      className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-bold ${
-                        item.initials === "SY"
-                          ? "bg-muted text-muted-foreground"
-                          : item.initials === "JH"
-                          ? "bg-amber-100 text-amber-700"
-                          : item.initials === "SC"
-                          ? "bg-purple-100 text-purple-700"
-                          : item.initials === "TJ"
-                          ? "bg-teal-100 text-teal-700"
-                          : "bg-blue-100 text-blue-700"
-                      }`}
-                    >
-                      {item.initials}
-                    </div>
-                    <span className="text-[11px] text-muted-foreground">
-                      {item.user}
+                  <p className="text-xs text-muted-foreground mb-1">{entry.description}</p>
+                  <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
+                    <span className="inline-flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      {entry.date}
+                    </span>
+                    <span className="inline-flex items-center gap-1">
+                      <User className="h-3 w-3" />
+                      {entry.author}
                     </span>
                   </div>
                 </div>
@@ -1337,176 +231,642 @@ function ActivityTimeline({ activity }: { activity: ActivityItem[] }) {
 }
 
 // ============================================================================
-// V1: TWO-COLUMN LAYOUT (65/35)
+// SUPPLY CONTACT LAYOUT
 // ============================================================================
 
-function TwoColumnLayout({ data }: { data: ContactData }) {
+function SupplyLayout({ contact }: { contact: typeof contacts[0] }) {
+  const contactSites = sites.filter((s) => s.contact === contact.id)
+  const contactDeals = deals.filter((d) => d.supplyContact === contact.id)
+  const contactAssessments = assessments.filter((a) =>
+    contactSites.some((s) => s.ref === a.siteRef)
+  )
+
+  const totalCredits = contactSites.reduce((sum, s) => sum + s.total, 0)
+  const totalDealValue = contactDeals.reduce((sum, d) => sum + d.value, 0)
+
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-6">
-      {/* LEFT COLUMN -- Main Content */}
-      <div className="flex flex-col gap-5">
-        {/* Tabbed content: Deals, Sites, Notes */}
-        <Tabs defaultValue="deals">
-          <TabsList className="w-full justify-start">
-            <TabsTrigger value="deals" className="gap-1.5">
-              <Handshake className="w-3.5 h-3.5" />
-              Deals ({data.deals.length})
-            </TabsTrigger>
-            {data.contact.side === "supply" && (
-              <TabsTrigger value="sites" className="gap-1.5">
-                <Leaf className="w-3.5 h-3.5" />
-                Sites ({data.sites.length})
-              </TabsTrigger>
+    <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-6">
+      {/* Left Column (65%) */}
+      <div className="space-y-6">
+        {/* Sites Owned */}
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base">Sites Owned</CardTitle>
+              <Badge variant="outline">{contactSites.length} site{contactSites.length !== 1 ? "s" : ""}</Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="p-0">
+            {contactSites.length === 0 ? (
+              <div className="py-8 text-center text-sm text-muted-foreground">No sites linked to this contact.</div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Site</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Catchment</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead className="text-right">Total</TableHead>
+                    <TableHead className="text-right">Available</TableHead>
+                    <TableHead className="text-right">Price</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {contactSites.map((site) => (
+                    <TableRow key={site.ref}>
+                      <TableCell>
+                        <Link
+                          href={`/admin/brokerage-mockups/sites/${site.ref}`}
+                          className="font-medium text-foreground hover:text-primary transition-colors"
+                        >
+                          {site.name}
+                        </Link>
+                        <div className="text-[11px] text-muted-foreground">{site.ref}</div>
+                      </TableCell>
+                      <TableCell>
+                        <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium ${siteStatusColor(site.status)}`}>
+                          {site.status}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{site.catchment}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{site.unitType}</TableCell>
+                      <TableCell className="text-right text-sm">{site.totalLabel}</TableCell>
+                      <TableCell className="text-right text-sm">{site.availableLabel}</TableCell>
+                      <TableCell className="text-right text-sm">{site.priceLabel}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             )}
-            <TabsTrigger value="notes" className="gap-1.5">
-              <MessageSquare className="w-3.5 h-3.5" />
-              Notes ({data.notes.length})
-            </TabsTrigger>
-          </TabsList>
+          </CardContent>
+        </Card>
 
-          <TabsContent value="deals" className="mt-4">
-            <DealsTab deals={data.deals} />
-          </TabsContent>
+        {/* Assessment History */}
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base">Assessment History</CardTitle>
+              <Badge variant="outline">{contactAssessments.length} assessment{contactAssessments.length !== 1 ? "s" : ""}</Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="p-0">
+            {contactAssessments.length === 0 ? (
+              <div className="py-8 text-center text-sm text-muted-foreground">No assessments found.</div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Assessment</TableHead>
+                    <TableHead>Site</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Credit Yield</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {contactAssessments.map((a) => (
+                    <TableRow key={a.id}>
+                      <TableCell className="font-medium text-sm">{a.id}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{a.siteName}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{a.type}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{a.date}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="text-xs">
+                          {a.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right text-sm">
+                        {a.creditYieldLabel ?? "—"}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
 
-          {data.contact.side === "supply" && (
-            <TabsContent value="sites" className="mt-4">
-              <SitesTab
-                sites={data.sites}
-                isSupply={data.contact.side === "supply"}
-              />
-            </TabsContent>
-          )}
+        {/* Active Deals */}
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base">Active Deals</CardTitle>
+              <Badge variant="outline">{contactDeals.length} deal{contactDeals.length !== 1 ? "s" : ""}</Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="p-0">
+            {contactDeals.length === 0 ? (
+              <div className="py-8 text-center text-sm text-muted-foreground">No deals linked to this contact.</div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Deal</TableHead>
+                    <TableHead>Stage</TableHead>
+                    <TableHead>Demand Contact</TableHead>
+                    <TableHead>Site</TableHead>
+                    <TableHead className="text-right">Units</TableHead>
+                    <TableHead className="text-right">Value</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {contactDeals.map((d) => (
+                    <TableRow key={d.id}>
+                      <TableCell>
+                        <Link
+                          href={`/admin/brokerage-mockups/deals/${d.id}`}
+                          className="font-medium text-foreground hover:text-primary transition-colors"
+                        >
+                          {d.title}
+                        </Link>
+                        <div className="text-[11px] text-muted-foreground">{d.id}</div>
+                      </TableCell>
+                      <TableCell>
+                        <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium ${stageColor(d.stage)}`}>
+                          {d.stage}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {d.demandContactName || "—"}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {d.siteName || "—"}
+                      </TableCell>
+                      <TableCell className="text-right text-sm">{d.unitsLabel}</TableCell>
+                      <TableCell className="text-right text-sm font-medium">{d.displayValue}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
 
-          <TabsContent value="notes" className="mt-4">
-            <NotesTab notes={data.notes} />
-          </TabsContent>
-        </Tabs>
-
-        {/* Activity Timeline below tabs */}
-        <ActivityTimeline activity={data.activity} />
+        {/* Communication Log */}
+        <CommunicationLog entries={supplyCommunications} />
       </div>
 
-      {/* RIGHT COLUMN -- Sidebar */}
-      <div className="flex flex-col gap-5">
-        <ContactInfoCard contact={data.contact} />
-        <FinancialSummaryCard
-          financials={data.financials}
-          contact={data.contact}
-        />
+      {/* Right Sidebar (35%) */}
+      <div className="space-y-6">
+        {/* Key Stats */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Key Stats</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Total Credits Generated</span>
+              <span className="text-sm font-semibold">{totalCredits} kg/yr</span>
+            </div>
+            <Separator />
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Total Value of Deals</span>
+              <span className="text-sm font-semibold">
+                {new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 0 }).format(totalDealValue)}
+              </span>
+            </div>
+            <Separator />
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Active Deals</span>
+              <span className="text-sm font-semibold">{contactDeals.filter((d) => d.stage !== "Completed").length}</span>
+            </div>
+            <Separator />
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Sites</span>
+              <span className="text-sm font-semibold">{contactSites.length}</span>
+            </div>
+            <Separator />
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Years as Partner</span>
+              <span className="text-sm font-semibold">1</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Relationship Timeline */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Relationship Timeline</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="relative">
+              <div className="absolute left-[11px] top-2 bottom-2 w-px bg-border" />
+              <div className="space-y-4">
+                {[
+                  { label: "First Contact", date: "May 2025", done: true },
+                  { label: "Baseline Assessment", date: "Jun 2025", done: true },
+                  { label: "S106 Signed", date: "Jul 2025", done: true },
+                  { label: "First Sale", date: "Sep 2025", done: true },
+                  { label: "Annual Monitoring", date: "Mar 2026", done: false },
+                ].map((step, i) => (
+                  <div key={i} className="relative flex items-start gap-3">
+                    <div className={`relative z-10 flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${step.done ? "bg-emerald-100 text-emerald-600" : "border-2 border-border bg-card text-muted-foreground"}`}>
+                      {step.done ? (
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                      ) : (
+                        <Clock className="h-3 w-3" />
+                      )}
+                    </div>
+                    <div>
+                      <div className="text-sm font-medium text-foreground">{step.label}</div>
+                      <div className="text-xs text-muted-foreground">{step.date}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Tags */}
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base">Tags</CardTitle>
+              <Button variant="ghost" size="sm">
+                <Pencil className="h-3.5 w-3.5" />
+                Edit
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2">
+              {contact.tags.map((tag) => (
+                <span
+                  key={tag}
+                  className="inline-flex items-center gap-1 rounded-full border border-border bg-muted px-2.5 py-1 text-xs font-medium text-foreground"
+                >
+                  <Tag className="h-3 w-3 text-muted-foreground" />
+                  {tag}
+                  <button className="ml-0.5 text-muted-foreground hover:text-foreground">
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              ))}
+              <button className="inline-flex items-center gap-1 rounded-full border border-dashed border-border px-2.5 py-1 text-xs text-muted-foreground hover:text-foreground hover:border-foreground transition-colors">
+                <Plus className="h-3 w-3" />
+                Add tag
+              </button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Assigned Broker */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Assigned Broker</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-3">
+              <Avatar className="h-10 w-10">
+                <AvatarFallback className="bg-primary text-primary-foreground text-sm font-medium">
+                  JH
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <div className="text-sm font-medium text-foreground">James Harris</div>
+                <div className="text-xs text-muted-foreground">Senior Broker</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Contact Details */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Contact Details</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex items-center gap-2 text-sm">
+              <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
+              <a href={`mailto:${contact.email}`} className="text-primary hover:underline truncate">
+                {contact.email}
+              </a>
+            </div>
+            <div className="flex items-center gap-2 text-sm">
+              <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
+              <span className="text-foreground">{contact.phone}</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm">
+              <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
+              <span className="text-foreground">{contact.location}</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm">
+              <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
+              <span className="text-foreground">{contact.company}</span>
+            </div>
+            {contact.role && (
+              <div className="flex items-center gap-2 text-sm">
+                <User className="h-4 w-4 text-muted-foreground shrink-0" />
+                <span className="text-foreground">{contact.role}</span>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   )
 }
 
 // ============================================================================
-// V2: FULL-WIDTH SINGLE PAGE SECTIONS
+// DEMAND CONTACT LAYOUT
 // ============================================================================
 
-function FullWidthLayout({ data }: { data: ContactData }) {
+function DemandLayout({ contact }: { contact: typeof contacts[0] }) {
+  const contactDeals = deals.filter((d) => d.demandContact === contact.id)
+  const totalSpend = contactDeals.reduce((sum, d) => sum + d.value, 0)
+  const totalCreditsPurchased = contactDeals
+    .filter((d) => ["Payment Received", "Credits Allocated", "LPA Confirmed", "Completed"].includes(d.stage))
+    .reduce((sum, d) => sum + d.units, 0)
+
   return (
-    <div className="space-y-6">
-      {/* Top summary row */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-6">
+      {/* Left Column */}
+      <div className="space-y-6">
+        {/* Developments / Projects */}
         <Card>
-          <CardContent className="p-4">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
-              Total Deal Value
-            </p>
-            <p className="text-lg font-bold tabular-nums">
-              {data.financials.totalDealValue}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              {data.deals.length} deal{data.deals.length !== 1 ? "s" : ""}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
-              Commission
-            </p>
-            <p className="text-lg font-bold text-emerald-600 tabular-nums">
-              {data.financials.totalCommission}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              {data.financials.commissionRate} rate
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
-              Payment Status
-            </p>
-            <div className="mt-1">
-              <Badge
-                className={`${data.financials.paymentStatusColor} text-xs`}
-              >
-                {data.financials.paymentStatus}
-              </Badge>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base">Developments / Projects</CardTitle>
+              <Badge variant="outline">{demandProjects.length} project{demandProjects.length !== 1 ? "s" : ""}</Badge>
             </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {data.financials.invoiceCount} invoice{data.financials.invoiceCount !== 1 ? "s" : ""}
-            </p>
+          </CardHeader>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Project</TableHead>
+                  <TableHead>Planning Ref</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Location</TableHead>
+                  <TableHead className="text-right">Dwellings</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {demandProjects.map((p) => (
+                  <TableRow key={p.id}>
+                    <TableCell className="font-medium text-sm">{p.name}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground font-mono">{p.planningRef}</TableCell>
+                    <TableCell>
+                      <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium ${p.statusColor}`}>
+                        {p.status}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{p.location}</TableCell>
+                    <TableCell className="text-right text-sm">{p.units}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </CardContent>
         </Card>
+
+        {/* Credit Requirements */}
         <Card>
-          <CardContent className="p-4">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
-              Contact Since
-            </p>
-            <p className="text-lg font-bold">{data.contact.createdDate.split(" ").slice(1).join(" ")}</p>
-            <p className="text-xs text-muted-foreground">
-              Last active {data.contact.lastActivity}
-            </p>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Credit Requirements</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {creditRequirements.map((req) => {
+              const pct = req.needed > 0 ? Math.round((req.fulfilled / req.needed) * 100) : 0
+              return (
+                <div key={req.type}>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-sm font-medium text-foreground">{req.type}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {req.fulfilled} / {req.needed} {req.unit} ({pct}%)
+                    </span>
+                  </div>
+                  <div className="h-2 rounded-full bg-muted overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all ${pct >= 100 ? "bg-emerald-500" : pct >= 50 ? "bg-amber-500" : "bg-blue-500"}`}
+                      style={{ width: `${Math.min(pct, 100)}%` }}
+                    />
+                  </div>
+                </div>
+              )
+            })}
           </CardContent>
         </Card>
+
+        {/* Active Deals */}
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base">Active Deals</CardTitle>
+              <Badge variant="outline">{contactDeals.length} deal{contactDeals.length !== 1 ? "s" : ""}</Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="p-0">
+            {contactDeals.length === 0 ? (
+              <div className="py-8 text-center text-sm text-muted-foreground">No deals linked to this contact.</div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Deal</TableHead>
+                    <TableHead>Stage</TableHead>
+                    <TableHead>Supply Contact</TableHead>
+                    <TableHead>Site</TableHead>
+                    <TableHead className="text-right">Units</TableHead>
+                    <TableHead className="text-right">Value</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {contactDeals.map((d) => (
+                    <TableRow key={d.id}>
+                      <TableCell>
+                        <Link
+                          href={`/admin/brokerage-mockups/deals/${d.id}`}
+                          className="font-medium text-foreground hover:text-primary transition-colors"
+                        >
+                          {d.title}
+                        </Link>
+                        <div className="text-[11px] text-muted-foreground">{d.id}</div>
+                      </TableCell>
+                      <TableCell>
+                        <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium ${stageColor(d.stage)}`}>
+                          {d.stage}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {d.supplyContactName || "—"}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {d.siteName || "—"}
+                      </TableCell>
+                      <TableCell className="text-right text-sm">{d.unitsLabel}</TableCell>
+                      <TableCell className="text-right text-sm font-medium">{d.displayValue}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Communication Log */}
+        <CommunicationLog entries={demandCommunications} />
       </div>
 
-      {/* Contact info + Financial side by side */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <ContactInfoCard contact={data.contact} />
-        <FinancialSummaryCard
-          financials={data.financials}
-          contact={data.contact}
-        />
-      </div>
+      {/* Right Sidebar */}
+      <div className="space-y-6">
+        {/* Key Stats */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Key Stats</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Total Credits Purchased</span>
+              <span className="text-sm font-semibold">{totalCreditsPurchased} kg/yr</span>
+            </div>
+            <Separator />
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Total Spend</span>
+              <span className="text-sm font-semibold">
+                {new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 0 }).format(totalSpend)}
+              </span>
+            </div>
+            <Separator />
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Active Requirements</span>
+              <span className="text-sm font-semibold">{creditRequirements.filter((r) => r.fulfilled < r.needed).length}</span>
+            </div>
+            <Separator />
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Active Deals</span>
+              <span className="text-sm font-semibold">{contactDeals.filter((d) => d.stage !== "Completed").length}</span>
+            </div>
+            <Separator />
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Projects</span>
+              <span className="text-sm font-semibold">{demandProjects.length}</span>
+            </div>
+          </CardContent>
+        </Card>
 
-      {/* Deals section */}
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
-          Deals
-        </p>
-        <DealsTab deals={data.deals} />
-      </div>
+        {/* Relationship Timeline */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Relationship Timeline</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="relative">
+              <div className="absolute left-[11px] top-2 bottom-2 w-px bg-border" />
+              <div className="space-y-4">
+                {[
+                  { label: "Initial Enquiry", date: "Nov 2025", done: true },
+                  { label: "Requirements Gathered", date: "Dec 2025", done: true },
+                  { label: "First Credit Purchase", date: "Jan 2026", done: true },
+                  { label: "Phase 2 Discussions", date: "Mar 2026", done: false },
+                ].map((step, i) => (
+                  <div key={i} className="relative flex items-start gap-3">
+                    <div className={`relative z-10 flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${step.done ? "bg-blue-100 text-blue-600" : "border-2 border-border bg-card text-muted-foreground"}`}>
+                      {step.done ? (
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                      ) : (
+                        <Clock className="h-3 w-3" />
+                      )}
+                    </div>
+                    <div>
+                      <div className="text-sm font-medium text-foreground">{step.label}</div>
+                      <div className="text-xs text-muted-foreground">{step.date}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
-      {/* Sites section (supply only) */}
-      {data.contact.side === "supply" && (
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
-            Sites
-          </p>
-          <SitesTab
-            sites={data.sites}
-            isSupply={data.contact.side === "supply"}
-          />
-        </div>
-      )}
+        {/* Tags */}
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base">Tags</CardTitle>
+              <Button variant="ghost" size="sm">
+                <Pencil className="h-3.5 w-3.5" />
+                Edit
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2">
+              {contact.tags.map((tag) => (
+                <span
+                  key={tag}
+                  className="inline-flex items-center gap-1 rounded-full border border-border bg-muted px-2.5 py-1 text-xs font-medium text-foreground"
+                >
+                  <Tag className="h-3 w-3 text-muted-foreground" />
+                  {tag}
+                  <button className="ml-0.5 text-muted-foreground hover:text-foreground">
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              ))}
+              <button className="inline-flex items-center gap-1 rounded-full border border-dashed border-border px-2.5 py-1 text-xs text-muted-foreground hover:text-foreground hover:border-foreground transition-colors">
+                <Plus className="h-3 w-3" />
+                Add tag
+              </button>
+            </div>
+          </CardContent>
+        </Card>
 
-      {/* Notes + Activity side by side */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
-            Notes
-          </p>
-          <NotesTab notes={data.notes} />
-        </div>
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
-            Activity
-          </p>
-          <ActivityTimeline activity={data.activity} />
-        </div>
+        {/* Assigned Broker */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Assigned Broker</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-3">
+              <Avatar className="h-10 w-10">
+                <AvatarFallback className="bg-primary text-primary-foreground text-sm font-medium">
+                  JH
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <div className="text-sm font-medium text-foreground">James Harris</div>
+                <div className="text-xs text-muted-foreground">Senior Broker</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Contact Details */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Contact Details</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex items-center gap-2 text-sm">
+              <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
+              <a href={`mailto:${contact.email}`} className="text-primary hover:underline truncate">
+                {contact.email}
+              </a>
+            </div>
+            <div className="flex items-center gap-2 text-sm">
+              <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
+              <span className="text-foreground">{contact.phone}</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm">
+              <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
+              <span className="text-foreground">{contact.location}</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm">
+              <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
+              <span className="text-foreground">{contact.company}</span>
+            </div>
+            {contact.role && (
+              <div className="flex items-center gap-2 text-sm">
+                <User className="h-4 w-4 text-muted-foreground shrink-0" />
+                <span className="text-foreground">{contact.role}</span>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   )
@@ -1518,132 +878,96 @@ function FullWidthLayout({ data }: { data: ContactData }) {
 
 export default function ContactDetailPage() {
   const params = useParams()
-  const [variant, setVariant] = useState<"v1" | "v2">("v1")
+  const id = params.id as string
 
-  const slug = typeof params.id === "string" ? params.id : ""
-  const data = CONTACTS_DATA[slug] ?? FALLBACK_CONTACT
-
-  const { contact } = data
+  const contact = contacts.find((c) => c.id === id) ?? contacts[0]
+  const isSupply = contact.side === "supply"
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-screen-xl mx-auto px-6 py-6">
-        {/* VARIANT TOGGLE + BACK */}
-        <div className="flex items-center justify-between mb-5">
-          <Link
-            href="/admin/brokerage-mockups/contacts"
-            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to Contacts
-          </Link>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground mr-1">Layout:</span>
-            <button
-              onClick={() => setVariant("v1")}
-              className={`px-3 py-1.5 text-xs font-medium rounded-md border transition-colors ${
-                variant === "v1"
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-background text-muted-foreground border-border hover:bg-muted"
-              }`}
-            >
-              V1: Two-Column
-            </button>
-            <button
-              onClick={() => setVariant("v2")}
-              className={`px-3 py-1.5 text-xs font-medium rounded-md border transition-colors ${
-                variant === "v2"
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-background text-muted-foreground border-border hover:bg-muted"
-              }`}
-            >
-              V2: Full-Width
-            </button>
+    <div className="max-w-screen-2xl mx-auto px-6 py-6">
+      {/* Back link */}
+      <Link
+        href="/admin/brokerage-mockups/contacts"
+        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors mb-4"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Back to Contacts
+      </Link>
+
+      {/* Header */}
+      <div className="flex items-start justify-between mb-6">
+        <div className="flex items-center gap-4">
+          <Avatar className="h-14 w-14">
+            <AvatarFallback className={`${contact.avatarColor} text-white text-lg font-semibold`}>
+              {contact.initials}
+            </AvatarFallback>
+          </Avatar>
+          <div>
+            <div className="flex items-center gap-2.5 mb-1">
+              <h1 className="text-2xl font-semibold tracking-tight text-foreground">{contact.name}</h1>
+              <Badge variant="outline" className="text-xs">{contact.type}</Badge>
+              {isSupply ? (
+                <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700">
+                  <Leaf className="h-3 w-3" />
+                  Supply
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700">
+                  <Building2 className="h-3 w-3" />
+                  Demand
+                </span>
+              )}
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {contact.company}{contact.role ? ` — ${contact.role}` : ""}
+            </p>
           </div>
         </div>
 
-        {/* BREADCRUMB */}
-        <nav className="flex items-center gap-1 text-xs text-muted-foreground mb-4">
-          <Link
-            href="/admin/brokerage-mockups/contacts"
-            className="hover:text-foreground"
-          >
-            Contacts
-          </Link>
-          <ChevronRight className="h-3 w-3" />
-          <span className="text-foreground font-medium">{contact.name}</span>
-        </nav>
-
-        {/* HEADER */}
-        <div className="mb-6">
-          <div className="flex items-start justify-between gap-4 flex-wrap">
-            <div className="flex items-start gap-4">
-              {/* Avatar */}
-              <div
-                className={`w-14 h-14 rounded-full ${contact.avatarColor} flex items-center justify-center text-lg font-bold text-white shrink-0`}
-              >
-                {contact.initials}
-              </div>
-              <div>
-                <h1 className="text-2xl font-semibold tracking-tight">
-                  {contact.name}
-                </h1>
-                <div className="flex items-center gap-2 mt-1.5">
-                  {contact.company && (
-                    <span className="text-sm text-muted-foreground">
-                      {contact.company}
-                    </span>
-                  )}
-                  {contact.company && (
-                    <span className="text-muted-foreground">&middot;</span>
-                  )}
-                  <span className="text-sm text-muted-foreground">
-                    {contact.location}
-                  </span>
-                </div>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <TypeBadge type={contact.type} />
-              <SideBadge side={contact.side} />
-              <Button variant="outline" size="sm">
-                <Edit className="w-3.5 h-3.5 mr-1.5" />
-                Edit
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm">
+            <Edit className="h-3.5 w-3.5" />
+            Edit
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="icon-sm">
+                <MoreHorizontal className="h-4 w-4" />
               </Button>
-              <Button variant="ghost" size="icon" className="h-8 w-8">
-                <MoreHorizontal className="w-4 h-4" />
-              </Button>
-            </div>
-          </div>
-
-          {/* Quick contact actions */}
-          <div className="flex items-center gap-3 mt-4">
-            <Button variant="outline" size="sm">
-              <Mail className="w-3.5 h-3.5 mr-1.5" />
-              Email
-            </Button>
-            <Button variant="outline" size="sm">
-              <Phone className="w-3.5 h-3.5 mr-1.5" />
-              Call
-            </Button>
-            <Button variant="outline" size="sm">
-              <MessageSquare className="w-3.5 h-3.5 mr-1.5" />
-              Add Note
-            </Button>
-            <Button size="sm">
-              <Handshake className="w-3.5 h-3.5 mr-1.5" />
-              Create Deal
-            </Button>
-          </div>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem>
+                <Handshake className="h-4 w-4" />
+                Create Deal
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <Mail className="h-4 w-4" />
+                Send Email
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <Phone className="h-4 w-4" />
+                Log Call
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem>
+                <FileText className="h-4 w-4" />
+                View Documents
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <ExternalLink className="h-4 w-4" />
+                Open in CRM
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
-
-        {/* LAYOUT VARIANT */}
-        {variant === "v1" ? (
-          <TwoColumnLayout data={data} />
-        ) : (
-          <FullWidthLayout data={data} />
-        )}
       </div>
+
+      {/* Layout based on side */}
+      {isSupply ? (
+        <SupplyLayout contact={contact} />
+      ) : (
+        <DemandLayout contact={contact} />
+      )}
     </div>
   )
 }

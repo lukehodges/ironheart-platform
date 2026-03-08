@@ -16,12 +16,14 @@ import {
   Edit,
   ExternalLink,
   FileText,
+  FileSignature,
   Leaf,
   Mail,
   MoreHorizontal,
   Pencil,
   Phone,
   Plus,
+  Receipt,
   Shield,
   Upload,
   User,
@@ -39,6 +41,11 @@ import {
   ResponsiveContainer,
   Cell,
 } from "recharts"
+import {
+  deals as sharedDeals,
+  contacts as sharedContacts,
+  sites as sharedSites,
+} from "../../_mock-data"
 
 // ============================================================================
 // HARDCODED DATA
@@ -357,6 +364,20 @@ const DEALS_LOOKUP: Record<string, DealData> = {
 
 const DEFAULT_DEAL_ID = "D-0038"
 
+// ── Resolve contact name → shared contact ID for linking ──
+function resolveContactId(name: string): string {
+  const contact = sharedContacts.find(
+    (c) => c.name.toLowerCase() === name.toLowerCase()
+  )
+  return contact?.id ?? name
+}
+
+// ── Resolve site name → shared site ref for linking ──
+function resolveSiteRef(siteId: string): string {
+  const site = sharedSites.find((s) => s.ref === siteId)
+  return site?.ref ?? siteId
+}
+
 // ============================================================================
 // ACTIVITY ICON/COLOR MAP
 // ============================================================================
@@ -387,7 +408,7 @@ function getActivityColor(type: string) {
     case "system":
       return "bg-emerald-100 text-emerald-600"
     default:
-      return "bg-gray-100 text-gray-600"
+      return "bg-muted text-muted-foreground"
   }
 }
 
@@ -487,7 +508,7 @@ function SupplyPartyCard({ deal }: { deal: DealData }) {
           </div>
           <div className="min-w-0">
             <Link
-              href={`/admin/brokerage-mockups/contacts/${deal.supply.contactSlug}`}
+              href={`/admin/brokerage-mockups/contacts/${resolveContactId(deal.supply.name)}`}
               className="text-sm font-semibold text-foreground hover:text-primary transition-colors"
             >
               {deal.supply.name}
@@ -532,7 +553,7 @@ function DemandPartyCard({ deal }: { deal: DealData }) {
           </div>
           <div className="min-w-0">
             <Link
-              href={`/admin/brokerage-mockups/contacts/${deal.demand.contactSlug}`}
+              href={`/admin/brokerage-mockups/contacts/${resolveContactId(deal.demand.name)}`}
               className="text-sm font-semibold text-foreground hover:text-primary transition-colors"
             >
               {deal.demand.name}
@@ -1406,6 +1427,20 @@ export default function DealDetailPage() {
               <Badge variant="outline">
                 {deal.probability}% probability
               </Badge>
+              <Link
+                href={`/admin/brokerage-mockups/deals/${deal.id}/quote`}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-border bg-background hover:bg-muted transition-colors"
+              >
+                <Receipt className="w-3.5 h-3.5" />
+                Quote
+              </Link>
+              <Link
+                href={`/admin/brokerage-mockups/deals/${deal.id}/agreement`}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-border bg-background hover:bg-muted transition-colors"
+              >
+                <FileSignature className="w-3.5 h-3.5" />
+                Agreement
+              </Link>
               <button className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border border-border bg-background hover:bg-muted transition-colors">
                 <Edit className="w-3.5 h-3.5" />
                 Edit

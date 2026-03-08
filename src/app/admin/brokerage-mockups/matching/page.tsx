@@ -39,7 +39,9 @@ import {
   Check,
   X,
   Info,
+  Settings2,
 } from "lucide-react"
+import { sites, deals } from "../_mock-data"
 
 // ---------------------------------------------------------------------------
 // Types
@@ -352,8 +354,8 @@ function tierConfig(tier: MatchTier) {
     case "good":
       return {
         label: "Good Match",
-        border: "border-stone-200",
-        bg: "bg-white",
+        border: "border-border",
+        bg: "bg-card",
         badge: "bg-blue-100 text-blue-800 border-blue-200",
         ring: "ring-blue-200",
         accent: "text-blue-700",
@@ -401,31 +403,31 @@ function SplitPanelView() {
   return (
     <div className="flex flex-1 overflow-hidden" style={{ height: "calc(100vh - 170px)" }}>
       {/* ---- Left Panel: Demand Selector ---- */}
-      <div className="w-[45%] shrink-0 border-r border-stone-200 flex flex-col bg-[#fafaf9]">
+      <div className="w-[45%] shrink-0 border-r border-border flex flex-col bg-background">
         {/* Panel header */}
-        <div className="px-5 py-4 border-b border-stone-200 bg-white">
+        <div className="px-5 py-4 border-b border-border bg-card">
           <div className="flex items-center gap-2 mb-1">
             <Building2 className="h-4 w-4 text-blue-600" />
-            <h2 className="text-sm font-bold text-stone-900">Demand Requirements</h2>
+            <h2 className="text-sm font-bold text-foreground">Demand Requirements</h2>
           </div>
-          <p className="text-xs text-stone-500">Select an open demand deal to find matching supply</p>
+          <p className="text-xs text-muted-foreground">Select an open demand deal to find matching supply</p>
         </div>
 
         <ScrollArea className="flex-1">
           <div className="p-4 space-y-3">
             {/* Demand deal selector */}
             <div>
-              <label className="text-[11px] font-semibold text-stone-500 uppercase tracking-wider mb-1.5 block">
+              <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 block">
                 Select Demand Deal
               </label>
               <Select value={selectedDealId} onValueChange={setSelectedDealId}>
-                <SelectTrigger className="bg-white">
+                <SelectTrigger className="bg-card">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   {DEMAND_DEALS.map((deal) => (
                     <SelectItem key={deal.id} value={deal.id}>
-                      <span className="font-mono text-xs text-stone-500 mr-1.5">{deal.ref}</span>
+                      <span className="font-mono text-xs text-muted-foreground mr-1.5">{deal.ref}</span>
                       {deal.title} -- {deal.quantity} kg N/yr -- {deal.catchment}
                     </SelectItem>
                   ))}
@@ -442,18 +444,18 @@ function SplitPanelView() {
                   <Building2 className="h-4 w-4 text-blue-700" />
                 </div>
                 <div>
-                  <p className="text-sm font-bold text-stone-900">{selectedDeal.developer}</p>
-                  <p className="text-[11px] text-stone-500">Developer</p>
+                  <p className="text-sm font-bold text-foreground">{selectedDeal.developer}</p>
+                  <p className="text-[11px] text-muted-foreground">Developer</p>
                 </div>
                 <Badge className="ml-auto bg-blue-100 text-blue-800 border-blue-200 text-[10px]">
                   Demand
                 </Badge>
               </div>
 
-              <Card className="bg-white border-stone-200">
+              <Card className="bg-card border-border">
                 <CardContent className="p-4 space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-semibold text-stone-500 uppercase tracking-wider">Deal Reference</span>
+                    <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Deal Reference</span>
                     <Link href={`/admin/brokerage-mockups/deals/${selectedDeal.ref}`} className="font-mono text-sm font-bold text-primary hover:underline">{selectedDeal.ref}</Link>
                   </div>
                   <Separator />
@@ -461,46 +463,46 @@ function SplitPanelView() {
                     <div>
                       <div className="flex items-center gap-1.5 mb-0.5">
                         <Leaf className="h-3 w-3 text-emerald-600" />
-                        <span className="text-[10px] font-semibold text-stone-500 uppercase tracking-wider">Unit Type</span>
+                        <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Unit Type</span>
                       </div>
-                      <p className="text-xs font-medium text-stone-800">{selectedDeal.unitType}</p>
+                      <p className="text-xs font-medium text-foreground">{selectedDeal.unitType}</p>
                     </div>
                     <div>
                       <div className="flex items-center gap-1.5 mb-0.5">
-                        <Package className="h-3 w-3 text-stone-500" />
-                        <span className="text-[10px] font-semibold text-stone-500 uppercase tracking-wider">Quantity</span>
+                        <Package className="h-3 w-3 text-muted-foreground" />
+                        <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Quantity</span>
                       </div>
-                      <p className="text-sm font-bold text-stone-900">{selectedDeal.quantity} kg/yr</p>
+                      <p className="text-sm font-bold text-foreground">{selectedDeal.quantity} kg/yr</p>
                     </div>
                     <div>
                       <div className="flex items-center gap-1.5 mb-0.5">
                         <MapPin className="h-3 w-3 text-red-500" />
-                        <span className="text-[10px] font-semibold text-stone-500 uppercase tracking-wider">Catchment</span>
+                        <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Catchment</span>
                       </div>
                       <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 text-[11px]">{selectedDeal.catchment}</Badge>
                     </div>
                     <div>
                       <div className="flex items-center gap-1.5 mb-0.5">
-                        <PoundSterling className="h-3 w-3 text-stone-500" />
-                        <span className="text-[10px] font-semibold text-stone-500 uppercase tracking-wider">Max Budget</span>
+                        <PoundSterling className="h-3 w-3 text-muted-foreground" />
+                        <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Max Budget</span>
                       </div>
-                      <p className="text-sm font-bold text-stone-900">{formatCurrency(selectedDeal.budget)}</p>
-                      <p className="text-[10px] text-stone-400">{formatCurrency(selectedDeal.budgetPerKg)}/kg</p>
+                      <p className="text-sm font-bold text-foreground">{formatCurrency(selectedDeal.budget)}</p>
+                      <p className="text-[10px] text-muted-foreground">{formatCurrency(selectedDeal.budgetPerKg)}/kg</p>
                     </div>
                   </div>
                   <Separator />
                   <div className="flex items-center gap-1.5">
-                    <FileText className="h-3 w-3 text-stone-400" />
-                    <span className="text-[10px] font-semibold text-stone-500 uppercase tracking-wider">Planning Ref</span>
-                    <span className="ml-auto text-xs font-mono text-stone-700">{selectedDeal.planningRef}</span>
+                    <FileText className="h-3 w-3 text-muted-foreground" />
+                    <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Planning Ref</span>
+                    <span className="ml-auto text-xs font-mono text-foreground">{selectedDeal.planningRef}</span>
                   </div>
                 </CardContent>
               </Card>
 
               {/* OR: Manual entry mockup */}
-              <div className="border border-dashed border-stone-300 rounded-xl p-4 bg-stone-50/50">
-                <p className="text-[11px] font-semibold text-stone-400 uppercase tracking-wider mb-1">Or enter manually</p>
-                <p className="text-[11px] text-stone-400">
+              <div className="border border-dashed border-border rounded-xl p-4 bg-muted/50/50">
+                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Or enter manually</p>
+                <p className="text-[11px] text-muted-foreground">
                   Unit type, quantity, catchment, and budget fields for ad-hoc matching
                 </p>
               </div>
@@ -516,13 +518,13 @@ function SplitPanelView() {
       </div>
 
       {/* ---- Right Panel: Matching Results ---- */}
-      <div className="flex-1 bg-white flex flex-col overflow-hidden">
+      <div className="flex-1 bg-card flex flex-col overflow-hidden">
         {/* Results header */}
-        <div className="px-5 py-3 border-b border-stone-200 flex items-center justify-between shrink-0">
+        <div className="px-5 py-3 border-b border-border flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1.5">
               <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-              <span className="text-sm font-bold text-stone-900">
+              <span className="text-sm font-bold text-foreground">
                 {matches.length} matching site{matches.length !== 1 ? "s" : ""} found
               </span>
             </div>
@@ -531,9 +533,9 @@ function SplitPanelView() {
             </Badge>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-[11px] text-stone-400">Sort by:</span>
+            <span className="text-[11px] text-muted-foreground">Sort by:</span>
             <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortMode)}>
-              <SelectTrigger className="w-[150px] h-8 text-xs bg-white">
+              <SelectTrigger className="w-[150px] h-8 text-xs bg-card">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -588,8 +590,8 @@ function SplitPanelView() {
                         </div>
                         <div>
                           <div className="flex items-center gap-2">
-                            <Link href={`/admin/brokerage-mockups/sites/${match.ref}`} className="text-sm font-bold text-stone-900 hover:text-emerald-700 transition-colors">{match.siteName}</Link>
-                            <Link href={`/admin/brokerage-mockups/sites/${match.ref}`} className="font-mono text-[11px] text-stone-400 hover:text-primary">{match.ref}</Link>
+                            <Link href={`/admin/brokerage-mockups/sites/${match.ref}`} className="text-sm font-bold text-foreground hover:text-emerald-700 transition-colors">{match.siteName}</Link>
+                            <Link href={`/admin/brokerage-mockups/sites/${match.ref}`} className="font-mono text-[11px] text-muted-foreground hover:text-primary">{match.ref}</Link>
                           </div>
                           <div className="flex items-center gap-2 mt-0.5">
                             <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 text-[10px]">Active</Badge>
@@ -603,7 +605,7 @@ function SplitPanelView() {
                               <Badge key={chip} className={`text-[10px] ${
                                 chip === "Lowest price"
                                   ? "bg-emerald-100 text-emerald-800 border-emerald-200"
-                                  : "bg-stone-100 text-stone-600 border-stone-200"
+                                  : "bg-muted text-muted-foreground border-border"
                               }`}>
                                 {chip}
                               </Badge>
@@ -612,24 +614,24 @@ function SplitPanelView() {
                         </div>
                       </div>
                       <div className="text-right shrink-0">
-                        <p className="text-[10px] font-semibold text-stone-400 uppercase tracking-wider">Total Cost</p>
-                        <p className="text-lg font-bold text-stone-900">{formatCurrency(match.totalCost)}</p>
+                        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Total Cost</p>
+                        <p className="text-lg font-bold text-foreground">{formatCurrency(match.totalCost)}</p>
                       </div>
                     </div>
 
                     {/* Contact */}
-                    <div className="flex items-center gap-2 mb-3 pb-3 border-b border-stone-100">
-                      <div className="h-6 w-6 rounded-full bg-stone-200 flex items-center justify-center">
-                        <User className="h-3 w-3 text-stone-500" />
+                    <div className="flex items-center gap-2 mb-3 pb-3 border-b border-border/50">
+                      <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center">
+                        <User className="h-3 w-3 text-muted-foreground" />
                       </div>
-                      <span className="text-xs font-medium text-stone-700">{match.contact}</span>
-                      <span className="text-[10px] text-stone-400">({match.contactRole})</span>
+                      <span className="text-xs font-medium text-foreground">{match.contact}</span>
+                      <span className="text-[10px] text-muted-foreground">({match.contactRole})</span>
                     </div>
 
                     {/* Key metrics grid */}
                     <div className="grid grid-cols-4 gap-3 mb-3">
                       <div>
-                        <p className="text-[10px] font-semibold text-stone-400 uppercase tracking-wider mb-0.5">Available</p>
+                        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-0.5">Available</p>
                         <p className={`text-sm font-bold ${
                           match.partialFill ? "text-amber-600" : "text-emerald-700"
                         }`}>
@@ -643,15 +645,15 @@ function SplitPanelView() {
                         )}
                       </div>
                       <div>
-                        <p className="text-[10px] font-semibold text-stone-400 uppercase tracking-wider mb-0.5">Unit Price</p>
-                        <p className="text-sm font-bold text-stone-900">{formatCurrency(match.unitPrice)}/kg</p>
+                        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-0.5">Unit Price</p>
+                        <p className="text-sm font-bold text-foreground">{formatCurrency(match.unitPrice)}/kg</p>
                       </div>
                       <div>
-                        <p className="text-[10px] font-semibold text-stone-400 uppercase tracking-wider mb-0.5">Commission ({match.commissionRate}%)</p>
-                        <p className="text-sm font-bold text-stone-900">{formatCurrency(match.commission)}</p>
+                        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-0.5">Commission ({match.commissionRate}%)</p>
+                        <p className="text-sm font-bold text-foreground">{formatCurrency(match.commission)}</p>
                       </div>
                       <div>
-                        <p className="text-[10px] font-semibold text-stone-400 uppercase tracking-wider mb-0.5">Catchment</p>
+                        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-0.5">Catchment</p>
                         <div className="flex items-center gap-1">
                           <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
                           <span className="text-xs font-medium text-emerald-700">{match.catchment}</span>
@@ -675,19 +677,25 @@ function SplitPanelView() {
                         <Link href={`/admin/brokerage-mockups/sites/${match.ref}`}>View Site</Link>
                       </Button>
                       {match.tier === "best" ? (
-                        <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs">
-                          <Handshake className="h-3.5 w-3.5" />
-                          Create Deal
+                        <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs" asChild>
+                          <Link href="/admin/brokerage-mockups/deals/new">
+                            <Handshake className="h-3.5 w-3.5" />
+                            Create Deal
+                          </Link>
                         </Button>
                       ) : match.partialFill ? (
-                        <Button variant="outline" size="sm" className="text-xs border-amber-300 text-amber-700 hover:bg-amber-50">
-                          <Handshake className="h-3.5 w-3.5" />
-                          Create Deal (Partial)
+                        <Button variant="outline" size="sm" className="text-xs border-amber-300 text-amber-700 hover:bg-amber-50" asChild>
+                          <Link href="/admin/brokerage-mockups/deals/new">
+                            <Handshake className="h-3.5 w-3.5" />
+                            Create Deal (Partial)
+                          </Link>
                         </Button>
                       ) : (
-                        <Button variant="secondary" size="sm" className="text-xs">
-                          <Handshake className="h-3.5 w-3.5" />
-                          Create Deal
+                        <Button variant="secondary" size="sm" className="text-xs" asChild>
+                          <Link href="/admin/brokerage-mockups/deals/new">
+                            <Handshake className="h-3.5 w-3.5" />
+                            Create Deal
+                          </Link>
                         </Button>
                       )}
                     </div>
@@ -704,30 +712,30 @@ function SplitPanelView() {
             {/* Unmatched Supply */}
             <div>
               <div className="flex items-center gap-2 mb-3">
-                <TrendingDown className="h-4 w-4 text-stone-400" />
-                <h3 className="text-sm font-semibold text-stone-700">Unmatched Supply</h3>
-                <span className="text-[11px] text-stone-400">Sites with credits but no matching demand</span>
+                <TrendingDown className="h-4 w-4 text-muted-foreground" />
+                <h3 className="text-sm font-semibold text-foreground">Unmatched Supply</h3>
+                <span className="text-[11px] text-muted-foreground">Sites with credits but no matching demand</span>
               </div>
               {UNMATCHED_SUPPLY.map((uSite) => (
                 <div
                   key={uSite.ref}
-                  className="border border-stone-200 rounded-lg p-3 bg-stone-50 flex items-center justify-between"
+                  className="border border-border rounded-lg p-3 bg-muted/50 flex items-center justify-between"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="h-8 w-8 rounded-lg bg-stone-200 flex items-center justify-center">
-                      <Leaf className="h-4 w-4 text-stone-500" />
+                    <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center">
+                      <Leaf className="h-4 w-4 text-muted-foreground" />
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <Link href={`/admin/brokerage-mockups/sites/${uSite.ref}`} className="text-xs font-bold text-stone-800 hover:text-emerald-700">{uSite.siteName}</Link>
-                        <Link href={`/admin/brokerage-mockups/sites/${uSite.ref}`} className="font-mono text-[10px] text-stone-400 hover:text-primary">{uSite.ref}</Link>
+                        <Link href={`/admin/brokerage-mockups/sites/${uSite.ref}`} className="text-xs font-bold text-foreground hover:text-emerald-700">{uSite.siteName}</Link>
+                        <Link href={`/admin/brokerage-mockups/sites/${uSite.ref}`} className="font-mono text-[10px] text-muted-foreground hover:text-primary">{uSite.ref}</Link>
                       </div>
-                      <p className="text-[11px] text-stone-500">{uSite.available} {uSite.unit} available</p>
+                      <p className="text-[11px] text-muted-foreground">{uSite.available} {uSite.unit} available</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Badge className="bg-stone-100 text-stone-600 border-stone-200 text-[10px]">{uSite.catchment}</Badge>
-                    <span className="text-[11px] text-stone-400 italic">{uSite.reason}</span>
+                    <Badge className="bg-muted text-muted-foreground border-border text-[10px]">{uSite.catchment}</Badge>
+                    <span className="text-[11px] text-muted-foreground italic">{uSite.reason}</span>
                   </div>
                 </div>
               ))}
@@ -760,7 +768,7 @@ function WizardView() {
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* Step indicator */}
-      <div className="px-6 py-4 bg-white border-b border-stone-200">
+      <div className="px-6 py-4 bg-card border-b border-border">
         <div className="max-w-3xl mx-auto">
           <div className="flex items-center justify-between">
             {steps.map((s, i) => (
@@ -778,14 +786,14 @@ function WizardView() {
                         ? "bg-emerald-600 text-white shadow-md shadow-emerald-200"
                         : step > s.num
                         ? "bg-emerald-100 text-emerald-700 border-2 border-emerald-300"
-                        : "bg-stone-100 text-stone-500 border-2 border-stone-200"
+                        : "bg-muted text-muted-foreground border-2 border-border"
                     }`}
                   >
                     {step > s.num ? <Check className="h-4 w-4" /> : s.num}
                   </div>
                   <span
                     className={`text-sm font-medium ${
-                      step === s.num ? "text-stone-900" : "text-stone-500"
+                      step === s.num ? "text-foreground" : "text-muted-foreground"
                     }`}
                   >
                     {s.label}
@@ -796,7 +804,7 @@ function WizardView() {
                   <div className="flex-1 mx-4">
                     <div
                       className={`h-0.5 w-full rounded-full transition-colors ${
-                        step > s.num ? "bg-emerald-400" : "bg-stone-200"
+                        step > s.num ? "bg-emerald-400" : "bg-muted"
                       }`}
                     />
                   </div>
@@ -808,14 +816,14 @@ function WizardView() {
       </div>
 
       {/* Step content */}
-      <ScrollArea className="flex-1 bg-[#fafaf9]">
+      <ScrollArea className="flex-1 bg-background">
         <div className="max-w-3xl mx-auto px-6 py-6">
           {/* Step 1: Select Deal */}
           {step === 1 && (
             <div className="space-y-4">
               <div>
-                <h2 className="text-lg font-bold text-stone-900 mb-1">Select a Demand Deal</h2>
-                <p className="text-sm text-stone-500">Choose an open demand deal to find matching supply sites in the correct catchment area.</p>
+                <h2 className="text-lg font-bold text-foreground mb-1">Select a Demand Deal</h2>
+                <p className="text-sm text-muted-foreground">Choose an open demand deal to find matching supply sites in the correct catchment area.</p>
               </div>
 
               <div className="space-y-3">
@@ -829,7 +837,7 @@ function WizardView() {
                     className={`w-full text-left rounded-xl border-2 transition-all p-4 cursor-pointer ${
                       selectedDealId === deal.id
                         ? "border-emerald-300 bg-emerald-50/50 shadow-sm"
-                        : "border-stone-200 bg-white hover:border-stone-300 hover:shadow-sm"
+                        : "border-border bg-card hover:border-border hover:shadow-sm"
                     }`}
                   >
                     <div className="flex items-start justify-between">
@@ -843,29 +851,29 @@ function WizardView() {
                         </div>
                         <div>
                           <div className="flex items-center gap-2 mb-0.5">
-                            <span className="font-mono text-xs text-stone-400">{deal.ref}</span>
-                            <h3 className="text-sm font-bold text-stone-900">{deal.title}</h3>
+                            <span className="font-mono text-xs text-muted-foreground">{deal.ref}</span>
+                            <h3 className="text-sm font-bold text-foreground">{deal.title}</h3>
                           </div>
-                          <p className="text-xs text-stone-500">
+                          <p className="text-xs text-muted-foreground">
                             {deal.developer} -- {deal.quantity} kg N/yr -- {deal.catchment} catchment
                           </p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
                         <Badge className="bg-blue-100 text-blue-700 border-blue-200 text-[10px]">{deal.stage}</Badge>
-                        <ChevronRight className="h-4 w-4 text-stone-400" />
+                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
                       </div>
                     </div>
                     <div className="flex items-center gap-4 mt-3 ml-13">
-                      <div className="flex items-center gap-1.5 text-xs text-stone-500">
+                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                         <Package className="h-3 w-3" />
                         {deal.quantity} kg/yr
                       </div>
-                      <div className="flex items-center gap-1.5 text-xs text-stone-500">
+                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                         <MapPin className="h-3 w-3" />
                         {deal.catchment}
                       </div>
-                      <div className="flex items-center gap-1.5 text-xs text-stone-500">
+                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                         <PoundSterling className="h-3 w-3" />
                         {formatCurrency(deal.budget)}
                       </div>
@@ -890,39 +898,39 @@ function WizardView() {
           {step === 2 && (
             <div className="space-y-4">
               <div>
-                <h2 className="text-lg font-bold text-stone-900 mb-1">Review Requirements</h2>
-                <p className="text-sm text-stone-500">Confirm the demand parameters before searching for matching supply.</p>
+                <h2 className="text-lg font-bold text-foreground mb-1">Review Requirements</h2>
+                <p className="text-sm text-muted-foreground">Confirm the demand parameters before searching for matching supply.</p>
               </div>
 
-              <Card className="border-stone-200 bg-white">
+              <Card className="border-border bg-card">
                 <CardContent className="p-5">
-                  <div className="flex items-center gap-3 mb-4 pb-4 border-b border-stone-100">
+                  <div className="flex items-center gap-3 mb-4 pb-4 border-b border-border/50">
                     <div className="h-12 w-12 rounded-xl bg-blue-100 flex items-center justify-center">
                       <Building2 className="h-6 w-6 text-blue-700" />
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="font-mono text-xs text-stone-400">{selectedDeal.ref}</span>
-                        <h3 className="text-base font-bold text-stone-900">{selectedDeal.title}</h3>
+                        <span className="font-mono text-xs text-muted-foreground">{selectedDeal.ref}</span>
+                        <h3 className="text-base font-bold text-foreground">{selectedDeal.title}</h3>
                       </div>
-                      <p className="text-xs text-stone-500">{selectedDeal.developer}</p>
+                      <p className="text-xs text-muted-foreground">{selectedDeal.developer}</p>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="p-3 rounded-lg bg-stone-50 border border-stone-100">
+                    <div className="p-3 rounded-lg bg-muted/50 border border-border/50">
                       <div className="flex items-center gap-1.5 mb-1">
                         <Leaf className="h-3.5 w-3.5 text-emerald-600" />
-                        <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wider">Unit Type</span>
+                        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Unit Type</span>
                       </div>
-                      <p className="text-sm font-semibold text-stone-900">{selectedDeal.unitType}</p>
+                      <p className="text-sm font-semibold text-foreground">{selectedDeal.unitType}</p>
                     </div>
-                    <div className="p-3 rounded-lg bg-stone-50 border border-stone-100">
+                    <div className="p-3 rounded-lg bg-muted/50 border border-border/50">
                       <div className="flex items-center gap-1.5 mb-1">
-                        <Package className="h-3.5 w-3.5 text-stone-500" />
-                        <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wider">Quantity Needed</span>
+                        <Package className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Quantity Needed</span>
                       </div>
-                      <p className="text-sm font-bold text-stone-900">{selectedDeal.quantity} kg N/yr</p>
+                      <p className="text-sm font-bold text-foreground">{selectedDeal.quantity} kg N/yr</p>
                     </div>
                     <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-100">
                       <div className="flex items-center gap-1.5 mb-1">
@@ -931,20 +939,20 @@ function WizardView() {
                       </div>
                       <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200">{selectedDeal.catchment}</Badge>
                     </div>
-                    <div className="p-3 rounded-lg bg-stone-50 border border-stone-100">
+                    <div className="p-3 rounded-lg bg-muted/50 border border-border/50">
                       <div className="flex items-center gap-1.5 mb-1">
-                        <PoundSterling className="h-3.5 w-3.5 text-stone-500" />
-                        <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wider">Max Budget</span>
+                        <PoundSterling className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Max Budget</span>
                       </div>
-                      <p className="text-sm font-bold text-stone-900">{formatCurrency(selectedDeal.budget)}</p>
-                      <p className="text-[10px] text-stone-400 mt-0.5">{formatCurrency(selectedDeal.budgetPerKg)}/kg max</p>
+                      <p className="text-sm font-bold text-foreground">{formatCurrency(selectedDeal.budget)}</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">{formatCurrency(selectedDeal.budgetPerKg)}/kg max</p>
                     </div>
-                    <div className="p-3 rounded-lg bg-stone-50 border border-stone-100 col-span-2">
+                    <div className="p-3 rounded-lg bg-muted/50 border border-border/50 col-span-2">
                       <div className="flex items-center gap-1.5 mb-1">
-                        <FileText className="h-3.5 w-3.5 text-stone-500" />
-                        <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wider">Planning Reference</span>
+                        <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Planning Reference</span>
                       </div>
-                      <p className="text-sm font-mono font-medium text-stone-800">{selectedDeal.planningRef}</p>
+                      <p className="text-sm font-mono font-medium text-foreground">{selectedDeal.planningRef}</p>
                     </div>
                   </div>
 
@@ -985,14 +993,14 @@ function WizardView() {
             <div className="space-y-4">
               <div className="flex items-start justify-between">
                 <div>
-                  <h2 className="text-lg font-bold text-stone-900 mb-1">Ranked Matches</h2>
-                  <p className="text-sm text-stone-500">
+                  <h2 className="text-lg font-bold text-foreground mb-1">Ranked Matches</h2>
+                  <p className="text-sm text-muted-foreground">
                     {matches.length} supply site{matches.length !== 1 ? "s" : ""} match{matches.length === 1 ? "es" : ""} the
-                    requirements for <span className="font-semibold text-stone-700">{selectedDeal.ref} {selectedDeal.developer}</span>
+                    requirements for <span className="font-semibold text-foreground">{selectedDeal.ref} {selectedDeal.developer}</span>
                   </p>
                 </div>
                 <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortMode)}>
-                  <SelectTrigger className="w-[150px] h-8 text-xs bg-white">
+                  <SelectTrigger className="w-[150px] h-8 text-xs bg-card">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -1004,15 +1012,15 @@ function WizardView() {
               </div>
 
               {/* Comparison table header */}
-              <div className="bg-white border border-stone-200 rounded-xl overflow-hidden shadow-sm">
+              <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm">
                 {/* Table header row */}
-                <div className="grid grid-cols-[1fr_1fr_1fr] border-b border-stone-200 bg-stone-50">
+                <div className="grid grid-cols-[1fr_1fr_1fr] border-b border-border bg-muted/50">
                   {matches.map((match, idx) => {
                     const config = tierConfig(match.tier)
                     return (
                       <div
                         key={match.id}
-                        className={`p-4 ${idx < matches.length - 1 ? "border-r border-stone-200" : ""} ${
+                        className={`p-4 ${idx < matches.length - 1 ? "border-r border-border" : ""} ${
                           match.tier === "best" ? "bg-emerald-50/70" : ""
                         }`}
                       >
@@ -1026,37 +1034,37 @@ function WizardView() {
                             </Badge>
                           )}
                         </div>
-                        <Link href={`/admin/brokerage-mockups/sites/${match.ref}`} className="text-sm font-bold text-stone-900 hover:text-emerald-700">{match.siteName}</Link>
-                        <Link href={`/admin/brokerage-mockups/sites/${match.ref}`} className="font-mono text-[10px] text-stone-400 hover:text-primary">{match.ref}</Link>
+                        <Link href={`/admin/brokerage-mockups/sites/${match.ref}`} className="text-sm font-bold text-foreground hover:text-emerald-700">{match.siteName}</Link>
+                        <Link href={`/admin/brokerage-mockups/sites/${match.ref}`} className="font-mono text-[10px] text-muted-foreground hover:text-primary">{match.ref}</Link>
                       </div>
                     )
                   })}
                 </div>
 
                 {/* Contact row */}
-                <div className="grid grid-cols-[1fr_1fr_1fr] border-b border-stone-100">
+                <div className="grid grid-cols-[1fr_1fr_1fr] border-b border-border/50">
                   {matches.map((match, idx) => (
-                    <div key={match.id} className={`px-4 py-3 ${idx < matches.length - 1 ? "border-r border-stone-100" : ""} ${
+                    <div key={match.id} className={`px-4 py-3 ${idx < matches.length - 1 ? "border-r border-border/50" : ""} ${
                       match.tier === "best" ? "bg-emerald-50/30" : ""
                     }`}>
-                      <p className="text-[10px] font-semibold text-stone-400 uppercase tracking-wider mb-1">Contact</p>
+                      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Contact</p>
                       <div className="flex items-center gap-2">
-                        <div className="h-5 w-5 rounded-full bg-stone-200 flex items-center justify-center">
-                          <User className="h-2.5 w-2.5 text-stone-500" />
+                        <div className="h-5 w-5 rounded-full bg-muted flex items-center justify-center">
+                          <User className="h-2.5 w-2.5 text-muted-foreground" />
                         </div>
-                        <span className="text-xs font-medium text-stone-700">{match.contact}</span>
+                        <span className="text-xs font-medium text-foreground">{match.contact}</span>
                       </div>
                     </div>
                   ))}
                 </div>
 
                 {/* Available qty row */}
-                <div className="grid grid-cols-[1fr_1fr_1fr] border-b border-stone-100">
+                <div className="grid grid-cols-[1fr_1fr_1fr] border-b border-border/50">
                   {matches.map((match, idx) => (
-                    <div key={match.id} className={`px-4 py-3 ${idx < matches.length - 1 ? "border-r border-stone-100" : ""} ${
+                    <div key={match.id} className={`px-4 py-3 ${idx < matches.length - 1 ? "border-r border-border/50" : ""} ${
                       match.tier === "best" ? "bg-emerald-50/30" : ""
                     }`}>
-                      <p className="text-[10px] font-semibold text-stone-400 uppercase tracking-wider mb-1">Available</p>
+                      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Available</p>
                       <p className={`text-sm font-bold ${match.partialFill ? "text-amber-600" : "text-emerald-700"}`}>
                         {match.available} kg/yr
                       </p>
@@ -1071,54 +1079,54 @@ function WizardView() {
                 </div>
 
                 {/* Unit price row */}
-                <div className="grid grid-cols-[1fr_1fr_1fr] border-b border-stone-100">
+                <div className="grid grid-cols-[1fr_1fr_1fr] border-b border-border/50">
                   {matches.map((match, idx) => (
-                    <div key={match.id} className={`px-4 py-3 ${idx < matches.length - 1 ? "border-r border-stone-100" : ""} ${
+                    <div key={match.id} className={`px-4 py-3 ${idx < matches.length - 1 ? "border-r border-border/50" : ""} ${
                       match.tier === "best" ? "bg-emerald-50/30" : ""
                     }`}>
-                      <p className="text-[10px] font-semibold text-stone-400 uppercase tracking-wider mb-1">Unit Price</p>
-                      <p className="text-sm font-bold text-stone-900">{formatCurrency(match.unitPrice)}/kg</p>
+                      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Unit Price</p>
+                      <p className="text-sm font-bold text-foreground">{formatCurrency(match.unitPrice)}/kg</p>
                       {match.chips.includes("Lowest price") && (
                         <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 text-[10px] mt-1">Lowest price</Badge>
                       )}
                       {match.chips.includes("Highest price") && (
-                        <Badge className="bg-stone-100 text-stone-500 border-stone-200 text-[10px] mt-1">Highest price</Badge>
+                        <Badge className="bg-muted text-muted-foreground border-border text-[10px] mt-1">Highest price</Badge>
                       )}
                     </div>
                   ))}
                 </div>
 
                 {/* Total cost row */}
-                <div className="grid grid-cols-[1fr_1fr_1fr] border-b border-stone-100">
+                <div className="grid grid-cols-[1fr_1fr_1fr] border-b border-border/50">
                   {matches.map((match, idx) => (
-                    <div key={match.id} className={`px-4 py-3 ${idx < matches.length - 1 ? "border-r border-stone-100" : ""} ${
+                    <div key={match.id} className={`px-4 py-3 ${idx < matches.length - 1 ? "border-r border-border/50" : ""} ${
                       match.tier === "best" ? "bg-emerald-50/30" : ""
                     }`}>
-                      <p className="text-[10px] font-semibold text-stone-400 uppercase tracking-wider mb-1">Total Cost</p>
-                      <p className="text-lg font-bold text-stone-900">{formatCurrency(match.totalCost)}</p>
+                      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Total Cost</p>
+                      <p className="text-lg font-bold text-foreground">{formatCurrency(match.totalCost)}</p>
                     </div>
                   ))}
                 </div>
 
                 {/* Commission row */}
-                <div className="grid grid-cols-[1fr_1fr_1fr] border-b border-stone-100">
+                <div className="grid grid-cols-[1fr_1fr_1fr] border-b border-border/50">
                   {matches.map((match, idx) => (
-                    <div key={match.id} className={`px-4 py-3 ${idx < matches.length - 1 ? "border-r border-stone-100" : ""} ${
+                    <div key={match.id} className={`px-4 py-3 ${idx < matches.length - 1 ? "border-r border-border/50" : ""} ${
                       match.tier === "best" ? "bg-emerald-50/30" : ""
                     }`}>
-                      <p className="text-[10px] font-semibold text-stone-400 uppercase tracking-wider mb-1">Commission (20%)</p>
+                      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Commission (20%)</p>
                       <p className="text-sm font-bold text-emerald-700">{formatCurrency(match.commission)}</p>
                     </div>
                   ))}
                 </div>
 
                 {/* Catchment row */}
-                <div className="grid grid-cols-[1fr_1fr_1fr] border-b border-stone-100">
+                <div className="grid grid-cols-[1fr_1fr_1fr] border-b border-border/50">
                   {matches.map((match, idx) => (
-                    <div key={match.id} className={`px-4 py-3 ${idx < matches.length - 1 ? "border-r border-stone-100" : ""} ${
+                    <div key={match.id} className={`px-4 py-3 ${idx < matches.length - 1 ? "border-r border-border/50" : ""} ${
                       match.tier === "best" ? "bg-emerald-50/30" : ""
                     }`}>
-                      <p className="text-[10px] font-semibold text-stone-400 uppercase tracking-wider mb-1">Catchment</p>
+                      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Catchment</p>
                       <div className="flex items-center gap-1.5">
                         <CheckCircle2 className="h-4 w-4 text-emerald-600" />
                         <span className="text-xs font-semibold text-emerald-700">{match.catchment}</span>
@@ -1130,23 +1138,29 @@ function WizardView() {
                 {/* Action row */}
                 <div className="grid grid-cols-[1fr_1fr_1fr]">
                   {matches.map((match, idx) => (
-                    <div key={match.id} className={`px-4 py-4 ${idx < matches.length - 1 ? "border-r border-stone-100" : ""} ${
+                    <div key={match.id} className={`px-4 py-4 ${idx < matches.length - 1 ? "border-r border-border/50" : ""} ${
                       match.tier === "best" ? "bg-emerald-50/30" : ""
                     }`}>
                       {match.tier === "best" ? (
-                        <Button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs" size="sm">
-                          <Handshake className="h-3.5 w-3.5" />
-                          Create Deal
+                        <Button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs" size="sm" asChild>
+                          <Link href="/admin/brokerage-mockups/deals/new">
+                            <Handshake className="h-3.5 w-3.5" />
+                            Create Deal
+                          </Link>
                         </Button>
                       ) : match.partialFill ? (
-                        <Button variant="outline" className="w-full text-xs border-amber-300 text-amber-700 hover:bg-amber-50" size="sm">
-                          <Handshake className="h-3.5 w-3.5" />
-                          Create Deal (Partial)
+                        <Button variant="outline" className="w-full text-xs border-amber-300 text-amber-700 hover:bg-amber-50" size="sm" asChild>
+                          <Link href="/admin/brokerage-mockups/deals/new">
+                            <Handshake className="h-3.5 w-3.5" />
+                            Create Deal (Partial)
+                          </Link>
                         </Button>
                       ) : (
-                        <Button variant="secondary" className="w-full text-xs" size="sm">
-                          <Handshake className="h-3.5 w-3.5" />
-                          Create Deal
+                        <Button variant="secondary" className="w-full text-xs" size="sm" asChild>
+                          <Link href="/admin/brokerage-mockups/deals/new">
+                            <Handshake className="h-3.5 w-3.5" />
+                            Create Deal
+                          </Link>
                         </Button>
                       )}
                     </div>
@@ -1160,29 +1174,29 @@ function WizardView() {
               </div>
               <div>
                 <div className="flex items-center gap-2 mb-3">
-                  <TrendingDown className="h-4 w-4 text-stone-400" />
-                  <h3 className="text-sm font-semibold text-stone-700">Unmatched Supply</h3>
+                  <TrendingDown className="h-4 w-4 text-muted-foreground" />
+                  <h3 className="text-sm font-semibold text-foreground">Unmatched Supply</h3>
                 </div>
                 {UNMATCHED_SUPPLY.map((uSite) => (
                   <div
                     key={uSite.ref}
-                    className="border border-stone-200 rounded-lg p-3 bg-white flex items-center justify-between"
+                    className="border border-border rounded-lg p-3 bg-card flex items-center justify-between"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="h-8 w-8 rounded-lg bg-stone-200 flex items-center justify-center">
-                        <Leaf className="h-4 w-4 text-stone-500" />
+                      <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center">
+                        <Leaf className="h-4 w-4 text-muted-foreground" />
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
-                          <Link href={`/admin/brokerage-mockups/sites/${uSite.ref}`} className="text-xs font-bold text-stone-800 hover:text-emerald-700">{uSite.siteName}</Link>
-                          <Link href={`/admin/brokerage-mockups/sites/${uSite.ref}`} className="font-mono text-[10px] text-stone-400 hover:text-primary">{uSite.ref}</Link>
+                          <Link href={`/admin/brokerage-mockups/sites/${uSite.ref}`} className="text-xs font-bold text-foreground hover:text-emerald-700">{uSite.siteName}</Link>
+                          <Link href={`/admin/brokerage-mockups/sites/${uSite.ref}`} className="font-mono text-[10px] text-muted-foreground hover:text-primary">{uSite.ref}</Link>
                         </div>
-                        <p className="text-[11px] text-stone-500">{uSite.available} {uSite.unit} available</p>
+                        <p className="text-[11px] text-muted-foreground">{uSite.available} {uSite.unit} available</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Badge className="bg-stone-100 text-stone-600 border-stone-200 text-[10px]">{uSite.catchment}</Badge>
-                      <span className="text-[11px] text-stone-400 italic">{uSite.reason}</span>
+                      <Badge className="bg-muted text-muted-foreground border-border text-[10px]">{uSite.catchment}</Badge>
+                      <span className="text-[11px] text-muted-foreground italic">{uSite.reason}</span>
                     </div>
                   </div>
                 ))}
@@ -1214,9 +1228,9 @@ export default function MatchingToolPage() {
   const [view, setView] = useState<"split" | "wizard">("split")
 
   return (
-    <div className="min-h-screen bg-[#fafaf9] text-stone-900 flex flex-col">
+    <div className="min-h-screen bg-background text-foreground flex flex-col">
       {/* Header */}
-      <div className="bg-white border-b border-stone-200 shadow-sm">
+      <div className="bg-card border-b border-border shadow-sm">
         <div className="px-6 py-4">
           <div className="flex items-start justify-between">
             <div>
@@ -1225,26 +1239,26 @@ export default function MatchingToolPage() {
                 <span className="text-[11px] font-bold text-emerald-700 uppercase tracking-widest">
                   Ironheart Brokerage
                 </span>
-                <span className="text-stone-300 text-[11px]">|</span>
-                <span className="text-[11px] text-stone-400 uppercase tracking-widest">
+                <span className="text-muted-foreground/50 text-[11px]">|</span>
+                <span className="text-[11px] text-muted-foreground uppercase tracking-widest">
                   BNG / Nutrient Credits
                 </span>
               </div>
-              <h1 className="text-xl font-bold text-stone-900 tracking-tight">
+              <h1 className="text-xl font-bold text-foreground tracking-tight">
                 Supply / Demand Matching
               </h1>
-              <p className="text-xs text-stone-500 mt-0.5">
+              <p className="text-xs text-muted-foreground mt-0.5">
                 Find available supply sites for demand requirements -- ranked by price, availability, and geographic constraint
               </p>
             </div>
             {/* View toggle */}
-            <div className="flex items-center gap-1 bg-stone-100 rounded-lg p-1 shrink-0">
+            <div className="flex items-center gap-1 bg-muted rounded-lg p-1 shrink-0">
               <button
                 onClick={() => setView("split")}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all cursor-pointer ${
                   view === "split"
-                    ? "bg-white text-stone-900 shadow-sm"
-                    : "text-stone-500 hover:text-stone-700"
+                    ? "bg-card text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 <LayoutPanelLeft className="h-3.5 w-3.5" />
@@ -1254,8 +1268,8 @@ export default function MatchingToolPage() {
                 onClick={() => setView("wizard")}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all cursor-pointer ${
                   view === "wizard"
-                    ? "bg-white text-stone-900 shadow-sm"
-                    : "text-stone-500 hover:text-stone-700"
+                    ? "bg-card text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 <ListOrdered className="h-3.5 w-3.5" />
@@ -1281,9 +1295,34 @@ export default function MatchingToolPage() {
               <span className="text-xs font-semibold text-amber-800">1 Unmatched Supply Site</span>
             </div>
           </div>
+
+          {/* Matching Rules panel */}
+          <div className="mt-3 p-3 rounded-lg border border-border bg-card">
+            <div className="flex items-center gap-2 mb-2">
+              <Settings2 className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="text-xs font-bold text-foreground">Matching Rules</span>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                <span>Geographic: Same catchment</span>
+              </div>
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                <span>Unit Type: Match required</span>
+              </div>
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                <span>Availability: Check stock</span>
+              </div>
+            </div>
+            <p className="text-[10px] text-muted-foreground mt-2 italic">
+              Matching rules are configurable per vertical in Settings
+            </p>
+          </div>
         </div>
 
-        <Separator className="bg-stone-200" />
+        <Separator className="bg-muted" />
       </div>
 
       {/* View content */}

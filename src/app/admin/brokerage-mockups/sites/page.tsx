@@ -28,222 +28,52 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 
+import { sites as sharedSites } from "../_mock-data"
+import type { Site as SharedSite, SiteStatus, UnitType, Catchment, LPA } from "../_mock-data"
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
-type SiteStatus =
-  | "Active"
-  | "Registered"
-  | "Under Assessment"
-  | "Legal In Progress"
-  | "Prospecting"
-  | "Fully Allocated"
-
-type UnitType = "kg N/yr" | "BNG units"
-type Catchment = "Solent" | "Test Valley"
-type LPA = "Winchester" | "Eastleigh" | "Fareham" | "Test Valley"
+type Site = SharedSite & { mapX: number; mapY: number; contact: string }
 type ViewMode = "table" | "map" | "grid"
 type SortField = "ref" | "name" | "status" | "total" | "available" | "price" | "lpa"
 type SortDir = "asc" | "desc"
 
-interface Site {
-  ref: string
-  name: string
-  status: SiteStatus
-  contact: string
-  catchment: Catchment
-  unitType: UnitType
-  total: number | null
-  totalLabel: string
-  allocated: number
-  allocatedLabel: string
-  available: number | null
-  availableLabel: string
-  price: number | null
-  priceLabel: string
-  lpa: LPA
-  /** Approximate map position (% from top-left of the Hampshire map placeholder) */
-  mapX: number
-  mapY: number
+// Map shared site data to the shape this page needs (with approximate map positions)
+const MAP_POSITIONS: Record<string, { mapX: number; mapY: number }> = {
+  "S-0001": { mapX: 52, mapY: 62 },
+  "S-0002": { mapX: 58, mapY: 55 },
+  "S-0003": { mapX: 64, mapY: 60 },
+  "S-0005": { mapX: 46, mapY: 42 },
+  "S-0006": { mapX: 34, mapY: 30 },
+  "S-0008": { mapX: 56, mapY: 58 },
 }
 
-// ---------------------------------------------------------------------------
-// Data
-// ---------------------------------------------------------------------------
-
-const SITES: Site[] = [
-  {
-    ref: "S-0001",
-    name: "Whiteley Farm",
-    status: "Active",
-    contact: "Robert Whiteley",
-    catchment: "Solent",
-    unitType: "kg N/yr",
-    total: 180,
-    totalLabel: "180",
-    allocated: 165,
-    allocatedLabel: "165",
-    available: 15,
-    availableLabel: "15",
-    price: 3200,
-    priceLabel: "\u00a33,200",
-    lpa: "Winchester",
-    mapX: 52,
-    mapY: 62,
-  },
-  {
-    ref: "S-0002",
-    name: "Botley Meadows",
-    status: "Active",
-    contact: "Margaret Thornton",
-    catchment: "Solent",
-    unitType: "kg N/yr",
-    total: 130,
-    totalLabel: "130",
-    allocated: 45,
-    allocatedLabel: "45",
-    available: 85,
-    availableLabel: "85",
-    price: 2500,
-    priceLabel: "\u00a32,500",
-    lpa: "Eastleigh",
-    mapX: 58,
-    mapY: 55,
-  },
-  {
-    ref: "S-0003",
-    name: "Hamble Wetlands",
-    status: "Legal In Progress",
-    contact: "John Hamble",
-    catchment: "Solent",
-    unitType: "BNG units",
-    total: 22.5,
-    totalLabel: "22.5",
-    allocated: 0,
-    allocatedLabel: "0",
-    available: 22.5,
-    availableLabel: "22.5",
-    price: 14000,
-    priceLabel: "\u00a314,000",
-    lpa: "Eastleigh",
-    mapX: 64,
-    mapY: 60,
-  },
-  {
-    ref: "S-0004",
-    name: "Riverside Meadows",
-    status: "Under Assessment",
-    contact: "Susan Marsh",
-    catchment: "Solent",
-    unitType: "kg N/yr",
-    total: null,
-    totalLabel: "TBD",
-    allocated: 0,
-    allocatedLabel: "0",
-    available: null,
-    availableLabel: "TBD",
-    price: null,
-    priceLabel: "TBD",
-    lpa: "Fareham",
-    mapX: 60,
-    mapY: 68,
-  },
-  {
-    ref: "S-0005",
-    name: "Manor Fields",
-    status: "Active",
-    contact: "David Ashford",
-    catchment: "Solent",
-    unitType: "kg N/yr",
-    total: 95,
-    totalLabel: "95",
-    allocated: 50,
-    allocatedLabel: "50",
-    available: 45,
-    availableLabel: "45",
-    price: 3000,
-    priceLabel: "\u00a33,000",
-    lpa: "Winchester",
-    mapX: 46,
-    mapY: 42,
-  },
-  {
-    ref: "S-0006",
-    name: "Test Valley Grassland",
-    status: "Registered",
-    contact: "Ian Stockbridge",
-    catchment: "Test Valley",
-    unitType: "kg N/yr",
-    total: 150,
-    totalLabel: "150",
-    allocated: 0,
-    allocatedLabel: "0",
-    available: 150,
-    availableLabel: "150",
-    price: 2800,
-    priceLabel: "\u00a32,800",
-    lpa: "Test Valley",
-    mapX: 34,
-    mapY: 30,
-  },
-  {
-    ref: "S-0007",
-    name: "Wickham Solar Farm",
-    status: "Prospecting",
-    contact: "Helen Wickham",
-    catchment: "Solent",
-    unitType: "BNG units",
-    total: null,
-    totalLabel: "Est. 12",
-    allocated: 0,
-    allocatedLabel: "0",
-    available: null,
-    availableLabel: "Est. 12",
-    price: null,
-    priceLabel: "TBD",
-    lpa: "Winchester",
-    mapX: 54,
-    mapY: 52,
-  },
-  {
-    ref: "S-0008",
-    name: "Curdridge Farm",
-    status: "Prospecting",
-    contact: "William Curdridge",
-    catchment: "Solent",
-    unitType: "kg N/yr",
-    total: null,
-    totalLabel: "Est. 100",
-    allocated: 0,
-    allocatedLabel: "0",
-    available: null,
-    availableLabel: "Est. 100",
-    price: null,
-    priceLabel: "TBD",
-    lpa: "Eastleigh",
-    mapX: 56,
-    mapY: 58,
-  },
-]
+const SITES = sharedSites.map((s) => ({
+  ...s,
+  contact: s.contactName,
+  mapX: MAP_POSITIONS[s.ref]?.mapX ?? 50,
+  mapY: MAP_POSITIONS[s.ref]?.mapY ?? 50,
+}))
 
 // ---------------------------------------------------------------------------
 // Status badge config
 // ---------------------------------------------------------------------------
 
 const STATUS_CONFIG: Record<SiteStatus, { bg: string; text: string; dot: string; border: string }> = {
-  Active:            { bg: "bg-green-50",   text: "text-green-700",   dot: "bg-green-500",   border: "border-green-200" },
-  Registered:        { bg: "bg-emerald-50", text: "text-emerald-700", dot: "bg-emerald-500", border: "border-emerald-200" },
-  "Under Assessment":{ bg: "bg-blue-50",    text: "text-blue-700",    dot: "bg-blue-500",    border: "border-blue-200" },
-  "Legal In Progress":{ bg: "bg-amber-50",  text: "text-amber-700",   dot: "bg-amber-500",  border: "border-amber-200" },
-  Prospecting:       { bg: "bg-gray-50",    text: "text-gray-600",    dot: "bg-gray-400",    border: "border-gray-200" },
-  "Fully Allocated": { bg: "bg-purple-50",  text: "text-purple-700",  dot: "bg-purple-500",  border: "border-purple-200" },
+  Active:            { bg: "bg-green-50 dark:bg-green-950/30",   text: "text-green-700 dark:text-green-400",   dot: "bg-green-500",   border: "border-green-200 dark:border-green-800" },
+  Registered:        { bg: "bg-emerald-50 dark:bg-emerald-950/30", text: "text-emerald-700 dark:text-emerald-400", dot: "bg-emerald-500", border: "border-emerald-200 dark:border-emerald-800" },
+  "Under Assessment":{ bg: "bg-blue-50 dark:bg-blue-950/30",    text: "text-blue-700 dark:text-blue-400",    dot: "bg-blue-500",    border: "border-blue-200 dark:border-blue-800" },
+  "Legal In Progress":{ bg: "bg-amber-50 dark:bg-amber-950/30",  text: "text-amber-700 dark:text-amber-400",   dot: "bg-amber-500",  border: "border-amber-200 dark:border-amber-800" },
+  Prospecting:       { bg: "bg-muted",    text: "text-muted-foreground",    dot: "bg-muted-foreground/50",    border: "border-border" },
+  "Fully Allocated": { bg: "bg-purple-50 dark:bg-purple-950/30",  text: "text-purple-700 dark:text-purple-400",  dot: "bg-purple-500",  border: "border-purple-200 dark:border-purple-800" },
 }
 
 const ALL_STATUSES: SiteStatus[] = ["Active", "Registered", "Under Assessment", "Legal In Progress", "Prospecting", "Fully Allocated"]
-const ALL_CATCHMENTS: Catchment[] = ["Solent", "Test Valley"]
-const ALL_LPAS: LPA[] = ["Winchester", "Eastleigh", "Fareham", "Test Valley"]
-const ALL_UNIT_TYPES: UnitType[] = ["kg N/yr", "BNG units"]
+const ALL_CATCHMENTS: Catchment[] = ["Solent", "Test Valley", "Stour", "Exe", "Tees"]
+const ALL_LPAS: LPA[] = ["Winchester", "Eastleigh", "Fareham", "Test Valley", "New Forest"]
+const ALL_UNIT_TYPES: UnitType[] = ["Nitrogen", "Phosphorus", "BNG"]
 
 // ---------------------------------------------------------------------------
 // Reusable sub-components
@@ -260,10 +90,13 @@ function StatusBadge({ status }: { status: SiteStatus }) {
 }
 
 function UnitTypeBadge({ type }: { type: UnitType }) {
-  const isNitrogen = type === "kg N/yr"
+  const isNitrogen = type === "Nitrogen"
+  const isBNG = type === "BNG"
   return (
     <span className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-medium ${
-      isNitrogen ? "bg-sky-50 text-sky-700" : "bg-lime-50 text-lime-700"
+      isNitrogen ? "bg-sky-50 dark:bg-sky-950/30 text-sky-700 dark:text-sky-400"
+        : isBNG ? "bg-lime-50 dark:bg-lime-950/30 text-lime-700 dark:text-lime-400"
+        : "bg-violet-50 dark:bg-violet-950/30 text-violet-700 dark:text-violet-400"
     }`}>
       {isNitrogen ? <Leaf className="w-3 h-3" /> : <TreePine className="w-3 h-3" />}
       {type}
@@ -273,7 +106,7 @@ function UnitTypeBadge({ type }: { type: UnitType }) {
 
 function CatchmentPill({ catchment }: { catchment: Catchment }) {
   return (
-    <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">
+    <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
       {catchment}
     </span>
   )
@@ -475,10 +308,10 @@ export default function SitesListPage() {
 
   // Stat computations
   const activeSites = SITES.filter((s) => s.status === "Active").length
-  const totalAvailableN = SITES.filter((s) => s.unitType === "kg N/yr" && s.available !== null)
-    .reduce((sum, s) => sum + (s.available ?? 0), 0)
-  const totalAvailableBNG = SITES.filter((s) => s.unitType === "BNG units" && s.available !== null)
-    .reduce((sum, s) => sum + (s.available ?? 0), 0)
+  const totalAvailableN = SITES.filter((s) => s.unitType === "Nitrogen")
+    .reduce((sum, s) => sum + s.available, 0)
+  const totalAvailableBNG = SITES.filter((s) => s.unitType === "BNG")
+    .reduce((sum, s) => sum + s.available, 0)
   const underAssessment = SITES.filter((s) => s.status === "Under Assessment").length
 
   return (
@@ -501,10 +334,10 @@ export default function SitesListPage() {
             <Download className="w-4 h-4" />
             Export
           </button>
-          <button className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-700 transition-colors">
+          <Link href="/admin/brokerage-mockups/sites/new" className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-700 transition-colors">
             <Plus className="w-4 h-4" />
             New Site
-          </button>
+          </Link>
         </div>
       </div>
 
@@ -691,7 +524,7 @@ function TableView({ sites, sortField, sortDir, onSort }: {
           {sites.map((site) => (
             <tr
               key={site.ref}
-              className="group hover:bg-emerald-50/30 transition-colors cursor-pointer"
+              className="group hover:bg-emerald-50/30 dark:hover:bg-emerald-950/20 transition-colors cursor-pointer"
             >
               <td className="px-5 py-3.5">
                 <Link href={`/admin/brokerage-mockups/sites/${site.ref}`} className="text-xs font-mono text-muted-foreground hover:text-primary">{site.ref}</Link>
@@ -775,7 +608,7 @@ function MapView({ sites, selectedRef, onSelect }: {
     <div className="flex flex-col lg:flex-row min-h-[560px]">
       {/* Left: Map placeholder */}
       <div className="lg:w-[55%] p-4">
-        <div className="relative w-full h-full min-h-[400px] lg:min-h-[520px] rounded-xl overflow-hidden bg-gradient-to-br from-slate-200 via-slate-150 to-slate-100 border border-slate-200">
+        <div className="relative w-full h-full min-h-[400px] lg:min-h-[520px] rounded-xl overflow-hidden bg-gradient-to-br from-slate-200 via-slate-150 to-slate-100 dark:from-slate-800 dark:via-slate-850 dark:to-slate-900 border border-border">
           {/* Hampshire outline shape (stylized CSS polygon) */}
           <div className="absolute inset-4">
             {/* Water area bottom-right (Solent) */}
@@ -822,12 +655,12 @@ function MapView({ sites, selectedRef, onSelect }: {
                   />
                   {/* Tooltip on hover */}
                   <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-10">
-                    <div className="bg-gray-900 text-white text-xs rounded-lg px-3 py-2 whitespace-nowrap shadow-lg">
+                    <div className="bg-foreground text-background text-xs rounded-lg px-3 py-2 whitespace-nowrap shadow-lg">
                       <div className="font-medium">{site.name}</div>
-                      <div className="text-gray-300 mt-0.5">
+                      <div className="text-background/70 mt-0.5">
                         {site.availableLabel} {site.unitType} available
                       </div>
-                      <div className="absolute top-full left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-900 rotate-45 -mt-1" />
+                      <div className="absolute top-full left-1/2 -translate-x-1/2 w-2 h-2 bg-foreground rotate-45 -mt-1" />
                     </div>
                   </div>
                 </button>
@@ -836,18 +669,18 @@ function MapView({ sites, selectedRef, onSelect }: {
           </div>
 
           {/* Map legend */}
-          <div className="absolute bottom-3 left-3 bg-white/90 backdrop-blur rounded-lg border border-slate-200 px-3 py-2 text-[10px] flex flex-wrap gap-x-3 gap-y-1">
+          <div className="absolute bottom-3 left-3 bg-card/90 backdrop-blur rounded-lg border border-border px-3 py-2 text-[10px] flex flex-wrap gap-x-3 gap-y-1">
             {ALL_STATUSES.filter((s) => sites.some((site) => site.status === s)).map((s) => (
               <span key={s} className="flex items-center gap-1">
                 <span className={`w-2 h-2 rounded-full ${STATUS_CONFIG[s].dot}`} />
-                <span className="text-gray-500">{s}</span>
+                <span className="text-muted-foreground">{s}</span>
               </span>
             ))}
           </div>
 
           {/* Map title */}
-          <div className="absolute top-3 left-3 bg-white/90 backdrop-blur rounded-lg border border-slate-200 px-3 py-1.5">
-            <span className="text-xs font-semibold text-gray-700">Hampshire &amp; Solent</span>
+          <div className="absolute top-3 left-3 bg-card/90 backdrop-blur rounded-lg border border-border px-3 py-1.5">
+            <span className="text-xs font-semibold text-foreground">Hampshire &amp; Solent</span>
           </div>
         </div>
       </div>

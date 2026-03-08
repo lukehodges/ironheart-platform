@@ -28,7 +28,17 @@ import {
   BarChart3,
   Calculator,
   Eye,
+  FileText,
+  CreditCard,
+  PieChart as PieChartIcon,
 } from "lucide-react"
+import {
+  totalDealValueYTD,
+  totalCommissionYTD,
+  collectedAmount,
+  outstandingAmount,
+  invoices as mockInvoices,
+} from "../_mock-data"
 import {
   BarChart,
   Bar,
@@ -52,11 +62,16 @@ type Variation = "executive" | "dashboard" | "accountant"
 // Data
 // ---------------------------------------------------------------------------
 
+const collectionPct = totalCommissionYTD > 0
+  ? Number(((collectedAmount / totalDealValueYTD) * 100).toFixed(1))
+  : 0
+const pendingCount = mockInvoices.filter((i) => i.status !== "Paid" && i.status !== "Draft").length
+
 const STAT_CARDS = {
-  totalDealValue: { value: 1_875_000, label: "Total Deal Value (YTD)", subtitle: "14 deals closed or in progress" },
-  totalCommission: { value: 187_400, label: "Total Commission (YTD)", subtitle: "at 20% average rate" },
-  collected: { value: 142_800, label: "Collected", subtitle: "76.2% of earned", pct: 76.2 },
-  outstanding: { value: 44_600, label: "Outstanding", subtitle: "3 invoices pending", count: 3 },
+  totalDealValue: { value: totalDealValueYTD, label: "Total Deal Value (YTD)", subtitle: `${mockInvoices.length} invoices tracked` },
+  totalCommission: { value: totalCommissionYTD, label: "Total Commission (YTD)", subtitle: "at 20% average rate" },
+  collected: { value: collectedAmount, label: "Collected", subtitle: `${collectionPct}% of deal value`, pct: collectionPct },
+  outstanding: { value: outstandingAmount, label: "Outstanding", subtitle: `${pendingCount} invoices pending`, count: pendingCount },
 }
 
 const MONTHLY_COMMISSION = [
@@ -265,11 +280,11 @@ function CommissionFlowViz({ compact }: { compact?: boolean }) {
   return (
     <div className="flex items-center gap-2 w-full">
       {/* Developer */}
-      <div className={`flex-1 rounded-lg border border-blue-200 bg-blue-50 ${boxH} text-center`}>
-        <p className={`${labelSize} text-blue-600 font-medium uppercase tracking-wider mb-0.5`}>
+      <div className={`flex-1 rounded-lg border border-blue-500/20 bg-blue-500/10 ${boxH} text-center`}>
+        <p className={`${labelSize} text-blue-600 dark:text-blue-400 font-medium uppercase tracking-wider mb-0.5`}>
           Developer Pays
         </p>
-        <p className={`${textSize} font-bold text-blue-700`}>{fmtGBP(COMMISSION_SPLIT.developerPays)}</p>
+        <p className={`${textSize} font-bold text-blue-700 dark:text-blue-300`}>{fmtGBP(COMMISSION_SPLIT.developerPays)}</p>
       </div>
 
       <div className="flex flex-col items-center shrink-0">
@@ -277,11 +292,11 @@ function CommissionFlowViz({ compact }: { compact?: boolean }) {
       </div>
 
       {/* Platform */}
-      <div className={`flex-1 rounded-lg border border-emerald-200 bg-emerald-50 ${boxH} text-center`}>
-        <p className={`${labelSize} text-emerald-600 font-medium uppercase tracking-wider mb-0.5`}>
+      <div className={`flex-1 rounded-lg border border-emerald-500/20 bg-emerald-500/10 ${boxH} text-center`}>
+        <p className={`${labelSize} text-emerald-600 dark:text-emerald-400 font-medium uppercase tracking-wider mb-0.5`}>
           Platform ({COMMISSION_SPLIT.platformPct}%)
         </p>
-        <p className={`${textSize} font-bold text-emerald-700`}>{fmtGBP(COMMISSION_SPLIT.platformTakes)}</p>
+        <p className={`${textSize} font-bold text-emerald-700 dark:text-emerald-300`}>{fmtGBP(COMMISSION_SPLIT.platformTakes)}</p>
       </div>
 
       <div className="flex flex-col items-center shrink-0">
@@ -289,11 +304,11 @@ function CommissionFlowViz({ compact }: { compact?: boolean }) {
       </div>
 
       {/* Landowner */}
-      <div className={`flex-1 rounded-lg border border-amber-200 bg-amber-50 ${boxH} text-center`}>
-        <p className={`${labelSize} text-amber-600 font-medium uppercase tracking-wider mb-0.5`}>
+      <div className={`flex-1 rounded-lg border border-amber-500/20 bg-amber-500/10 ${boxH} text-center`}>
+        <p className={`${labelSize} text-amber-600 dark:text-amber-400 font-medium uppercase tracking-wider mb-0.5`}>
           Landowner ({COMMISSION_SPLIT.landownerPct}%)
         </p>
-        <p className={`${textSize} font-bold text-amber-700`}>{fmtGBP(COMMISSION_SPLIT.landownerReceives)}</p>
+        <p className={`${textSize} font-bold text-amber-700 dark:text-amber-300`}>{fmtGBP(COMMISSION_SPLIT.landownerReceives)}</p>
       </div>
     </div>
   )
@@ -462,9 +477,9 @@ function ExecutiveSummary() {
               <CardTitle className="text-sm font-semibold">Outstanding Payments</CardTitle>
               <CardDescription className="text-xs">3 invoices requiring attention</CardDescription>
             </div>
-            <span className="text-[11px] text-primary font-medium cursor-pointer hover:underline">
-              View All Invoices
-            </span>
+            <Link href="/admin/brokerage-mockups/financials/invoices" className="text-[11px] text-primary font-medium hover:underline">
+              View all invoices &rarr;
+            </Link>
           </div>
         </CardHeader>
         <CardContent className="p-0">
@@ -1236,6 +1251,52 @@ export default function FinancialsOverviewPage() {
       {variation === "executive" && <ExecutiveSummary />}
       {variation === "dashboard" && <FinancialDashboard />}
       {variation === "accountant" && <AccountantView />}
+
+      {/* Sub-page Links */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6">
+        <Link href="/admin/brokerage-mockups/financials/invoices">
+          <Card className="hover:border-primary/40 transition-colors cursor-pointer">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-blue-500/10 text-blue-600">
+                <FileText className="h-4 w-4" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-foreground">Invoice Management</p>
+                <p className="text-[11px] text-muted-foreground">View all invoices, aging buckets</p>
+              </div>
+              <ArrowRight className="h-4 w-4 text-muted-foreground" />
+            </CardContent>
+          </Card>
+        </Link>
+        <Link href="/admin/brokerage-mockups/financials/payments">
+          <Card className="hover:border-primary/40 transition-colors cursor-pointer">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-600">
+                <CreditCard className="h-4 w-4" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-foreground">Payment Tracking</p>
+                <p className="text-[11px] text-muted-foreground">View payments, reconciliation</p>
+              </div>
+              <ArrowRight className="h-4 w-4 text-muted-foreground" />
+            </CardContent>
+          </Card>
+        </Link>
+        <Link href="/admin/brokerage-mockups/financials/commissions">
+          <Card className="hover:border-primary/40 transition-colors cursor-pointer">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-violet-500/10 text-violet-600">
+                <PieChartIcon className="h-4 w-4" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-foreground">Commission Breakdown</p>
+                <p className="text-[11px] text-muted-foreground">By broker, deal, catchment, period</p>
+              </div>
+              <ArrowRight className="h-4 w-4 text-muted-foreground" />
+            </CardContent>
+          </Card>
+        </Link>
+      </div>
 
       {/* Footer */}
       <Separator className="mt-8 mb-4" />

@@ -33,14 +33,22 @@ import {
   User,
   X,
 } from "lucide-react"
+import {
+  complianceItems as sharedComplianceItems,
+  overdueCount,
+  dueSoonCount,
+  upcomingCount,
+  completedThisMonth,
+} from "../_mock-data"
+import type { ComplianceItem as SharedComplianceItem } from "../_mock-data"
 
 // ---------------------------------------------------------------------------
-// Types
+// Internal types (mapped from shared data)
 // ---------------------------------------------------------------------------
 
 type ComplianceStatus = "OVERDUE" | "DUE_SOON" | "UPCOMING" | "COMPLETED"
-type ComplianceCategory = "MONITORING" | "LEGAL" | "REGISTRATION"
-type Frequency = "Annual" | "Biannual" | "One-off"
+type ComplianceCategory = "MONITORING" | "LEGAL" | "REGISTRATION" | "FINANCIAL"
+type Frequency = "Annual" | "Quarterly" | "Monthly" | "5-yearly" | "One-off"
 type ViewMode = "calendar" | "list" | "timeline"
 
 interface ComplianceItem {
@@ -50,196 +58,54 @@ interface ComplianceItem {
   site: string
   siteRef?: string
   dealRef?: string
+  dealTitle?: string
   dueDate: Date
   status: ComplianceStatus
   assigned: string
   assignedInitials: string
   frequency: Frequency
   completedDate?: Date
+  description?: string
 }
 
 // ---------------------------------------------------------------------------
-// Data
+// Map shared data to internal format
 // ---------------------------------------------------------------------------
 
-const COMPLIANCE_ITEMS: ComplianceItem[] = [
-  // OVERDUE
-  {
-    id: "C-001",
-    title: "Annual Habitat Monitoring Report",
-    category: "MONITORING",
-    site: "Whiteley Farm",
-    siteRef: "S-0001",
-    dueDate: new Date(2026, 1, 28), // 28 Feb 2026
-    status: "OVERDUE",
-    assigned: "Tom Jenkins",
-    assignedInitials: "TJ",
-    frequency: "Annual",
-  },
-  {
-    id: "C-002",
-    title: "NE Registry Update",
-    category: "REGISTRATION",
-    site: "Botley Meadows",
-    siteRef: "S-0002",
-    dueDate: new Date(2026, 2, 1), // 1 Mar 2026
-    status: "OVERDUE",
-    assigned: "James Harris",
-    assignedInitials: "JH",
-    frequency: "Annual",
-  },
-  {
-    id: "C-003",
-    title: "S106 Compliance Review",
-    category: "LEGAL",
-    site: "Hamble Wetlands",
-    siteRef: "S-0003",
-    dueDate: new Date(2026, 2, 3), // 3 Mar 2026
-    status: "OVERDUE",
-    assigned: "James Harris",
-    assignedInitials: "JH",
-    frequency: "Biannual",
-  },
-  // DUE SOON
-  {
-    id: "C-004",
-    title: "LPA Condition Discharge Evidence",
-    category: "LEGAL",
-    site: "Manor Fields",
-    siteRef: "S-0005",
-    dueDate: new Date(2026, 2, 10), // 10 Mar 2026
-    status: "DUE_SOON",
-    assigned: "James Harris",
-    assignedInitials: "JH",
-    frequency: "One-off",
-  },
-  {
-    id: "C-005",
-    title: "Annual Habitat Monitoring Report",
-    category: "MONITORING",
-    site: "Botley Meadows",
-    siteRef: "S-0002",
-    dueDate: new Date(2026, 2, 12), // 12 Mar 2026
-    status: "DUE_SOON",
-    assigned: "Tom Jenkins",
-    assignedInitials: "TJ",
-    frequency: "Annual",
-  },
-  // UPCOMING
-  {
-    id: "C-006",
-    title: "NE Registry Update",
-    category: "REGISTRATION",
-    site: "Whiteley Farm",
-    siteRef: "S-0001",
-    dueDate: new Date(2026, 2, 20), // 20 Mar 2026
-    status: "UPCOMING",
-    assigned: "James Harris",
-    assignedInitials: "JH",
-    frequency: "Annual",
-  },
-  {
-    id: "C-007",
-    title: "S106 Compliance Review",
-    category: "LEGAL",
-    site: "Manor Fields",
-    siteRef: "S-0005",
-    dueDate: new Date(2026, 3, 15), // 15 Apr 2026
-    status: "UPCOMING",
-    assigned: "James Harris",
-    assignedInitials: "JH",
-    frequency: "Biannual",
-  },
-  {
-    id: "C-008",
-    title: "LPA Condition Discharge",
-    category: "LEGAL",
-    site: "D-0038",
-    dealRef: "D-0038",
-    dueDate: new Date(2026, 3, 28), // 28 Apr 2026
-    status: "UPCOMING",
-    assigned: "Sarah Croft",
-    assignedInitials: "SC",
-    frequency: "One-off",
-  },
-  {
-    id: "C-009",
-    title: "Annual Habitat Monitoring",
-    category: "MONITORING",
-    site: "Manor Fields",
-    siteRef: "S-0005",
-    dueDate: new Date(2026, 10, 14), // 14 Nov 2026
-    status: "UPCOMING",
-    assigned: "Tom Jenkins",
-    assignedInitials: "TJ",
-    frequency: "Annual",
-  },
-  {
-    id: "C-010",
-    title: "NE Registry Update",
-    category: "REGISTRATION",
-    site: "Manor Fields",
-    siteRef: "S-0005",
-    dueDate: new Date(2026, 10, 14), // 14 Nov 2026
-    status: "UPCOMING",
-    assigned: "James Harris",
-    assignedInitials: "JH",
-    frequency: "Annual",
-  },
-  // COMPLETED
-  {
-    id: "C-011",
-    title: "Annual Habitat Monitoring",
-    category: "MONITORING",
-    site: "Whiteley Farm",
-    siteRef: "S-0001",
-    dueDate: new Date(2025, 1, 28), // 28 Feb 2025
-    status: "COMPLETED",
-    assigned: "Tom Jenkins",
-    assignedInitials: "TJ",
-    frequency: "Annual",
-    completedDate: new Date(2025, 1, 26),
-  },
-  {
-    id: "C-012",
-    title: "NE Registry Update",
-    category: "REGISTRATION",
-    site: "Whiteley Farm",
-    siteRef: "S-0001",
-    dueDate: new Date(2025, 1, 28), // 28 Feb 2025
-    status: "COMPLETED",
-    assigned: "James Harris",
-    assignedInitials: "JH",
-    frequency: "Annual",
-    completedDate: new Date(2025, 1, 27),
-  },
-  {
-    id: "C-013",
-    title: "S106 Compliance Review",
-    category: "LEGAL",
-    site: "Hamble Wetlands",
-    siteRef: "S-0003",
-    dueDate: new Date(2025, 8, 3), // 3 Sep 2025
-    status: "COMPLETED",
-    assigned: "James Harris",
-    assignedInitials: "JH",
-    frequency: "Biannual",
-    completedDate: new Date(2025, 8, 1),
-  },
-  {
-    id: "C-014",
-    title: "LPA Condition Discharge",
-    category: "LEGAL",
-    site: "D-0035",
-    dealRef: "D-0035",
-    dueDate: new Date(2025, 11, 15), // 15 Dec 2025
-    status: "COMPLETED",
-    assigned: "Sarah Croft",
-    assignedInitials: "SC",
-    frequency: "One-off",
-    completedDate: new Date(2025, 11, 12),
-  },
-]
+function mapStatus(status: SharedComplianceItem["status"]): ComplianceStatus {
+  switch (status) {
+    case "Overdue": return "OVERDUE"
+    case "Due Soon": return "DUE_SOON"
+    case "Upcoming": return "UPCOMING"
+    case "Completed": return "COMPLETED"
+  }
+}
+
+function mapCategory(category: SharedComplianceItem["category"]): ComplianceCategory {
+  switch (category) {
+    case "Monitoring": return "MONITORING"
+    case "Legal": return "LEGAL"
+    case "Registration": return "REGISTRATION"
+    case "Financial": return "FINANCIAL"
+  }
+}
+
+const COMPLIANCE_ITEMS: ComplianceItem[] = sharedComplianceItems.map((item) => ({
+  id: item.id,
+  title: item.title,
+  category: mapCategory(item.category),
+  site: item.siteName ?? item.dealTitle ?? "",
+  siteRef: item.siteRef,
+  dealRef: item.dealRef,
+  dealTitle: item.dealTitle,
+  dueDate: new Date(item.dueDate),
+  status: mapStatus(item.status),
+  assigned: item.assigned,
+  assignedInitials: item.assignedInitials,
+  frequency: item.frequency as Frequency,
+  completedDate: item.completedDate ? new Date(item.completedDate) : undefined,
+  description: item.description,
+}))
 
 // ---------------------------------------------------------------------------
 // Colour / style maps
@@ -268,11 +134,11 @@ const STATUS_STYLES: Record<ComplianceStatus, { bg: string; text: string; dot: s
     badge: "bg-green-100 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-400 dark:border-green-800",
   },
   COMPLETED: {
-    bg: "bg-gray-50 dark:bg-gray-900/30",
-    text: "text-gray-500 dark:text-gray-400",
-    dot: "bg-gray-400",
-    border: "border-gray-200 dark:border-gray-700",
-    badge: "bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-900 dark:text-gray-400 dark:border-gray-700",
+    bg: "bg-muted/30",
+    text: "text-muted-foreground",
+    dot: "bg-muted-foreground/50",
+    border: "border-border",
+    badge: "bg-muted text-muted-foreground border-border",
   },
 }
 
@@ -299,18 +165,27 @@ const CATEGORY_STYLES: Record<ComplianceCategory, { bg: string; text: string; do
     text: "text-blue-700 dark:text-blue-400",
     dot: "bg-blue-500",
   },
+  FINANCIAL: {
+    bg: "bg-indigo-100 dark:bg-indigo-950",
+    text: "text-indigo-700 dark:text-indigo-400",
+    dot: "bg-indigo-500",
+  },
 }
 
 const ASSIGNEE_STYLES: Record<string, string> = {
-  TJ: "bg-teal-500/15 text-teal-700 dark:text-teal-300",
+  EW: "bg-teal-500/15 text-teal-700 dark:text-teal-300",
   JH: "bg-blue-500/15 text-blue-700 dark:text-blue-300",
   SC: "bg-violet-500/15 text-violet-700 dark:text-violet-300",
+  DP: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
+  LG: "bg-rose-500/15 text-rose-700 dark:text-rose-300",
 }
 
 const FREQUENCY_STYLES: Record<Frequency, string> = {
   Annual: "bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-950 dark:text-sky-400 dark:border-sky-800",
-  Biannual: "bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950 dark:text-indigo-400 dark:border-indigo-800",
-  "One-off": "bg-gray-50 text-gray-600 border-gray-200 dark:bg-gray-900 dark:text-gray-400 dark:border-gray-700",
+  Quarterly: "bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950 dark:text-indigo-400 dark:border-indigo-800",
+  Monthly: "bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-950 dark:text-violet-400 dark:border-violet-800",
+  "5-yearly": "bg-cyan-50 text-cyan-700 border-cyan-200 dark:bg-cyan-950 dark:text-cyan-400 dark:border-cyan-800",
+  "One-off": "bg-muted text-muted-foreground border-border",
 }
 
 // ---------------------------------------------------------------------------
@@ -326,7 +201,7 @@ function formatDateShort(date: Date): string {
 }
 
 function getDaysUntil(date: Date): number {
-  const today = new Date(2026, 2, 7) // 7 Mar 2026
+  const today = new Date(2026, 2, 8) // 8 Mar 2026
   const diff = date.getTime() - today.getTime()
   return Math.ceil(diff / (1000 * 60 * 60 * 24))
 }
@@ -341,15 +216,12 @@ function getUrgencyText(item: ComplianceItem): string {
 
 // Calendar helper: March 2026 starts on Sunday (day 0), 31 days
 function getCalendarGrid(): (number | null)[][] {
-  // March 2026: Sunday March 1 is day 0 (Sunday)
-  // First day of March 2026 is a Sunday
   const firstDayOfWeek = 0 // Sunday = 0
   const daysInMonth = 31
 
   const grid: (number | null)[][] = []
   let currentDay = 1
 
-  // Build weeks
   const firstWeek: (number | null)[] = []
   for (let i = 0; i < 7; i++) {
     if (i < firstDayOfWeek) {
@@ -383,7 +255,6 @@ function getItemsForDay(day: number, items: ComplianceItem[]): ComplianceItem[] 
   })
 }
 
-// Group items by week for timeline view
 function getWeekLabel(date: Date): string {
   const day = date.getDate()
   const month = date.toLocaleDateString("en-GB", { month: "short" })
@@ -428,10 +299,11 @@ function AssigneeAvatar({ initials, name }: { initials: string; name: string }) 
 
 function CategoryBadge({ category }: { category: ComplianceCategory }) {
   const s = CATEGORY_STYLES[category]
+  const label = category === "FINANCIAL" ? "Financial" : category.charAt(0) + category.slice(1).toLowerCase()
   return (
     <span className={`inline-flex items-center gap-1.5 rounded border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${s.bg} ${s.text} border-current/20`}>
       <span className={`h-1.5 w-1.5 rounded-full ${s.dot}`} />
-      {category}
+      {label}
     </span>
   )
 }
@@ -448,7 +320,7 @@ function StatusBadge({ status }: { status: ComplianceStatus }) {
 
 function FrequencyPill({ frequency }: { frequency: Frequency }) {
   return (
-    <span className={`inline-flex items-center gap-1 rounded border px-2 py-0.5 text-[10px] font-medium ${FREQUENCY_STYLES[frequency]}`}>
+    <span className={`inline-flex items-center gap-1 rounded border px-2 py-0.5 text-[10px] font-medium ${FREQUENCY_STYLES[frequency] ?? FREQUENCY_STYLES["One-off"]}`}>
       <RefreshCw className="h-2.5 w-2.5" />
       {frequency}
     </span>
@@ -456,19 +328,11 @@ function FrequencyPill({ frequency }: { frequency: Frequency }) {
 }
 
 function SummaryBar() {
-  const overdue = COMPLIANCE_ITEMS.filter((i) => i.status === "OVERDUE").length
-  const dueSoon = COMPLIANCE_ITEMS.filter((i) => i.status === "DUE_SOON").length
-  // "Due This Month" = items due in March 2026 that are not completed
-  const dueThisMonth = COMPLIANCE_ITEMS.filter(
-    (i) => i.dueDate.getMonth() === 2 && i.dueDate.getFullYear() === 2026 && i.status !== "COMPLETED"
-  ).length
-  const completed = COMPLIANCE_ITEMS.filter((i) => i.status === "COMPLETED").length
-
   const cards = [
-    { label: "Overdue", value: overdue, bg: "bg-red-500/10 border-red-500/20", text: "text-red-700 dark:text-red-400", icon: AlertTriangle, iconColor: "text-red-500" },
-    { label: "Due This Week", value: dueSoon, bg: "bg-amber-500/10 border-amber-500/20", text: "text-amber-700 dark:text-amber-400", icon: Clock, iconColor: "text-amber-500" },
-    { label: "Due This Month", value: dueThisMonth, bg: "bg-blue-500/10 border-blue-500/20", text: "text-blue-700 dark:text-blue-400", icon: CalendarDays, iconColor: "text-blue-500" },
-    { label: "Completed", value: completed, bg: "bg-green-500/10 border-green-500/20", text: "text-green-700 dark:text-green-400", icon: CheckCircle2, iconColor: "text-green-500" },
+    { label: "Overdue", value: overdueCount, bg: "bg-red-500/10 border-red-500/20", text: "text-red-700 dark:text-red-400", icon: AlertTriangle, iconColor: "text-red-500" },
+    { label: "Due Soon", value: dueSoonCount, bg: "bg-amber-500/10 border-amber-500/20", text: "text-amber-700 dark:text-amber-400", icon: Clock, iconColor: "text-amber-500" },
+    { label: "Upcoming", value: upcomingCount, bg: "bg-blue-500/10 border-blue-500/20", text: "text-blue-700 dark:text-blue-400", icon: CalendarDays, iconColor: "text-blue-500" },
+    { label: "Completed", value: completedThisMonth, bg: "bg-green-500/10 border-green-500/20", text: "text-green-700 dark:text-green-400", icon: CheckCircle2, iconColor: "text-green-500" },
   ]
 
   return (
@@ -550,6 +414,10 @@ function FilterBar({
 }) {
   const hasFilters = statusFilter !== "all" || categoryFilter !== "all" || siteFilter !== "all" || assignedFilter !== "all"
 
+  // Derive unique site names from shared data
+  const uniqueSites = [...new Set(COMPLIANCE_ITEMS.map((i) => i.site).filter(Boolean))]
+  const uniqueAssignees = [...new Set(COMPLIANCE_ITEMS.map((i) => i.assigned))]
+
   return (
     <div className="flex items-center gap-2 flex-wrap">
       <div className="flex items-center gap-1 text-xs text-muted-foreground">
@@ -579,6 +447,7 @@ function FilterBar({
           <SelectItem value="MONITORING">Monitoring</SelectItem>
           <SelectItem value="LEGAL">Legal</SelectItem>
           <SelectItem value="REGISTRATION">Registration</SelectItem>
+          <SelectItem value="FINANCIAL">Financial</SelectItem>
         </SelectContent>
       </Select>
 
@@ -588,12 +457,9 @@ function FilterBar({
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="all">All Sites</SelectItem>
-          <SelectItem value="Whiteley Farm">Whiteley Farm</SelectItem>
-          <SelectItem value="Botley Meadows">Botley Meadows</SelectItem>
-          <SelectItem value="Hamble Wetlands">Hamble Wetlands</SelectItem>
-          <SelectItem value="Manor Fields">Manor Fields</SelectItem>
-          <SelectItem value="D-0035">D-0035</SelectItem>
-          <SelectItem value="D-0038">D-0038</SelectItem>
+          {uniqueSites.map((site) => (
+            <SelectItem key={site} value={site}>{site}</SelectItem>
+          ))}
         </SelectContent>
       </Select>
 
@@ -603,9 +469,9 @@ function FilterBar({
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="all">All Assignees</SelectItem>
-          <SelectItem value="Tom Jenkins">Tom Jenkins</SelectItem>
-          <SelectItem value="James Harris">James Harris</SelectItem>
-          <SelectItem value="Sarah Croft">Sarah Croft</SelectItem>
+          {uniqueAssignees.map((name) => (
+            <SelectItem key={name} value={name}>{name}</SelectItem>
+          ))}
         </SelectContent>
       </Select>
 
@@ -635,7 +501,7 @@ function CalendarGridView({ items }: { items: ComplianceItem[] }) {
   const [selectedDay, setSelectedDay] = useState<number | null>(null)
   const grid = getCalendarGrid()
   const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
-  const today = 7 // March 7, 2026
+  const today = 8 // March 8, 2026
 
   const selectedDayItems = selectedDay ? getItemsForDay(selectedDay, items) : []
 
@@ -666,7 +532,7 @@ function CalendarGridView({ items }: { items: ComplianceItem[] }) {
             Upcoming
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-full bg-gray-400" />
+            <span className="h-2 w-2 rounded-full bg-muted-foreground/50" />
             Completed
           </span>
         </div>
@@ -819,7 +685,10 @@ function CalendarGridView({ items }: { items: ComplianceItem[] }) {
 function ComplianceRow({ item }: { item: ComplianceItem }) {
   const statusStyle = STATUS_STYLES[item.status]
   return (
-    <div className={`flex items-center gap-4 px-4 py-3 hover:bg-accent/30 transition-colors`}>
+    <Link
+      href={`/admin/brokerage-mockups/compliance/${item.id}`}
+      className={`flex items-center gap-4 px-4 py-3 hover:bg-accent/30 transition-colors`}
+    >
       {/* Status indicator */}
       <div className={`w-1 self-stretch rounded-full shrink-0 ${statusStyle.dot}`} />
 
@@ -833,15 +702,15 @@ function ComplianceRow({ item }: { item: ComplianceItem }) {
           <span className="flex items-center gap-1">
             <MapPin className="h-3 w-3" />
             {item.dealRef ? (
-              <Link href={`/admin/brokerage-mockups/deals/${item.dealRef}`} className="text-primary font-medium hover:underline">{item.dealRef}</Link>
+              <span className="text-primary font-medium">{item.dealRef} {item.dealTitle}</span>
             ) : (
               <span>
                 {item.siteRef ? (
-                  <Link href={`/admin/brokerage-mockups/sites/${item.siteRef}`} className="hover:text-primary transition-colors">{item.site}</Link>
+                  <span className="hover:text-primary transition-colors">{item.site}</span>
                 ) : (
                   item.site
                 )}
-                {item.siteRef && <Link href={`/admin/brokerage-mockups/sites/${item.siteRef}`} className="text-muted-foreground/60 hover:text-primary ml-1">({item.siteRef})</Link>}
+                {item.siteRef && <span className="text-muted-foreground/60 ml-1">({item.siteRef})</span>}
               </span>
             )}
           </span>
@@ -861,7 +730,7 @@ function ComplianceRow({ item }: { item: ComplianceItem }) {
         <AssigneeAvatar initials={item.assignedInitials} name={item.assigned} />
         <StatusBadge status={item.status} />
       </div>
-    </div>
+    </Link>
   )
 }
 
@@ -971,8 +840,9 @@ function ListView({ items }: { items: ComplianceItem[] }) {
               {groupItems.map((item, idx) => {
                 const s = STATUS_STYLES[item.status]
                 return (
-                  <div
+                  <Link
                     key={item.id}
+                    href={`/admin/brokerage-mockups/compliance/${item.id}`}
                     className={`grid grid-cols-[1fr_100px_140px_140px_90px_80px_90px] gap-2 px-4 py-2.5 items-center hover:bg-accent/30 transition-colors ${
                       idx < groupItems.length - 1 ? "border-b border-border" : ""
                     }`}
@@ -986,16 +856,16 @@ function ListView({ items }: { items: ComplianceItem[] }) {
                     <CategoryBadge category={item.category} />
                     <div className="text-xs text-muted-foreground truncate">
                       {item.dealRef ? (
-                        <Link href={`/admin/brokerage-mockups/deals/${item.dealRef}`} className="text-primary font-medium hover:underline">{item.dealRef}</Link>
+                        <span className="text-primary font-medium">{item.dealRef}</span>
                       ) : (
                         <span>
                           {item.siteRef ? (
-                            <Link href={`/admin/brokerage-mockups/sites/${item.siteRef}`} className="hover:text-primary transition-colors">{item.site}</Link>
+                            <span className="hover:text-primary transition-colors">{item.site}</span>
                           ) : (
                             item.site
                           )}
                           {item.siteRef && (
-                            <Link href={`/admin/brokerage-mockups/sites/${item.siteRef}`} className="text-muted-foreground/60 hover:text-primary ml-1">({item.siteRef})</Link>
+                            <span className="text-muted-foreground/60 ml-1">({item.siteRef})</span>
                           )}
                         </span>
                       )}
@@ -1010,7 +880,7 @@ function ListView({ items }: { items: ComplianceItem[] }) {
                     <FrequencyPill frequency={item.frequency} />
                     <AssigneeAvatar initials={item.assignedInitials} name={item.assigned} />
                     <StatusBadge status={item.status} />
-                  </div>
+                  </Link>
                 )
               })}
             </div>
@@ -1026,7 +896,6 @@ function ListView({ items }: { items: ComplianceItem[] }) {
 // ---------------------------------------------------------------------------
 
 function TimelineView({ items }: { items: ComplianceItem[] }) {
-  // Group items by week
   const sorted = [...items].sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime())
 
   const weekGroups: { key: string; label: string; items: ComplianceItem[] }[] = []
@@ -1072,12 +941,12 @@ function TimelineView({ items }: { items: ComplianceItem[] }) {
             <div className="space-y-3 ml-[160px]">
               {group.items.map((item) => {
                 const statusStyle = STATUS_STYLES[item.status]
-                const categoryStyle = CATEGORY_STYLES[item.category]
 
                 return (
-                  <div
+                  <Link
                     key={item.id}
-                    className={`relative rounded-lg border p-4 hover:shadow-sm transition-all ${statusStyle.border} bg-card`}
+                    href={`/admin/brokerage-mockups/compliance/${item.id}`}
+                    className={`relative block rounded-lg border p-4 hover:shadow-sm transition-all ${statusStyle.border} bg-card`}
                   >
                     {/* Timeline connector dot */}
                     <div
@@ -1098,15 +967,15 @@ function TimelineView({ items }: { items: ComplianceItem[] }) {
                           <span className="flex items-center gap-1">
                             <MapPin className="h-3 w-3" />
                             {item.dealRef ? (
-                              <Link href={`/admin/brokerage-mockups/deals/${item.dealRef}`} className="text-primary font-medium hover:underline">{item.dealRef}</Link>
+                              <span className="text-primary font-medium">{item.dealRef} {item.dealTitle}</span>
                             ) : (
                               <span>
                                 {item.siteRef ? (
-                                  <Link href={`/admin/brokerage-mockups/sites/${item.siteRef}`} className="hover:text-primary transition-colors">{item.site}</Link>
+                                  <span className="hover:text-primary transition-colors">{item.site}</span>
                                 ) : (
                                   item.site
                                 )}
-                                {item.siteRef && <Link href={`/admin/brokerage-mockups/sites/${item.siteRef}`} className="opacity-60 hover:text-primary ml-1">({item.siteRef})</Link>}
+                                {item.siteRef && <span className="opacity-60 ml-1">({item.siteRef})</span>}
                               </span>
                             )}
                           </span>
@@ -1133,10 +1002,10 @@ function TimelineView({ items }: { items: ComplianceItem[] }) {
                         <span>Assigned to <span className="font-medium text-foreground">{item.assigned}</span></span>
                       </div>
                       {item.status !== "COMPLETED" && (
-                        <button className="inline-flex items-center gap-1 text-[10px] font-medium text-primary hover:text-primary/80 transition-colors">
+                        <span className="inline-flex items-center gap-1 text-[10px] font-medium text-primary">
                           <Eye className="h-3 w-3" />
                           View Details
-                        </button>
+                        </span>
                       )}
                       {item.status === "COMPLETED" && item.completedDate && (
                         <span className="inline-flex items-center gap-1 text-[10px] text-green-600 dark:text-green-400 font-medium">
@@ -1145,7 +1014,7 @@ function TimelineView({ items }: { items: ComplianceItem[] }) {
                         </span>
                       )}
                     </div>
-                  </div>
+                  </Link>
                 )
               })}
             </div>
@@ -1194,7 +1063,7 @@ export default function ComplianceCalendarPage() {
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <span className="text-xs text-muted-foreground">
-            {new Date(2026, 2, 7).toLocaleDateString("en-GB", {
+            {new Date(2026, 2, 8).toLocaleDateString("en-GB", {
               weekday: "long",
               day: "numeric",
               month: "long",
@@ -1248,6 +1117,10 @@ export default function ComplianceCalendarPage() {
             <span className="flex items-center gap-1.5">
               <span className="h-2 w-2 rounded-full bg-blue-500" />
               Registration
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full bg-indigo-500" />
+              Financial
             </span>
           </div>
         </div>
