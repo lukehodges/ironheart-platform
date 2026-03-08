@@ -63,6 +63,19 @@ const DEALS_BY_STAGE = [
   { stage: "Contract Signed", count: 1, value: 114000, color: "#22c55e" },
 ]
 
+const LIFECYCLE_STAGES = [
+  { stage: "Prospect", count: 5, color: "#94a3b8" },
+  { stage: "Assess", count: 3, color: "#60a5fa" },
+  { stage: "Legal", count: 2, color: "#818cf8" },
+  { stage: "Match", count: 3, color: "#a78bfa" },
+  { stage: "Quote", count: 2, color: "#f59e0b" },
+  { stage: "Agreement", count: 1, color: "#fb923c" },
+  { stage: "Payment", count: 1, color: "#eab308" },
+  { stage: "Allocate", count: 1, color: "#34d399" },
+  { stage: "Confirm", count: 1, color: "#22c55e" },
+  { stage: "Compliance", count: 1, color: "#10b981" },
+]
+
 const CREDITS_GAUGE = [
   { name: "Allocated", value: 260, color: "#3b82f6" },
   { name: "Available", value: 295, color: "#22c55e" },
@@ -324,6 +337,40 @@ function DashboardV1({ dateRange, setDateRange }: { dateRange: DateRange; setDat
           </CardContent>
         </Card>
       </div>
+
+      {/* Deal Lifecycle Funnel */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-semibold flex items-center gap-2">
+            <Activity className="h-4 w-4 text-muted-foreground" />
+            Deal Lifecycle
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-end gap-1 h-[100px]">
+            {LIFECYCLE_STAGES.map((s) => {
+              const maxCount = Math.max(...LIFECYCLE_STAGES.map(ls => ls.count), 1);
+              const height = Math.max((s.count / maxCount) * 80, 4);
+              return (
+                <Link
+                  key={s.stage}
+                  href={`/admin/brokerage-mockups/deals?stage=${encodeURIComponent(s.stage)}`}
+                  className="flex-1 flex flex-col items-center gap-1 group"
+                >
+                  <span className="text-[10px] font-bold text-foreground">{s.count}</span>
+                  <div
+                    className="w-full rounded-t transition-all group-hover:opacity-80"
+                    style={{ height: `${height}px`, background: s.color }}
+                  />
+                  <span className="text-[9px] text-muted-foreground text-center leading-tight truncate w-full">
+                    {s.stage}
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Lists Row */}
       <div className="grid grid-cols-2 gap-4">

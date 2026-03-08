@@ -7,3 +7,4 @@ export * from "./assessments";
 export * from "./documents";
 export * from "./compliance";
 export * from "./financials";
+export * from "./lifecycle";

@@ -45,7 +45,9 @@ import {
   deals as sharedDeals,
   contacts as sharedContacts,
   sites as sharedSites,
+  getDealLifecycle,
 } from "../../_mock-data"
+import { DealLifecycleBar } from "../../_components/deal-lifecycle-bar"
 
 // ============================================================================
 // HARDCODED DATA
@@ -1408,6 +1410,25 @@ export default function DealDetailPage() {
           <ChevronRight className="h-3 w-3" />
           <span className="text-foreground font-medium">{deal.id}</span>
         </nav>
+
+        {/* LIFECYCLE BAR */}
+        {(() => {
+          const sharedDeal = sharedDeals.find(d => d.id === dealId);
+          if (!sharedDeal) return null;
+          const lifecycle = getDealLifecycle(sharedDeal.id, sharedDeal.stage, sharedDeal.side);
+          return (
+            <Card className="mb-6">
+              <CardContent className="py-3 px-4">
+                <DealLifecycleBar
+                  currentStage={lifecycle.currentStage}
+                  completedStages={lifecycle.completedStages}
+                  track={lifecycle.track}
+                  dealId={dealId}
+                />
+              </CardContent>
+            </Card>
+          );
+        })()}
 
         {/* HEADER */}
         <div className="mb-6">
