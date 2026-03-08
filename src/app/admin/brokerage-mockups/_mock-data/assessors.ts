@@ -1,0 +1,77 @@
+import type { Assessor } from "./types";
+
+export const assessors: Assessor[] = [
+  {
+    id: "A-001",
+    name: "Sarah Chen",
+    initials: "SC",
+    specialism: ["NN Baseline", "Nutrient Neutrality", "Water Quality"],
+    region: "Solent / Hampshire",
+    email: "s.chen@ecologyconsultants.co.uk",
+    phone: "07700 123456",
+    avatarColor: "bg-emerald-500",
+    availability: [
+      "2026-03-10", "2026-03-11", "2026-03-13", "2026-03-17",
+      "2026-03-18", "2026-03-20", "2026-03-24", "2026-03-25",
+      "2026-03-27", "2026-03-31",
+    ],
+  },
+  {
+    id: "A-002",
+    name: "David Park",
+    initials: "DP",
+    specialism: ["BNG Habitat Survey", "Biodiversity Metric 4.0", "Habitat Classification"],
+    region: "Hampshire-wide",
+    email: "d.park@wildlifesurveys.co.uk",
+    phone: "07700 234567",
+    avatarColor: "bg-blue-500",
+    availability: [
+      "2026-03-12", "2026-03-14", "2026-03-18", "2026-03-19",
+      "2026-03-21", "2026-03-25", "2026-03-26", "2026-03-28",
+    ],
+  },
+  {
+    id: "A-003",
+    name: "Emma Walsh",
+    initials: "EW",
+    specialism: ["Annual Monitoring", "Compliance Reporting", "Water Quality"],
+    region: "Hampshire / Dorset",
+    email: "e.walsh@enviromonitor.co.uk",
+    phone: "07700 345678",
+    avatarColor: "bg-amber-500",
+    availability: [
+      "2026-03-11", "2026-03-12", "2026-03-13", "2026-03-17",
+      "2026-03-19", "2026-03-20", "2026-03-24", "2026-03-26",
+      "2026-03-27", "2026-03-31",
+    ],
+  },
+  {
+    id: "A-004",
+    name: "Tom Briggs",
+    initials: "TB",
+    specialism: ["NN Baseline", "BNG Habitat Survey"],
+    region: "Solent / South Hampshire",
+    email: "t.briggs@greenassess.co.uk",
+    phone: "07700 456789",
+    avatarColor: "bg-violet-500",
+    availability: [
+      "2026-03-10", "2026-03-13", "2026-03-14", "2026-03-17",
+      "2026-03-20", "2026-03-21", "2026-03-24", "2026-03-25",
+      "2026-03-28", "2026-03-31",
+    ],
+  },
+  {
+    id: "A-005",
+    name: "Lisa Grant",
+    initials: "LG",
+    specialism: ["Carbon Assessment", "BNG Habitat Survey", "Peatland"],
+    region: "Hampshire / Wiltshire",
+    email: "l.grant@independentecology.co.uk",
+    phone: "07700 567890",
+    avatarColor: "bg-rose-500",
+    availability: [
+      "2026-03-11", "2026-03-14", "2026-03-18", "2026-03-21",
+      "2026-03-25", "2026-03-28",
+    ],
+  },
+];
