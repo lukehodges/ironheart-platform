@@ -107,13 +107,13 @@ export const schedulingService = {
             current = nextDay;
           }
         } else {
-          // No day-of-week filter — jump by interval weeks at a time
+          // No day-of-week filter - jump by interval weeks at a time
           current = addWeeks(current, interval);
         }
       } else if (frequency === "monthly") {
         current = addMonths(current, interval);
       } else {
-        // Unknown frequency — bail out to prevent an infinite loop
+        // Unknown frequency - bail out to prevent an infinite loop
         break;
       }
     }

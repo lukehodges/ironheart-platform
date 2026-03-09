@@ -56,7 +56,7 @@ function formatDate(date: Date | string): string {
 }
 
 function formatPrice(amount: number | null | undefined): string {
-  if (amount == null) return "—"
+  if (amount == null) return "-"
   return new Intl.NumberFormat("en-GB", {
     style: "currency",
     currency: "GBP",
@@ -160,7 +160,7 @@ export default function BookingDetailSheet({
     }
   )
 
-  // Fetch customer (separate query — only when we have customerId)
+  // Fetch customer (separate query - only when we have customerId)
   const { data: customer } = api.customer.getById.useQuery(
     { id: booking?.customerId ?? "" },
     {
@@ -278,7 +278,7 @@ export default function BookingDetailSheet({
               <DetailRow
                 icon={FileText}
                 label="Service"
-                value={booking.customServiceName ?? "—"}
+                value={booking.customServiceName ?? "-"}
               />
 
               {/* Date & Time */}
@@ -293,7 +293,7 @@ export default function BookingDetailSheet({
                 value={
                   <>
                     {booking.scheduledTime}
-                    {booking.endTime ? ` — ${booking.endTime}` : ""}
+                    {booking.endTime ? ` - ${booking.endTime}` : ""}
                     <span className="ml-1.5 text-xs text-muted-foreground">
                       ({booking.durationMinutes} min)
                     </span>
@@ -429,7 +429,7 @@ export default function BookingDetailSheet({
         {booking && (
           <div className="shrink-0 border-t border-border px-6 py-4">
             <div className="flex flex-wrap items-center gap-2">
-              {/* Confirm — only shown when not already confirmed/completed/cancelled */}
+              {/* Confirm - only shown when not already confirmed/completed/cancelled */}
               {(booking.status === "PENDING" || booking.status === "APPROVED" || booking.status === "RESERVED") && (
                 <Button
                   size="sm"
@@ -447,7 +447,7 @@ export default function BookingDetailSheet({
                 </Button>
               )}
 
-              {/* Cancel — not shown if already cancelled/completed */}
+              {/* Cancel - not shown if already cancelled/completed */}
               {booking.status !== "CANCELLED" &&
                 booking.status !== "COMPLETED" &&
                 booking.status !== "NO_SHOW" && (

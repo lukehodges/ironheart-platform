@@ -1,18 +1,18 @@
 // ──────────────────────────────────────────────────────────────────────────────
-// Workflow Repository — pure Drizzle DB queries, no business logic
+// Workflow Repository - pure Drizzle DB queries, no business logic
 // ──────────────────────────────────────────────────────────────────────────────
 //
 // Schema vs. type mapping notes:
 //  - workflows.enabled  ↔  WorkflowRecord.isActive  (DB uses "enabled")
 //  - workflows.delay    ↔  WorkflowRecord.delay      (DB is integer minutes;
-//    WorkflowRecord expects string | null — stored as ISO-8601 string in types
+//    WorkflowRecord expects string | null - stored as ISO-8601 string in types
 //    but DB stores integer. We cast to string on read and parse on write.)
-//  - workflows table has NO deletedAt column — softDelete uses enabled=false only.
+//  - workflows table has NO deletedAt column - softDelete uses enabled=false only.
 //  - workflowActions has NO tenantId column on the DB table.
 //  - workflowExecutions.errorMessage  ↔  WorkflowExecutionRecord.error
 //  - workflowExecutions status enum is UPPERCASE in DB (PENDING/RUNNING/etc.)
-//    but WorkflowExecutionRecord uses lowercase — we lowercase on read, uppercase on write.
-//  - workflowExecutions has no bookingId column — findExecution matches on
+//    but WorkflowExecutionRecord uses lowercase - we lowercase on read, uppercase on write.
+//  - workflowExecutions has no bookingId column - findExecution matches on
 //    (workflowId, triggerEvent) only; bookingId param is matched inside triggerData.
 // ──────────────────────────────────────────────────────────────────────────────
 
@@ -39,7 +39,7 @@ import type {
 const log = logger.child({ module: 'workflow.repository' })
 
 // ──────────────────────────────────────────────────────────────────────────────
-// Row mappers — reconcile DB column names with WorkflowRecord interface
+// Row mappers - reconcile DB column names with WorkflowRecord interface
 // ──────────────────────────────────────────────────────────────────────────────
 
 type WorkflowDbRow = typeof workflows.$inferSelect
@@ -63,7 +63,7 @@ function mapWorkflowRow(row: WorkflowDbRow): WorkflowRecord {
     delay: row.delay != null ? String(row.delay) : null,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
-    // workflows table has no deletedAt column — always null
+    // workflows table has no deletedAt column - always null
     deletedAt: null,
   }
 }
@@ -72,7 +72,7 @@ function mapActionRow(row: WorkflowActionDbRow): WorkflowActionRecord {
   return {
     id: row.id,
     workflowId: row.workflowId,
-    // workflowActions table has no tenantId column — set to empty string sentinel
+    // workflowActions table has no tenantId column - set to empty string sentinel
     // The service layer must supply tenantId context separately when needed
     tenantId: '',
     actionType: row.actionType as WorkflowActionRecord['actionType'],
@@ -238,7 +238,7 @@ export const workflowRepository = {
 
   async softDelete(tenantId: string, workflowId: string): Promise<void> {
     log.debug({ workflowId, tenantId }, 'softDelete called')
-    // workflows table has no deletedAt column — disable only
+    // workflows table has no deletedAt column - disable only
     const [row] = await db
       .update(workflows)
       .set({ enabled: false, updatedAt: new Date() })
@@ -249,7 +249,7 @@ export const workflowRepository = {
   },
 
   // ────────────────────────────────────────────────────────────────────────────
-  // Linear mode — workflowActions (ordered)
+  // Linear mode - workflowActions (ordered)
   // ────────────────────────────────────────────────────────────────────────────
 
   async findActionsByWorkflowId(workflowId: string): Promise<WorkflowActionRecord[]> {
@@ -266,7 +266,7 @@ export const workflowRepository = {
     input: Omit<WorkflowActionRecord, 'id' | 'createdAt'>
   ): Promise<WorkflowActionRecord> {
     log.debug({ workflowId: input.workflowId, actionType: input.actionType }, 'createAction called')
-    // Note: workflowActions table has no tenantId column — tenantId from input is not stored
+    // Note: workflowActions table has no tenantId column - tenantId from input is not stored
     const [row] = await db
       .insert(workflowActions)
       .values({
@@ -356,7 +356,7 @@ export const workflowRepository = {
     bookingId: string
   ): Promise<WorkflowExecutionRecord | null> {
     log.debug({ workflowId, triggerEvent, bookingId }, 'findExecution called')
-    // Idempotency check — workflowExecutions has no bookingId column.
+    // Idempotency check - workflowExecutions has no bookingId column.
     // We match on (workflowId, triggerEvent) and filter by bookingId inside triggerData.
     // Using Postgres JSON path: triggerData->>'bookingId' = bookingId
     const rows = await db

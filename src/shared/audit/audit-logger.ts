@@ -51,14 +51,14 @@ export async function auditLog(input: AuditLogInput, tx?: { insert: typeof db.in
     })
 
   if (tx) {
-    // Transactional mode — let errors propagate to roll back the transaction
+    // Transactional mode - let errors propagate to roll back the transaction
     await doInsert()
     log.info(
       { action: input.action, resourceType: input.resourceType, resourceId: input.resourceId },
       'Audit log entry written (transactional)'
     )
   } else {
-    // Fire-and-forget — never break business logic
+    // Fire-and-forget - never break business logic
     try {
       await doInsert()
       log.info(

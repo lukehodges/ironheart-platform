@@ -81,7 +81,7 @@ const TENANT = 'tenant-1'
 const USER = 'user-1'
 
 // ---------------------------------------------------------------------------
-// requestAssignment — capacity enforcement
+// requestAssignment - capacity enforcement
 // ---------------------------------------------------------------------------
 
 describe('resourcePoolService.requestAssignment', () => {

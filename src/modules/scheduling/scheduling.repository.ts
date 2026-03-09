@@ -236,7 +236,7 @@ export const schedulingRepository = {
     userId: string,
     date: Date,
   ): Promise<Array<typeof userAvailability.$inferSelect>> {
-    // userAvailability has no tenantId column — queried by userId only
+    // userAvailability has no tenantId column - queried by userId only
     const dayOfWeek = date.getDay(); // 0=Sun, 6=Sat
 
     return db

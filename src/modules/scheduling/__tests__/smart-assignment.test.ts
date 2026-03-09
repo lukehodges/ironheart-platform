@@ -34,7 +34,7 @@ function makeCtx(overrides: Partial<AssignmentContext> = {}): AssignmentContext 
 // No candidates
 // ---------------------------------------------------------------------------
 
-describe('selectStaff — no candidates', () => {
+describe('selectStaff - no candidates', () => {
   it('returns null when candidate list is empty for any strategy', () => {
     const ctx = makeCtx()
     expect(selectStaff([], 'ROUND_ROBIN',  ctx)).toBeNull()
@@ -49,7 +49,7 @@ describe('selectStaff — no candidates', () => {
 // Single candidate
 // ---------------------------------------------------------------------------
 
-describe('selectStaff — single candidate', () => {
+describe('selectStaff - single candidate', () => {
   it('always returns the single candidate regardless of strategy', () => {
     const staff = makeStaff({ userId: 'only-one' })
     const ctx   = makeCtx()
@@ -65,7 +65,7 @@ describe('selectStaff — single candidate', () => {
 // PREFERRED strategy
 // ---------------------------------------------------------------------------
 
-describe('selectStaff — PREFERRED strategy', () => {
+describe('selectStaff - PREFERRED strategy', () => {
   it('returns the preferred staff when they are in the candidate list', () => {
     const alice = makeStaff({ userId: 'alice' })
     const bob   = makeStaff({ userId: 'bob' })
@@ -109,7 +109,7 @@ describe('selectStaff — PREFERRED strategy', () => {
 // ROUND_ROBIN strategy
 // ---------------------------------------------------------------------------
 
-describe('selectStaff — ROUND_ROBIN strategy', () => {
+describe('selectStaff - ROUND_ROBIN strategy', () => {
   it('picks the candidate with null lastAssignedAt (never assigned) first', () => {
     const alice = makeStaff({ userId: 'alice', lastAssignedAt: new Date('2026-01-10') })
     const bob   = makeStaff({ userId: 'bob',   lastAssignedAt: null })
@@ -153,7 +153,7 @@ describe('selectStaff — ROUND_ROBIN strategy', () => {
 // LEAST_LOADED strategy
 // ---------------------------------------------------------------------------
 
-describe('selectStaff — LEAST_LOADED strategy', () => {
+describe('selectStaff - LEAST_LOADED strategy', () => {
   it('selects the staff member with the fewest bookings today', () => {
     const alice = makeStaff({ userId: 'alice', bookingsToday: 5 })
     const bob   = makeStaff({ userId: 'bob',   bookingsToday: 2 })
@@ -190,7 +190,7 @@ describe('selectStaff — LEAST_LOADED strategy', () => {
 // SKILL_MATCH strategy
 // ---------------------------------------------------------------------------
 
-describe('selectStaff — SKILL_MATCH strategy', () => {
+describe('selectStaff - SKILL_MATCH strategy', () => {
   it('selects staff who has all required skills', () => {
     const alice = makeStaff({ userId: 'alice', skills: ['massage', 'aromatherapy'] })
     const bob   = makeStaff({ userId: 'bob',   skills: ['massage'] })
@@ -250,7 +250,7 @@ describe('selectStaff — SKILL_MATCH strategy', () => {
 // GEOGRAPHIC strategy
 // ---------------------------------------------------------------------------
 
-describe('selectStaff — GEOGRAPHIC strategy', () => {
+describe('selectStaff - GEOGRAPHIC strategy', () => {
   // London: 51.5074, -0.1278
   // Manchester: 53.4808, -2.2426  (~265 km from London)
   // Birmingham: 52.4862, -1.8904  (~160 km from London)
@@ -324,7 +324,7 @@ describe('selectStaff — GEOGRAPHIC strategy', () => {
 // Default / unknown strategy
 // ---------------------------------------------------------------------------
 
-describe('selectStaff — unknown strategy falls back to round-robin', () => {
+describe('selectStaff - unknown strategy falls back to round-robin', () => {
   it('uses round-robin for unrecognized strategy types', () => {
     const alice = makeStaff({ userId: 'alice', lastAssignedAt: null })
     const bob   = makeStaff({ userId: 'bob',   lastAssignedAt: new Date() })

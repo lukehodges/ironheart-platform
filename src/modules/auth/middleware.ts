@@ -47,7 +47,7 @@ export async function ironheartMiddleware(
   // Inject tenant headers for all requests.
   const requestHeaders = injectTenantHeaders(req);
 
-  // Legacy rollback path — no WorkOS auth enforcement.
+  // Legacy rollback path - no WorkOS auth enforcement.
   if (AUTH_PROVIDER === "legacy") {
     return NextResponse.next({ request: { headers: requestHeaders } });
   }

@@ -193,7 +193,7 @@ const MATCHES: Record<string, PropertyMatch[]> = {
   r1: [
     {
       id: "p1",
-      name: "Baglan Energy Park — Unit 12",
+      name: "Baglan Energy Park - Unit 12",
       address: "Brunel Way, Baglan, Neath",
       propertyType: "Industrial",
       sizeSqft: 8500,
@@ -223,7 +223,7 @@ const MATCHES: Record<string, PropertyMatch[]> = {
       address: "Cwmdu, Swansea SA5",
       propertyType: "Industrial",
       sizeSqft: 5800,
-      sizeNote: "Below minimum — 2,200 sqft short",
+      sizeNote: "Below minimum - 2,200 sqft short",
       price: 29000,
       priceLabel: "£29,000 pa",
       locationArea: "Swansea",
@@ -258,7 +258,7 @@ const MATCHES: Record<string, PropertyMatch[]> = {
     },
     {
       id: "p6",
-      name: "Bridgend Business Centre — Suite 7",
+      name: "Bridgend Business Centre - Suite 7",
       address: "Bridgend Business Centre, CF31",
       propertyType: "Office",
       sizeSqft: 620,
@@ -441,7 +441,7 @@ function PropertyMatchCard({ match, rank }: { match: PropertyMatch; rank: number
           <div className="flex items-center gap-2 py-2">
             <div className="h-2 w-2 rounded-full bg-amber-400 animate-pulse" />
             <p className="text-[12px] text-stone-400 italic">
-              Match details loading — data pending confirmation
+              Match details loading - data pending confirmation
             </p>
           </div>
         ) : (
@@ -727,7 +727,7 @@ export default function RequirementsMatcherPage() {
                 Requirements Matcher
               </h1>
               <p className="text-[12px] text-stone-400 mt-0.5">
-                Live scoring — match active buyer & tenant requirements against available stock
+                Live scoring - match active buyer & tenant requirements against available stock
                 &nbsp;·&nbsp;{new Date("2026-03-04").toLocaleDateString("en-GB", {
                   day: "numeric",
                   month: "long",
@@ -812,11 +812,11 @@ export default function RequirementsMatcherPage() {
               </p>
               <div className="flex items-center gap-1.5">
                 <div className="h-2 w-2 rounded-sm bg-red-200 border border-red-300" />
-                <span className="text-[10px] text-stone-500">Red tint — no matches found</span>
+                <span className="text-[10px] text-stone-500">Red tint - no matches found</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <div className="h-2 w-2 rounded-sm bg-blue-400 border border-blue-500" />
-                <span className="text-[10px] text-stone-500">Blue border — selected</span>
+                <span className="text-[10px] text-stone-500">Blue border - selected</span>
               </div>
             </div>
           </div>

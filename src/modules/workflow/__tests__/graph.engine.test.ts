@@ -68,7 +68,7 @@ function makeMockStep() {
 // IF node
 // ---------------------------------------------------------------------------
 
-describe('GraphEngine — IF node', () => {
+describe('GraphEngine - IF node', () => {
   beforeEach(() => { vi.clearAllMocks() })
 
   it('routes to "true" edge when condition group passes', async () => {
@@ -136,7 +136,7 @@ describe('GraphEngine — IF node', () => {
 // SWITCH node
 // ---------------------------------------------------------------------------
 
-describe('GraphEngine — SWITCH node', () => {
+describe('GraphEngine - SWITCH node', () => {
   beforeEach(() => { vi.clearAllMocks() })
 
   it('routes to matching case edge', async () => {
@@ -201,7 +201,7 @@ describe('GraphEngine — SWITCH node', () => {
 // LOOP node
 // ---------------------------------------------------------------------------
 
-describe('GraphEngine — LOOP node', () => {
+describe('GraphEngine - LOOP node', () => {
   beforeEach(() => { vi.clearAllMocks() })
 
   it('sequential mode: iterates all items in order', async () => {
@@ -305,7 +305,7 @@ describe('GraphEngine — LOOP node', () => {
 // SET_VARIABLE node
 // ---------------------------------------------------------------------------
 
-describe('GraphEngine — SET_VARIABLE node', () => {
+describe('GraphEngine - SET_VARIABLE node', () => {
   beforeEach(() => { vi.clearAllMocks() })
 
   it('stores literal value in context.variables', async () => {
@@ -361,7 +361,7 @@ describe('GraphEngine — SET_VARIABLE node', () => {
 // STOP node
 // ---------------------------------------------------------------------------
 
-describe('GraphEngine — STOP node', () => {
+describe('GraphEngine - STOP node', () => {
   beforeEach(() => { vi.clearAllMocks() })
 
   it('terminates execution without following edges', async () => {
@@ -391,7 +391,7 @@ describe('GraphEngine — STOP node', () => {
 // Action nodes
 // ---------------------------------------------------------------------------
 
-describe('GraphEngine — action nodes', () => {
+describe('GraphEngine - action nodes', () => {
   beforeEach(() => { vi.clearAllMocks() })
 
   it('executes SEND_EMAIL action and follows output edge', async () => {
@@ -423,7 +423,7 @@ describe('GraphEngine — action nodes', () => {
 
   it('routes to error edge when action fails and errorHandling=branch', async () => {
     const { executeAction } = await import('../engine/actions')
-    // Return an error result (not throw — graph engine checks output.error)
+    // Return an error result (not throw - graph engine checks output.error)
     vi.mocked(executeAction).mockResolvedValue({ success: false, error: 'Service unavailable' })
 
     const emailConfig = { recipientEmail: 'user@example.com', subject: 'Test' }

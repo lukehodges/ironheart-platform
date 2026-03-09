@@ -22,7 +22,7 @@ export async function withSlotLock<T>(
   })
 }
 
-/** FNV-1a 32-bit hash — maps slot tuple to positive integer for pg_advisory_xact_lock */
+/** FNV-1a 32-bit hash - maps slot tuple to positive integer for pg_advisory_xact_lock */
 function hashSlot(tenantId: string, staffId: string, date: string, time: string): number {
   const input = `${tenantId}:${staffId}:${date}:${time}`
   let hash = 2_166_136_261

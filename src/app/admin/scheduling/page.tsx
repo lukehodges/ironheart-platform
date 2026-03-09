@@ -165,7 +165,7 @@ function SlotCard({ slot, onDelete, isDeleting }: SlotCardProps) {
       <div className="flex items-center gap-1.5 text-xs font-medium text-foreground">
         <Clock className="h-3 w-3 text-muted-foreground shrink-0" aria-hidden="true" />
         <span className="tabular-nums">
-          {slot.time} &ndash; {slot.endTime ?? "—"}
+          {slot.time} &ndash; {slot.endTime ?? "-"}
         </span>
       </div>
 
@@ -181,7 +181,7 @@ function SlotCard({ slot, onDelete, isDeleting }: SlotCardProps) {
         {status}
       </Badge>
 
-      {/* Delete button — visible on hover */}
+      {/* Delete button - visible on hover */}
       <button
         type="button"
         onClick={() => onDelete(slot.id)}
@@ -403,7 +403,7 @@ function CreateSlotDialog({
 export default function SchedulingPage() {
   const utils = api.useUtils()
 
-  // Week navigation — start from Monday of current week
+  // Week navigation - start from Monday of current week
   const [weekStart, setWeekStart] = useState<Date>(() => getMonday(new Date()))
 
   // Staff filter

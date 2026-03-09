@@ -20,7 +20,7 @@ const demos = [
     icon: Building2,
     title: "Property Stock",
     description:
-      "Live table of every active listing — size, rent, days on market, enquiries, and viewings — filterable by property type.",
+      "Live table of every active listing - size, rent, days on market, enquiries, and viewings - filterable by property type.",
     stat: "27 live listings",
     iconColor: "text-emerald-500",
     iconBg: "bg-emerald-500/10",
@@ -55,7 +55,7 @@ export default function BP2DemoPage() {
     <div className="space-y-6">
       <PageHeader
         title="BP2 Property · Demo"
-        description="Four views into how internal processes — currently managed across email, spreadsheets, and memory — could be centralised into a single system."
+        description="Four views into how internal processes - currently managed across email, spreadsheets, and memory - could be centralised into a single system."
       />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

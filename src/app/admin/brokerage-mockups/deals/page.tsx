@@ -32,12 +32,14 @@ import {
   Search,
   Filter,
   ChevronDown,
+  ChevronRight,
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
   X,
 } from "lucide-react"
 import { deals as sharedDeals } from "../_mock-data"
+import type { BNGHabitatAllocation } from "../_mock-data"
 
 // ─── Types ─────────────────────────────────────────────────────────
 
@@ -65,6 +67,8 @@ interface Deal {
   title: string
   stage: Stage
   contact: string
+  supplyContactId: string
+  demandContactId: string
   side: Side
   unitType: UnitType
   units: string
@@ -75,6 +79,7 @@ interface Deal {
   broker: string
   brokerInitials: string
   expectedClose: string
+  bngAllocation?: BNGHabitatAllocation[]
 }
 
 type ViewMode = "v1" | "v2" | "v3"
@@ -84,19 +89,19 @@ type SortDir = "asc" | "desc"
 // ─── Stage Configuration ───────────────────────────────────────────
 
 const STAGE_CONFIG: Record<Stage, { color: string; borderColor: string; bgColor: string; textColor: string; order: number }> = {
-  "Lead":                { color: "bg-slate-400",   borderColor: "border-l-slate-400",   bgColor: "bg-slate-500/10",   textColor: "text-slate-700 dark:text-slate-300",   order: 0 },
-  "Qualified":           { color: "bg-blue-400",    borderColor: "border-l-blue-400",    bgColor: "bg-blue-500/10",    textColor: "text-blue-700 dark:text-blue-300",     order: 1 },
-  "Assessment Booked":   { color: "bg-cyan-400",    borderColor: "border-l-cyan-400",    bgColor: "bg-cyan-500/10",    textColor: "text-cyan-700 dark:text-cyan-300",     order: 2 },
-  "Assessment Complete": { color: "bg-teal-400",    borderColor: "border-l-teal-400",    bgColor: "bg-teal-500/10",    textColor: "text-teal-700 dark:text-teal-300",     order: 3 },
-  "S106 In Progress":    { color: "bg-indigo-400",  borderColor: "border-l-indigo-400",  bgColor: "bg-indigo-500/10",  textColor: "text-indigo-700 dark:text-indigo-300", order: 4 },
-  "NE Registered":       { color: "bg-violet-400",  borderColor: "border-l-violet-400",  bgColor: "bg-violet-500/10",  textColor: "text-violet-700 dark:text-violet-300", order: 5 },
-  "Matched":             { color: "bg-amber-400",   borderColor: "border-l-amber-400",   bgColor: "bg-amber-500/10",   textColor: "text-amber-700 dark:text-amber-300",   order: 6 },
-  "Quote Sent":          { color: "bg-orange-400",  borderColor: "border-l-orange-400",  bgColor: "bg-orange-500/10",  textColor: "text-orange-700 dark:text-orange-300", order: 7 },
-  "Credits Reserved":    { color: "bg-yellow-500",  borderColor: "border-l-yellow-500",  bgColor: "bg-yellow-500/10",  textColor: "text-yellow-700 dark:text-yellow-300", order: 8 },
-  "Contract Signed":     { color: "bg-lime-500",    borderColor: "border-l-lime-500",    bgColor: "bg-lime-500/10",    textColor: "text-lime-700 dark:text-lime-300",     order: 9 },
-  "Payment Received":    { color: "bg-green-500",   borderColor: "border-l-green-500",   bgColor: "bg-green-500/10",   textColor: "text-green-700 dark:text-green-300",   order: 10 },
-  "Credits Allocated":   { color: "bg-emerald-500", borderColor: "border-l-emerald-500", bgColor: "bg-emerald-500/10", textColor: "text-emerald-700 dark:text-emerald-300", order: 11 },
-  "Completed":           { color: "bg-emerald-600", borderColor: "border-l-emerald-600", bgColor: "bg-emerald-600/10", textColor: "text-emerald-800 dark:text-emerald-200", order: 12 },
+  "Lead":                { color: "bg-slate-400",   borderColor: "border-l-slate-400",   bgColor: "bg-slate-50",   textColor: "text-slate-700",   order: 0 },
+  "Qualified":           { color: "bg-blue-400",    borderColor: "border-l-blue-400",    bgColor: "bg-blue-50",    textColor: "text-blue-700",     order: 1 },
+  "Assessment Booked":   { color: "bg-cyan-400",    borderColor: "border-l-cyan-400",    bgColor: "bg-cyan-50",    textColor: "text-cyan-700",     order: 2 },
+  "Assessment Complete": { color: "bg-teal-400",    borderColor: "border-l-teal-400",    bgColor: "bg-teal-50",    textColor: "text-teal-700",     order: 3 },
+  "S106 In Progress":    { color: "bg-indigo-400",  borderColor: "border-l-indigo-400",  bgColor: "bg-indigo-50",  textColor: "text-indigo-700", order: 4 },
+  "NE Registered":       { color: "bg-violet-400",  borderColor: "border-l-violet-400",  bgColor: "bg-violet-50",  textColor: "text-violet-700", order: 5 },
+  "Matched":             { color: "bg-amber-400",   borderColor: "border-l-amber-400",   bgColor: "bg-amber-50",   textColor: "text-amber-700",   order: 6 },
+  "Quote Sent":          { color: "bg-orange-400",  borderColor: "border-l-orange-400",  bgColor: "bg-orange-50",  textColor: "text-orange-700", order: 7 },
+  "Credits Reserved":    { color: "bg-yellow-500",  borderColor: "border-l-yellow-500",  bgColor: "bg-yellow-50",  textColor: "text-yellow-700", order: 8 },
+  "Contract Signed":     { color: "bg-lime-500",    borderColor: "border-l-lime-500",    bgColor: "bg-lime-50",    textColor: "text-lime-700",     order: 9 },
+  "Payment Received":    { color: "bg-green-500",   borderColor: "border-l-green-500",   bgColor: "bg-green-50",   textColor: "text-green-700",   order: 10 },
+  "Credits Allocated":   { color: "bg-emerald-500", borderColor: "border-l-emerald-500", bgColor: "bg-emerald-50", textColor: "text-emerald-700", order: 11 },
+  "Completed":           { color: "bg-emerald-600", borderColor: "border-l-emerald-600", bgColor: "bg-emerald-50", textColor: "text-emerald-700", order: 12 },
 }
 
 const ACTIVE_STAGES: Stage[] = [
@@ -110,17 +115,17 @@ const ALL_STAGES: Stage[] = [...ACTIVE_STAGES, "Completed"]
 // ─── Broker Avatars ────────────────────────────────────────────────
 
 const BROKER_STYLES: Record<string, string> = {
-  JH: "bg-blue-500/15 text-blue-700 dark:text-blue-300",
-  SC: "bg-violet-500/15 text-violet-700 dark:text-violet-300",
-  TJ: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
+  JH: "bg-blue-50 text-blue-700 border border-blue-200",
+  SC: "bg-violet-50 text-violet-700 border border-violet-200",
+  TJ: "bg-emerald-50 text-emerald-700 border border-emerald-200",
 }
 
 // ─── Unit Type Config ──────────────────────────────────────────────
 
 const UNIT_TYPE_STYLES: Record<UnitType, string> = {
-  Nitrogen: "bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20",
-  Phosphorus: "bg-purple-500/10 text-purple-700 dark:text-purple-400 border-purple-500/20",
-  BNG: "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20",
+  Nitrogen: "bg-green-50 text-green-700 border-green-200",
+  Phosphorus: "bg-purple-50 text-purple-700 border-purple-200",
+  BNG: "bg-amber-50 text-amber-700 border-amber-200",
 }
 
 // ─── Stage Mapping (shared mock data stage → pipeline stage) ──────
@@ -160,6 +165,8 @@ const DEALS: Deal[] = sharedDeals.map((d) => ({
   contact: d.side === "demand"
     ? (d.demandContactName || d.supplyContactName)
     : (d.supplyContactName || d.demandContactName),
+  supplyContactId: d.supplyContact,
+  demandContactId: d.demandContact,
   side: d.side === "matched" ? "demand" : d.side as Side,
   unitType: d.unitType as UnitType,
   units: d.unitsLabel,
@@ -170,6 +177,7 @@ const DEALS: Deal[] = sharedDeals.map((d) => ({
   broker: d.broker,
   brokerInitials: d.brokerInitials,
   expectedClose: formatExpectedClose(d.expectedClose),
+  bngAllocation: d.bngAllocation,
 }))
 
 // ─── Utility Functions ─────────────────────────────────────────────
@@ -256,10 +264,10 @@ function CatchmentPill({ catchment }: { catchment: Catchment }) {
 function ProbabilityPill({ probability }: { probability: number }) {
   const color =
     probability >= 80
-      ? "bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20"
+      ? "bg-green-50 text-green-700 border-green-200"
       : probability >= 50
-      ? "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20"
-      : "bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/20"
+      ? "bg-amber-50 text-amber-700 border-amber-200"
+      : "bg-red-50 text-red-700 border-red-200"
   return (
     <span className={`inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-bold tabular-nums ${color}`}>
       {probability}%
@@ -453,7 +461,20 @@ function KanbanDealCard({ deal }: { deal: Deal }) {
           </span>
         </div>
         <div className="flex items-center gap-1.5 flex-wrap mb-2">
-          <UnitBadge unitType={deal.unitType} units={deal.units} />
+          {deal.unitType === "BNG" && deal.bngAllocation && deal.bngAllocation.length > 0 ? (
+            <div className="flex flex-wrap gap-1">
+              {deal.bngAllocation.map((alloc) => (
+                <span
+                  key={alloc.category}
+                  className={`inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-semibold ${UNIT_TYPE_STYLES[deal.unitType]}`}
+                >
+                  {alloc.categoryLabel}: {alloc.units.toFixed(1)} {alloc.unitLabel}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <UnitBadge unitType={deal.unitType} units={deal.units} />
+          )}
           <CatchmentPill catchment={deal.catchment} />
         </div>
         <div className="flex items-center justify-between">
@@ -694,9 +715,9 @@ function TableView({ deals }: { deals: Deal[] }) {
                     <div className="flex items-center gap-1.5">
                       <SideIndicator side={deal.side} />
                       <Link
-                        href="/admin/brokerage-mockups/contacts"
+                        href={`/admin/brokerage-mockups/contacts/${deal.supplyContactId || deal.demandContactId}`}
                         onClick={(e) => e.stopPropagation()}
-                        className="text-[12px] text-blue-600 dark:text-blue-400 hover:underline"
+                        className="text-[12px] text-blue-600 hover:underline"
                       >
                         {deal.contact}
                       </Link>
@@ -827,8 +848,13 @@ export default function DealsPipelinePage() {
   return (
     <div className="min-h-screen">
       {/* ─── Sticky Header ────────────────────────── */}
-      <div className="sticky top-14 z-30 bg-background/95 backdrop-blur border-b border-border">
+      <div className="sticky top-0 z-30 bg-background/95 backdrop-blur border-b border-border -mx-6 -mt-6">
         <div className="max-w-screen-2xl mx-auto px-6 pt-4 pb-3">
+          <div className="flex items-center gap-1.5 text-sm text-muted-foreground mb-4">
+            <Link href="/admin/brokerage-mockups/dashboard" className="hover:text-foreground transition-colors">Dashboard</Link>
+            <ChevronRight className="h-3.5 w-3.5" />
+            <span className="text-foreground font-medium">Deals</span>
+          </div>
           <div className="flex items-start justify-between mb-3">
             <div>
               <div className="flex items-center gap-2 mb-0.5">
@@ -869,28 +895,28 @@ export default function DealsPipelinePage() {
               value={String(totalDeals)}
               sub={`${DEALS.filter((d) => d.stage !== "Completed").length} active`}
               icon={Handshake}
-              accent="bg-blue-500/10 text-blue-600 dark:text-blue-400"
+              accent="bg-blue-50 text-blue-600"
             />
             <StatCard
               label="Pipeline Value"
               value={formatCurrency(pipelineValue)}
               sub="All stages combined"
               icon={TrendingUp}
-              accent="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+              accent="bg-emerald-50 text-emerald-600"
             />
             <StatCard
               label="Completed"
               value={String(completedDeals)}
               sub="Credits Allocated + Completed"
               icon={CheckCircle2}
-              accent="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+              accent="bg-emerald-50 text-emerald-600"
             />
             <StatCard
               label="Under Offer"
               value={String(underOfferDeals)}
               sub="Quote Sent to Contract Signed"
               icon={Clock}
-              accent="bg-amber-500/10 text-amber-600 dark:text-amber-400"
+              accent="bg-amber-50 text-amber-600"
             />
           </div>
 

@@ -142,7 +142,7 @@ export function AdminTopbar({
         {/* Mobile sidebar trigger */}
         <MobileSidebar permissions={permissions} isPlatformAdmin={isPlatformAdmin} enabledModuleSlugs={enabledModuleSlugs} />
 
-        {/* Breadcrumbs — desktop only */}
+        {/* Breadcrumbs - desktop only */}
         <nav
           className="hidden lg:flex items-center gap-1 text-sm min-w-0 flex-1"
           aria-label="Breadcrumb"
@@ -209,7 +209,7 @@ export function AdminTopbar({
                 aria-label="Notifications"
               >
                 <Bell className="h-4 w-4" />
-                {/* Notification dot — shown when there are unread notifications */}
+                {/* Notification dot - shown when there are unread notifications */}
                 <span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-primary" aria-hidden="true" />
               </Button>
             </TooltipTrigger>

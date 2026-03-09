@@ -42,7 +42,7 @@ import { CustomerMergeDialog } from "@/components/customers/customer-merge-dialo
 import type { CustomerRecord } from "@/modules/customer/customer.types"
 
 // ---------------------------------------------------------------------------
-// Per-row aggregate component (N+1 accepted for now — see U3.9)
+// Per-row aggregate component (N+1 accepted for now - see U3.9)
 // ---------------------------------------------------------------------------
 
 function CustomerAggregateCell({
@@ -72,7 +72,7 @@ function CustomerAggregateCell({
       (sum, b) => sum + (b.totalAmount ?? 0),
       0,
     )
-    // Format as currency — assumes GBP for now
+    // Format as currency - assumes GBP for now
     const formatted =
       total > 0
         ? new Intl.NumberFormat("en-GB", {
@@ -81,14 +81,14 @@ function CustomerAggregateCell({
             minimumFractionDigits: 0,
             maximumFractionDigits: 2,
           }).format(total)
-        : "\u2014"
+        : " - "
     return <span className="text-sm tabular-nums">{formatted}</span>
   }
 
   // lastBooking
   if (bookings.length === 0) {
     return (
-      <span className="text-xs text-muted-foreground">{"\u2014"}</span>
+      <span className="text-xs text-muted-foreground">{" - "}</span>
     )
   }
 
@@ -113,7 +113,7 @@ function CustomerAggregateCell({
 const PAGE_SIZE = 25
 
 function formatRelativeDate(date: Date | string | null | undefined): string {
-  if (!date) return "—"
+  if (!date) return "-"
   const d = typeof date === "string" ? new Date(date) : date
   const now = new Date()
   const diffMs = now.getTime() - d.getTime()
@@ -210,14 +210,14 @@ function CustomerRow({ customer, onView, onEdit, onMerge }: CustomerRowProps) {
       {/* Email */}
       <TableCell>
         <span className="text-sm text-muted-foreground truncate max-w-[180px] block">
-          {customer.email ?? <span className="italic text-xs">—</span>}
+          {customer.email ?? <span className="italic text-xs">-</span>}
         </span>
       </TableCell>
 
       {/* Phone */}
       <TableCell>
         <span className="text-sm text-muted-foreground">
-          {customer.phone ?? <span className="italic text-xs">—</span>}
+          {customer.phone ?? <span className="italic text-xs">-</span>}
         </span>
       </TableCell>
 
@@ -566,7 +566,7 @@ export default function CustomersPage() {
         />
       )}
 
-      {/* Merge search dialog — pick the primary (target) customer */}
+      {/* Merge search dialog - pick the primary (target) customer */}
       <CustomerSearchDialog
         open={mergeSearchOpen}
         onOpenChange={setMergeSearchOpen}

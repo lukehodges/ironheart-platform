@@ -4,7 +4,7 @@ import { createCompletionSchema } from "../booking.schemas";
 import { z } from "zod";
 
 /**
- * Completion sub-router — handles appointment completion workflow.
+ * Completion sub-router - handles appointment completion workflow.
  *
  * NOTE Phase 0: All procedures throw UNAUTHORIZED until Phase 3.
  */

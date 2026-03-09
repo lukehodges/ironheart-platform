@@ -1,5 +1,5 @@
 /**
- * Role-Based Access Control (RBAC) utilities — auth module level.
+ * Role-Based Access Control (RBAC) utilities - auth module level.
  *
  * Permission format: "resource:action" (e.g., "bookings:read", "staff:delete")
  * Wildcards: "bookings:*" (all booking actions), "*:read" (read all), "*:*" (full access)

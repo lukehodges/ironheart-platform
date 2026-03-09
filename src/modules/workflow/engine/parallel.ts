@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────────────────────────────────────
-// Parallel branch execution — handles IF/SWITCH → MERGE fan-out patterns
+// Parallel branch execution - handles IF/SWITCH → MERGE fan-out patterns
 // ──────────────────────────────────────────────────────────────────────────────
 
 import type { WorkflowExecutionContext, MergeNodeConfig } from '../workflow.types'
@@ -14,7 +14,7 @@ export interface IGraphEngine {
   ): Promise<WorkflowExecutionContext>
 }
 
-// Inngest step type — use any to avoid deep Inngest import chain
+// Inngest step type - use any to avoid deep Inngest import chain
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type InngestStep = any
 
@@ -22,7 +22,7 @@ export type InngestStep = any
  * Execute multiple parallel branches that converge at a MERGE node.
  *
  * Behavior by merge mode:
- *   - 'wait_any': Race — first branch to complete wins; others abandoned
+ *   - 'wait_any': Race - first branch to complete wins; others abandoned
  *   - 'wait_all': All branches run concurrently; contexts deep-merged (last writer wins)
  *   - 'append':   All branches run concurrently; all outputs collected into mergedOutputs array
  *

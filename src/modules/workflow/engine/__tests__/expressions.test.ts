@@ -38,7 +38,7 @@ function makeCtx(
 // Variable substitution
 // ---------------------------------------------------------------------------
 
-describe('evaluateExpression — variable substitution', () => {
+describe('evaluateExpression - variable substitution', () => {
   it('substitutes a top-level {{field}} from triggerData', () => {
     const ctx = makeCtx({ greeting: 'Hello' })
     expect(evaluateExpression('{{greeting}}, world!', ctx)).toBe('Hello, world!')
@@ -92,7 +92,7 @@ describe('evaluateExpression — variable substitution', () => {
 
   it('substitutes numeric value as string in non-arithmetic context', () => {
     const ctx = makeCtx({ count: 7 })
-    // '7 items' — after substitution it is '7 items', not parseable as pure number
+    // '7 items' - after substitution it is '7 items', not parseable as pure number
     const result = evaluateExpression('{{count}} items', ctx)
     expect(result).toBe('7 items')
   })
@@ -102,7 +102,7 @@ describe('evaluateExpression — variable substitution', () => {
 // Arithmetic evaluation
 // ---------------------------------------------------------------------------
 
-describe('evaluateExpression — arithmetic', () => {
+describe('evaluateExpression - arithmetic', () => {
   it('"1 + 2" → 3', () => {
     expect(evaluateExpression('1 + 2', makeCtx())).toBe(3)
   })
@@ -149,7 +149,7 @@ describe('evaluateExpression — arithmetic', () => {
 // Post-substitution arithmetic
 // ---------------------------------------------------------------------------
 
-describe('evaluateExpression — post-substitution arithmetic', () => {
+describe('evaluateExpression - post-substitution arithmetic', () => {
   it('{{booking.price}} * 1.2 → number', () => {
     const ctx = makeCtx({ booking: { price: 100 } })
     const result = evaluateExpression('{{booking.price}} * 1.2', ctx)
@@ -185,7 +185,7 @@ describe('evaluateExpression — post-substitution arithmetic', () => {
 // Boolean / comparison expressions
 // ---------------------------------------------------------------------------
 
-describe('evaluateExpression — comparisons', () => {
+describe('evaluateExpression - comparisons', () => {
   it('"5 > 3" → true', () => {
     expect(evaluateExpression('5 > 3', makeCtx())).toBe(true)
   })
@@ -239,7 +239,7 @@ describe('evaluateExpression — comparisons', () => {
 // Expressions with && or || are not parseable and fall back to string.
 // ---------------------------------------------------------------------------
 
-describe('evaluateExpression — logical operators (expr-eval syntax)', () => {
+describe('evaluateExpression - logical operators (expr-eval syntax)', () => {
   it('"true and false" → false', () => {
     expect(evaluateExpression('true and false', makeCtx())).toBe(false)
   })
@@ -272,13 +272,13 @@ describe('evaluateExpression — logical operators (expr-eval syntax)', () => {
     expect(evaluateExpression('(1 > 0) and (2 < 1)', makeCtx())).toBe(false)
   })
 
-  it('"&&" operator is not supported — falls back to string', () => {
-    // expr-eval does not parse && — the expression is returned as a string
+  it('"&&" operator is not supported - falls back to string', () => {
+    // expr-eval does not parse && - the expression is returned as a string
     const result = evaluateExpression('true && false', makeCtx())
     expect(typeof result).toBe('string')
   })
 
-  it('"||" operator is not supported — falls back to string', () => {
+  it('"||" operator is not supported - falls back to string', () => {
     const result = evaluateExpression('true || false', makeCtx())
     expect(typeof result).toBe('string')
   })
@@ -288,7 +288,7 @@ describe('evaluateExpression — logical operators (expr-eval syntax)', () => {
 // Ternary expression
 // ---------------------------------------------------------------------------
 
-describe('evaluateExpression — ternary', () => {
+describe('evaluateExpression - ternary', () => {
   it('"1 > 0 ? 10 : 20" → 10', () => {
     const result = evaluateExpression('1 > 0 ? 10 : 20', makeCtx())
     expect(result).toBe(10)
@@ -304,7 +304,7 @@ describe('evaluateExpression — ternary', () => {
 // Literal boolean values
 // ---------------------------------------------------------------------------
 
-describe('evaluateExpression — boolean literals', () => {
+describe('evaluateExpression - boolean literals', () => {
   it('"true" → boolean true', () => {
     expect(evaluateExpression('true', makeCtx())).toBe(true)
   })
@@ -321,10 +321,10 @@ describe('evaluateExpression — boolean literals', () => {
 })
 
 // ---------------------------------------------------------------------------
-// String fallback — non-parseable expressions
+// String fallback - non-parseable expressions
 // ---------------------------------------------------------------------------
 
-describe('evaluateExpression — string fallback on parse failure', () => {
+describe('evaluateExpression - string fallback on parse failure', () => {
   it('returns substituted string for arbitrary text', () => {
     const result = evaluateExpression('hello world', makeCtx())
     expect(result).toBe('hello world')
@@ -356,10 +356,10 @@ describe('evaluateExpression — string fallback on parse failure', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Security — invariant I9: no member access, no prototype leaks
+// Security - invariant I9: no member access, no prototype leaks
 // ---------------------------------------------------------------------------
 
-describe('evaluateExpression — security (invariant I9)', () => {
+describe('evaluateExpression - security (invariant I9)', () => {
   it('returns expression as string when member access is attempted (allowMemberAccess=false)', () => {
     const ctx = makeCtx()
     // expr-eval with allowMemberAccess=false will throw on obj.prop access
@@ -373,7 +373,7 @@ describe('evaluateExpression — security (invariant I9)', () => {
   it('does not expose environment variables via expression', () => {
     const ctx = makeCtx()
     const result = evaluateExpression('process.env.NODE_ENV', ctx)
-    // Must not return the actual env value — returns string or throws+falls back
+    // Must not return the actual env value - returns string or throws+falls back
     expect(typeof result).toBe('string')
     expect(result).not.toBe(process.env.NODE_ENV)
   })
@@ -395,7 +395,7 @@ describe('evaluateExpression — security (invariant I9)', () => {
     // expr-eval does not support user-defined function calls by default
     // Attempting to call an undefined function should fail gracefully
     const result = evaluateExpression('fetch("http://evil.com")', ctx)
-    // Falls back to the string — no network call is made
+    // Falls back to the string - no network call is made
     expect(typeof result).toBe('string')
   })
 
@@ -425,7 +425,7 @@ describe('evaluateExpression — security (invariant I9)', () => {
 // Node output resolution via context.nodes
 // ---------------------------------------------------------------------------
 
-describe('evaluateExpression — node output context', () => {
+describe('evaluateExpression - node output context', () => {
   it('resolves {{nodes.SendEmail_1.output.messageId}} from nodes context', () => {
     const ctx = makeCtx(
       {},
@@ -446,7 +446,7 @@ describe('evaluateExpression — node output context', () => {
 // Loop stack context
 // ---------------------------------------------------------------------------
 
-describe('evaluateExpression — loop stack context', () => {
+describe('evaluateExpression - loop stack context', () => {
   it('resolves loop item variable from loopStack', () => {
     const ctx: WorkflowExecutionContext = {
       triggerData: {},

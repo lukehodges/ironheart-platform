@@ -18,7 +18,7 @@ const slotReservedSchema = z.object({
 });
 
 /**
- * Release expired reservation — replaces /api/cron/release-slots.
+ * Release expired reservation - replaces /api/cron/release-slots.
  * Fires at exact expiry time (delayed Inngest event via slot/reserved).
  * Cancelled automatically when booking/confirmed or booking/cancelled fires.
  */
@@ -45,7 +45,7 @@ export const releaseExpiredReservation = inngest.createFunction(
   }
 );
 
-/** All booking Inngest functions — register in src/app/api/inngest/route.ts */
+/** All booking Inngest functions - register in src/app/api/inngest/route.ts */
 export const bookingFunctions = [
   releaseExpiredReservation,
 ];

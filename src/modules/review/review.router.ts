@@ -14,7 +14,7 @@ import {
 } from "./review.schemas";
 
 export const reviewRouter = router({
-  // Admin — read
+  // Admin - read
   list: moduleProcedure
     .input(listReviewsSchema)
     .query(({ ctx, input }) => reviewService.listReviews(ctx, input)),
@@ -23,7 +23,7 @@ export const reviewRouter = router({
     .input(z.object({ id: z.string() }))
     .query(({ ctx, input }) => reviewService.getReview(ctx, input.id)),
 
-  // Admin — request management
+  // Admin - request management
   requestReview: modulePermission("reviews:write")
     .input(createReviewRequestSchema)
     .mutation(({ ctx, input }) => reviewService.requestReview(ctx, input)),
@@ -40,7 +40,7 @@ export const reviewRouter = router({
     .input(updateAutomationSchema)
     .mutation(({ ctx, input }) => reviewService.updateAutomationSettings(ctx, input)),
 
-  // Public (token-based — no auth)
+  // Public (token-based - no auth)
   submitReview: publicProcedure
     .input(submitReviewSchema)
     .mutation(({ input }) => reviewService.submitReview(input.token, input)),

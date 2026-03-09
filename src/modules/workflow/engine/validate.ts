@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────────────────────────────────────
-// Graph validation — structural checks before saving a graph-mode workflow
+// Graph validation - structural checks before saving a graph-mode workflow
 // ──────────────────────────────────────────────────────────────────────────────
 
 import type { WorkflowNode, WorkflowEdge } from '../workflow.types'
@@ -47,7 +47,7 @@ export function validateWorkflowGraph(
     }
   }
 
-  // 4. No structural cycles (DFS — LOOP back-edges are excluded from cycle check)
+  // 4. No structural cycles (DFS - LOOP back-edges are excluded from cycle check)
   if (hasCycle(nodes, edges)) {
     errors.push('Workflow graph contains a cycle (use LOOP node for iteration)')
   }
@@ -118,7 +118,7 @@ export function hasCycle(nodes: WorkflowNode[], edges: WorkflowEdge[]): boolean 
 
   function dfs(nodeId: string): boolean {
     if (inStack.has(nodeId)) return true   // cycle detected
-    if (visited.has(nodeId)) return false  // already fully explored — safe
+    if (visited.has(nodeId)) return false  // already fully explored - safe
 
     inStack.add(nodeId)
     for (const neighbor of adjacency.get(nodeId) ?? []) {

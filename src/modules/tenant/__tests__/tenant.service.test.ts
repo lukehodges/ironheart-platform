@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 // ---------------------------------------------------------------------------
-// Mocks — must be before imports that use the mocked modules
+// Mocks - must be before imports that use the mocked modules
 // ---------------------------------------------------------------------------
 
 vi.mock('../tenant.repository', () => ({
@@ -27,7 +27,7 @@ vi.mock('@/modules/platform/platform.repository', () => ({
   },
 }))
 
-// Stateful Redis mock — tracks cached values between get/set/del
+// Stateful Redis mock - tracks cached values between get/set/del
 const redisStore: Record<string, string> = {}
 vi.mock('@/shared/redis', () => ({
   redis: {

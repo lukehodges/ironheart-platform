@@ -19,11 +19,11 @@ import {
  * Thin layer: validate → call service → return result.
  * No business logic here.
  *
- * Public procedures (getFormByToken, submitForm) use token-based auth —
+ * Public procedures (getFormByToken, submitForm) use token-based auth -
  * no user session required.
  */
 export const formsRouter = router({
-  // Admin — template management
+  // Admin - template management
   listTemplates: moduleProcedure
     .input(listTemplatesSchema)
     .query(async ({ ctx, input }) => formsService.listTemplates(ctx, input)),
@@ -48,7 +48,7 @@ export const formsRouter = router({
     .input(sendFormSchema)
     .mutation(async ({ ctx, input }) => formsService.sendForm(ctx, input)),
 
-  // Admin — responses
+  // Admin - responses
   listResponses: moduleProcedure
     .input(listResponsesSchema)
     .query(async ({ ctx, input }) => formsService.listResponses(ctx, input)),

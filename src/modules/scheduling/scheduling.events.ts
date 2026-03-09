@@ -21,9 +21,9 @@ export const scheduleBookingReminders = inngest.createFunction(
     const { bookingId, tenantId } = bookingConfirmedSchema.parse(event.data);
 
     const booking = await step.run("load-booking", async () => {
-      // Load from bookings table — use db directly since repository doesn't have a single-booking method
+      // Load from bookings table - use db directly since repository doesn't have a single-booking method
       // Return minimal shape: { scheduledDate, scheduledTime, status, customer: { email, phone } }
-      // For now stub as null since calendar details need joins — will be wired in Phase 4
+      // For now stub as null since calendar details need joins - will be wired in Phase 4
       log.info({ bookingId, tenantId }, "Scheduling reminders for booking");
       return null; // TODO Phase 4: load booking with customer details
     });
@@ -73,7 +73,7 @@ export const syncCalendarsCron = inngest.createFunction(
     });
 
     await step.run("emit-sync-events", async () => {
-      // Fan out: one event per user — actual sync handled in Phase 4 calendar-sync module
+      // Fan out: one event per user - actual sync handled in Phase 4 calendar-sync module
       for (const user of users) {
         await inngest.send({ name: "calendar/sync.pull", data: { userId: user.id } });
       }

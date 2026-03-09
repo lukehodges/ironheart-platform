@@ -33,7 +33,7 @@ export class Saga {
       } catch (err) {
         log.error(
           { sagaType: this.sagaType, stepName: step.name, err },
-          'Saga step failed — compensating'
+          'Saga step failed - compensating'
         )
         await this.compensate()
         throw err
@@ -50,11 +50,11 @@ export class Saga {
           'Saga compensation completed'
         )
       } catch (compensationErr) {
-        // CRITICAL: do NOT retry — risk of infinite loop
+        // CRITICAL: do NOT retry - risk of infinite loop
         // Mark for manual intervention via saga_log table
         log.error(
           { sagaType: this.sagaType, stepName: step.name, compensationErr },
-          'SAGA COMPENSATION FAILED — manual intervention required'
+          'SAGA COMPENSATION FAILED - manual intervention required'
         )
       }
     }
@@ -65,7 +65,7 @@ export class Saga {
  * Creates the booking confirmation saga with its 4 steps:
  * 1. Update booking status → CONFIRMED (compensation: revert to PENDING)
  * 2. Create invoice for booking (compensation: void the invoice)
- * 3. Send booking confirmed notification (compensation: no-op — not reversible)
+ * 3. Send booking confirmed notification (compensation: no-op - not reversible)
  * 4. Sync calendar event (compensation: delete calendar event)
  */
 export function createBookingConfirmationSaga(deps: {
@@ -96,7 +96,7 @@ export function createBookingConfirmationSaga(deps: {
           bookingId: deps.bookingId,
           tenantId: deps.tenantId,
         }),
-      compensate: () => Promise.resolve(), // notifications not reversible — acceptable
+      compensate: () => Promise.resolve(), // notifications not reversible - acceptable
     },
     {
       name: 'sync-calendar',

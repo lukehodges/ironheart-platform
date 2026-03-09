@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import {
   MapPin,
   Plus,
@@ -9,10 +10,12 @@ import {
   Search,
   ChevronDown,
   ChevronUp,
+  ChevronRight,
   X,
   ArrowUpDown,
   Leaf,
   TreePine,
+  Droplets,
   ClipboardCheck,
   LayoutList,
   Map,
@@ -20,6 +23,8 @@ import {
   User,
   ExternalLink,
 } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import {
   Select,
   SelectContent,
@@ -35,7 +40,7 @@ import type { Site as SharedSite, SiteStatus, UnitType, Catchment, LPA } from ".
 // Types
 // ---------------------------------------------------------------------------
 
-type Site = SharedSite & { mapX: number; mapY: number; contact: string }
+type Site = SharedSite & { mapX: number; mapY: number; contact: string; contactId: string }
 type ViewMode = "table" | "map" | "grid"
 type SortField = "ref" | "name" | "status" | "total" | "available" | "price" | "lpa"
 type SortDir = "asc" | "desc"
@@ -52,6 +57,7 @@ const MAP_POSITIONS: Record<string, { mapX: number; mapY: number }> = {
 
 const SITES = sharedSites.map((s) => ({
   ...s,
+  contactId: s.contact,
   contact: s.contactName,
   mapX: MAP_POSITIONS[s.ref]?.mapX ?? 50,
   mapY: MAP_POSITIONS[s.ref]?.mapY ?? 50,
@@ -62,12 +68,12 @@ const SITES = sharedSites.map((s) => ({
 // ---------------------------------------------------------------------------
 
 const STATUS_CONFIG: Record<SiteStatus, { bg: string; text: string; dot: string; border: string }> = {
-  Active:            { bg: "bg-green-50 dark:bg-green-950/30",   text: "text-green-700 dark:text-green-400",   dot: "bg-green-500",   border: "border-green-200 dark:border-green-800" },
-  Registered:        { bg: "bg-emerald-50 dark:bg-emerald-950/30", text: "text-emerald-700 dark:text-emerald-400", dot: "bg-emerald-500", border: "border-emerald-200 dark:border-emerald-800" },
-  "Under Assessment":{ bg: "bg-blue-50 dark:bg-blue-950/30",    text: "text-blue-700 dark:text-blue-400",    dot: "bg-blue-500",    border: "border-blue-200 dark:border-blue-800" },
-  "Legal In Progress":{ bg: "bg-amber-50 dark:bg-amber-950/30",  text: "text-amber-700 dark:text-amber-400",   dot: "bg-amber-500",  border: "border-amber-200 dark:border-amber-800" },
-  Prospecting:       { bg: "bg-muted",    text: "text-muted-foreground",    dot: "bg-muted-foreground/50",    border: "border-border" },
-  "Fully Allocated": { bg: "bg-purple-50 dark:bg-purple-950/30",  text: "text-purple-700 dark:text-purple-400",  dot: "bg-purple-500",  border: "border-purple-200 dark:border-purple-800" },
+  Active:            { bg: "bg-emerald-50",  text: "text-emerald-700",        dot: "bg-emerald-500", border: "border-emerald-200" },
+  Registered:        { bg: "bg-green-50",    text: "text-green-700",          dot: "bg-green-500",   border: "border-green-200" },
+  "Under Assessment":{ bg: "bg-blue-50",     text: "text-blue-700",           dot: "bg-blue-500",    border: "border-blue-200" },
+  "Legal In Progress":{ bg: "bg-amber-50",   text: "text-amber-700",          dot: "bg-amber-500",   border: "border-amber-200" },
+  Prospecting:       { bg: "bg-muted",       text: "text-muted-foreground",   dot: "bg-muted-foreground/50", border: "border-border" },
+  "Fully Allocated": { bg: "bg-purple-50",   text: "text-purple-700",         dot: "bg-purple-500",  border: "border-purple-200" },
 }
 
 const ALL_STATUSES: SiteStatus[] = ["Active", "Registered", "Under Assessment", "Legal In Progress", "Prospecting", "Fully Allocated"]
@@ -92,13 +98,15 @@ function StatusBadge({ status }: { status: SiteStatus }) {
 function UnitTypeBadge({ type }: { type: UnitType }) {
   const isNitrogen = type === "Nitrogen"
   const isBNG = type === "BNG"
+  const styles = isNitrogen
+    ? "border-sky-200 bg-sky-50 text-sky-700"
+    : isBNG
+      ? "border-lime-200 bg-lime-50 text-lime-700"
+      : "border-violet-200 bg-violet-50 text-violet-700"
+  const Icon = isNitrogen ? Leaf : isBNG ? TreePine : Droplets
   return (
-    <span className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-medium ${
-      isNitrogen ? "bg-sky-50 dark:bg-sky-950/30 text-sky-700 dark:text-sky-400"
-        : isBNG ? "bg-lime-50 dark:bg-lime-950/30 text-lime-700 dark:text-lime-400"
-        : "bg-violet-50 dark:bg-violet-950/30 text-violet-700 dark:text-violet-400"
-    }`}>
-      {isNitrogen ? <Leaf className="w-3 h-3" /> : <TreePine className="w-3 h-3" />}
+    <span className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[11px] font-medium ${styles}`}>
+      <Icon className="w-3 h-3" />
       {type}
     </span>
   )
@@ -139,8 +147,8 @@ function CapacityBar({ total, allocated, available, totalLabel, allocatedLabel, 
         <div className="h-full bg-green-400 rounded-r-full" style={{ width: `${availPct}%` }} />
       </div>
       <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-        <span>{allocatedLabel} alloc</span>
-        <span className={`font-medium ${(available ?? 0) > 0 ? "text-green-600" : "text-muted-foreground"}`}>
+        <span className="whitespace-nowrap">{allocatedLabel} alloc</span>
+        <span className={`font-medium whitespace-nowrap ${(available ?? 0) > 0 ? "text-green-600" : "text-muted-foreground"}`}>
           {availableLabel} avail
         </span>
       </div>
@@ -167,7 +175,7 @@ function StatCard({ label, value, sub, icon, color = "bg-card" }: StatCardProps)
     <div className={`${color} border border-border rounded-xl p-5 flex flex-col gap-2`}>
       <div className="flex items-center justify-between">
         <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{label}</span>
-        <span className="text-muted-foreground/40">{icon}</span>
+        <span className="text-muted-foreground">{icon}</span>
       </div>
       <div className="flex items-end gap-2">
         <span className="text-3xl font-bold tracking-tight text-foreground leading-none">{value}</span>
@@ -316,6 +324,12 @@ export default function SitesListPage() {
 
   return (
     <div className="max-w-screen-2xl mx-auto px-6 py-8 space-y-6">
+      <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+        <Link href="/admin/brokerage-mockups/dashboard" className="hover:text-foreground transition-colors">Dashboard</Link>
+        <ChevronRight className="h-3.5 w-3.5" />
+        <span className="text-foreground font-medium">Sites</span>
+      </div>
+
       {/* Page header */}
       <div className="flex items-start justify-between">
         <div>
@@ -330,13 +344,15 @@ export default function SitesListPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <button className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-foreground hover:bg-muted transition-colors">
+          <Button variant="outline" size="sm">
             <Download className="w-4 h-4" />
             Export
-          </button>
-          <Link href="/admin/brokerage-mockups/sites/new" className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-700 transition-colors">
-            <Plus className="w-4 h-4" />
-            New Site
+          </Button>
+          <Link href="/admin/brokerage-mockups/sites/new">
+            <Button size="sm">
+              <Plus className="w-4 h-4" />
+              New Site
+            </Button>
           </Link>
         </div>
       </div>
@@ -399,12 +415,11 @@ export default function SitesListPage() {
           {/* Search */}
           <div className="relative flex-1 min-w-[180px] max-w-xs">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <input
-              type="text"
+            <Input
               placeholder="Search sites..."
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 text-sm border border-border rounded-lg bg-card placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-400"
+              className="pl-9"
             />
             {searchText && (
               <button onClick={() => setSearchText("")} className="absolute right-2 top-1/2 -translate-y-1/2">
@@ -483,6 +498,7 @@ function TableView({ sites, sortField, sortDir, onSort }: {
   sortDir: SortDir
   onSort: (f: SortField) => void
 }) {
+  const router = useRouter()
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
@@ -524,31 +540,38 @@ function TableView({ sites, sortField, sortDir, onSort }: {
           {sites.map((site) => (
             <tr
               key={site.ref}
-              className="group hover:bg-emerald-50/30 dark:hover:bg-emerald-950/20 transition-colors cursor-pointer"
+              onClick={() => router.push(`/admin/brokerage-mockups/sites/${site.ref}`)}
+              className="group hover:bg-muted/50 transition-colors cursor-pointer"
             >
-              <td className="px-5 py-3.5">
-                <Link href={`/admin/brokerage-mockups/sites/${site.ref}`} className="text-xs font-mono text-muted-foreground hover:text-primary">{site.ref}</Link>
+              <td className="px-5 py-3.5 whitespace-nowrap">
+                <Link href={`/admin/brokerage-mockups/sites/${site.ref}`} onClick={(e) => e.stopPropagation()} className="text-xs font-mono text-muted-foreground hover:text-primary">{site.ref}</Link>
               </td>
-              <td className="px-4 py-3.5">
-                <Link href={`/admin/brokerage-mockups/sites/${site.ref}`} className="flex items-center gap-2">
+              <td className="px-4 py-3.5 max-w-[200px]">
+                <Link href={`/admin/brokerage-mockups/sites/${site.ref}`} onClick={(e) => e.stopPropagation()} className="flex items-center gap-2">
                   <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center shrink-0">
                     <MapPin className="w-4 h-4 text-emerald-600" />
                   </div>
-                  <div>
-                    <div className="font-medium text-foreground group-hover:text-emerald-700 leading-snug">{site.name}</div>
+                  <div className="min-w-0">
+                    <div className="font-medium text-foreground group-hover:text-primary leading-snug truncate">{site.name}</div>
                     <div className="text-[11px] text-muted-foreground">{site.lpa} district</div>
                   </div>
                 </Link>
               </td>
-              <td className="px-4 py-3.5">
+              <td className="px-4 py-3.5 whitespace-nowrap">
                 <StatusBadge status={site.status} />
               </td>
-              <td className="px-4 py-3.5">
+              <td className="px-4 py-3.5 whitespace-nowrap">
                 <div className="flex items-center gap-1.5">
                   <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center shrink-0">
                     <User className="w-3.5 h-3.5 text-muted-foreground" />
                   </div>
-                  <span className="text-foreground/80 text-sm">{site.contact}</span>
+                  <Link
+                    href={`/admin/brokerage-mockups/contacts/${site.contactId}`}
+                    onClick={(e) => e.stopPropagation()}
+                    className="text-foreground/80 text-sm hover:text-primary hover:underline"
+                  >
+                    {site.contact}
+                  </Link>
                 </div>
               </td>
               <td className="px-4 py-3.5">
@@ -566,9 +589,30 @@ function TableView({ sites, sortField, sortDir, onSort }: {
                   allocatedLabel={site.allocatedLabel}
                   availableLabel={site.availableLabel}
                 />
+                {site.unitType === "BNG" && site.habitatSummary && site.habitatSummary.length > 0 && (
+                  <div className="mt-1.5 space-y-0.5">
+                    {site.habitatSummary.map((cat) => (
+                      <div key={cat.category} className="flex items-center justify-between text-[10px] text-muted-foreground">
+                        <span>{cat.categoryLabel}:</span>
+                        <span className="font-medium tabular-nums text-emerald-700">{cat.improvementUnits.toFixed(1)} HU</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </td>
               <td className="px-4 py-3.5 text-right">
-                <AvailableCell available={site.available} availableLabel={site.availableLabel} />
+                {site.unitType === "BNG" && site.habitatSummary && site.habitatSummary.length > 0 ? (
+                  <div className="space-y-0.5">
+                    {site.habitatSummary.map((cat) => (
+                      <div key={cat.category} className="text-[10px] tabular-nums text-right">
+                        <span className="text-muted-foreground">{cat.categoryLabel}: </span>
+                        <span className="font-semibold text-emerald-700">{(cat.improvementUnits - cat.allocatedUnits).toFixed(1)}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <AvailableCell available={site.available} availableLabel={site.availableLabel} />
+                )}
               </td>
               <td className="px-4 py-3.5 text-right">
                 {site.price !== null ? (
@@ -608,7 +652,7 @@ function MapView({ sites, selectedRef, onSelect }: {
     <div className="flex flex-col lg:flex-row min-h-[560px]">
       {/* Left: Map placeholder */}
       <div className="lg:w-[55%] p-4">
-        <div className="relative w-full h-full min-h-[400px] lg:min-h-[520px] rounded-xl overflow-hidden bg-gradient-to-br from-slate-200 via-slate-150 to-slate-100 dark:from-slate-800 dark:via-slate-850 dark:to-slate-900 border border-border">
+        <div className="relative w-full h-full min-h-[400px] lg:min-h-[520px] rounded-xl overflow-hidden bg-gradient-to-br from-muted via-muted/50 to-background border border-border">
           {/* Hampshire outline shape (stylized CSS polygon) */}
           <div className="absolute inset-4">
             {/* Water area bottom-right (Solent) */}
@@ -616,16 +660,16 @@ function MapView({ sites, selectedRef, onSelect }: {
             <div className="absolute bottom-0 right-[30%] w-[25%] h-[15%] bg-sky-100/40 rounded-t-2xl" />
 
             {/* Area labels */}
-            <div className="absolute top-[18%] left-[22%] text-[10px] font-semibold text-slate-400 uppercase tracking-widest">
+            <div className="absolute top-[18%] left-[22%] text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-widest">
               Test Valley
             </div>
-            <div className="absolute top-[40%] left-[38%] text-[10px] font-semibold text-slate-400 uppercase tracking-widest">
+            <div className="absolute top-[40%] left-[38%] text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-widest">
               Winchester
             </div>
-            <div className="absolute top-[50%] left-[55%] text-[10px] font-semibold text-slate-400 uppercase tracking-widest">
+            <div className="absolute top-[50%] left-[55%] text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-widest">
               Eastleigh
             </div>
-            <div className="absolute top-[65%] left-[52%] text-[10px] font-semibold text-slate-400 uppercase tracking-widest">
+            <div className="absolute top-[65%] left-[52%] text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-widest">
               Fareham
             </div>
             <div className="absolute bottom-[8%] right-[10%] text-[10px] font-medium text-sky-400/80 uppercase tracking-wider">
@@ -657,9 +701,19 @@ function MapView({ sites, selectedRef, onSelect }: {
                   <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-10">
                     <div className="bg-foreground text-background text-xs rounded-lg px-3 py-2 whitespace-nowrap shadow-lg">
                       <div className="font-medium">{site.name}</div>
-                      <div className="text-background/70 mt-0.5">
-                        {site.availableLabel} {site.unitType} available
-                      </div>
+                      {site.unitType === "BNG" && site.habitatSummary && site.habitatSummary.length > 0 ? (
+                        <div className="mt-0.5 space-y-0.5">
+                          {site.habitatSummary.map((cat) => (
+                            <div key={cat.category} className="text-background/70 text-[11px]">
+                              {cat.categoryLabel}: {(cat.improvementUnits - cat.allocatedUnits).toFixed(1)} HU avail
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-background/70 mt-0.5">
+                          {site.availableLabel} {site.unitType} available
+                        </div>
+                      )}
                       <div className="absolute top-full left-1/2 -translate-x-1/2 w-2 h-2 bg-foreground rotate-45 -mt-1" />
                     </div>
                   </div>
@@ -697,7 +751,7 @@ function MapView({ sites, selectedRef, onSelect }: {
                 className={`w-full text-left rounded-xl border p-4 transition-all cursor-pointer ${
                   isSelected
                     ? "border-emerald-400 bg-emerald-50/40 shadow-sm ring-1 ring-emerald-200"
-                    : "border-border bg-card hover:border-muted-foreground/30 hover:shadow-sm"
+                    : "border-border bg-card hover:border-primary/20 hover:shadow-sm"
                 }`}
               >
                 <div className="flex items-start justify-between mb-2">
@@ -719,6 +773,18 @@ function MapView({ sites, selectedRef, onSelect }: {
                   allocatedLabel={site.allocatedLabel}
                   availableLabel={site.availableLabel}
                 />
+                {site.unitType === "BNG" && site.habitatSummary && site.habitatSummary.length > 0 && (
+                  <div className="mt-1.5 pt-1.5 border-t border-border/40 grid grid-cols-2 gap-x-3 gap-y-0.5">
+                    {site.habitatSummary.map((cat) => (
+                      <div key={cat.category} className="text-[10px]">
+                        <span className="text-muted-foreground">{cat.categoryLabel}: </span>
+                        <span className="font-semibold text-emerald-700 tabular-nums">
+                          {(cat.improvementUnits - cat.allocatedUnits).toFixed(1)} HU avail
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
                 <div className="flex items-center justify-between mt-2 text-xs text-muted-foreground">
                   <span>Price: {site.priceLabel} / unit</span>
                   <Link
@@ -761,7 +827,7 @@ function GridView({ sites }: { sites: Site[] }) {
             <Link
               key={site.ref}
               href={`/admin/brokerage-mockups/sites/${site.ref}`}
-              className="group bg-card border border-border rounded-xl hover:shadow-md hover:border-muted-foreground/30 transition-all cursor-pointer flex flex-col"
+              className="group bg-card border border-border rounded-xl hover:shadow-md hover:border-primary/20 transition-all cursor-pointer flex flex-col"
             >
               {/* Card header */}
               <div className="p-4 pb-3 border-b border-border/50">
@@ -769,7 +835,7 @@ function GridView({ sites }: { sites: Site[] }) {
                   <span className="text-[11px] font-mono text-muted-foreground">{site.ref}</span>
                   <StatusBadge status={site.status} />
                 </div>
-                <h3 className="font-semibold text-foreground group-hover:text-emerald-700 transition-colors">
+                <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors">
                   {site.name}
                 </h3>
                 <div className="flex items-center gap-1.5 mt-1 text-xs text-muted-foreground">
@@ -819,14 +885,44 @@ function GridView({ sites }: { sites: Site[] }) {
                       <div className="h-full bg-muted-foreground/20 rounded-full animate-pulse" style={{ width: "25%" }} />
                     </div>
                   )}
+                  {/* BNG habitat category breakdown */}
+                  {site.unitType === "BNG" && site.habitatSummary && site.habitatSummary.length > 0 && (
+                    <div className="pt-1 border-t border-border/40 space-y-0.5">
+                      {site.habitatSummary.map((cat) => (
+                        <div key={cat.category} className="flex items-center justify-between text-[10px]">
+                          <span className="text-muted-foreground">{cat.categoryLabel}</span>
+                          <span className="font-medium tabular-nums text-lime-700">
+                            {cat.improvementUnits.toFixed(1)} HU total · <span className="text-emerald-700">{(cat.improvementUnits - cat.allocatedUnits).toFixed(1)} avail</span>
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {/* Key metrics */}
                 <div className="grid grid-cols-2 gap-2 pt-1">
                   <div className="bg-muted/50 rounded-lg px-3 py-2">
-                    <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Available</div>
-                    <div className="text-sm font-semibold text-foreground mt-0.5">
-                      <AvailableCell available={site.available} availableLabel={site.availableLabel} />
+                    <div className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                      {site.unitType === "BNG" && site.habitatSummary && site.habitatSummary.length > 0 ? "Available" : "Available"}
+                    </div>
+                    <div className="mt-0.5">
+                      {site.unitType === "BNG" && site.habitatSummary && site.habitatSummary.length > 0 ? (
+                        <div className="space-y-0.5">
+                          {site.habitatSummary.map((cat) => (
+                            <div key={cat.category} className="text-[11px] tabular-nums leading-tight">
+                              <span className="text-muted-foreground">{cat.categoryLabel}: </span>
+                              <span className="font-semibold text-emerald-700">
+                                {(cat.improvementUnits - cat.allocatedUnits).toFixed(1)} HU
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-sm font-semibold text-foreground">
+                          <AvailableCell available={site.available} availableLabel={site.availableLabel} />
+                        </div>
+                      )}
                     </div>
                   </div>
                   <div className="bg-muted/50 rounded-lg px-3 py-2">
@@ -839,8 +935,7 @@ function GridView({ sites }: { sites: Site[] }) {
               </div>
 
               {/* Card footer */}
-              <div className="px-4 py-3 border-t border-border/50 flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">{site.lpa} district</span>
+              <div className="px-4 py-3 border-t border-border/50 flex items-center justify-end">
                 <span className="text-xs font-medium text-emerald-600 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
                   View details <ExternalLink className="w-3 h-3" />
                 </span>

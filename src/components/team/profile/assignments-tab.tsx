@@ -64,11 +64,11 @@ export function AssignmentsTab({ memberId }: { memberId: string }) {
   const hasMore = data?.hasMore ?? false
 
   function formatDate(date: Date | string | null): string {
-    if (!date) return "—"
+    if (!date) return "-"
     try {
       return format(new Date(date), "d MMM yyyy")
     } catch {
-      return "—"
+      return "-"
     }
   }
 

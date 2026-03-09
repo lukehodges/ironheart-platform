@@ -75,14 +75,14 @@ const REQUIREMENTS: Requirement[] = [
 
 const MATCHES: Record<string, PropertyMatch[]> = {
   r1: [
-    { id: "p1", name: "Baglan Energy Park — Unit 12",   address: "Brunel Way, Baglan, Neath",                          propertyType: "Industrial", sizeSqft: 8500,  price: 42500, priceLabel: "£42,500 pa", locationArea: "Neath / Baglan", score: 94, criteria: { type: "match", size: "match", location: "match", budget: "match" } },
+    { id: "p1", name: "Baglan Energy Park - Unit 12",   address: "Brunel Way, Baglan, Neath",                          propertyType: "Industrial", sizeSqft: 8500,  price: 42500, priceLabel: "£42,500 pa", locationArea: "Neath / Baglan", score: 94, criteria: { type: "match", size: "match", location: "match", budget: "match" } },
     { id: "p2", name: "Cross Hands Industrial Estate",  address: "Cross Hands Business Park, Carmarthenshire",         propertyType: "Industrial", sizeSqft: 14200, price: 71000, priceLabel: "£71,000 pa", priceNote: "£6k above max", locationArea: "Cross Hands", locationNote: "12 miles from Neath", score: 91, criteria: { type: "match", size: "match", location: "close", budget: "close" } },
-    { id: "p3", name: "Cwmdu Industrial Estate",        address: "Cwmdu, Swansea SA5",                                 propertyType: "Industrial", sizeSqft: 5800,  price: 29000, priceLabel: "£29,000 pa", sizeNote: "Below minimum — 2,200 sqft short", locationArea: "Swansea", score: 68, criteria: { type: "match", size: "miss", location: "match", budget: "match" } },
+    { id: "p3", name: "Cwmdu Industrial Estate",        address: "Cwmdu, Swansea SA5",                                 propertyType: "Industrial", sizeSqft: 5800,  price: 29000, priceLabel: "£29,000 pa", sizeNote: "Below minimum - 2,200 sqft short", locationArea: "Swansea", score: 68, criteria: { type: "match", size: "miss", location: "match", budget: "match" } },
   ],
   r3: [
     { id: "p4", name: "Unit 3 Axis Court",              address: "Swansea Enterprise Park, Llansamlet, Swansea",       propertyType: "Office",     sizeSqft: 1240,  price: 14500, priceLabel: "£14,500 pa", locationArea: "Swansea Enterprise Park", score: 88, criteria: { type: "match", size: "match", location: "match", budget: "match" } },
     { id: "p5", name: "Sketty Lane Commercial",         address: "Sketty Lane, Uplands, Swansea",                      propertyType: "Office",     sizeSqft: 950,   price: 14000, priceLabel: "£14,000 pa", locationArea: "Swansea", score: 85, criteria: { type: "match", size: "match", location: "match", budget: "match" } },
-    { id: "p6", name: "Bridgend Business Centre — Suite 7", address: "Bridgend Business Centre, CF31",                 propertyType: "Office",     sizeSqft: 620,   price: 8200,  priceLabel: "£8,200 pa", sizeNote: "Slightly below minimum", locationArea: "Bridgend", locationNote: "Outside preferred area", score: 72, criteria: { type: "match", size: "close", location: "miss", budget: "match" } },
+    { id: "p6", name: "Bridgend Business Centre - Suite 7", address: "Bridgend Business Centre, CF31",                 propertyType: "Office",     sizeSqft: 620,   price: 8200,  priceLabel: "£8,200 pa", sizeNote: "Slightly below minimum", locationArea: "Bridgend", locationNote: "Outside preferred area", score: 72, criteria: { type: "match", size: "close", location: "miss", budget: "match" } },
     { id: "p7", name: "First Floor, Kingsway",          address: "Kingsway, Swansea City Centre, SA1",                 propertyType: "Office",     sizeSqft: 1800,  price: 22500, priceLabel: "£22,500 pa", sizeNote: "Over maximum by 600 sqft", priceNote: "£4.5k above max", locationArea: "Swansea city centre", score: 54, criteria: { type: "match", size: "miss", location: "match", budget: "miss" } },
   ],
 }
@@ -178,7 +178,7 @@ function PropertyMatchCard({ match, rank }: { match: PropertyMatch; rank: number
         {isPlaceholder ? (
           <div className="flex items-center gap-2 py-2">
             <div className="h-2 w-2 rounded-full bg-amber-400 animate-pulse" />
-            <p className="text-[12px] text-stone-400 italic">Match details loading — data pending confirmation</p>
+            <p className="text-[12px] text-stone-400 italic">Match details loading - data pending confirmation</p>
           </div>
         ) : (
           <>
@@ -340,7 +340,7 @@ export default function RequirementsMatcherPage() {
               </div>
               <h1 className="text-xl font-bold text-stone-900 tracking-tight">Requirements Matcher</h1>
               <p className="text-[12px] text-stone-400 mt-0.5">
-                Live scoring — match active buyer &amp; tenant requirements against available stock
+                Live scoring - match active buyer &amp; tenant requirements against available stock
               </p>
             </div>
           </div>
@@ -376,11 +376,11 @@ export default function RequirementsMatcherPage() {
               <p className="text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-0.5">Indicators</p>
               <div className="flex items-center gap-1.5">
                 <div className="h-2 w-2 rounded-sm bg-red-200 border border-red-300" />
-                <span className="text-[10px] text-stone-500">Red tint — no matches found</span>
+                <span className="text-[10px] text-stone-500">Red tint - no matches found</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <div className="h-2 w-2 rounded-sm bg-blue-400 border border-blue-500" />
-                <span className="text-[10px] text-stone-500">Blue border — selected</span>
+                <span className="text-[10px] text-stone-500">Blue border - selected</span>
               </div>
             </div>
           </div>

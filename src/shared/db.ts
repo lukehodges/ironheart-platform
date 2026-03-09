@@ -5,7 +5,7 @@ import * as relations from "./db/relations";
 
 // During `next build`, NEXT_PHASE === "phase-production-build".
 // postgres() is instantiated but never connects until a query is made,
-// so using a placeholder URL here is safe — the real URL is required at runtime.
+// so using a placeholder URL here is safe - the real URL is required at runtime.
 if (!process.env.DATABASE_URL && process.env.NEXT_PHASE !== "phase-production-build") {
   throw new Error("DATABASE_URL environment variable is not set");
 }

@@ -72,7 +72,7 @@ const RESOLUTION_OPTIONS: {
 // ---------------------------------------------------------------------------
 
 function formatDate(date: Date | string | null | undefined): string {
-  if (!date) return "\u2014"
+  if (!date) return " - "
   const d = typeof date === "string" ? new Date(date) : date
   return d.toLocaleDateString("en-GB", {
     day: "numeric",
@@ -82,7 +82,7 @@ function formatDate(date: Date | string | null | undefined): string {
 }
 
 function formatRelativeDate(date: Date | string | null | undefined): string {
-  if (!date) return "\u2014"
+  if (!date) return " - "
   const d = typeof date === "string" ? new Date(date) : date
   const now = new Date()
   const diffMs = now.getTime() - d.getTime()
@@ -107,7 +107,7 @@ function formatRelativeDate(date: Date | string | null | undefined): string {
 }
 
 function truncate(text: string | null | undefined, maxLength: number): string {
-  if (!text) return "\u2014"
+  if (!text) return " - "
   if (text.length <= maxLength) return text
   return text.slice(0, maxLength) + "\u2026"
 }
@@ -115,7 +115,7 @@ function truncate(text: string | null | undefined, maxLength: number): string {
 function issueCategoryLabel(
   category: string | null | undefined,
 ): string {
-  if (!category) return "\u2014"
+  if (!category) return " - "
   const labels: Record<string, string> = {
     LATE: "Late",
     QUALITY: "Quality",
@@ -234,7 +234,7 @@ function ReviewRow({ review, onView }: ReviewRowProps) {
             {issueCategoryLabel(review.issueCategory)}
           </Badge>
         ) : (
-          <span className="text-xs text-muted-foreground">{"\u2014"}</span>
+          <span className="text-xs text-muted-foreground">{" - "}</span>
         )}
       </TableCell>
 

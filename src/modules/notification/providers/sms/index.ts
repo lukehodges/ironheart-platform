@@ -3,7 +3,7 @@
  *
  * Every SMS provider implementation must satisfy this contract.
  * Swap Twilio → Vonage → AWS SNS by swapping the implementation
- * behind this interface — zero application code changes required.
+ * behind this interface - zero application code changes required.
  *
  * Usage:
  *   import { smsProvider } from '../factory'
@@ -34,7 +34,7 @@ export interface SmsSendResult {
  *
  * Implementations:
  * - TwilioSmsProvider   (production)
- * - ConsoleSmsProvider  (development / CI — logs to console, no real SMS)
+ * - ConsoleSmsProvider  (development / CI - logs to console, no real SMS)
  */
 export interface SMSProvider {
   send(input: SmsSendInput): Promise<SmsSendResult>

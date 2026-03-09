@@ -53,7 +53,7 @@ interface ExecutionFilters {
 // ---------------------------------------------------------------------------
 
 function formatDuration(startedAt: Date, completedAt: Date | null): string {
-  if (!completedAt) return "—"
+  if (!completedAt) return "-"
   const ms = new Date(completedAt).getTime() - new Date(startedAt).getTime()
   if (ms < 1000) return `${ms}ms`
   if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`
@@ -499,7 +499,7 @@ export default function WorkflowExecutionsPage() {
                   <TableCell className="text-sm">
                     {execution.completedAt
                       ? format(new Date(execution.completedAt), "MMM d, yyyy h:mm a")
-                      : "—"}
+                      : "-"}
                   </TableCell>
                   <TableCell className="text-right text-sm font-medium">
                     {formatDuration(execution.startedAt, execution.completedAt)}

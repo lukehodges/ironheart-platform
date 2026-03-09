@@ -65,7 +65,7 @@ export const authRouter = router({
     }),
 
   /**
-   * Public health check — no auth required.
+   * Public health check - no auth required.
    */
   ping: publicProcedure.query(() => ({
     status: "ok",

@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Settings module — type definitions
+// Settings module - type definitions
 // ---------------------------------------------------------------------------
 
 export interface ApiKey {
@@ -17,7 +17,7 @@ export interface ApiKey {
   createdBy: string | null;
 }
 
-/** Returned once on creation — the only time the full key is visible. */
+/** Returned once on creation - the only time the full key is visible. */
 export interface ApiKeyWithSecret extends ApiKey {
   rawKey: string;
 }

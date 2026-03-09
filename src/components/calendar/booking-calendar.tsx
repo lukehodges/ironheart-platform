@@ -112,7 +112,7 @@ export default function BookingCalendar({ selectedStaffIds, onEventClick }: Book
 
       return {
         id: b.id,
-        title: `${customerLabel} — ${serviceLabel}`,
+        title: `${customerLabel} - ${serviceLabel}`,
         start,
         end,
         backgroundColor: STATUS_COLOR[b.status],

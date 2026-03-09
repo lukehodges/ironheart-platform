@@ -216,7 +216,7 @@ export const bookingRepository = {
       eq(availableSlots.tenantId, tenantId),
       eq(availableSlots.date, date),
       eq(availableSlots.available, true),
-      // serviceIds and staffIds are uuid[] columns — filter using ANY() when provided
+      // serviceIds and staffIds are uuid[] columns - filter using ANY() when provided
       serviceId ? sql`${serviceId}::uuid = ANY(${availableSlots.serviceIds})` : undefined,
       staffId ? sql`${staffId}::uuid = ANY(${availableSlots.staffIds})` : undefined,
     ].filter(Boolean) as Parameters<typeof and>;
@@ -276,7 +276,7 @@ export const bookingRepository = {
       .where(and(eq(availableSlots.id, slotId), eq(availableSlots.tenantId, tenantId)))
       .limit(1);
 
-    if (!slot) return; // slot may have been deleted — silently ignore
+    if (!slot) return; // slot may have been deleted - silently ignore
 
     const newCount = Math.max(0, slot.bookedCount - 1);
     await db

@@ -54,10 +54,10 @@ export function useAuditLog() {
   const entries = useMemo(() => {
     if (!data?.rows) return allEntries
     if (!cursor) {
-      // First page — replace all
+      // First page - replace all
       return data.rows
     }
-    // Subsequent pages — merge (deduplicate by id)
+    // Subsequent pages - merge (deduplicate by id)
     const existingIds = new Set(allEntries.map((e) => e.id))
     const newEntries = data.rows.filter((e: any) => !existingIds.has(e.id))
     return [...allEntries, ...newEntries]

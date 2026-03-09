@@ -34,14 +34,14 @@ vi.mock('@/shared/db', () => ({
   },
 }))
 
-// drizzle-orm helpers are used in the where() clause — mock to avoid import
+// drizzle-orm helpers are used in the where() clause - mock to avoid import
 vi.mock('drizzle-orm', () => ({
   and: (...args: unknown[]) => args,
   eq:  (col: unknown, val: unknown) => ({ col, val }),
 }))
 
 // ---------------------------------------------------------------------------
-// Module under test — imported AFTER mocks
+// Module under test - imported AFTER mocks
 // ---------------------------------------------------------------------------
 
 import { updateWithVersion } from '../optimistic-concurrency'
@@ -245,7 +245,7 @@ describe('updateWithVersion', () => {
         updateWithVersion<FakeRecord>(fakeTable, RECORD_ID, TENANT_ID, VERSION, {}),
       ).rejects.toThrow(ConflictError)
 
-      // Only one db.update call — no retry logic
+      // Only one db.update call - no retry logic
       expect(mockUpdate).toHaveBeenCalledOnce()
     })
 

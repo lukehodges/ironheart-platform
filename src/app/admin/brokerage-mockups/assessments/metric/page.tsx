@@ -144,7 +144,7 @@ export default function BNGMetric() {
         </div>
         <div>
           <h1 className="text-2xl font-bold text-foreground">
-            Biodiversity Metric 4.0 &mdash; Off-Site Assessment
+            Statutory Biodiversity Metric &mdash; Off-Site Assessment
           </h1>
           <p className="text-sm text-muted-foreground">
             Statutory metric calculation for biodiversity net gain

@@ -30,6 +30,13 @@ import {
   Bell,
   Globe,
   Layers,
+  Handshake,
+  MapPin,
+  ClipboardCheck,
+  Package,
+  GitCompareArrows,
+  ShieldCheck,
+  PoundSterling,
   type LucideIcon,
 } from "lucide-react"
 
@@ -61,6 +68,13 @@ const ICON_MAP: Record<string, LucideIcon> = {
   Bell,
   Globe,
   Layers,
+  Handshake,
+  MapPin,
+  ClipboardCheck,
+  Package,
+  GitCompareArrows,
+  ShieldCheck,
+  PoundSterling,
 }
 
 function resolveIcon(iconName: string): LucideIcon {
@@ -93,29 +107,22 @@ function buildStaticDashboardSection(): NavSection {
   }
 }
 
-function buildStaticDemoSection(): NavSection {
-  return {
-    title: "BP2 Demo",
-    items: [
-      { title: "Demo Overview",          href: "/admin/bp2-demo",                            icon: "Layers" },
-      { title: "Deals Pipeline",         href: "/admin/bp2-demo/deals-pipeline",              icon: "BarChart3" },
-      { title: "Property Stock",         href: "/admin/bp2-demo/property-stock",              icon: "Building2" },
-      { title: "Lease Calendar",         href: "/admin/bp2-demo/lease-calendar",              icon: "CalendarDays" },
-      { title: "Requirements Matcher",   href: "/admin/bp2-demo/requirements-matcher",        icon: "Search" },
-    ],
-  }
-}
-
 function buildStaticBrokerageSection(): NavSection {
   return {
-    title: "Brokerage Mockups",
+    title: "Brokerage",
     items: [
-      { title: "Brokerage Home",   href: "/admin/brokerage-mockups",              icon: "Globe" },
-      { title: "Dashboard",        href: "/admin/brokerage-mockups/dashboard",    icon: "LayoutDashboard" },
-      { title: "Deals",            href: "/admin/brokerage-mockups/deals",        icon: "BarChart3" },
-      { title: "Sites",            href: "/admin/brokerage-mockups/sites",        icon: "Globe" },
-      { title: "Contacts",         href: "/admin/brokerage-mockups/contacts",     icon: "Users" },
-      { title: "Demo Walkthrough", href: "/admin/brokerage-mockups/demo",         icon: "Zap" },
+      { title: "Dashboard",    href: "/admin/brokerage-mockups/dashboard",    icon: "LayoutDashboard" },
+      { title: "Deals",        href: "/admin/brokerage-mockups/deals",        icon: "Handshake" },
+      { title: "Sites",        href: "/admin/brokerage-mockups/sites",        icon: "MapPin" },
+      { title: "Contacts",     href: "/admin/brokerage-mockups/contacts",     icon: "Users" },
+      { title: "Assessments",  href: "/admin/brokerage-mockups/assessments",  icon: "ClipboardCheck" },
+      { title: "Inventory",    href: "/admin/brokerage-mockups/inventory",    icon: "Package" },
+      { title: "Matching",     href: "/admin/brokerage-mockups/matching",     icon: "GitCompareArrows" },
+      { title: "Documents",    href: "/admin/brokerage-mockups/documents",    icon: "FileText" },
+      { title: "Compliance",   href: "/admin/brokerage-mockups/compliance",   icon: "ShieldCheck" },
+      { title: "Financials",   href: "/admin/brokerage-mockups/financials",   icon: "PoundSterling" },
+      { title: "Reports",      href: "/admin/brokerage-mockups/reports",      icon: "BarChart3" },
+      { title: "Settings",     href: "/admin/brokerage-mockups/settings",     icon: "Settings" },
     ],
   }
 }
@@ -123,7 +130,7 @@ function buildStaticBrokerageSection(): NavSection {
 function buildStaticAccountSection(permissions: string[]): NavSection | null {
   const items: NavSection["items"] = []
 
-  // Audit Log — requires audit:read permission (aligned with audit.router.ts)
+  // Audit Log - requires audit:read permission (aligned with audit.router.ts)
   const hasAuditPermission =
     !permissions.length || // if no permissions passed, don't filter
     permissions.includes("*:*") ||
@@ -161,34 +168,32 @@ export function SidebarNav({
 
   // Merge: if nav-builder already produced an "Account" section (e.g. Settings from tenant manifest),
   // append our static account items into it rather than duplicating
-  const demoSection = buildStaticDemoSection()
+  const brokerageSection = buildStaticBrokerageSection()
 
   const sections: NavSection[] = [dashboardSection]
 
+  // Collect non-Account module sections first
+  let mergedAccountSection: NavSection | null = null
   for (const section of moduleSections) {
-    if (section.title === "Account" && accountSection) {
-      // Merge static account items into the module-generated Account section
-      sections.push({
-        ...section,
-        items: [...section.items, ...accountSection.items],
-      })
+    if (section.title === "Account") {
+      // Defer Account section so Brokerage comes before it
+      mergedAccountSection = accountSection
+        ? { ...section, items: [...section.items, ...accountSection.items] }
+        : section
     } else {
       sections.push(section)
     }
   }
 
-  // If no Account section came from modules but we have static account items, add it
-  const hasAccountFromModules = moduleSections.some((s) => s.title === "Account")
-  if (!hasAccountFromModules && accountSection) {
+  // Brokerage section - after module sections, before Account
+  sections.push(brokerageSection)
+
+  // Account section - always last
+  if (mergedAccountSection) {
+    sections.push(mergedAccountSection)
+  } else if (accountSection) {
     sections.push(accountSection)
   }
-
-  // BP2 demo section — always shown
-  sections.push(demoSection)
-
-  // Brokerage mockups section — always shown
-  const brokerageSection = buildStaticBrokerageSection()
-  sections.push(brokerageSection)
 
   return (
     <nav className="flex-1 overflow-y-auto py-4 scrollbar-thin" aria-label="Main navigation">

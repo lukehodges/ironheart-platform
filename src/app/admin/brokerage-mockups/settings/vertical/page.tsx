@@ -130,7 +130,7 @@ export default function SettingsVerticalPage() {
           Vertical Configuration
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          The brokerage operating system — same platform, any vertical
+          The brokerage operating system - same platform, any vertical
         </p>
       </div>
 
@@ -181,28 +181,30 @@ export default function SettingsVerticalPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-48">Configuration Area</TableHead>
-                <TableHead>Current Setting</TableHead>
-                <TableHead className="w-[300px]">Description</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {configMatrix.map((row) => (
-                <TableRow key={row.area}>
-                  <TableCell className="font-medium text-sm">
-                    {row.area}
-                  </TableCell>
-                  <TableCell className="text-sm">{row.setting}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {row.description}
-                  </TableCell>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-48">Configuration Area</TableHead>
+                  <TableHead>Current Setting</TableHead>
+                  <TableHead className="w-[300px]">Description</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {configMatrix.map((row) => (
+                  <TableRow key={row.area}>
+                    <TableCell className="font-medium text-sm">
+                      {row.area}
+                    </TableCell>
+                    <TableCell className="text-sm">{row.setting}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {row.description}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
 
@@ -260,11 +262,6 @@ export default function SettingsVerticalPage() {
             })}
           </div>
 
-          <div className="mt-6 text-center">
-            <p className="text-sm font-medium text-foreground">
-              Same 7 platform pillars. Different configuration.
-            </p>
-          </div>
         </CardContent>
       </Card>
 

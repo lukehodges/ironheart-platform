@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 // ---------------------------------------------------------------------------
-// Settings module — Zod schemas for tRPC input validation
+// Settings module - Zod schemas for tRPC input validation
 // ---------------------------------------------------------------------------
 
 export const createApiKeySchema = z.object({

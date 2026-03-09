@@ -471,7 +471,7 @@ describe("BookingWizardPage", () => {
       render(<BookingWizardPage />);
 
       // The ServiceSelector mock exposes a "Select a service" button
-      // which calls onSelect — the page wires onSelect to selectService + nextStep
+      // which calls onSelect - the page wires onSelect to selectService + nextStep
       const selectButton = screen.getByRole("button", { name: /select a service/i });
       await user.click(selectButton);
 
@@ -519,7 +519,7 @@ describe("BookingWizardPage", () => {
       render(<BookingWizardPage />);
 
       // The back button is an icon-only button with size="icon-sm" and a ChevronLeft icon
-      // It uses variant="ghost" and has no text label — find it by its role within the card header
+      // It uses variant="ghost" and has no text label - find it by its role within the card header
       const buttons = screen.getAllByRole("button");
       const backButton = buttons.find(
         (btn) => btn.getAttribute("variant") === "ghost" || btn.closest("[class*='justify-between']")

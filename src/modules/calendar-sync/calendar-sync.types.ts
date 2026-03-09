@@ -1,5 +1,5 @@
 /**
- * Calendar-Sync Module — Type Definitions
+ * Calendar-Sync Module - Type Definitions
  *
  * All types kept in one file to avoid circular dependencies.
  * Provider-specific types live in their respective provider files.

@@ -27,18 +27,12 @@ import {
   ArrowRight,
   BarChart3,
   Calculator,
+  ChevronRight,
   Eye,
   FileText,
   CreditCard,
   PieChart as PieChartIcon,
 } from "lucide-react"
-import {
-  totalDealValueYTD,
-  totalCommissionYTD,
-  collectedAmount,
-  outstandingAmount,
-  invoices as mockInvoices,
-} from "../_mock-data"
 import {
   BarChart,
   Bar,
@@ -51,6 +45,24 @@ import {
   Pie,
   Cell,
 } from "recharts"
+import {
+  totalDealValueYTD,
+  totalCommissionYTD,
+  collectedAmount,
+  outstandingAmount,
+  invoices as mockInvoices,
+  monthlyCommission,
+  contacts,
+} from "../_mock-data"
+
+// Build a lookup: contact name OR company name → contact ID
+const CONTACT_ID_LOOKUP: Record<string, string> = Object.fromEntries(
+  contacts.flatMap((c) => {
+    const entries: [string, string][] = [[c.name, c.id]]
+    if (c.company) entries.push([c.company, c.id])
+    return entries
+  }),
+)
 
 // ---------------------------------------------------------------------------
 // Types
@@ -74,14 +86,14 @@ const STAT_CARDS = {
   outstanding: { value: outstandingAmount, label: "Outstanding", subtitle: `${pendingCount} invoices pending`, count: pendingCount },
 }
 
-const MONTHLY_COMMISSION = [
-  { month: "Oct", collected: 18_200, outstanding: 0, total: 18_200 },
-  { month: "Nov", collected: 31_500, outstanding: 0, total: 31_500 },
-  { month: "Dec", collected: 22_800, outstanding: 0, total: 22_800 },
-  { month: "Jan", collected: 28_400, outstanding: 0, total: 28_400 },
-  { month: "Feb", collected: 37_700, outstanding: 6_200, total: 43_900 },
-  { month: "Mar", collected: 4_200, outstanding: 38_400, total: 42_600 },
-]
+const MONTHLY_COMMISSION = monthlyCommission.map((m, idx) => {
+  const shortMonth = m.month.split(" ")[0]
+  // Treat the last two months as having some outstanding; earlier months are fully collected
+  const isRecent = idx >= monthlyCommission.length - 2
+  const outstanding = isRecent ? Math.round(m.amount * 0.4) : 0
+  const collected = m.amount - outstanding
+  return { month: shortMonth, collected, outstanding, total: m.amount }
+})
 
 const BROKER_COMMISSION = [
   { name: "James Harris", initials: "JH", commission: 112_440, pct: 60, deals: 9, color: "#3b82f6" },
@@ -89,38 +101,31 @@ const BROKER_COMMISSION = [
   { name: "Tom Jenkins", initials: "TJ", commission: 18_740, pct: 10, deals: 1, color: "#10b981" },
 ]
 
-const OUTSTANDING_PAYMENTS = [
-  {
-    invoice: "INV-0019",
-    deal: "D-0038",
-    contact: "Taylor Wimpey",
-    amount: 27_000,
-    status: "Sent" as const,
-    issued: "5 Mar 2026",
-    due: "5 Apr 2026",
-    overdue: null,
-  },
-  {
-    invoice: "INV-0017",
-    deal: "D-0048",
-    contact: "Linden Homes",
-    amount: 11_400,
-    status: "Overdue" as const,
-    issued: "15 Feb 2026",
-    due: "15 Mar 2026",
-    overdue: "0 days (due today)",
-  },
-  {
-    invoice: "INV-0015",
-    deal: "D-0046",
-    contact: "Ian Stockbridge",
-    amount: 6_200,
-    status: "Draft" as const,
-    issued: null,
-    due: null,
-    overdue: null,
-  },
-]
+function formatDateShort(dateStr: string): string {
+  const d = new Date(dateStr)
+  return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
+}
+
+function computeOverdue(dueDate: string): string | null {
+  const due = new Date(dueDate)
+  const now = new Date("2026-03-09") // current mock date
+  const diffDays = Math.floor((now.getTime() - due.getTime()) / (1000 * 60 * 60 * 24))
+  if (diffDays <= 0) return null
+  return `${diffDays} day${diffDays !== 1 ? "s" : ""} overdue`
+}
+
+const OUTSTANDING_PAYMENTS = mockInvoices
+  .filter((i) => i.status !== "Paid" && i.status !== "Draft")
+  .map((inv) => ({
+    invoice: inv.invoiceNumber,
+    deal: inv.dealId,
+    contact: inv.contactName,
+    amount: inv.amount,
+    status: inv.status as "Sent" | "Overdue",
+    issued: formatDateShort(inv.issuedDate),
+    due: formatDateShort(inv.dueDate),
+    overdue: inv.status === "Overdue" ? computeOverdue(inv.dueDate) : null,
+  }))
 
 const RECENT_TRANSACTIONS = [
   { date: "3 Mar 2026", type: "Payment" as const, contact: "Barratt Homes", deal: "D-0035", amount: 72_000, method: "Bank Transfer", status: "Cleared" as const },
@@ -241,7 +246,7 @@ function StatCard({
   progress?: number
 }) {
   return (
-    <Card className="flex-1 min-w-[200px]">
+    <Card>
       <CardContent className="p-5">
         <div className="flex items-start justify-between mb-3">
           <div className={`p-2 rounded-lg ${accent}`}>
@@ -281,10 +286,10 @@ function CommissionFlowViz({ compact }: { compact?: boolean }) {
     <div className="flex items-center gap-2 w-full">
       {/* Developer */}
       <div className={`flex-1 rounded-lg border border-blue-500/20 bg-blue-500/10 ${boxH} text-center`}>
-        <p className={`${labelSize} text-blue-600 dark:text-blue-400 font-medium uppercase tracking-wider mb-0.5`}>
+        <p className={`${labelSize} text-blue-600 font-medium uppercase tracking-wider mb-0.5`}>
           Developer Pays
         </p>
-        <p className={`${textSize} font-bold text-blue-700 dark:text-blue-300`}>{fmtGBP(COMMISSION_SPLIT.developerPays)}</p>
+        <p className={`${textSize} font-bold text-blue-700`}>{fmtGBP(COMMISSION_SPLIT.developerPays)}</p>
       </div>
 
       <div className="flex flex-col items-center shrink-0">
@@ -293,10 +298,10 @@ function CommissionFlowViz({ compact }: { compact?: boolean }) {
 
       {/* Platform */}
       <div className={`flex-1 rounded-lg border border-emerald-500/20 bg-emerald-500/10 ${boxH} text-center`}>
-        <p className={`${labelSize} text-emerald-600 dark:text-emerald-400 font-medium uppercase tracking-wider mb-0.5`}>
+        <p className={`${labelSize} text-emerald-600 font-medium uppercase tracking-wider mb-0.5`}>
           Platform ({COMMISSION_SPLIT.platformPct}%)
         </p>
-        <p className={`${textSize} font-bold text-emerald-700 dark:text-emerald-300`}>{fmtGBP(COMMISSION_SPLIT.platformTakes)}</p>
+        <p className={`${textSize} font-bold text-emerald-700`}>{fmtGBP(COMMISSION_SPLIT.platformTakes)}</p>
       </div>
 
       <div className="flex flex-col items-center shrink-0">
@@ -305,10 +310,10 @@ function CommissionFlowViz({ compact }: { compact?: boolean }) {
 
       {/* Landowner */}
       <div className={`flex-1 rounded-lg border border-amber-500/20 bg-amber-500/10 ${boxH} text-center`}>
-        <p className={`${labelSize} text-amber-600 dark:text-amber-400 font-medium uppercase tracking-wider mb-0.5`}>
+        <p className={`${labelSize} text-amber-600 font-medium uppercase tracking-wider mb-0.5`}>
           Landowner ({COMMISSION_SPLIT.landownerPct}%)
         </p>
-        <p className={`${textSize} font-bold text-amber-700 dark:text-amber-300`}>{fmtGBP(COMMISSION_SPLIT.landownerReceives)}</p>
+        <p className={`${textSize} font-bold text-amber-700`}>{fmtGBP(COMMISSION_SPLIT.landownerReceives)}</p>
       </div>
     </div>
   )
@@ -461,7 +466,7 @@ function ExecutiveSummary() {
       {/* Commission Flow */}
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-semibold">Commission Split (Example: D-0038 Manor Fields)</CardTitle>
+          <CardTitle className="text-sm font-semibold">Commission Split (Example: D-0038 Taylor Wimpey / Whiteley Farm)</CardTitle>
           <CardDescription className="text-xs">How commission flows from developer through platform to landowner</CardDescription>
         </CardHeader>
         <CardContent>
@@ -475,7 +480,7 @@ function ExecutiveSummary() {
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="text-sm font-semibold">Outstanding Payments</CardTitle>
-              <CardDescription className="text-xs">3 invoices requiring attention</CardDescription>
+              <CardDescription className="text-xs">{OUTSTANDING_PAYMENTS.length} invoice{OUTSTANDING_PAYMENTS.length !== 1 ? "s" : ""} requiring attention</CardDescription>
             </div>
             <Link href="/admin/brokerage-mockups/financials/invoices" className="text-[11px] text-primary font-medium hover:underline">
               View all invoices &rarr;
@@ -503,7 +508,7 @@ function ExecutiveSummary() {
                   <TableCell className="text-[12px]">
                     <Link href={`/admin/brokerage-mockups/deals/${inv.deal}`} className="text-primary hover:underline">{inv.deal}</Link>
                   </TableCell>
-                  <TableCell className="text-[12px] font-medium">{inv.contact}</TableCell>
+                  <TableCell className="text-[12px] font-medium">{CONTACT_ID_LOOKUP[inv.contact] ? <Link href={`/admin/brokerage-mockups/contacts/${CONTACT_ID_LOOKUP[inv.contact]}`} className="hover:text-primary hover:underline transition-colors">{inv.contact}</Link> : inv.contact}</TableCell>
                   <TableCell className="text-[12px] text-right font-semibold tabular-nums">{fmtGBP(inv.amount)}</TableCell>
                   <TableCell>
                     <span className={`inline-flex items-center rounded border px-2 py-0.5 text-[10px] font-semibold ${invoiceStatusStyle(inv.status)}`}>
@@ -554,7 +559,7 @@ function ExecutiveSummary() {
                       {txn.type}
                     </span>
                   </TableCell>
-                  <TableCell className="text-[12px] font-medium">{txn.contact}</TableCell>
+                  <TableCell className="text-[12px] font-medium">{CONTACT_ID_LOOKUP[txn.contact] ? <Link href={`/admin/brokerage-mockups/contacts/${CONTACT_ID_LOOKUP[txn.contact]}`} className="hover:text-primary hover:underline transition-colors">{txn.contact}</Link> : txn.contact}</TableCell>
                   <TableCell className="text-[12px]">
                     <Link href={`/admin/brokerage-mockups/deals/${txn.deal}`} className="text-primary hover:underline">{txn.deal}</Link>
                   </TableCell>
@@ -620,7 +625,7 @@ function FinancialDashboard() {
         <CardHeader className="pb-3">
           <CardTitle className="text-sm font-semibold">Commission Flow Model</CardTitle>
           <CardDescription className="text-xs">
-            How revenue flows from developer through platform commission to landowner payment (example: D-0038 Manor Fields, 45 kg N/yr at 3,000/kg)
+            How revenue flows from developer through platform commission to landowner payment (example: D-0038 Taylor Wimpey / Whiteley Farm, 45 kg N/yr at 3,000/kg)
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -783,7 +788,7 @@ function FinancialDashboard() {
                 {OUTSTANDING_PAYMENTS.map((inv) => (
                   <TableRow key={inv.invoice}>
                     <TableCell className="font-medium text-[12px]">{inv.invoice}</TableCell>
-                    <TableCell className="text-[12px]">{inv.contact}</TableCell>
+                    <TableCell className="text-[12px]">{CONTACT_ID_LOOKUP[inv.contact] ? <Link href={`/admin/brokerage-mockups/contacts/${CONTACT_ID_LOOKUP[inv.contact]}`} className="hover:text-primary hover:underline transition-colors">{inv.contact}</Link> : inv.contact}</TableCell>
                     <TableCell className="text-[12px] text-right font-semibold tabular-nums">{fmtGBP(inv.amount)}</TableCell>
                     <TableCell>
                       <span className={`inline-flex items-center rounded border px-2 py-0.5 text-[10px] font-semibold ${invoiceStatusStyle(inv.status)}`}>
@@ -823,7 +828,7 @@ function FinancialDashboard() {
                         {txn.type}
                       </span>
                     </TableCell>
-                    <TableCell className="text-[12px] font-medium">{txn.contact}</TableCell>
+                    <TableCell className="text-[12px] font-medium">{CONTACT_ID_LOOKUP[txn.contact] ? <Link href={`/admin/brokerage-mockups/contacts/${CONTACT_ID_LOOKUP[txn.contact]}`} className="hover:text-primary hover:underline transition-colors">{txn.contact}</Link> : txn.contact}</TableCell>
                     <TableCell className="text-[12px] text-right font-semibold tabular-nums">{fmtGBP(txn.amount)}</TableCell>
                     <TableCell>
                       <span className={`inline-flex items-center rounded border px-2 py-0.5 text-[10px] font-semibold ${transactionStatusStyle(txn.status)}`}>
@@ -1056,7 +1061,7 @@ function AccountantView() {
                   <TableCell className="text-[12px] font-mono">
                     <Link href={`/admin/brokerage-mockups/deals/${inv.deal}`} className="text-primary hover:underline">{inv.deal}</Link>
                   </TableCell>
-                  <TableCell className="text-[12px] font-medium">{inv.contact}</TableCell>
+                  <TableCell className="text-[12px] font-medium">{CONTACT_ID_LOOKUP[inv.contact] ? <Link href={`/admin/brokerage-mockups/contacts/${CONTACT_ID_LOOKUP[inv.contact]}`} className="hover:text-primary hover:underline transition-colors">{inv.contact}</Link> : inv.contact}</TableCell>
                   <TableCell className="text-[12px] text-right tabular-nums font-semibold">{fmtGBP(inv.amount)}</TableCell>
                   <TableCell>
                     <span className={`inline-flex items-center rounded border px-2 py-0.5 text-[10px] font-semibold ${invoiceStatusStyle(inv.status)}`}>
@@ -1163,7 +1168,7 @@ function AccountantView() {
                       {txn.type}
                     </span>
                   </TableCell>
-                  <TableCell className="text-[12px] font-medium">{txn.contact}</TableCell>
+                  <TableCell className="text-[12px] font-medium">{CONTACT_ID_LOOKUP[txn.contact] ? <Link href={`/admin/brokerage-mockups/contacts/${CONTACT_ID_LOOKUP[txn.contact]}`} className="hover:text-primary hover:underline transition-colors">{txn.contact}</Link> : txn.contact}</TableCell>
                   <TableCell className="text-[12px] font-mono">
                     <Link href={`/admin/brokerage-mockups/deals/${txn.deal}`} className="text-primary hover:underline">{txn.deal}</Link>
                   </TableCell>
@@ -1199,6 +1204,12 @@ export default function FinancialsOverviewPage() {
 
   return (
     <div className="max-w-screen-2xl mx-auto px-6 py-6">
+      <div className="flex items-center gap-1.5 text-sm text-muted-foreground mb-4">
+        <Link href="/admin/brokerage-mockups/dashboard" className="hover:text-foreground transition-colors">Dashboard</Link>
+        <ChevronRight className="h-3.5 w-3.5" />
+        <span className="text-foreground font-medium">Financials</span>
+      </div>
+
       {/* Page Header */}
       <div className="flex items-start justify-between mb-6">
         <div>

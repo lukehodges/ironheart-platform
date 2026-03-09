@@ -40,7 +40,7 @@ export const reviewService = {
     // Load booking to get customerId
     const booking = await bookingRepository.findById(tenantId, bookingId);
     if (!booking?.customerId) {
-      // Fail open — cannot determine customer history
+      // Fail open - cannot determine customer history
       return { proceed: true };
     }
 
@@ -50,7 +50,7 @@ export const reviewService = {
       { limit: 5 }
     );
 
-    // New customer — always proceed
+    // New customer - always proceed
     if (recentReviews.length === 0) {
       return { proceed: true };
     }

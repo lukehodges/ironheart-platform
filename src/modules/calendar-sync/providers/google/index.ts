@@ -206,7 +206,7 @@ export class GoogleCalendarProvider implements CalendarProvider {
     }
 
     if (resourceState === 'sync') {
-      // Initial sync confirmation — not a real change event, ignore
+      // Initial sync confirmation - not a real change event, ignore
       return null
     }
 

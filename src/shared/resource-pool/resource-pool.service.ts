@@ -165,7 +165,7 @@ export const resourcePoolService = {
       return { success: true, assignmentId: row.id }
     }
 
-    // Capacity exceeded — check enforcement
+    // Capacity exceeded - check enforcement
     const enforcement = await getTenantEnforcement(tenantId)
 
     if (enforcement === 'STRICT') {
@@ -180,7 +180,7 @@ export const resourcePoolService = {
       }
     }
 
-    // FLEXIBLE mode — require override reason
+    // FLEXIBLE mode - require override reason
     if (!input.overrideReason) {
       log.warn({ tenantId, userId: input.userId, capacityType: input.moduleSlug, current: currentUsage, max: capacity.maxDaily }, "Assignment rejected: capacity exceeded, no override reason (FLEXIBLE)")
       return {

@@ -2,7 +2,7 @@ import type { DailyRevenue, RevenueForecast } from '../analytics.types'
 
 /**
  * Time-series decomposition revenue forecast.
- * No ML dependency — pure math.
+ * No ML dependency - pure math.
  *
  * Algorithm:
  * 1. Compute 4-week moving average (trend)
@@ -12,7 +12,7 @@ import type { DailyRevenue, RevenueForecast } from '../analytics.types'
  */
 export function forecastRevenue(history: DailyRevenue[], forecastDays: number): RevenueForecast[] {
   if (history.length < 14) {
-    // Not enough data — return zero-confidence forecast
+    // Not enough data - return zero-confidence forecast
     return Array.from({ length: forecastDays }, (_, i) => {
       const date = new Date()
       date.setDate(date.getDate() + i + 1)

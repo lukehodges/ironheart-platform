@@ -6,7 +6,7 @@ const log = logger.child({ module: 'console.sms.provider' })
 /**
  * Development/test SMS provider.
  * Logs the SMS to the console instead of sending it.
- * Never sends real SMS messages — safe to use in development and CI.
+ * Never sends real SMS messages - safe to use in development and CI.
  *
  * Activate with: NOTIFICATION_SMS_PROVIDER=console
  */
@@ -19,7 +19,7 @@ export class ConsoleSmsProvider implements SMSProvider {
         body: input.body,
         messageId,
       },
-      '[DEV] SMS would be sent (ConsoleSmsProvider — no real SMS sent)'
+      '[DEV] SMS would be sent (ConsoleSmsProvider - no real SMS sent)'
     )
     return { success: true, messageId }
   }

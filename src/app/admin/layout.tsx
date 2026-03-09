@@ -14,7 +14,7 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode
 }) {
-  // Require auth — WorkOS redirects to /sign-in automatically
+  // Require auth - WorkOS redirects to /sign-in automatically
   const { user: workosUser } = await withAuth({ ensureSignedIn: true })
 
   if (!workosUser) {
@@ -50,7 +50,7 @@ export default async function AdminLayout({
       permissions = ["*:*"]
 
       // Platform admins without an active impersonation session
-      // should use /platform — they have no tenant context here
+      // should use /platform - they have no tenant context here
       const impersonationKey = `impersonate:${workosUser.id}`
       const impersonation = await redis.get(impersonationKey)
       if (!impersonation) {
@@ -90,7 +90,7 @@ export default async function AdminLayout({
         .map((m) => m.moduleSlug)
     }
   } catch {
-    // DB unavailable (e.g. env not set in dev) — continue with basic profile
+    // DB unavailable (e.g. env not set in dev) - continue with basic profile
   }
 
   const displayName = workosUser.firstName
@@ -123,7 +123,7 @@ export default async function AdminLayout({
           className="flex-1 overflow-y-auto scrollbar-thin"
           id="main-content"
         >
-          <div className="container mx-auto p-6 max-w-7xl">
+          <div className="container mx-auto p-6 max-w-screen-2xl">
             {children}
           </div>
         </main>

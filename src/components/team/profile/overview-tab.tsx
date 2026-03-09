@@ -44,16 +44,16 @@ interface OverviewTabProps {
 }
 
 function formatDate(date: Date | string | null | undefined): string {
-  if (!date) return "\u2014"
+  if (!date) return " - "
   try {
     return format(new Date(date), "d MMM yyyy")
   } catch {
-    return "\u2014"
+    return " - "
   }
 }
 
 function formatCurrency(value: number | null | undefined): string {
-  if (value == null) return "\u2014"
+  if (value == null) return " - "
   return new Intl.NumberFormat("en-GB", {
     style: "currency",
     currency: "GBP",
@@ -259,7 +259,7 @@ function CustomFieldsSection({ memberId }: { memberId: string }) {
               <DetailRow
                 key={f.fieldDefinitionId}
                 label={f.label}
-                value={f.value == null ? "\u2014" : String(f.value)}
+                value={f.value == null ? " - " : String(f.value)}
               />
             ))}
           </div>
@@ -299,11 +299,11 @@ export function OverviewTab({ member, onUpdate }: OverviewTabProps) {
 
       <div className="rounded-lg border border-border divide-y divide-border px-4">
         <DetailRow label="Email" value={member.email} />
-        <DetailRow label="Phone" value={member.phone ?? "\u2014"} />
-        <DetailRow label="Job title" value={member.jobTitle ?? "\u2014"} />
+        <DetailRow label="Phone" value={member.phone ?? " - "} />
+        <DetailRow label="Job title" value={member.jobTitle ?? " - "} />
         <DetailRow
           label="Employee type"
-          value={member.employeeType ? member.employeeType.replace("_", " ").toLowerCase() : "\u2014"}
+          value={member.employeeType ? member.employeeType.replace("_", " ").toLowerCase() : " - "}
         />
         <DetailRow label="Hourly rate" value={formatCurrency(member.hourlyRate)} />
         <DetailRow label="Joined" value={formatDate(member.createdAt)} />

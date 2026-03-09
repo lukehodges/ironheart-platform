@@ -279,7 +279,7 @@ export default function FormSubmissionPage() {
     )
   }
 
-  // Parse fields from formData — map DB types to the public component model
+  // Parse fields from formData - map DB types to the public component model
   const fields = (
     (formData.template.fields as DbFormField[]) ?? []
   ).map(mapDbFieldToPublic)

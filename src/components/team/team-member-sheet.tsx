@@ -57,11 +57,11 @@ const statusConfig: Record<
 }
 
 function formatDate(date: Date | string | null | undefined): string {
-  if (!date) return "—"
+  if (!date) return "-"
   try {
     return format(new Date(date), "d MMM yyyy")
   } catch {
-    return "—"
+    return "-"
   }
 }
 
@@ -217,7 +217,7 @@ function BookingsTab({ memberId }: { memberId: string }) {
     <div className="space-y-2">
       <div className="flex items-center justify-between mb-3">
         <p className="text-xs text-muted-foreground">
-          Today — {format(new Date(), "EEEE, d MMM")}
+          Today - {format(new Date(), "EEEE, d MMM")}
         </p>
         <Badge variant="info" className="text-[10px]">
           {bookings.length} booked

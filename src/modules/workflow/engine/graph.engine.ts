@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────────────────────────────────────
-// Graph workflow engine — full directed-graph executor
+// Graph workflow engine - full directed-graph executor
 // Supports: IF, SWITCH, MERGE, LOOP, WAIT_FOR_EVENT, WAIT_UNTIL,
 //           SET_VARIABLE, FILTER, TRANSFORM, EXECUTE_WORKFLOW + 7 action nodes
 // ──────────────────────────────────────────────────────────────────────────────
@@ -32,7 +32,7 @@ import { migrateNodeConfig } from './migrations/node-config.migrations'
 
 const log = logger.child({ module: 'workflow.graph-engine' })
 
-// Inngest step type — use any to avoid deep Inngest import chain
+// Inngest step type - use any to avoid deep Inngest import chain
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type InngestStep = any
 
@@ -75,7 +75,7 @@ export function findMatchingTrigger(
 }
 
 /**
- * GraphEngine — executes a workflow defined as nodes + edges (DAG with LOOP back-edges).
+ * GraphEngine - executes a workflow defined as nodes + edges (DAG with LOOP back-edges).
  *
  * The engine traverses the graph starting from the TRIGGER node, evaluating each
  * node in turn and following the appropriate output edge based on node type and result.
@@ -84,7 +84,7 @@ export function findMatchingTrigger(
  * - Cycle detection via visitedNodes Set (LOOP/LOOP_END nodes are exempt)
  * - All async operations use step.run() for Inngest durability and replay safety
  * - Error handling respects node.errorHandling: 'stop' (default), 'continue', 'branch'
- * - Context is immutable — each node produces a new context via spread
+ * - Context is immutable - each node produces a new context via spread
  */
 export class GraphEngine {
   private nodes: Map<string, WorkflowNode>
@@ -125,10 +125,10 @@ export class GraphEngine {
     const node = this.nodes.get(nodeId)
     if (!node) throw new Error(`Node ${nodeId} not found in graph`)
 
-    // Cycle detection (LOOP and LOOP_END nodes are exempt — they are intentional back-edges)
+    // Cycle detection (LOOP and LOOP_END nodes are exempt - they are intentional back-edges)
     if (node.type !== 'LOOP' && node.type !== 'LOOP_END') {
       if (visitedNodes.has(nodeId)) {
-        throw new Error(`Cycle detected at node ${nodeId} — workflow graph must be a DAG`)
+        throw new Error(`Cycle detected at node ${nodeId} - workflow graph must be a DAG`)
       }
       visitedNodes.add(nodeId)
     }
@@ -147,7 +147,7 @@ export class GraphEngine {
       switch (node$.type) {
 
         case 'TRIGGER':
-          // Entry point — context already enriched, just pass through
+          // Entry point - context already enriched, just pass through
           break
 
         case 'IF': {
@@ -173,7 +173,7 @@ export class GraphEngine {
         }
 
         case 'MERGE': {
-          // Merge is a convergence point — when reached by a single path, just pass through.
+          // Merge is a convergence point - when reached by a single path, just pass through.
           // Parallel branch execution is handled by the caller before reaching here.
           nextHandle = 'output'
           break
@@ -192,7 +192,7 @@ export class GraphEngine {
           const itemEdge = this.adjacency.get(nodeId)?.find(e => e.sourceHandle === 'item')
 
           if (!itemEdge) {
-            log.warn({ nodeId }, 'LOOP node has no "item" edge — skipping')
+            log.warn({ nodeId }, 'LOOP node has no "item" edge - skipping')
             break
           }
 
@@ -205,7 +205,7 @@ export class GraphEngine {
               updatedContext = popLoopFrame(result, updatedContext)
             }
           } else {
-            // parallel mode — each iteration runs concurrently via step.run
+            // parallel mode - each iteration runs concurrently via step.run
             const results = await Promise.all(
               loopItems.map((_, i) => {
                 const loopCtx = pushLoopFrame(updatedContext, cfg, loopItems, i)
@@ -337,7 +337,7 @@ export class GraphEngine {
 
           const subDepth = ((context.__workflowDepth ?? 0) as number) + 1
           if (subDepth >= 3) {
-            log.warn({ nodeId, workflowId: cfg.workflowId }, 'Sub-workflow depth limit reached — skipping')
+            log.warn({ nodeId, workflowId: cfg.workflowId }, 'Sub-workflow depth limit reached - skipping')
             output = { skipped: true, reason: 'depth-limit' }
             nextHandle = 'error'
             break
@@ -385,7 +385,7 @@ export class GraphEngine {
           break
         }
 
-        // Action nodes — delegate to shared executeAction()
+        // Action nodes - delegate to shared executeAction()
         case 'SEND_EMAIL':
         case 'SEND_SMS':
         case 'WEBHOOK':
@@ -403,13 +403,13 @@ export class GraphEngine {
         }
 
         case 'STOP':
-          return context  // terminal — do not follow edges
+          return context  // terminal - do not follow edges
 
         case 'ERROR':
           throw new Error(`Workflow reached ERROR terminal node: ${node$.label ?? nodeId}`)
 
         case 'LOOP_END':
-          // LOOP_END is a marker node — just pass through
+          // LOOP_END is a marker node - just pass through
           break
       }
     } catch (err) {
@@ -418,12 +418,12 @@ export class GraphEngine {
 
       if (node.errorHandling === 'branch') {
         nextHandle = 'error'
-        log.warn({ nodeId, err: errMsg }, 'Node failed — routing to error branch')
+        log.warn({ nodeId, err: errMsg }, 'Node failed - routing to error branch')
       } else if (node.errorHandling === 'continue') {
-        log.warn({ nodeId, err: errMsg }, 'Node failed — continuing (errorHandling=continue)')
+        log.warn({ nodeId, err: errMsg }, 'Node failed - continuing (errorHandling=continue)')
         nextHandle = 'output'
       } else {
-        throw err  // 'stop' (default) — propagate so Inngest can retry
+        throw err  // 'stop' (default) - propagate so Inngest can retry
       }
     }
 
@@ -438,7 +438,7 @@ export class GraphEngine {
     // Parallel branch detection: if next node is MERGE, check mode
     const nextNode = this.nodes.get(nextEdge.target)
     if (nextNode?.type === 'MERGE') {
-      // Single-path arrival at MERGE — just pass through
+      // Single-path arrival at MERGE - just pass through
       // Full parallel resolution is handled by executeParallelBranches() at the fan-out point
       return updatedContext
     }

@@ -27,6 +27,7 @@ import {
   Handshake,
   PoundSterling,
   ShieldCheck,
+  Bot,
 } from "lucide-react";
 
 const DEMO_STEPS = [
@@ -40,15 +41,15 @@ const DEMO_STEPS = [
   },
   {
     title: "New Supply Contact",
-    page: "/admin/brokerage-mockups/contacts/new",
+    page: "/admin/brokerage-mockups/contacts",
     icon: UserPlus,
     narrative:
-      "A landowner calls in. We capture Robert Whiteley — farmer in the Solent catchment, 60 hectares of arable land. He's tagged as a Supply partner.",
+      "A landowner calls in. We capture Robert Whiteley - farmer in the Solent catchment, 60 hectares of arable land. He's tagged as a Supply partner.",
     accent: "bg-emerald-500",
   },
   {
     title: "Onboard Site",
-    page: "/admin/brokerage-mockups/sites/new",
+    page: "/admin/brokerage-mockups/sites",
     icon: MapPin,
     narrative:
       "We onboard Whiteley Farm as a potential supply site. Land size, current use, location captured. Catchment auto-detected from coordinates.",
@@ -56,15 +57,15 @@ const DEMO_STEPS = [
   },
   {
     title: "Schedule Assessment",
-    page: "/admin/brokerage-mockups/assessments/schedule",
+    page: "/admin/brokerage-mockups/assessments",
     icon: ClipboardCheck,
     narrative:
-      "Time to send an ecologist. We pick the site, select assessment type, and assign Sarah Chen — she's free Thursday and specialises in nutrient surveys.",
+      "Time to send an ecologist. We pick the site, select assessment type, and assign Sarah Chen - she's free Thursday and specialises in nutrient surveys.",
     accent: "bg-violet-500",
   },
   {
     title: "Assessment Results",
-    page: "/admin/brokerage-mockups/assessments/ASM-001",
+    page: "/admin/brokerage-mockups/assessments",
     icon: FileSearch,
     narrative:
       "Sarah visits the site, records baseline data. The system calculates: this land can generate 95 kg/year nitrogen credits. Photos and findings all captured.",
@@ -72,15 +73,15 @@ const DEMO_STEPS = [
   },
   {
     title: "Nutrient Calculator",
-    page: "/admin/brokerage-mockups/assessments/calculator",
+    page: "/admin/brokerage-mockups/assessments",
     icon: Calculator,
     narrative:
-      "The Natural England nutrient budget methodology running inside your platform. No more spreadsheets emailed back and forth — it's all here.",
+      "The Natural England nutrient budget methodology running inside your platform. No more spreadsheets emailed back and forth - it's all here.",
     accent: "bg-indigo-500",
   },
   {
     title: "Legal & Documents",
-    page: "/admin/brokerage-mockups/documents/DOC-001",
+    page: "/admin/brokerage-mockups/documents",
     icon: FileSignature,
     narrative:
       "Legal kicks off. S106 agreement generated from a template, sent for signatures. We track who's signed and who hasn't. 80-year commitment secured.",
@@ -91,15 +92,15 @@ const DEMO_STEPS = [
     page: "/admin/brokerage-mockups/sites/S-0001",
     icon: Leaf,
     narrative:
-      "Whiteley Farm is now an active supply site. 95 kg/year banked and ready to sell. The capacity gauge shows available credits — ready to allocate.",
+      "Whiteley Farm is now an active gain site. 95 biodiversity units banked across 3 habitat types. The capacity gauge shows available units by type - area, hedgerow, watercourse.",
     accent: "bg-emerald-600",
   },
   {
     title: "Developer Requirement",
-    page: "/admin/brokerage-mockups/contacts/C-101",
+    page: "/admin/brokerage-mockups/contacts",
     icon: Users,
     narrative:
-      "Meanwhile, Rachel Morrison at Taylor Wimpey needs credits for a 200-home development in Eastleigh. Requirement: 30 kg/year nitrogen, Solent catchment.",
+      "Meanwhile, Taylor Wimpey needs 30 off-site biodiversity units for a 200-home development in Eastleigh. Planning condition says they can't break ground until BNG is secured.",
     accent: "bg-sky-500",
   },
   {
@@ -107,12 +108,12 @@ const DEMO_STEPS = [
     page: "/admin/brokerage-mockups/matching",
     icon: GitCompareArrows,
     narrative:
-      "One click — the system finds matching supply sites in the Solent catchment, ranked by price. Whiteley Farm offers competitive value.",
+      "One click - the system finds matching supply sites in the Solent catchment, ranked by price. Whiteley Farm offers competitive value.",
     accent: "bg-purple-500",
   },
   {
     title: "Generate Quote",
-    page: "/admin/brokerage-mockups/deals/D-0038/quote",
+    page: "/admin/brokerage-mockups/deals/D-0038",
     icon: Receipt,
     narrative:
       "We generate a quote: 30 kg/year at £2,500/kg = £75,000 total. Your 20% commission: £15,000. One click to send to Rachel.",
@@ -128,7 +129,7 @@ const DEMO_STEPS = [
   },
   {
     title: "Payment & Commission",
-    page: "/admin/brokerage-mockups/financials/invoices",
+    page: "/admin/brokerage-mockups/financials",
     icon: PoundSterling,
     narrative:
       "Payment comes through. £75,000 from Taylor Wimpey. £60,000 to Robert Whiteley. £15,000 is your commission. Every penny tracked.",
@@ -139,8 +140,16 @@ const DEMO_STEPS = [
     page: "/admin/brokerage-mockups/compliance",
     icon: ShieldCheck,
     narrative:
-      "The deal closes, but obligations continue for 80 years. Annual monitoring is auto-scheduled, reminders fire before deadlines. Nothing falls through the cracks.",
+      "The deal closes, but 30 years of habitat management begins. Annual condition assessments auto-scheduled, remedial triggers monitored, HMMP milestones tracked. Your compliance dashboard runs itself.",
     accent: "bg-red-500",
+  },
+  {
+    title: "AI Operations Assistant",
+    page: "/admin/brokerage-mockups/ai-assistant",
+    icon: Bot,
+    narrative:
+      "Your AI assistant monitors your entire portfolio. It drafts compliance reminders, flags overdue obligations, matches new developer requirements to available supply, and briefs you each morning on what needs attention  -  across all 2,000 acres.",
+    accent: "bg-gradient-to-r from-violet-500 to-purple-600",
   },
 ];
 
@@ -185,15 +194,15 @@ export default function DemoWalkthroughPage() {
             That&apos;s one deal.
           </h1>
           <p className="text-xl text-muted-foreground">
-            You&apos;re running 18 simultaneously across 6 catchments.
+            You&apos;re running 42+ deals simultaneously across multiple catchments.
           </p>
           <p className="text-lg text-muted-foreground">
-            And when you&apos;re ready to broker carbon credits, real estate, or
-            energy — it&apos;s the same platform, different configuration.
+            And when you&apos;re ready - nutrient credits, carbon offsets, real
+            estate - same platform, different configuration.
           </p>
           <div className="flex items-center justify-center gap-3 pt-4">
             <Button asChild>
-              <Link href="/admin/brokerage-mockups/settings/vertical">
+              <Link href="/admin/brokerage-mockups/settings">
                 See how →
               </Link>
             </Button>
@@ -282,7 +291,7 @@ export default function DemoWalkthroughPage() {
       </div>
 
       {/* Bottom control bar */}
-      <div className="border-t border-border bg-card/80 backdrop-blur sticky bottom-0">
+      <div className="border-t border-border bg-card/80 backdrop-blur sticky bottom-0 z-20">
         <div className="max-w-3xl mx-auto px-6 py-4">
           <Progress value={progress} className="h-1 mb-4" />
           <div className="flex items-center justify-between">

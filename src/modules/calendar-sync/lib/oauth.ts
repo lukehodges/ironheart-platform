@@ -11,12 +11,12 @@ import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto'
  * Storage format: base64(iv[12] + authTag[16] + ciphertext[variable])
  *
  * Environment variable required:
- *   CALENDAR_TOKEN_ENCRYPTION_KEY — 64-character hex string (32 bytes / 256 bits)
+ *   CALENDAR_TOKEN_ENCRYPTION_KEY - 64-character hex string (32 bytes / 256 bits)
  *   Generate with: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
  */
 
 const ALGORITHM = 'aes-256-gcm'
-const IV_LENGTH = 12          // 96-bit IV — recommended for GCM
+const IV_LENGTH = 12          // 96-bit IV - recommended for GCM
 const AUTH_TAG_LENGTH = 16    // 128-bit authentication tag
 
 function getEncryptionKey(): Buffer {

@@ -5,7 +5,7 @@ import { Redis } from "@upstash/redis";
  *
  * @upstash/redis uses HTTP REST calls, not TCP connections.
  * Safe to instantiate at module level in serverless environments.
- * Each Redis command is a single HTTP request — no pool to exhaust.
+ * Each Redis command is a single HTTP request - no pool to exhaust.
  *
  * Usage patterns:
  *   // Rate limiting

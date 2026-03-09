@@ -12,7 +12,7 @@ import { notificationManifest } from '@/modules/notification/notification.manife
 import { settingsManifest } from '@/modules/settings/settings.manifest'
 
 // ---------------------------------------------------------------------------
-// Vertical / feature modules — DISABLED while platform layer is hardened.
+// Vertical / feature modules - DISABLED while platform layer is hardened.
 // Code remains in src/modules/ and tests still pass individually.
 // Re-enable here once platform layer is solid.
 // ---------------------------------------------------------------------------

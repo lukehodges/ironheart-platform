@@ -3,14 +3,14 @@
  *
  * Schema notes (deviations from the original plan spec):
  *
- * 1. `userIntegrations.watchResourceId` — the DB column is `watchResourceId`,
+ * 1. `userIntegrations.watchResourceId` - the DB column is `watchResourceId`,
  *    not `resourceId`. UserIntegrationRecord.resourceId maps to this column.
  *
- * 2. `userIntegrations.lastSyncAt` — the DB column is `lastSyncAt`, not
+ * 2. `userIntegrations.lastSyncAt` - the DB column is `lastSyncAt`, not
  *    `lastSyncedAt`.
  *
  * 3. `integrationStatus` enum values in the DB are DISCONNECTED | CONNECTED |
- *    ERROR | EXPIRED — not the ACTIVE / REVOKED / PENDING values declared in
+ *    ERROR | EXPIRED - not the ACTIVE / REVOKED / PENDING values declared in
  *    UserIntegrationRecord.  All CRUD methods use the actual DB enum values
  *    ('CONNECTED' for active, 'DISCONNECTED' for revoked/disconnected).
  *
@@ -21,7 +21,7 @@
  *
  * 5. `userExternalEvents` has no `bookingId` or `rawData` columns. The
  *    bookingId and raw provider payload are stored in the `metadata` jsonb
- *    column instead.  startTime and endTime are NOT NULL in the DB — callers
+ *    column instead.  startTime and endTime are NOT NULL in the DB - callers
  *    must always provide them.
  *
  * 6. `calendarIntegrationProvider` DB enum only contains GOOGLE_CALENDAR and
@@ -45,7 +45,7 @@ import type { UserIntegrationRecord } from './calendar-sync.types'
 import type { BookingForCalendar } from './lib/calendar-event-mapper'
 import type { CalendarIntegrationProvider } from './calendar-sync.types'
 
-// The DB enum only has these two values — APPLE_CALENDAR is not in the DB yet.
+// The DB enum only has these two values - APPLE_CALENDAR is not in the DB yet.
 // Cast CalendarIntegrationProvider to this type when passing to Drizzle.
 type DbCalendarProvider = 'GOOGLE_CALENDAR' | 'OUTLOOK_CALENDAR'
 
@@ -106,7 +106,7 @@ export const calendarSyncRepository = {
    * Create a new user integration record.
    *
    * Note: `data.scopes` is accepted for API compatibility but the current
-   * DB schema does not have a `scopes` column — it is not persisted.
+   * DB schema does not have a `scopes` column - it is not persisted.
    */
   async createUserIntegration(data: {
     userId: string
@@ -189,7 +189,7 @@ export const calendarSyncRepository = {
         watchChannelId: data.watchChannelId,
         watchChannelToken: data.watchChannelToken,
         watchChannelExpiration: data.watchChannelExpiration,
-        // DB column is watchResourceId — maps to UserIntegrationRecord.resourceId
+        // DB column is watchResourceId - maps to UserIntegrationRecord.resourceId
         watchResourceId: data.resourceId,
         updatedAt: new Date(),
       })
@@ -289,7 +289,7 @@ export const calendarSyncRepository = {
    * `summary`, `startTime`, and `endTime` are NOT NULL in the DB schema.
    *
    * Note: the DB calendarIntegrationProvider enum only has
-   * GOOGLE_CALENDAR | OUTLOOK_CALENDAR — provider is cast accordingly.
+   * GOOGLE_CALENDAR | OUTLOOK_CALENDAR - provider is cast accordingly.
    */
   async upsertExternalEvent(data: {
     tenantId: string
@@ -427,7 +427,7 @@ export const calendarSyncRepository = {
  *   DB `watchResourceId`  → record `resourceId`
  *   DB `lastSyncAt`       → record `lastSyncedAt`
  *   DB status enum (CONNECTED | DISCONNECTED | ERROR | EXPIRED) is cast to
- *     UserIntegrationRecord.status — service layer must use DB enum values.
+ *     UserIntegrationRecord.status - service layer must use DB enum values.
  */
 function mapIntegrationRow(
   row: typeof userIntegrations.$inferSelect
@@ -441,19 +441,19 @@ function mapIntegrationRow(
     encryptedAccessToken: row.encryptedAccessToken ?? null,
     encryptedRefreshToken: row.encryptedRefreshToken ?? null,
     tokenExpiresAt: row.tokenExpiresAt ?? null,
-    // scopes: not present in DB schema — return empty array
+    // scopes: not present in DB schema - return empty array
     scopes: [],
-    // DB enum values differ from UserIntegrationRecord.status type —
+    // DB enum values differ from UserIntegrationRecord.status type -
     // cast to satisfy the interface (service layer must use DB enum values)
     status: row.status as UserIntegrationRecord['status'],
     calendarId: row.calendarId ?? null,
     watchChannelId: row.watchChannelId ?? null,
     watchChannelToken: row.watchChannelToken ?? null,
     watchChannelExpiration: row.watchChannelExpiration ?? null,
-    // DB column is watchResourceId — mapped to resourceId on the record type
+    // DB column is watchResourceId - mapped to resourceId on the record type
     resourceId: row.watchResourceId ?? null,
     syncToken: row.syncToken ?? null,
-    // DB column is lastSyncAt — mapped to lastSyncedAt on the record type
+    // DB column is lastSyncAt - mapped to lastSyncedAt on the record type
     lastSyncedAt: row.lastSyncAt ?? null,
     metadata: null,
     createdAt: row.createdAt,

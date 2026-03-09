@@ -7,7 +7,7 @@ const log = logger.child({ module: "forms.events" });
  * Handles the forms/submitted event.
  *
  * 'forms/submitted' fires AFTER completion (not on send).
- * Submission notifications are handled by workflow triggers — this function
+ * Submission notifications are handled by workflow triggers - this function
  * acts as a logging hook and extension point for future notification logic.
  */
 const sendFormLink = inngest.createFunction(
@@ -21,5 +21,5 @@ const sendFormLink = inngest.createFunction(
   },
 );
 
-/** All forms Inngest functions — register in src/app/api/inngest/route.ts */
+/** All forms Inngest functions - register in src/app/api/inngest/route.ts */
 export const formsFunctions = [sendFormLink];

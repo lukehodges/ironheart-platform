@@ -184,11 +184,11 @@ function StatCard({ icon, label, value, valueClass }: { icon: React.ReactNode; l
 // ─── Deal label from ID ────────────────────────────────────────────────────────
 function dealLabel(dealId: string): string {
   const labels: Record<string, string> = {
-    u1: "Wind Street — Under Offer",
-    u2: "Baglan Energy Park — Active Instruction",
-    u4: "Meridian Point — Under Offer",
-    c2: "Parc Tawe — Let Agreed",
-    e2: "Milland Road — STC (Freehold Sale)",
+    u1: "Wind Street - Under Offer",
+    u2: "Baglan Energy Park - Active Instruction",
+    u4: "Meridian Point - Under Offer",
+    c2: "Parc Tawe - Let Agreed",
+    e2: "Milland Road - STC (Freehold Sale)",
   }
   return labels[dealId] ?? `Deal ${dealId}`
 }
@@ -448,7 +448,7 @@ export default async function PropertyDetailPage({
                 <div>
                   <p className="text-xs font-semibold text-[#4A3A2A] mb-1">Full property history, centralised</p>
                   <p className="text-xs italic text-[#6A5A4A] leading-relaxed">
-                    Every enquiry, viewing, offer, status change, and linked deal for this property — in one place.
+                    Every enquiry, viewing, offer, status change, and linked deal for this property - in one place.
                     No more chasing email threads or reconciling spreadsheets. The complete story of this instruction,
                     from launch to conclusion.
                   </p>
@@ -458,7 +458,7 @@ export default async function PropertyDetailPage({
 
           </div>
 
-          {/* ─── RIGHT COLUMN — Activity timeline ─── */}
+          {/* ─── RIGHT COLUMN - Activity timeline ─── */}
           <div className="lg:col-span-1">
             <div className="bg-white border border-[#E8E3DC] rounded-xl shadow-sm p-5 sticky top-6">
               <div className="flex items-center justify-between mb-4">

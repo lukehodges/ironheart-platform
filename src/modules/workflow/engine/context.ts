@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────────────────────────────────────
-// Execution context utilities — variable resolution, substitution, enrichment
+// Execution context utilities - variable resolution, substitution, enrichment
 // ──────────────────────────────────────────────────────────────────────────────
 
 import type { WorkflowExecutionContext } from '../workflow.types'
@@ -88,7 +88,7 @@ export async function enrichTriggerData(
         if (booking.customerId) enriched.customerId = booking.customerId
       }
     } catch {
-      // Enrichment is best-effort — do not fail workflow execution
+      // Enrichment is best-effort - do not fail workflow execution
     }
   }
 

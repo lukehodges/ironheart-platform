@@ -8,9 +8,9 @@ import Bottleneck from 'bottleneck'
  * - 1,000,000 queries per day
  *
  * Configuration:
- * - maxConcurrent: 10 — no more than 10 in-flight requests at once
- * - minTime: 100ms — minimum 100ms between request starts (= max 10/sec)
- * - reservoir: 500 — burst allowance (refreshed every 10 seconds)
+ * - maxConcurrent: 10 - no more than 10 in-flight requests at once
+ * - minTime: 100ms - minimum 100ms between request starts (= max 10/sec)
+ * - reservoir: 500 - burst allowance (refreshed every 10 seconds)
  *
  * Usage:
  *   import { calendarRateLimiter } from './rate-limiter'
@@ -26,7 +26,7 @@ export const calendarRateLimiter = new Bottleneck({
 
 /**
  * Bottleneck instance for token refresh operations.
- * More lenient — token refreshes are infrequent but must succeed.
+ * More lenient - token refreshes are infrequent but must succeed.
  */
 export const tokenRefreshLimiter = new Bottleneck({
   maxConcurrent: 5,

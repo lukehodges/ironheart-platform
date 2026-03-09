@@ -41,10 +41,10 @@ export function NotesTab({ memberId }: { memberId: string }) {
   useEffect(() => {
     if (!data?.rows) return
     if (cursor === undefined) {
-      // Initial load or filter reset — replace
+      // Initial load or filter reset - replace
       setAllNotes(data.rows)
     } else {
-      // Pagination — append new rows that aren't already present
+      // Pagination - append new rows that aren't already present
       setAllNotes((prev) => {
         const existingIds = new Set(prev.map((n) => n.id))
         const newRows = data.rows.filter((n) => !existingIds.has(n.id))

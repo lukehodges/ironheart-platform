@@ -6,8 +6,8 @@ import { sql } from 'drizzle-orm'
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-// GET /api/health        → lightweight DB ping — for load balancers
-// GET /api/health?deep   → full check (DB + Redis) — for monitoring systems
+// GET /api/health        → lightweight DB ping - for load balancers
+// GET /api/health?deep   → full check (DB + Redis) - for monitoring systems
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const deep = searchParams.has('deep')

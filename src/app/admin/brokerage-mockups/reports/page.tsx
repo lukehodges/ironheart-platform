@@ -17,6 +17,7 @@ import {
   ShieldCheck,
   Eye,
   ArrowRight,
+  ChevronRight,
 } from "lucide-react"
 
 // ---------------------------------------------------------------------------
@@ -131,10 +132,10 @@ const complianceReports: ReportCard[] = [
 ]
 
 const categoryBadgeStyles: Record<string, string> = {
-  Pipeline: "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300",
-  Financial: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300",
-  Inventory: "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300",
-  Compliance: "bg-violet-100 text-violet-800 dark:bg-violet-900/40 dark:text-violet-300",
+  Pipeline: "border-blue-200 bg-blue-50 text-blue-700",
+  Financial: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  Inventory: "border-amber-200 bg-amber-50 text-amber-700",
+  Compliance: "border-violet-200 bg-violet-50 text-violet-700",
 }
 
 // ---------------------------------------------------------------------------
@@ -150,7 +151,7 @@ function ReportCardItem({ report }: { report: ReportCard }) {
           <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center">
             <Icon className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
           </div>
-          <Badge className={`text-[10px] ${categoryBadgeStyles[report.category] ?? "bg-muted text-muted-foreground"}`}>
+          <Badge className={`border text-[10px] ${categoryBadgeStyles[report.category] ?? "border-border bg-muted text-muted-foreground"}`}>
             {report.category}
           </Badge>
         </div>
@@ -173,7 +174,14 @@ function ReportCardItem({ report }: { report: ReportCard }) {
   if (report.href) {
     return <Link href={report.href} className="block h-full">{content}</Link>
   }
-  return <div className="opacity-60 cursor-not-allowed h-full">{content}</div>
+  return (
+    <div className="relative opacity-60 cursor-not-allowed h-full">
+      <Badge className="absolute top-3 right-3 z-10 bg-muted text-muted-foreground border-border text-[10px]">
+        Coming soon
+      </Badge>
+      {content}
+    </div>
+  )
 }
 
 function ReportSection({ title, reports }: { title: string; reports: ReportCard[] }) {
@@ -192,6 +200,12 @@ function ReportSection({ title, reports }: { title: string; reports: ReportCard[
 export default function ReportsPage() {
   return (
     <div className="p-6 space-y-8 max-w-7xl mx-auto">
+      <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+        <Link href="/admin/brokerage-mockups/dashboard" className="hover:text-foreground transition-colors">Dashboard</Link>
+        <ChevronRight className="h-3.5 w-3.5" />
+        <span className="text-foreground font-medium">Reports</span>
+      </div>
+
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-foreground">Reports</h1>

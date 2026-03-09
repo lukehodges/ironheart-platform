@@ -310,7 +310,7 @@ export function AvailabilityEditor({ memberId, onSave }: AvailabilityEditorProps
                     key={day.dayOfWeek}
                     role="gridcell"
                     aria-pressed={enabled}
-                    aria-label={`${day.label} ${hour.label} — ${enabled ? "available" : "unavailable"}`}
+                    aria-label={`${day.label} ${hour.label} - ${enabled ? "available" : "unavailable"}`}
                     className={cn(
                       "h-6 w-full rounded-sm border transition-colors duration-100 cursor-pointer",
                       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",

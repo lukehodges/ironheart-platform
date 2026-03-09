@@ -1,7 +1,7 @@
 /**
  * WorkOS AuthKit configuration.
  *
- * WorkOS is a hosted auth service — it manages its own user records externally.
+ * WorkOS is a hosted auth service - it manages its own user records externally.
  * There is no database conflict with the Drizzle users table.
  *
  * Phase 0: Config scaffold only.
@@ -9,10 +9,10 @@
  *           to Drizzle users table records via a userId mapping.
  *
  * Environment variables required:
- *   WORKOS_CLIENT_ID      — From WorkOS dashboard → API Keys
- *   WORKOS_API_KEY        — From WorkOS dashboard → API Keys
- *   WORKOS_REDIRECT_URI   — e.g., http://localhost:3000/api/auth/callback
- *   WORKOS_COOKIE_PASSWORD — 32+ char random string for cookie encryption
+ *   WORKOS_CLIENT_ID      - From WorkOS dashboard → API Keys
+ *   WORKOS_API_KEY        - From WorkOS dashboard → API Keys
+ *   WORKOS_REDIRECT_URI   - e.g., http://localhost:3000/api/auth/callback
+ *   WORKOS_COOKIE_PASSWORD - 32+ char random string for cookie encryption
  *
  * @see https://workos.com/docs/user-management
  */

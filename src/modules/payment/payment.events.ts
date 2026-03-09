@@ -30,7 +30,7 @@ export const handleStripeWebhook = inngest.createFunction(
           if (!invoiceId || !tenantId) {
             log.warn(
               { stripeEventId, paymentIntentId: paymentIntent.id },
-              'Payment intent succeeded but missing invoiceId or tenantId in metadata — skipping'
+              'Payment intent succeeded but missing invoiceId or tenantId in metadata - skipping'
             )
             return null
           }
@@ -225,7 +225,7 @@ export const overdueInvoiceCron = inngest.createFunction(
         if (updated) {
           markedCount++
         } else {
-          // Version conflict means another process updated this invoice — skip it (idempotent)
+          // Version conflict means another process updated this invoice - skip it (idempotent)
           log.info({ invoiceId: invoice.id }, 'Skipped invoice due to version conflict')
         }
       }

@@ -16,7 +16,7 @@ interface ExportAuditLogProps {
 }
 
 /**
- * ExportAuditLog — Export audit log to CSV
+ * ExportAuditLog - Export audit log to CSV
  *
  * Features:
  * - Export button with Download icon
@@ -89,7 +89,7 @@ export function ExportAuditLog({
 }
 
 /**
- * generateAuditLogCsv — Helper to generate CSV content from audit entries
+ * generateAuditLogCsv - Helper to generate CSV content from audit entries
  *
  * Converts audit log entries to CSV format with proper escaping.
  *
@@ -140,7 +140,7 @@ export function generateAuditLogCsv(entries: any[]): string {
 }
 
 /**
- * downloadAuditLogCsv — Trigger browser download of CSV file
+ * downloadAuditLogCsv - Trigger browser download of CSV file
  *
  * Creates a blob, generates download link, and triggers browser download.
  * Cleans up resources after download initiated.

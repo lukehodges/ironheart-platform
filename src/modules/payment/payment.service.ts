@@ -17,7 +17,7 @@ export async function createInvoice(tenantId: string, input: CreateInvoiceInput)
 }
 
 /**
- * Called by the booking saga — creates a DRAFT invoice for a booking.
+ * Called by the booking saga - creates a DRAFT invoice for a booking.
  * The booking saga is responsible for supplying the correct customerId.
  */
 export async function createInvoiceForBooking(
@@ -53,7 +53,7 @@ export async function sendInvoice(tenantId: string, invoiceId: string, version: 
     version,
     'SENT'
   )
-  if (!updated) throw new ConflictError('Concurrent modification — refresh and retry')
+  if (!updated) throw new ConflictError('Concurrent modification - refresh and retry')
 
   log.info({ tenantId, invoiceId }, 'Invoice sent')
   return updated
@@ -61,7 +61,7 @@ export async function sendInvoice(tenantId: string, invoiceId: string, version: 
 
 export async function voidInvoice(tenantId: string, invoiceId: string): Promise<void> {
   const invoice = await paymentRepository.findInvoiceById(invoiceId, tenantId)
-  if (!invoice) return // already gone — idempotent
+  if (!invoice) return // already gone - idempotent
 
   assertValidInvoiceTransition(invoice.status as InvoiceStatus, 'VOID')
   await paymentRepository.updateInvoiceStatus(invoice.id, tenantId, invoice.version, 'VOID')

@@ -285,7 +285,7 @@ export default function BrokerPerformancePage() {
         <CardContent className="p-5">
           <h2 className="text-sm font-bold text-foreground mb-1">Activity Metrics</h2>
           <p className="text-xs text-muted-foreground mb-4">Broker activity breakdown</p>
-          <div className="rounded-lg border border-border overflow-hidden">
+          <div className="rounded-lg border border-border overflow-hidden overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/50">

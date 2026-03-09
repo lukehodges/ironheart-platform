@@ -124,7 +124,7 @@ describe('teamRepository.completeChecklistItem', () => {
       templateName: 'Onboarding',
     }])
 
-    // Queue 2: update returning — item-1 completed, only required item done → COMPLETED
+    // Queue 2: update returning - item-1 completed, only required item done → COMPLETED
     enqueue([{
       id: 'prog-1',
       userId: USER_ID,
@@ -149,7 +149,7 @@ describe('teamRepository.completeChecklistItem', () => {
   it('transitions status to IN_PROGRESS when not all required items are done', async () => {
     const now = new Date()
 
-    // Queue 1: select existing progress — two required items, none completed
+    // Queue 1: select existing progress - two required items, none completed
     enqueue([{
       progress: {
         id: 'prog-1',
@@ -169,7 +169,7 @@ describe('teamRepository.completeChecklistItem', () => {
       templateName: 'Onboarding',
     }])
 
-    // Queue 2: update returning — only item-1 completed, item-2 still pending → IN_PROGRESS
+    // Queue 2: update returning - only item-1 completed, item-2 still pending → IN_PROGRESS
     enqueue([{
       id: 'prog-1',
       userId: USER_ID,
@@ -194,7 +194,7 @@ describe('teamRepository.completeChecklistItem', () => {
   it('throws BadRequestError for unknown item key', async () => {
     const now = new Date()
 
-    // Queue 1: select existing progress — valid progress record
+    // Queue 1: select existing progress - valid progress record
     enqueue([{
       progress: {
         id: 'prog-1',

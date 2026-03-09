@@ -9,10 +9,10 @@ import { Saga, createBookingConfirmationSaga } from '../lib/booking-saga'
 import { ValidationError } from '@/shared/errors'
 
 // ---------------------------------------------------------------------------
-// assertValidBookingTransition — valid transitions
+// assertValidBookingTransition - valid transitions
 // ---------------------------------------------------------------------------
 
-describe('assertValidBookingTransition — valid transitions', () => {
+describe('assertValidBookingTransition - valid transitions', () => {
   it('allows PENDING → RESERVED', () => {
     expect(() => assertValidBookingTransition('PENDING', 'RESERVED')).not.toThrow()
   })
@@ -83,10 +83,10 @@ describe('assertValidBookingTransition — valid transitions', () => {
 })
 
 // ---------------------------------------------------------------------------
-// assertValidBookingTransition — invalid transitions
+// assertValidBookingTransition - invalid transitions
 // ---------------------------------------------------------------------------
 
-describe('assertValidBookingTransition — invalid transitions', () => {
+describe('assertValidBookingTransition - invalid transitions', () => {
   it('throws ValidationError for COMPLETED → PENDING (terminal state)', () => {
     expect(() => assertValidBookingTransition('COMPLETED', 'PENDING')).toThrow(ValidationError)
   })
@@ -257,10 +257,10 @@ describe('getValidTransitions', () => {
 })
 
 // ---------------------------------------------------------------------------
-// Saga — generic orchestrator
+// Saga - generic orchestrator
 // ---------------------------------------------------------------------------
 
-describe('Saga — successful execution', () => {
+describe('Saga - successful execution', () => {
   it('executes all steps in order', async () => {
     const order: string[] = []
     const saga = new Saga('TEST', 'entity-1', 'tenant-1', [
@@ -292,7 +292,7 @@ describe('Saga — successful execution', () => {
   })
 })
 
-describe('Saga — failure and compensation', () => {
+describe('Saga - failure and compensation', () => {
   it('compensates completed steps in reverse order when a step fails', async () => {
     const order: string[] = []
     const saga = new Saga('TEST', 'entity-1', 'tenant-1', [
@@ -448,7 +448,7 @@ describe('createBookingConfirmationSaga', () => {
       sendInngestEvent: vi.fn()
         .mockResolvedValueOnce(undefined) // booking/confirmed succeeds
         .mockRejectedValueOnce(new Error('notification failed')) // calendar/sync.push fails
-        // But wait — notification is step 3 (send-notification) and calendar is step 4.
+        // But wait - notification is step 3 (send-notification) and calendar is step 4.
         // Let's set it up so the third sendInngestEvent call fails.
     })
 

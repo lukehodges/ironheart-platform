@@ -12,7 +12,7 @@ import {
 
 export const calendarSyncRouter = router({
   /**
-   * Initiate the OAuth flow — returns the authorization URL.
+   * Initiate the OAuth flow - returns the authorization URL.
    */
   initiateOAuth: moduleProcedure
     .input(initiateOAuthSchema)

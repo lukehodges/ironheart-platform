@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 // ---------------------------------------------------------------------------
-// Mocks — must be declared before imports that reference them
+// Mocks - must be declared before imports that reference them
 // ---------------------------------------------------------------------------
 
 vi.mock('../payment.repository', () => ({
@@ -28,7 +28,7 @@ vi.mock('@/shared/logger', () => ({
 }))
 
 // ---------------------------------------------------------------------------
-// Imports — after vi.mock declarations
+// Imports - after vi.mock declarations
 // ---------------------------------------------------------------------------
 
 import * as paymentService from '../payment.service'
@@ -240,7 +240,7 @@ describe('paymentService.voidInvoice', () => {
     )
   })
 
-  it('is idempotent — returns silently when invoice not found', async () => {
+  it('is idempotent - returns silently when invoice not found', async () => {
     vi.mocked(paymentRepository.findInvoiceById).mockResolvedValue(null as never)
 
     await expect(
@@ -333,7 +333,7 @@ describe('paymentService.recordPayment', () => {
   })
 
   it('accumulates partial payments correctly', async () => {
-    // Invoice already has 60 paid of 100 total — paying another 40 should result in PAID
+    // Invoice already has 60 paid of 100 total - paying another 40 should result in PAID
     const invoice = makeInvoice({
       status: 'PARTIALLY_PAID',
       totalAmount: '100.00',

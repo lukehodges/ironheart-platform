@@ -94,7 +94,7 @@ type StatusFilter = "ALL" | "ACTIVE" | "INACTIVE"
 // ---------------------------------------------------------------------------
 
 function formatDate(date: Date | string | null | undefined): string {
-  if (!date) return "\u2014"
+  if (!date) return " - "
   const d = typeof date === "string" ? new Date(date) : date
   return d.toLocaleDateString("en-GB", {
     day: "numeric",

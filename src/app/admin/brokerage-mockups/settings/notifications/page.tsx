@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import React, { useState } from "react"
 import Link from "next/link"
 import {
   Card,
@@ -141,8 +141,8 @@ export default function SettingsNotificationsPage() {
             </TableHeader>
             <TableBody>
               {notifications.map((cat, catIdx) => (
-                <>
-                  <TableRow key={`cat-${cat.category}`}>
+                <React.Fragment key={cat.category}>
+                  <TableRow>
                     <TableCell
                       colSpan={4}
                       className="bg-muted/50 font-semibold text-xs uppercase tracking-wider text-muted-foreground py-2"
@@ -185,7 +185,7 @@ export default function SettingsNotificationsPage() {
                       </TableCell>
                     </TableRow>
                   ))}
-                </>
+                </React.Fragment>
               ))}
             </TableBody>
           </Table>

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 // ---------------------------------------------------------------------------
-// Hoisted variables — available inside vi.mock factories
+// Hoisted variables - available inside vi.mock factories
 // ---------------------------------------------------------------------------
 
 const { mockTransaction, mockQuery } = vi.hoisted(() => ({
@@ -13,7 +13,7 @@ const { mockTransaction, mockQuery } = vi.hoisted(() => ({
 }))
 
 // ---------------------------------------------------------------------------
-// Mocks — must be declared BEFORE importing the service
+// Mocks - must be declared BEFORE importing the service
 // ---------------------------------------------------------------------------
 
 vi.mock('../platform.repository', () => ({
@@ -92,7 +92,7 @@ vi.mock('@/shared/logger', () => ({
 }))
 
 // ---------------------------------------------------------------------------
-// Imports — AFTER mocks
+// Imports - AFTER mocks
 // ---------------------------------------------------------------------------
 
 import { platformService } from '../platform.service'
@@ -313,7 +313,7 @@ describe('platformService.provisionTenant', () => {
     const mockInsertReturning = vi.fn()
     const mockInsertValues = vi.fn().mockReturnValue({ returning: mockInsertReturning })
     const mockInsert = vi.fn().mockReturnValue({ values: mockInsertValues })
-    // defaultSlugs is empty — platform modules are all isCore, no tenantModules needed
+    // defaultSlugs is empty - platform modules are all isCore, no tenantModules needed
     const mockSelectFromWhere = vi.fn().mockResolvedValue([])
     const mockSelectFrom = vi.fn().mockReturnValue({ where: mockSelectFromWhere })
     const mockSelect = vi.fn().mockReturnValue({ from: mockSelectFrom })

@@ -1,6 +1,6 @@
 // ──────────────────────────────────────────────────────────────────────────────
-// Linear workflow engine — original sequential executor
-// Reads WorkflowActionRecord[] ORDER BY order — backward compatible
+// Linear workflow engine - original sequential executor
+// Reads WorkflowActionRecord[] ORDER BY order - backward compatible
 // ──────────────────────────────────────────────────────────────────────────────
 
 import { logger } from '@/shared/logger'
@@ -10,7 +10,7 @@ import { resolveContext } from './context'
 
 const log = logger.child({ module: 'workflow.linear-engine' })
 
-// Inngest step type — use any to avoid deep Inngest import chain
+// Inngest step type - use any to avoid deep Inngest import chain
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type InngestStep = any
 

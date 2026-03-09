@@ -9,7 +9,7 @@ import { z } from "zod";
  * Phase 1: Stubs that return empty results. Full implementation in Phase 5 (portal module).
  */
 export const portalRouter = router({
-  // Public — returns merged portal config for customer portal
+  // Public - returns merged portal config for customer portal
   getPortalConfig: publicProcedure
     .input(z.object({ slug: z.string(), portalPath: z.string().optional() }))
     .query(() => {
@@ -17,18 +17,18 @@ export const portalRouter = router({
       return null;
     }),
 
-  // Protected — list portal templates
+  // Protected - list portal templates
   listTemplates: permissionProcedure("settings:read").query(() => []),
 
-  // Protected — list portals for tenant
+  // Protected - list portals for tenant
   listTenantPortals: permissionProcedure("settings:read").query(() => []),
 
-  // Protected — get single portal
+  // Protected - get single portal
   getPortal: permissionProcedure("settings:read")
     .input(z.object({ portalId: z.string().uuid() }))
     .query(() => null),
 
-  // Protected — create portal
+  // Protected - create portal
   createPortal: permissionProcedure("settings:write")
     .input(
       z.object({
@@ -40,12 +40,12 @@ export const portalRouter = router({
     )
     .mutation(() => null),
 
-  // Protected — update portal
+  // Protected - update portal
   updatePortal: permissionProcedure("settings:write")
     .input(z.object({ portalId: z.string().uuid(), displayName: z.string().optional(), isActive: z.boolean().optional() }))
     .mutation(() => null),
 
-  // Protected — delete portal
+  // Protected - delete portal
   deletePortal: permissionProcedure("settings:write")
     .input(z.object({ portalId: z.string().uuid() }))
     .mutation(() => ({ success: true })),

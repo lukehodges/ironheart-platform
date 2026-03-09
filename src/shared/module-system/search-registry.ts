@@ -16,9 +16,9 @@ export interface SearchHitResult {
 }
 
 export interface SearchProvider {
-  /** Module slug — used for tenant-level gating via isModuleEnabled */
+  /** Module slug - used for tenant-level gating via isModuleEnabled */
   moduleSlug: string
-  /** Result type identifier — used in the types filter param */
+  /** Result type identifier - used in the types filter param */
   resultType: string
   /** Display name for the result group (e.g. "Customers") */
   label: string

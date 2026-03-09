@@ -18,7 +18,7 @@
  * All provider implementations map their native types to/from this shape.
  */
 export interface CalendarEvent {
-  /** Provider-specific event ID (opaque string — NOT necessarily a UUID) */
+  /** Provider-specific event ID (opaque string - NOT necessarily a UUID) */
   externalId: string
   /** Calendar ID the event belongs to */
   calendarId: string
@@ -70,9 +70,9 @@ export interface UpdateEventInput {
 }
 
 export interface ListEventsOptions {
-  /** ISO 8601 UTC datetime string — lower bound (inclusive) */
+  /** ISO 8601 UTC datetime string - lower bound (inclusive) */
   timeMin: string
-  /** ISO 8601 UTC datetime string — upper bound (exclusive) */
+  /** ISO 8601 UTC datetime string - upper bound (exclusive) */
   timeMax: string
   /** Pagination token from a previous listEvents call */
   pageToken?: string
@@ -98,7 +98,7 @@ export interface WatchChannelResult {
   channelToken: string
   /** Provider resource ID (needed to stop the watch) */
   resourceId: string
-  /** ISO 8601 UTC — when this watch channel expires */
+  /** ISO 8601 UTC - when this watch channel expires */
   expiresAt: string
 }
 
@@ -117,7 +117,7 @@ export interface CalendarProvider {
   createEvent(tokens: OAuthTokens, input: CreateEventInput): Promise<CalendarEvent>
 
   /**
-   * Update an existing calendar event (patch — only provided fields are changed).
+   * Update an existing calendar event (patch - only provided fields are changed).
    */
   updateEvent(tokens: OAuthTokens, input: UpdateEventInput): Promise<CalendarEvent>
 

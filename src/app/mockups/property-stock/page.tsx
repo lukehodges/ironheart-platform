@@ -187,7 +187,7 @@ export default function PropertyStockPage() {
                 Property Stock &amp; Enquiry Tracker
               </h1>
               <p className="text-sm text-gray-500 mt-1">
-                All active instructions — updated March 2026
+                All active instructions - updated March 2026
               </p>
             </div>
             <div className="flex items-center gap-2 mt-1">
@@ -328,7 +328,7 @@ export default function PropertyStockPage() {
                       </span>
                     </td>
 
-                    {/* Days on market — heat-coded */}
+                    {/* Days on market - heat-coded */}
                     <td className={`px-4 py-3.5 text-right ${daysOnMarketBg(listing.daysOnMarket)}`}>
                       <span className={`tabular-nums ${daysOnMarketClass(listing.daysOnMarket)}`}>
                         {listing.daysOnMarket}

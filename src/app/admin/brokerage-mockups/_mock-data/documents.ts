@@ -3,7 +3,7 @@ import type { Document } from "./types";
 export const documents: Document[] = [
   {
     id: "DOC-001",
-    name: "S106 Agreement — Whiteley Farm",
+    name: "S106 Agreement - Whiteley Farm",
     type: "S106",
     linkedEntityType: "site",
     linkedEntityId: "S-0001",
@@ -24,7 +24,7 @@ export const documents: Document[] = [
   },
   {
     id: "DOC-002",
-    name: "S106 Agreement — Botley Meadows",
+    name: "S106 Agreement - Botley Meadows",
     type: "S106",
     linkedEntityType: "site",
     linkedEntityId: "S-0002",
@@ -44,7 +44,7 @@ export const documents: Document[] = [
   },
   {
     id: "DOC-003",
-    name: "S106 Agreement — Hamble Valley",
+    name: "S106 Agreement - Hamble Valley",
     type: "S106",
     linkedEntityType: "site",
     linkedEntityId: "S-0003",
@@ -63,7 +63,7 @@ export const documents: Document[] = [
   },
   {
     id: "DOC-004",
-    name: "Conservation Covenant — Fareham Woodland",
+    name: "Conservation Covenant - Fareham Woodland",
     type: "Conservation Covenant",
     linkedEntityType: "site",
     linkedEntityId: "S-0008",
@@ -83,7 +83,7 @@ export const documents: Document[] = [
   },
   {
     id: "DOC-005",
-    name: "Heads of Terms — Manor Fields",
+    name: "Heads of Terms - Manor Fields",
     type: "Heads of Terms",
     linkedEntityType: "site",
     linkedEntityId: "S-0005",
@@ -101,7 +101,7 @@ export const documents: Document[] = [
   },
   {
     id: "DOC-006",
-    name: "Purchase Agreement — Barratt / Botley",
+    name: "Purchase Agreement - Barratt / Botley",
     type: "Purchase Agreement",
     linkedEntityType: "deal",
     linkedEntityId: "D-0035",
@@ -122,7 +122,7 @@ export const documents: Document[] = [
   },
   {
     id: "DOC-007",
-    name: "Purchase Agreement — Taylor Wimpey / Whiteley",
+    name: "Purchase Agreement - Taylor Wimpey / Whiteley",
     type: "Purchase Agreement",
     linkedEntityType: "deal",
     linkedEntityId: "D-0038",
@@ -137,7 +137,7 @@ export const documents: Document[] = [
   },
   {
     id: "DOC-008",
-    name: "HMMP — Fareham Woodland",
+    name: "HMMP - Fareham Woodland",
     type: "HMMP",
     linkedEntityType: "site",
     linkedEntityId: "S-0008",
@@ -152,7 +152,7 @@ export const documents: Document[] = [
   },
   {
     id: "DOC-009",
-    name: "Survey Report — Whiteley Farm NN Baseline",
+    name: "Survey Report - Whiteley Farm NN Baseline",
     type: "Survey Report",
     linkedEntityType: "site",
     linkedEntityId: "S-0001",
@@ -167,7 +167,7 @@ export const documents: Document[] = [
   },
   {
     id: "DOC-010",
-    name: "Metric Calculation — Fareham Woodland BNG",
+    name: "Metric Calculation - Fareham Woodland BNG",
     type: "Metric Calculation",
     linkedEntityType: "site",
     linkedEntityId: "S-0008",
@@ -182,7 +182,7 @@ export const documents: Document[] = [
   },
   {
     id: "DOC-011",
-    name: "Reservation Agreement — Taylor Wimpey Phase 2",
+    name: "Reservation Agreement - Taylor Wimpey Phase 2",
     type: "Reservation Agreement",
     linkedEntityType: "deal",
     linkedEntityId: "D-0042",
@@ -200,7 +200,7 @@ export const documents: Document[] = [
   },
   {
     id: "DOC-012",
-    name: "Invoice — Barratt / Botley Meadows",
+    name: "Invoice - Barratt / Botley Meadows",
     type: "Invoice",
     linkedEntityType: "deal",
     linkedEntityId: "D-0035",

@@ -102,7 +102,7 @@ function makeUserWithRoles(
 }
 
 // ---------------------------------------------------------------------------
-// hasPermission — unit tests
+// hasPermission - unit tests
 // ---------------------------------------------------------------------------
 
 describe("hasPermission", () => {
@@ -134,35 +134,35 @@ describe("hasPermission", () => {
   });
 
   describe("MEMBER permission checks", () => {
-    it("exact match — returns true", () => {
+    it("exact match - returns true", () => {
       const user = makeUserWithRoles("MEMBER", ["bookings:read"]);
       expect(hasPermission(user, "bookings:read")).toBe(true);
     });
 
-    it("exact match — wrong permission returns false", () => {
+    it("exact match - wrong permission returns false", () => {
       const user = makeUserWithRoles("MEMBER", ["bookings:read"]);
       expect(hasPermission(user, "bookings:write")).toBe(false);
     });
 
-    it("resource wildcard — bookings:* grants bookings:read", () => {
+    it("resource wildcard - bookings:* grants bookings:read", () => {
       const user = makeUserWithRoles("MEMBER", ["bookings:*"]);
       expect(hasPermission(user, "bookings:read")).toBe(true);
       expect(hasPermission(user, "bookings:write")).toBe(true);
       expect(hasPermission(user, "bookings:delete")).toBe(true);
     });
 
-    it("resource wildcard — does not grant other resources", () => {
+    it("resource wildcard - does not grant other resources", () => {
       const user = makeUserWithRoles("MEMBER", ["bookings:*"]);
       expect(hasPermission(user, "staff:read")).toBe(false);
     });
 
-    it("action wildcard — *:read grants bookings:read and staff:read", () => {
+    it("action wildcard - *:read grants bookings:read and staff:read", () => {
       const user = makeUserWithRoles("MEMBER", ["*:read"]);
       expect(hasPermission(user, "bookings:read")).toBe(true);
       expect(hasPermission(user, "staff:read")).toBe(true);
     });
 
-    it("action wildcard — *:read does not grant write", () => {
+    it("action wildcard - *:read does not grant write", () => {
       const user = makeUserWithRoles("MEMBER", ["*:read"]);
       expect(hasPermission(user, "bookings:write")).toBe(false);
     });
@@ -174,12 +174,12 @@ describe("hasPermission", () => {
       expect(hasPermission(user, "anything:anything")).toBe(true);
     });
 
-    it("no roles — no permissions", () => {
+    it("no roles - no permissions", () => {
       const user: UserWithRoles = { ...makeUser({ type: "MEMBER" }), roles: [] };
       expect(hasPermission(user, "bookings:read")).toBe(false);
     });
 
-    it("multiple roles — union of all permissions", () => {
+    it("multiple roles - union of all permissions", () => {
       const user: UserWithRoles = {
         ...makeUser({ type: "MEMBER" }),
         roles: [
@@ -235,10 +235,10 @@ describe("hasPermission", () => {
 });
 
 // ---------------------------------------------------------------------------
-// hasPermission — property-based tests (fast-check)
+// hasPermission - property-based tests (fast-check)
 // ---------------------------------------------------------------------------
 
-describe("hasPermission — properties", () => {
+describe("hasPermission - properties", () => {
   const privilegedTypes = fc.constantFrom("OWNER", "ADMIN");
   const restrictedTypes = fc.constantFrom("CUSTOMER", "API");
   const arbitraryPermission = fc.string({ minLength: 1 }).chain((resource) =>
@@ -274,7 +274,7 @@ describe("hasPermission — properties", () => {
     fc.assert(
       fc.property(arbitraryPermission, (reqPerm) => {
         // Only test strings that parse as a valid "resource:action" pair.
-        // split(":") on ":: " yields ["", "", " "] — resource would be "" (falsy),
+        // split(":") on ":: " yields ["", "", " "] - resource would be "" (falsy),
         // causing hasPermission to return false even with *:*. Skip those.
         const parts = reqPerm.split(":");
         const resource = parts[0];

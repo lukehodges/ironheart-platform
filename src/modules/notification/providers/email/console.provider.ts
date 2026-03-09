@@ -6,7 +6,7 @@ const log = logger.child({ module: 'console.email.provider' })
 /**
  * Development/test email provider.
  * Logs the email to the console instead of sending it.
- * Never sends real emails — safe to use in development and CI.
+ * Never sends real emails - safe to use in development and CI.
  *
  * Activate with: NOTIFICATION_EMAIL_PROVIDER=console
  */
@@ -21,7 +21,7 @@ export class ConsoleEmailProvider implements EmailProvider {
         htmlSnippet: input.html.substring(0, 300) + (input.html.length > 300 ? '...' : ''),
         messageId,
       },
-      '[DEV] Email would be sent (ConsoleEmailProvider — no real email sent)'
+      '[DEV] Email would be sent (ConsoleEmailProvider - no real email sent)'
     )
     return { success: true, messageId }
   }

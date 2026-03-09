@@ -59,7 +59,7 @@ function mapTenantFeature(
   row: typeof tenantFeatures.$inferSelect
 ): TenantFeature {
   return {
-    id: `${row.tenantId}:${row.featureId}`, // composite PK — construct synthetic id
+    id: `${row.tenantId}:${row.featureId}`, // composite PK - construct synthetic id
     tenantId: row.tenantId,
     flagId: row.featureId,
     isEnabled: row.enabled,
@@ -247,7 +247,7 @@ export const platformRepository = {
   async suspendTenant(tenantId: string, reason: string): Promise<void> {
     log.info({ tenantId, reason }, "suspendTenant");
 
-    // Schema has no suspendedAt / suspendedReason columns — store in metadata
+    // Schema has no suspendedAt / suspendedReason columns - store in metadata
     // We set status to SUSPENDED; reason is recorded in audit log by service
     await db
       .update(tenants)

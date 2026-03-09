@@ -60,12 +60,12 @@ describe('Module System Integration', () => {
     const widgets = registry.getAnalyticsWidgets(enabled)
     expect(widgets).toHaveLength(2)
 
-    // Try to disable customer — blocked by booking
+    // Try to disable customer - blocked by booking
     const disableResult = registry.canDisable('customer', enabled)
     expect(disableResult.allowed).toBe(false)
     expect(disableResult.blockedBy).toEqual(['booking'])
 
-    // Disable booking first — allowed
+    // Disable booking first - allowed
     const disableBooking = registry.canDisable('booking', enabled)
     expect(disableBooking.allowed).toBe(true)
 
@@ -84,7 +84,7 @@ describe('Module System Integration', () => {
     const widgetsMinimal = registry.getAnalyticsWidgets(enabledMinimal)
     expect(widgetsMinimal).toHaveLength(0)
 
-    // Re-enable booking — needs customer first
+    // Re-enable booking - needs customer first
     const enableBooking = registry.canEnable('booking', enabledMinimal)
     expect(enableBooking.allowed).toBe(false)
     expect(enableBooking.missingDeps).toEqual(['customer'])

@@ -99,7 +99,7 @@ export const createPortalBookingSchema = z.object({
 export const confirmReservationSchema = z.object({
   bookingId: z.string().uuid(),
   customerEmail: z.string().email(),
-  token: z.string().length(64).optional(), // optional 64-char hex token — sha256 of server-generated secret
+  token: z.string().length(64).optional(), // optional 64-char hex token - sha256 of server-generated secret
 })
 
 // Slot availability schemas

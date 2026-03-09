@@ -11,7 +11,7 @@ const mockups = [
   {
     href: "/mockups/property-stock",
     title: "Property Stock",
-    description: "Live table of every active listing — size, rent, days on market, enquiries, and viewings — filterable by property type.",
+    description: "Live table of every active listing - size, rent, days on market, enquiries, and viewings - filterable by property type.",
     stat: "27 live listings",
     color: "bg-emerald-50 border-emerald-200 text-emerald-700",
   },
@@ -42,7 +42,7 @@ export default function MockupsPage() {
           Four views into your business
         </h1>
         <p className="text-lg text-muted-foreground max-w-xl">
-          These mockups show how internal processes — currently managed across email, spreadsheets, and memory — could be centralised into a single system.
+          These mockups show how internal processes - currently managed across email, spreadsheets, and memory - could be centralised into a single system.
         </p>
       </div>
 

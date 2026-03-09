@@ -2,7 +2,7 @@ import { Ratelimit } from '@upstash/ratelimit'
 import { redis } from '@/shared/redis'
 
 /**
- * API key tier rate limits (sliding window — more accurate than token bucket).
+ * API key tier rate limits (sliding window - more accurate than token bucket).
  * Applied per apiKey.id, not per key string (prevents bypass via rotation).
  */
 export const apiRateLimits = {

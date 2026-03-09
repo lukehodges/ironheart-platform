@@ -338,7 +338,7 @@ function SupplyLayout({ contact }: { contact: typeof contacts[0] }) {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right text-sm">
-                        {a.creditYieldLabel ?? "—"}
+                        {a.creditYieldLabel ?? "-"}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -389,10 +389,10 @@ function SupplyLayout({ contact }: { contact: typeof contacts[0] }) {
                         </span>
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
-                        {d.demandContactName || "—"}
+                        {d.demandContactName || "-"}
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
-                        {d.siteName || "—"}
+                        {d.siteName || "-"}
                       </TableCell>
                       <TableCell className="text-right text-sm">{d.unitsLabel}</TableCell>
                       <TableCell className="text-right text-sm font-medium">{d.displayValue}</TableCell>
@@ -692,10 +692,10 @@ function DemandLayout({ contact }: { contact: typeof contacts[0] }) {
                         </span>
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
-                        {d.supplyContactName || "—"}
+                        {d.supplyContactName || "-"}
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
-                        {d.siteName || "—"}
+                        {d.siteName || "-"}
                       </TableCell>
                       <TableCell className="text-right text-sm">{d.unitsLabel}</TableCell>
                       <TableCell className="text-right text-sm font-medium">{d.displayValue}</TableCell>
@@ -880,7 +880,10 @@ export default function ContactDetailPage() {
   const params = useParams()
   const id = params.id as string
 
-  const contact = contacts.find((c) => c.id === id) ?? contacts[0]
+  // Support both ID-based lookup (C-005) and slug-based lookup (david-ashford)
+  const contact = contacts.find((c) => c.id === id)
+    ?? contacts.find((c) => c.name.toLowerCase().replace(/\s+/g, "-") === id.toLowerCase())
+    ?? contacts[0]
   const isSupply = contact.side === "supply"
 
   return (
@@ -919,7 +922,7 @@ export default function ContactDetailPage() {
               )}
             </div>
             <p className="text-sm text-muted-foreground">
-              {contact.company}{contact.role ? ` — ${contact.role}` : ""}
+              {contact.company}{contact.role ? ` - ${contact.role}` : ""}
             </p>
           </div>
         </div>

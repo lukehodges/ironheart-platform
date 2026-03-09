@@ -549,7 +549,7 @@ export function ModuleHierarchyTree() {
     [allManifests]
   )
 
-  // Compute highlighted slugs when hovering — separate upstream from downstream
+  // Compute highlighted slugs when hovering - separate upstream from downstream
   const upstreamSlugs = useMemo(() => {
     if (!hoveredSlug) return new Set<string>()
     return getTransitiveDependencies(hoveredSlug, bySlug)

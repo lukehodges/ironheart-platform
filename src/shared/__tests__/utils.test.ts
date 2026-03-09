@@ -3,7 +3,7 @@ import * as fc from "fast-check";
 import { cn } from "../utils";
 
 // ---------------------------------------------------------------------------
-// cn() — unit tests
+// cn() - unit tests
 // ---------------------------------------------------------------------------
 
 describe("cn", () => {
@@ -26,8 +26,8 @@ describe("cn", () => {
     expect(result).toContain("base");
   });
 
-  it("resolves Tailwind conflicts — last one wins", () => {
-    // px-2 and px-4 conflict — tailwind-merge keeps the last one
+  it("resolves Tailwind conflicts - last one wins", () => {
+    // px-2 and px-4 conflict - tailwind-merge keeps the last one
     const result = cn("px-2", "px-4");
     expect(result).toBe("px-4");
     expect(result).not.toContain("px-2");
@@ -49,10 +49,10 @@ describe("cn", () => {
 });
 
 // ---------------------------------------------------------------------------
-// cn() — property-based tests
+// cn() - property-based tests
 // ---------------------------------------------------------------------------
 
-describe("cn — properties", () => {
+describe("cn - properties", () => {
   const classNameArb = fc.stringMatching(/^[a-z][a-z0-9-]*$/);
   const classListArb = fc.array(classNameArb, { minLength: 0, maxLength: 6 });
 

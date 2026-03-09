@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { ConflictError } from '../errors'
 
 // ---------------------------------------------------------------------------
-// Mocks — must be declared before importing the module under test
+// Mocks - must be declared before importing the module under test
 // ---------------------------------------------------------------------------
 
 // Stateful Redis store: tracks what has been set so get() returns it
@@ -35,7 +35,7 @@ vi.mock('@/shared/redis', () => ({
 }))
 
 // ---------------------------------------------------------------------------
-// Module under test — imported AFTER mocks are registered
+// Module under test - imported AFTER mocks are registered
 // ---------------------------------------------------------------------------
 
 import { withIdempotency } from '../idempotency'
@@ -133,7 +133,7 @@ describe('withIdempotency', () => {
 
   // ── Cache miss / fresh execution ──────────────────────────────────────────
 
-  describe('cache miss — fresh execution', () => {
+  describe('cache miss - fresh execution', () => {
     it('calls operation when cache is empty', async () => {
       const operation = vi.fn().mockResolvedValue({ id: 'new-booking' })
 
@@ -157,7 +157,7 @@ describe('withIdempotency', () => {
 
       await withIdempotency(KEY, TTL, operation)
 
-      // The cache set call — not the lock set — uses { ex: TTL }
+      // The cache set call - not the lock set - uses { ex: TTL }
       const cacheSetCall = vi.mocked(redis.set).mock.calls.find(
         ([k, , opts]) => k === `idempotency:${KEY}` && (opts as any)?.ex === TTL,
       )
@@ -299,10 +299,10 @@ describe('withIdempotency', () => {
     it('second call with same key returns cached result (operation not called twice)', async () => {
       const operation = vi.fn().mockResolvedValue({ result: 42 })
 
-      // First call — executes operation and caches
+      // First call - executes operation and caches
       await withIdempotency(KEY, TTL, operation)
 
-      // Second call — should hit cache
+      // Second call - should hit cache
       const result = await withIdempotency(KEY, TTL, operation)
 
       expect(result).toEqual({ result: 42 })

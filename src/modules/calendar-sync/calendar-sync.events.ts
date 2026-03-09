@@ -8,7 +8,7 @@ const log = logger.child({ module: 'calendar-sync.events' })
 
 /**
  * Push a booking to the user's calendar when it is created/confirmed.
- * NOTE: This upgrades the stub in booking.events.ts — uses the SAME function ID.
+ * NOTE: This upgrades the stub in booking.events.ts - uses the SAME function ID.
  */
 export const pushBookingToCalendar = inngest.createFunction(
   { id: 'push-booking-to-calendar', name: 'Push Booking to Calendar' },
@@ -48,7 +48,7 @@ export const pullCalendarEventsCron = inngest.createFunction(
   { cron: '0 */6 * * *' }, // Every 6 hours
   async ({ step }) => {
     // Find all active integrations and pull for each
-    // For now, this is a placeholder — full implementation would page through all integrations
+    // For now, this is a placeholder - full implementation would page through all integrations
     log.info('Calendar pull cron triggered')
     return { triggered: true }
   }

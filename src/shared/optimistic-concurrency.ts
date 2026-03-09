@@ -27,7 +27,7 @@ export async function updateWithVersion<T>(
     .returning()
 
   if (!updated) {
-    throw new ConflictError('Concurrent modification detected — refresh and try again')
+    throw new ConflictError('Concurrent modification detected - refresh and try again')
   }
   return updated as T
 }

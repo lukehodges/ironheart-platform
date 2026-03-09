@@ -74,7 +74,7 @@ function geographic(candidates: StaffCandidate[], ctx: AssignmentContext): Staff
   return withDistance[0]?.candidate ?? null
 }
 
-/** Haversine formula — distance in km between two lat/lng points */
+/** Haversine formula - distance in km between two lat/lng points */
 function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R   = 6_371
   const dLat = toRad(lat2 - lat1)

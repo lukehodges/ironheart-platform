@@ -34,6 +34,7 @@ import {
   Clock,
   Search,
   CheckCircle2,
+  ChevronRight,
   FileText,
   ArrowUpDown,
 } from "lucide-react"
@@ -43,12 +44,12 @@ import type { AssessmentType, AssessmentStatus } from "../_mock-data"
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const STATUS_STYLES: Record<AssessmentStatus, string> = {
-  Scheduled: "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300",
-  "In Progress": "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300",
-  "Data Submitted": "bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300",
-  "Under Review": "bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300",
-  Approved: "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300",
-  "Revision Requested": "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300",
+  Scheduled: "border border-blue-200 bg-blue-50 text-blue-700",
+  "In Progress": "border border-amber-200 bg-amber-50 text-amber-700",
+  "Data Submitted": "border border-purple-200 bg-purple-50 text-purple-700",
+  "Under Review": "border border-orange-200 bg-orange-50 text-orange-700",
+  Approved: "border border-green-200 bg-green-50 text-green-700",
+  "Revision Requested": "border border-red-200 bg-red-50 text-red-700",
 }
 
 const TYPE_DOT: Record<AssessmentType, string> = {
@@ -59,10 +60,10 @@ const TYPE_DOT: Record<AssessmentType, string> = {
 }
 
 const TYPE_BADGE: Record<AssessmentType, string> = {
-  "NN Baseline": "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300",
-  "BNG Habitat Survey": "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300",
-  "Annual Monitoring": "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300",
-  Reassessment: "bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300",
+  "NN Baseline": "border border-blue-200 bg-blue-50 text-blue-700",
+  "BNG Habitat Survey": "border border-green-200 bg-green-50 text-green-700",
+  "Annual Monitoring": "border border-amber-200 bg-amber-50 text-amber-700",
+  Reassessment: "border border-purple-200 bg-purple-50 text-purple-700",
 }
 
 function getDaysInMonth(year: number, month: number) {
@@ -127,14 +128,20 @@ export default function AssessmentsDashboard() {
   }, [firstDay, daysInMonth])
 
   const stats = [
-    { label: "Scheduled", value: scheduled, icon: CalendarDays, color: "text-blue-600 dark:text-blue-400" },
-    { label: "In Progress", value: inProgress, icon: Clock, color: "text-amber-600 dark:text-amber-400" },
-    { label: "Awaiting Review", value: awaitingReview, icon: Search, color: "text-orange-600 dark:text-orange-400" },
-    { label: "Completed", value: completed, icon: CheckCircle2, color: "text-green-600 dark:text-green-400" },
+    { label: "Scheduled", value: scheduled, icon: CalendarDays, color: "text-blue-600" },
+    { label: "In Progress", value: inProgress, icon: Clock, color: "text-amber-600" },
+    { label: "Awaiting Review", value: awaitingReview, icon: Search, color: "text-orange-600" },
+    { label: "Completed", value: completed, icon: CheckCircle2, color: "text-green-600" },
   ]
 
   return (
     <div className="space-y-6">
+      <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+        <Link href="/admin/brokerage-mockups/dashboard" className="hover:text-foreground transition-colors">Dashboard</Link>
+        <ChevronRight className="h-3.5 w-3.5" />
+        <span className="text-foreground font-medium">Assessments</span>
+      </div>
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -274,7 +281,7 @@ export default function AssessmentsDashboard() {
                         <span
                           className={`text-xs font-medium ${
                             isToday
-                              ? "text-blue-600 dark:text-blue-400"
+                              ? "text-blue-600"
                               : "text-foreground"
                           }`}
                         >
@@ -344,7 +351,7 @@ export default function AssessmentsDashboard() {
                       <TableCell>
                         <Link
                           href={`/admin/brokerage-mockups/assessments/${a.id}`}
-                          className="font-medium text-blue-600 hover:underline dark:text-blue-400"
+                          className="font-medium text-blue-600 hover:underline"
                         >
                           {a.id}
                         </Link>
@@ -393,7 +400,7 @@ export default function AssessmentsDashboard() {
                       </TableCell>
                       <TableCell>
                         {a.reportDocId ? (
-                          <Button variant="ghost" size="sm" className="h-7 px-2">
+                          <Button variant="ghost" size="sm" className="h-7 px-2" aria-label="View report">
                             <FileText className="h-3.5 w-3.5" />
                           </Button>
                         ) : (

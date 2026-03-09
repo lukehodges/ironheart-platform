@@ -5,7 +5,7 @@ import { appRouter } from "@/server/root";
 /**
  * tRPC API route handler for Next.js App Router.
  *
- * Uses fetchRequestHandler (not createNextApiHandler — that is Pages Router only).
+ * Uses fetchRequestHandler (not createNextApiHandler - that is Pages Router only).
  * Handles all tRPC requests at /api/trpc/[procedure].
  */
 const handler = (req: Request) =>

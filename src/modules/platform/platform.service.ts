@@ -122,7 +122,7 @@ export const platformService = {
         updatedAt: now,
       });
 
-      // 3. Enable default modules — must query modules table by slug to get UUIDs
+      // 3. Enable default modules - must query modules table by slug to get UUIDs
       // tenantModules uses moduleId (UUID FK → modules.id), NOT a text slug column
       // Platform layer modules are all isCore: true and don't need tenantModules rows.
       // Vertical modules will be re-enabled here once the platform layer is solid.

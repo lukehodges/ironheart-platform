@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 // ---------------------------------------------------------------------------
-// Mocks — must be declared before imports that reference them
+// Mocks - must be declared before imports that reference them
 // ---------------------------------------------------------------------------
 
 vi.mock('../audit.repository', () => ({

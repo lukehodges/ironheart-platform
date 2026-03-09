@@ -38,7 +38,7 @@ import {
   overdueCount,
   dueSoonCount,
   upcomingCount,
-  completedThisMonth,
+  completedTotal,
 } from "../_mock-data"
 import type { ComplianceItem as SharedComplianceItem } from "../_mock-data"
 
@@ -113,32 +113,32 @@ const COMPLIANCE_ITEMS: ComplianceItem[] = sharedComplianceItems.map((item) => (
 
 const STATUS_STYLES: Record<ComplianceStatus, { bg: string; text: string; dot: string; border: string; badge: string }> = {
   OVERDUE: {
-    bg: "bg-red-50 dark:bg-red-950/30",
-    text: "text-red-700 dark:text-red-400",
+    bg: "bg-red-50",
+    text: "text-red-700",
     dot: "bg-red-500",
-    border: "border-red-200 dark:border-red-800",
-    badge: "bg-red-100 text-red-700 border-red-200 dark:bg-red-950 dark:text-red-400 dark:border-red-800",
+    border: "border-red-200",
+    badge: "bg-red-50 text-red-700 border-red-200",
   },
   DUE_SOON: {
-    bg: "bg-amber-50 dark:bg-amber-950/30",
-    text: "text-amber-700 dark:text-amber-400",
+    bg: "bg-amber-50",
+    text: "text-amber-700",
     dot: "bg-amber-500",
-    border: "border-amber-200 dark:border-amber-800",
-    badge: "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-950 dark:text-amber-400 dark:border-amber-800",
+    border: "border-amber-200",
+    badge: "bg-amber-50 text-amber-700 border-amber-200",
   },
   UPCOMING: {
-    bg: "bg-green-50 dark:bg-green-950/30",
-    text: "text-green-700 dark:text-green-400",
-    dot: "bg-green-500",
-    border: "border-green-200 dark:border-green-800",
-    badge: "bg-green-100 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-400 dark:border-green-800",
+    bg: "bg-blue-50",
+    text: "text-blue-700",
+    dot: "bg-blue-500",
+    border: "border-blue-200",
+    badge: "bg-blue-50 text-blue-700 border-blue-200",
   },
   COMPLETED: {
-    bg: "bg-muted/30",
-    text: "text-muted-foreground",
-    dot: "bg-muted-foreground/50",
-    border: "border-border",
-    badge: "bg-muted text-muted-foreground border-border",
+    bg: "bg-emerald-50",
+    text: "text-emerald-700",
+    dot: "bg-emerald-500",
+    border: "border-emerald-200",
+    badge: "bg-emerald-50 text-emerald-700 border-emerald-200",
   },
 }
 
@@ -149,42 +149,46 @@ const STATUS_LABELS: Record<ComplianceStatus, string> = {
   COMPLETED: "Completed",
 }
 
-const CATEGORY_STYLES: Record<ComplianceCategory, { bg: string; text: string; dot: string }> = {
+const CATEGORY_STYLES: Record<ComplianceCategory, { bg: string; text: string; dot: string; border: string }> = {
   MONITORING: {
-    bg: "bg-purple-100 dark:bg-purple-950",
-    text: "text-purple-700 dark:text-purple-400",
-    dot: "bg-purple-500",
+    bg: "bg-teal-50",
+    text: "text-teal-700",
+    dot: "bg-teal-500",
+    border: "border-teal-200",
   },
   LEGAL: {
-    bg: "bg-amber-100 dark:bg-amber-950",
-    text: "text-amber-700 dark:text-amber-400",
-    dot: "bg-amber-500",
+    bg: "bg-violet-50",
+    text: "text-violet-700",
+    dot: "bg-violet-500",
+    border: "border-violet-200",
   },
   REGISTRATION: {
-    bg: "bg-blue-100 dark:bg-blue-950",
-    text: "text-blue-700 dark:text-blue-400",
+    bg: "bg-blue-50",
+    text: "text-blue-700",
     dot: "bg-blue-500",
+    border: "border-blue-200",
   },
   FINANCIAL: {
-    bg: "bg-indigo-100 dark:bg-indigo-950",
-    text: "text-indigo-700 dark:text-indigo-400",
-    dot: "bg-indigo-500",
+    bg: "bg-amber-50",
+    text: "text-amber-700",
+    dot: "bg-amber-500",
+    border: "border-amber-200",
   },
 }
 
 const ASSIGNEE_STYLES: Record<string, string> = {
-  EW: "bg-teal-500/15 text-teal-700 dark:text-teal-300",
-  JH: "bg-blue-500/15 text-blue-700 dark:text-blue-300",
-  SC: "bg-violet-500/15 text-violet-700 dark:text-violet-300",
-  DP: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
-  LG: "bg-rose-500/15 text-rose-700 dark:text-rose-300",
+  EW: "bg-teal-500/15 text-teal-700",
+  JH: "bg-blue-500/15 text-blue-700",
+  SC: "bg-violet-500/15 text-violet-700",
+  DP: "bg-emerald-500/15 text-emerald-700",
+  LG: "bg-rose-500/15 text-rose-700",
 }
 
 const FREQUENCY_STYLES: Record<Frequency, string> = {
-  Annual: "bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-950 dark:text-sky-400 dark:border-sky-800",
-  Quarterly: "bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950 dark:text-indigo-400 dark:border-indigo-800",
-  Monthly: "bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-950 dark:text-violet-400 dark:border-violet-800",
-  "5-yearly": "bg-cyan-50 text-cyan-700 border-cyan-200 dark:bg-cyan-950 dark:text-cyan-400 dark:border-cyan-800",
+  Annual: "bg-sky-50 text-sky-700 border-sky-200",
+  Quarterly: "bg-indigo-50 text-indigo-700 border-indigo-200",
+  Monthly: "bg-violet-50 text-violet-700 border-violet-200",
+  "5-yearly": "bg-cyan-50 text-cyan-700 border-cyan-200",
   "One-off": "bg-muted text-muted-foreground border-border",
 }
 
@@ -214,9 +218,11 @@ function getUrgencyText(item: ComplianceItem): string {
   return `Due in ${days} day${days !== 1 ? "s" : ""}`
 }
 
-// Calendar helper: March 2026 starts on Sunday (day 0), 31 days
+// Calendar helper: Monday-first weeks (UK convention)
 function getCalendarGrid(): (number | null)[][] {
-  const firstDayOfWeek = 0 // Sunday = 0
+  // March 2026 starts on Sunday. Convert to Monday-first: Mon=0..Sun=6
+  const jsDay = new Date(2026, 2, 1).getDay() // 0 = Sunday
+  const firstDayOfWeek = jsDay === 0 ? 6 : jsDay - 1 // Sunday becomes 6
   const daysInMonth = 31
 
   const grid: (number | null)[][] = []
@@ -301,7 +307,7 @@ function CategoryBadge({ category }: { category: ComplianceCategory }) {
   const s = CATEGORY_STYLES[category]
   const label = category === "FINANCIAL" ? "Financial" : category.charAt(0) + category.slice(1).toLowerCase()
   return (
-    <span className={`inline-flex items-center gap-1.5 rounded border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${s.bg} ${s.text} border-current/20`}>
+    <span className={`inline-flex items-center gap-1.5 rounded border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${s.bg} ${s.text} ${s.border}`}>
       <span className={`h-1.5 w-1.5 rounded-full ${s.dot}`} />
       {label}
     </span>
@@ -329,10 +335,10 @@ function FrequencyPill({ frequency }: { frequency: Frequency }) {
 
 function SummaryBar() {
   const cards = [
-    { label: "Overdue", value: overdueCount, bg: "bg-red-500/10 border-red-500/20", text: "text-red-700 dark:text-red-400", icon: AlertTriangle, iconColor: "text-red-500" },
-    { label: "Due Soon", value: dueSoonCount, bg: "bg-amber-500/10 border-amber-500/20", text: "text-amber-700 dark:text-amber-400", icon: Clock, iconColor: "text-amber-500" },
-    { label: "Upcoming", value: upcomingCount, bg: "bg-blue-500/10 border-blue-500/20", text: "text-blue-700 dark:text-blue-400", icon: CalendarDays, iconColor: "text-blue-500" },
-    { label: "Completed", value: completedThisMonth, bg: "bg-green-500/10 border-green-500/20", text: "text-green-700 dark:text-green-400", icon: CheckCircle2, iconColor: "text-green-500" },
+    { label: "Overdue", value: overdueCount, bg: "bg-red-50 border-red-200", text: "text-red-700", icon: AlertTriangle, iconColor: "text-red-500" },
+    { label: "Due Soon", value: dueSoonCount, bg: "bg-amber-50 border-amber-200", text: "text-amber-700", icon: Clock, iconColor: "text-amber-500" },
+    { label: "Upcoming", value: upcomingCount, bg: "bg-blue-50 border-blue-200", text: "text-blue-700", icon: CalendarDays, iconColor: "text-blue-500" },
+    { label: "Completed (Total)", value: completedTotal, bg: "bg-emerald-50 border-emerald-200", text: "text-emerald-700", icon: CheckCircle2, iconColor: "text-emerald-500" },
   ]
 
   return (
@@ -452,11 +458,11 @@ function FilterBar({
       </Select>
 
       <Select value={siteFilter} onValueChange={setSiteFilter}>
-        <SelectTrigger className="h-7 w-[140px] text-xs">
-          <SelectValue placeholder="Site" />
+        <SelectTrigger className="h-7 w-[160px] text-xs">
+          <SelectValue placeholder="Site / Deal" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="all">All Sites</SelectItem>
+          <SelectItem value="all">All Sites / Deals</SelectItem>
           {uniqueSites.map((site) => (
             <SelectItem key={site} value={site}>{site}</SelectItem>
           ))}
@@ -500,7 +506,7 @@ function FilterBar({
 function CalendarGridView({ items }: { items: ComplianceItem[] }) {
   const [selectedDay, setSelectedDay] = useState<number | null>(null)
   const grid = getCalendarGrid()
-  const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+  const dayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
   const today = 8 // March 8, 2026
 
   const selectedDayItems = selectedDay ? getItemsForDay(selectedDay, items) : []
@@ -528,11 +534,11 @@ function CalendarGridView({ items }: { items: ComplianceItem[] }) {
             Due Soon
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-full bg-green-500" />
+            <span className="h-2 w-2 rounded-full bg-blue-500" />
             Upcoming
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-full bg-muted-foreground/50" />
+            <span className="h-2 w-2 rounded-full bg-emerald-500" />
             Completed
           </span>
         </div>
@@ -559,7 +565,7 @@ function CalendarGridView({ items }: { items: ComplianceItem[] }) {
               const dayItems = day ? getItemsForDay(day, items) : []
               const isToday = day === today
               const isSelected = day === selectedDay
-              const isWeekend = dayIdx === 0 || dayIdx === 6
+              const isWeekend = dayIdx === 5 || dayIdx === 6
 
               return (
                 <div
@@ -571,8 +577,8 @@ function CalendarGridView({ items }: { items: ComplianceItem[] }) {
                       : isSelected
                         ? "bg-primary/5 ring-1 ring-primary/30 ring-inset"
                         : isWeekend
-                          ? "bg-muted/20 hover:bg-accent/30"
-                          : "hover:bg-accent/30"
+                          ? "bg-muted/20 hover:bg-muted/50"
+                          : "hover:bg-muted/50"
                   } ${day && dayItems.length > 0 ? "cursor-pointer" : "cursor-default"}`}
                 >
                   {day !== null && (
@@ -687,7 +693,7 @@ function ComplianceRow({ item }: { item: ComplianceItem }) {
   return (
     <Link
       href={`/admin/brokerage-mockups/compliance/${item.id}`}
-      className={`flex items-center gap-4 px-4 py-3 hover:bg-accent/30 transition-colors`}
+      className={`flex items-center gap-4 px-4 py-3 hover:bg-muted/50 transition-colors`}
     >
       {/* Status indicator */}
       <div className={`w-1 self-stretch rounded-full shrink-0 ${statusStyle.dot}`} />
@@ -702,15 +708,15 @@ function ComplianceRow({ item }: { item: ComplianceItem }) {
           <span className="flex items-center gap-1">
             <MapPin className="h-3 w-3" />
             {item.dealRef ? (
-              <span className="text-primary font-medium">{item.dealRef} {item.dealTitle}</span>
+              <Link href={`/admin/brokerage-mockups/deals/${item.dealRef}`} className="text-primary font-medium hover:underline">{item.dealRef} {item.dealTitle}</Link>
             ) : (
               <span>
                 {item.siteRef ? (
-                  <span className="hover:text-primary transition-colors">{item.site}</span>
+                  <Link href={`/admin/brokerage-mockups/sites/${item.siteRef}`} className="hover:text-primary hover:underline transition-colors">{item.site}</Link>
                 ) : (
                   item.site
                 )}
-                {item.siteRef && <span className="text-muted-foreground/60 ml-1">({item.siteRef})</span>}
+                {item.siteRef && <Link href={`/admin/brokerage-mockups/sites/${item.siteRef}`} className="text-muted-foreground/60 hover:text-primary ml-1">({item.siteRef})</Link>}
               </span>
             )}
           </span>
@@ -843,7 +849,7 @@ function ListView({ items }: { items: ComplianceItem[] }) {
                   <Link
                     key={item.id}
                     href={`/admin/brokerage-mockups/compliance/${item.id}`}
-                    className={`grid grid-cols-[1fr_100px_140px_140px_90px_80px_90px] gap-2 px-4 py-2.5 items-center hover:bg-accent/30 transition-colors ${
+                    className={`grid grid-cols-[1fr_100px_140px_140px_90px_80px_90px] gap-2 px-4 py-2.5 items-center hover:bg-muted/50 transition-colors ${
                       idx < groupItems.length - 1 ? "border-b border-border" : ""
                     }`}
                   >
@@ -856,16 +862,16 @@ function ListView({ items }: { items: ComplianceItem[] }) {
                     <CategoryBadge category={item.category} />
                     <div className="text-xs text-muted-foreground truncate">
                       {item.dealRef ? (
-                        <span className="text-primary font-medium">{item.dealRef}</span>
+                        <Link href={`/admin/brokerage-mockups/deals/${item.dealRef}`} className="text-primary font-medium hover:underline">{item.dealRef}</Link>
                       ) : (
                         <span>
                           {item.siteRef ? (
-                            <span className="hover:text-primary transition-colors">{item.site}</span>
+                            <Link href={`/admin/brokerage-mockups/sites/${item.siteRef}`} className="hover:text-primary hover:underline transition-colors">{item.site}</Link>
                           ) : (
                             item.site
                           )}
                           {item.siteRef && (
-                            <span className="text-muted-foreground/60 ml-1">({item.siteRef})</span>
+                            <Link href={`/admin/brokerage-mockups/sites/${item.siteRef}`} className="text-muted-foreground/60 hover:text-primary ml-1">({item.siteRef})</Link>
                           )}
                         </span>
                       )}
@@ -967,15 +973,15 @@ function TimelineView({ items }: { items: ComplianceItem[] }) {
                           <span className="flex items-center gap-1">
                             <MapPin className="h-3 w-3" />
                             {item.dealRef ? (
-                              <span className="text-primary font-medium">{item.dealRef} {item.dealTitle}</span>
+                              <Link href={`/admin/brokerage-mockups/deals/${item.dealRef}`} className="text-primary font-medium hover:underline">{item.dealRef} {item.dealTitle}</Link>
                             ) : (
                               <span>
                                 {item.siteRef ? (
-                                  <span className="hover:text-primary transition-colors">{item.site}</span>
+                                  <Link href={`/admin/brokerage-mockups/sites/${item.siteRef}`} className="hover:text-primary hover:underline transition-colors">{item.site}</Link>
                                 ) : (
                                   item.site
                                 )}
-                                {item.siteRef && <span className="opacity-60 ml-1">({item.siteRef})</span>}
+                                {item.siteRef && <Link href={`/admin/brokerage-mockups/sites/${item.siteRef}`} className="opacity-60 hover:text-primary ml-1">({item.siteRef})</Link>}
                               </span>
                             )}
                           </span>
@@ -1008,7 +1014,7 @@ function TimelineView({ items }: { items: ComplianceItem[] }) {
                         </span>
                       )}
                       {item.status === "COMPLETED" && item.completedDate && (
-                        <span className="inline-flex items-center gap-1 text-[10px] text-green-600 dark:text-green-400 font-medium">
+                        <span className="inline-flex items-center gap-1 text-[10px] text-emerald-700 font-medium">
                           <CheckCircle2 className="h-3 w-3" />
                           Completed {formatDateShort(item.completedDate)}
                         </span>
@@ -1048,6 +1054,12 @@ export default function ComplianceCalendarPage() {
 
   return (
     <div className="max-w-screen-xl mx-auto px-6 py-6 space-y-6">
+      <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+        <Link href="/admin/brokerage-mockups/dashboard" className="hover:text-foreground transition-colors">Dashboard</Link>
+        <ChevronRight className="h-3.5 w-3.5" />
+        <span className="text-foreground font-medium">Compliance</span>
+      </div>
+
       {/* Page Header */}
       <div className="flex items-start justify-between">
         <div>
@@ -1107,11 +1119,11 @@ export default function ComplianceCalendarPage() {
           <span>Ironheart Brokerage -- BNG / Nutrient Credit Compliance</span>
           <div className="flex items-center gap-4">
             <span className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-purple-500" />
+              <span className="h-2 w-2 rounded-full bg-teal-500" />
               Monitoring
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-amber-500" />
+              <span className="h-2 w-2 rounded-full bg-violet-500" />
               Legal
             </span>
             <span className="flex items-center gap-1.5">
@@ -1119,7 +1131,7 @@ export default function ComplianceCalendarPage() {
               Registration
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-indigo-500" />
+              <span className="h-2 w-2 rounded-full bg-amber-500" />
               Financial
             </span>
           </div>

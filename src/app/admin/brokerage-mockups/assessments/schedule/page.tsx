@@ -54,7 +54,7 @@ const ASSESSMENT_TYPES: AssessmentTypeOption[] = [
     id: "BNG Habitat Survey",
     title: "BNG Habitat Survey",
     description:
-      "Biodiversity Metric 4.0 habitat classification survey with condition assessment and unit calculation.",
+      "Statutory Biodiversity Metric habitat classification survey with condition assessment and unit calculation.",
     icon: TreePine,
     color: "text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/40",
   },

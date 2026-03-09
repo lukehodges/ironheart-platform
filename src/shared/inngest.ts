@@ -3,7 +3,7 @@ import { Inngest, EventSchemas } from "inngest";
 /**
  * Typed event catalog for the entire Ironheart platform.
  *
- * Each event value MUST be wrapped in { data: ... } — Inngest v3 requirement.
+ * Each event value MUST be wrapped in { data: ... } - Inngest v3 requirement.
  *
  * To add a new event: add it here, then use it in the relevant module's *.events.ts file.
  */
@@ -28,7 +28,7 @@ type IronheartEvents = {
       slotId: string;
       bookingId: string;
       tenantId: string;
-      expiresAt: string; // ISO 8601 UTC string — always use .toISOString()
+      expiresAt: string; // ISO 8601 UTC string - always use .toISOString()
     };
   };
   "slot/released": {

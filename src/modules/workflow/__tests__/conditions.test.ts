@@ -47,7 +47,7 @@ describe('evaluateConditionGroup', () => {
     expect(evaluateConditionGroup(group, { rating: 3 })).toBe(false)
   })
 
-  it('evaluates contains — substring match', () => {
+  it('evaluates contains - substring match', () => {
     const group = andGroup({ field: 'email', operator: 'contains', value: '@example' })
     expect(evaluateConditionGroup(group, { email: 'user@example.com' })).toBe(true)
     expect(evaluateConditionGroup(group, { email: 'user@other.com' })).toBe(false)

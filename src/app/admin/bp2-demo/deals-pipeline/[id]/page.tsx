@@ -472,7 +472,7 @@ export default async function DealDetailPage({
         {/* Two-column layout */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
 
-          {/* LEFT — col-span-2 */}
+          {/* LEFT - col-span-2 */}
           <div className="lg:col-span-2 flex flex-col gap-5">
 
             {/* Deal Summary card */}
@@ -643,7 +643,7 @@ export default async function DealDetailPage({
                       Property not yet added to stock system
                     </p>
                     <p className="text-[12px] text-[#9A8040] leading-relaxed">
-                      Connecting deals to listings centralises your pipeline — enquiry history, viewings,
+                      Connecting deals to listings centralises your pipeline - enquiry history, viewings,
                       and deal status visible in one place, without hunting across emails and spreadsheets.
                     </p>
                   </div>
@@ -656,7 +656,7 @@ export default async function DealDetailPage({
               <div className="flex items-center gap-3">
                 <TrendingUp className="h-4.5 w-4.5 text-[#8A7848] shrink-0" />
                 <p className="text-[13px] text-[#6A5A38] leading-relaxed">
-                  Every party, document, and action for this deal — tracked in one place.{" "}
+                  Every party, document, and action for this deal - tracked in one place.{" "}
                   <span className="font-semibold text-[#5A4A28]">
                     No more status-update emails or spreadsheet hunting.
                   </span>
@@ -678,7 +678,7 @@ export default async function DealDetailPage({
             )}
           </div>
 
-          {/* RIGHT — col-span-1 */}
+          {/* RIGHT - col-span-1 */}
           <div className="flex flex-col gap-5">
             <DocumentChecklist documents={deal.documents} />
             <ActivityLog activity={deal.activity} />

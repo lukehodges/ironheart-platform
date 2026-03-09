@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useMemo } from "react"
+import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -30,6 +31,7 @@ import {
   Send,
   Archive,
   ExternalLink,
+  ChevronRight,
 } from "lucide-react"
 import {
   DropdownMenu,
@@ -45,38 +47,38 @@ import type { DocumentType, DocumentStatus } from "../_mock-data"
 // ---------------------------------------------------------------------------
 
 const TYPE_STYLES: Record<string, string> = {
-  S106: "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-950 dark:text-amber-400 dark:border-amber-800",
-  "Conservation Covenant": "bg-green-100 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-400 dark:border-green-800",
-  "Purchase Agreement": "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-400 dark:border-blue-800",
-  "Heads of Terms": "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-400 dark:border-blue-800",
-  HMMP: "bg-teal-100 text-teal-700 border-teal-200 dark:bg-teal-950 dark:text-teal-400 dark:border-teal-800",
-  "Reservation Agreement": "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-400 dark:border-blue-800",
-  Invoice: "bg-purple-100 text-purple-700 border-purple-200 dark:bg-purple-950 dark:text-purple-400 dark:border-purple-800",
-  "Survey Report": "bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-900 dark:text-gray-400 dark:border-gray-700",
-  "Metric Calculation": "bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-900 dark:text-gray-400 dark:border-gray-700",
-  "Site Photos": "bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-900 dark:text-gray-400 dark:border-gray-700",
+  S106: "border-amber-200 bg-amber-50 text-amber-700",
+  "Conservation Covenant": "border-green-200 bg-green-50 text-green-700",
+  "Purchase Agreement": "border-blue-200 bg-blue-50 text-blue-700",
+  "Heads of Terms": "border-blue-200 bg-blue-50 text-blue-700",
+  HMMP: "border-teal-200 bg-teal-50 text-teal-700",
+  "Reservation Agreement": "border-blue-200 bg-blue-50 text-blue-700",
+  Invoice: "border-purple-200 bg-purple-50 text-purple-700",
+  "Survey Report": "border-border bg-muted text-muted-foreground",
+  "Metric Calculation": "border-border bg-muted text-muted-foreground",
+  "Site Photos": "border-border bg-muted text-muted-foreground",
 }
 
 const TYPE_THUMBNAIL_COLORS: Record<string, string> = {
-  S106: "bg-amber-200 dark:bg-amber-900",
-  "Conservation Covenant": "bg-green-200 dark:bg-green-900",
-  "Purchase Agreement": "bg-blue-200 dark:bg-blue-900",
-  "Heads of Terms": "bg-blue-200 dark:bg-blue-900",
-  HMMP: "bg-teal-200 dark:bg-teal-900",
-  "Reservation Agreement": "bg-blue-200 dark:bg-blue-900",
-  Invoice: "bg-purple-200 dark:bg-purple-900",
-  "Survey Report": "bg-gray-200 dark:bg-gray-800",
-  "Metric Calculation": "bg-gray-200 dark:bg-gray-800",
-  "Site Photos": "bg-gray-200 dark:bg-gray-800",
+  S106: "bg-amber-100",
+  "Conservation Covenant": "bg-green-100",
+  "Purchase Agreement": "bg-blue-100",
+  "Heads of Terms": "bg-blue-100",
+  HMMP: "bg-teal-100",
+  "Reservation Agreement": "bg-blue-100",
+  Invoice: "bg-purple-100",
+  "Survey Report": "bg-muted",
+  "Metric Calculation": "bg-muted",
+  "Site Photos": "bg-muted",
 }
 
 const STATUS_STYLES: Record<string, string> = {
-  Draft: "bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-900 dark:text-gray-400 dark:border-gray-700",
-  Sent: "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-400 dark:border-blue-800",
-  Viewed: "bg-cyan-100 text-cyan-700 border-cyan-200 dark:bg-cyan-950 dark:text-cyan-400 dark:border-cyan-800",
-  Signed: "bg-green-100 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-400 dark:border-green-800",
-  Completed: "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-400 dark:border-emerald-800",
-  Expired: "bg-red-100 text-red-700 border-red-200 dark:bg-red-950 dark:text-red-400 dark:border-red-800",
+  Draft: "border-border bg-muted text-muted-foreground",
+  Sent: "border-blue-200 bg-blue-50 text-blue-700",
+  Viewed: "border-cyan-200 bg-cyan-50 text-cyan-700",
+  Signed: "border-green-200 bg-green-50 text-green-700",
+  Completed: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  Expired: "border-red-200 bg-red-50 text-red-700",
 }
 
 // ---------------------------------------------------------------------------
@@ -110,6 +112,7 @@ const expiredDocs = documents.filter((d) => d.status === "Expired").length
 // ---------------------------------------------------------------------------
 
 export default function DocumentLibraryPage() {
+  const router = useRouter()
   const [viewMode, setViewMode] = useState<"table" | "grid">("table")
   const [typeFilter, setTypeFilter] = useState("all")
   const [statusFilter, setStatusFilter] = useState("all")
@@ -128,14 +131,20 @@ export default function DocumentLibraryPage() {
   const uniqueStatuses: DocumentStatus[] = ["Draft", "Sent", "Viewed", "Signed", "Completed", "Expired"]
 
   const statCards = [
-    { label: "Total Documents", value: totalDocuments, bg: "bg-blue-500/10 border-blue-500/20", text: "text-blue-700 dark:text-blue-400" },
-    { label: "Awaiting Signature", value: awaitingSignature, bg: "bg-amber-500/10 border-amber-500/20", text: "text-amber-700 dark:text-amber-400" },
-    { label: "Completed", value: completedDocs, bg: "bg-emerald-500/10 border-emerald-500/20", text: "text-emerald-700 dark:text-emerald-400" },
-    { label: "Expired", value: expiredDocs, bg: "bg-red-500/10 border-red-500/20", text: "text-red-700 dark:text-red-400" },
+    { label: "Total Documents", value: totalDocuments, bg: "border-blue-200 bg-blue-50", text: "text-blue-700" },
+    { label: "Awaiting Signature", value: awaitingSignature, bg: "border-amber-200 bg-amber-50", text: "text-amber-700" },
+    { label: "Completed", value: completedDocs, bg: "border-emerald-200 bg-emerald-50", text: "text-emerald-700" },
+    { label: "Expired", value: expiredDocs, bg: "border-red-200 bg-red-50", text: "text-red-700" },
   ]
 
   return (
     <div className="max-w-screen-xl mx-auto px-6 py-6 space-y-6">
+      <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+        <Link href="/admin/brokerage-mockups/dashboard" className="hover:text-foreground transition-colors">Dashboard</Link>
+        <ChevronRight className="h-3.5 w-3.5" />
+        <span className="text-foreground font-medium">Documents</span>
+      </div>
+
       {/* Page Header */}
       <div className="flex items-start justify-between">
         <div>
@@ -236,7 +245,7 @@ export default function DocumentLibraryPage() {
 
       {/* Table View */}
       {viewMode === "table" && (
-        <div className="border border-border rounded-lg overflow-hidden">
+        <div className="border border-border rounded-lg overflow-x-auto">
           {/* Table Header */}
           <div className="grid grid-cols-[1fr_130px_170px_110px_100px_90px_60px] gap-2 px-4 py-2.5 bg-muted/50 border-b border-border text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
             <span>Name</span>
@@ -251,10 +260,10 @@ export default function DocumentLibraryPage() {
           {/* Rows */}
           <div className="divide-y divide-border">
             {filteredDocuments.map((doc) => (
-              <Link
+              <div
                 key={doc.id}
-                href={`/admin/brokerage-mockups/documents/${doc.id}`}
-                className="grid grid-cols-[1fr_130px_170px_110px_100px_90px_60px] gap-2 px-4 py-3 items-center hover:bg-accent/30 transition-colors"
+                onClick={() => router.push(`/admin/brokerage-mockups/documents/${doc.id}`)}
+                className="grid grid-cols-[1fr_130px_170px_110px_100px_90px_60px] gap-2 px-4 py-3 items-center hover:bg-muted/50 transition-colors cursor-pointer"
               >
                 <div className="flex items-center gap-2 min-w-0">
                   <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
@@ -308,7 +317,7 @@ export default function DocumentLibraryPage() {
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
-              </Link>
+              </div>
             ))}
           </div>
 
@@ -327,10 +336,10 @@ export default function DocumentLibraryPage() {
             <Link
               key={doc.id}
               href={`/admin/brokerage-mockups/documents/${doc.id}`}
-              className="group rounded-lg border border-border bg-card hover:shadow-md transition-all overflow-hidden"
+              className="group rounded-lg border border-border bg-card hover:border-primary/20 hover:shadow-md transition-all overflow-hidden"
             >
               {/* Mock thumbnail */}
-              <div className={`h-32 flex items-center justify-center ${TYPE_THUMBNAIL_COLORS[doc.type] ?? "bg-gray-200 dark:bg-gray-800"}`}>
+              <div className={`h-32 flex items-center justify-center ${TYPE_THUMBNAIL_COLORS[doc.type] ?? "bg-muted"}`}>
                 <FileText className="h-10 w-10 text-foreground/30" />
               </div>
 
@@ -339,10 +348,10 @@ export default function DocumentLibraryPage() {
                   {doc.name}
                 </p>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className={`inline-flex items-center rounded border px-1.5 py-0.5 text-[9px] font-semibold ${TYPE_STYLES[doc.type] ?? TYPE_STYLES["Survey Report"]}`}>
+                  <span className={`inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-semibold ${TYPE_STYLES[doc.type] ?? TYPE_STYLES["Survey Report"]}`}>
                     {doc.type}
                   </span>
-                  <span className={`inline-flex items-center rounded border px-1.5 py-0.5 text-[9px] font-semibold ${STATUS_STYLES[doc.status]}`}>
+                  <span className={`inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-semibold ${STATUS_STYLES[doc.status]}`}>
                     {doc.status}
                   </span>
                 </div>

@@ -27,7 +27,7 @@ const log = logger.child({ module: "booking.service" });
 // Reservation window in minutes
 const RESERVATION_MINUTES = 15;
 
-// Distributed lock TTL in ms — long enough to cover the slot capacity
+// Distributed lock TTL in ms - long enough to cover the slot capacity
 // check + booking insert + Inngest send
 const SLOT_LOCK_TTL_MS = 5_000;
 
@@ -49,13 +49,13 @@ function hashToken(token: string): string {
 async function acquireSlotLock(tenantId: string, slotId: string): Promise<{ lockKey: string; token: string } | null> {
   const lockKey = `lock:slot:${tenantId}:${slotId}`;
   const token = randomUUID();
-  // SET NX PX — only set if not exists, with millisecond TTL
+  // SET NX PX - only set if not exists, with millisecond TTL
   const acquired = await redis.set(lockKey, token, { nx: true, px: SLOT_LOCK_TTL_MS });
   return acquired ? { lockKey, token } : null;
 }
 
 async function releaseSlotLock(lockKey: string, token: string): Promise<void> {
-  // Only delete if the stored token matches ours — prevents deleting another
+  // Only delete if the stored token matches ours - prevents deleting another
   // request's lock if our TTL expired while the operation was running.
   const stored = await redis.get(lockKey);
   if (stored === token) {
@@ -82,7 +82,7 @@ export const bookingService = {
     if (input.slotId) {
       lock = await acquireSlotLock(tenantId, input.slotId);
       if (!lock) {
-        throw new ConflictError("Slot is currently being reserved — please try again");
+        throw new ConflictError("Slot is currently being reserved - please try again");
       }
     }
 
@@ -110,9 +110,9 @@ export const bookingService = {
         try {
           await bookingRepository.decrementSlotCapacity(tenantId, input.slotId);
         } catch {
-          // Slot full — rollback by deleting the just-created booking
+          // Slot full - rollback by deleting the just-created booking
           // In production this should be a single transaction; Phase 1 stub is sufficient
-          log.warn({ bookingId: booking.id, slotId: input.slotId }, "Slot full after booking creation — possible race condition");
+          log.warn({ bookingId: booking.id, slotId: input.slotId }, "Slot full after booking creation - possible race condition");
           throw new ConflictError("Slot is at full capacity");
         }
       }
@@ -144,7 +144,7 @@ export const bookingService = {
       log.info({ bookingId: booking.id, status: booking.status, tenantId }, "Booking created");
 
       // Return the plaintext token alongside the booking so the caller can
-      // present it to the customer (it is NOT stored — only the hash is).
+      // present it to the customer (it is NOT stored - only the hash is).
       return { booking, confirmationToken: plainToken ?? null };
 
     } finally {
@@ -153,7 +153,7 @@ export const bookingService = {
   },
 
   // ---------------------------------------------------------------------------
-  // CONFIRM RESERVATION (public — called from portal after customer review)
+  // CONFIRM RESERVATION (public - called from portal after customer review)
   // ---------------------------------------------------------------------------
 
   async confirmReservation(bookingId: string, customerEmail: string, token?: string) {
@@ -168,7 +168,7 @@ export const bookingService = {
       throw new ValidationError("Reservation has expired");
     }
 
-    // Verify caller identity via customer email — must match before any state change
+    // Verify caller identity via customer email - must match before any state change
     const storedEmail = await bookingRepository.findCustomerEmailForBooking(bookingId);
     if (!storedEmail || storedEmail.toLowerCase() !== customerEmail.toLowerCase()) {
       throw new ForbiddenError("Email address does not match booking record");
@@ -246,7 +246,7 @@ export const bookingService = {
             "Customer confirmed reservation"
           );
 
-          // Notification for customer (outside saga — informational, not transactional)
+          // Notification for customer (outside saga - informational, not transactional)
           if (!storedEmail) {
             log.warn({ bookingId }, "No customer email found for notification, email will be skipped");
           }
@@ -269,7 +269,7 @@ export const bookingService = {
       );
     }
 
-    // PENDING path (requiresApproval=true): simpler — no saga, no slot lock needed
+    // PENDING path (requiresApproval=true): simpler - no saga, no slot lock needed
     // State machine already validated RESERVED → PENDING above
     const updated = await bookingRepository.updateStatus(
       booking.tenantId,
@@ -308,7 +308,7 @@ export const bookingService = {
       await bookingRepository.decrementSlotCapacity(tenantId, input.slotId);
     }
 
-    // Handle staff change — emit calendar sync for old staff
+    // Handle staff change - emit calendar sync for old staff
     if (input.staffIds !== undefined && existing.staffId) {
       await inngest.send({ name: "calendar/sync.push", data: { bookingId, userId: existing.staffId, tenantId } });
     }
@@ -524,7 +524,7 @@ export const bookingService = {
   async releaseExpiredReservation(bookingId: string, tenantId?: string) {
     const booking = await bookingRepository.findByIdPublic(bookingId);
     if (!booking || booking.status !== "RESERVED") {
-      // Already confirmed or cancelled — Inngest cancelOn should have caught this
+      // Already confirmed or cancelled - Inngest cancelOn should have caught this
       return;
     }
 
@@ -533,7 +533,7 @@ export const bookingService = {
     if (tenantId && booking.tenantId !== tenantId) {
       log.error(
         { bookingId, expectedTenantId: tenantId, actualTenantId: booking.tenantId },
-        "Tenant mismatch in releaseExpiredReservation — aborting"
+        "Tenant mismatch in releaseExpiredReservation - aborting"
       );
       return;
     }
@@ -552,7 +552,7 @@ export const bookingService = {
       statusChangedAt: new Date(),
     });
 
-    await bookingRepository.recordStatusChange(bookingId, "RESERVED", "RELEASED", "Reservation expired — 15-minute timeout reached");
+    await bookingRepository.recordStatusChange(bookingId, "RESERVED", "RELEASED", "Reservation expired - 15-minute timeout reached");
 
     log.info({ bookingId, tenantId: booking.tenantId }, "Reservation released by Inngest");
   },

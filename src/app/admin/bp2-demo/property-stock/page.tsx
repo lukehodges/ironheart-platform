@@ -154,7 +154,7 @@ export default function PropertyStockPage() {
               <h1 className="text-2xl font-bold tracking-tight text-gray-900">
                 Property Stock &amp; Enquiry Tracker
               </h1>
-              <p className="text-sm text-gray-500 mt-1">All active instructions — updated March 2026</p>
+              <p className="text-sm text-gray-500 mt-1">All active instructions - updated March 2026</p>
             </div>
             <div className="flex items-center gap-2 mt-1">
               <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />

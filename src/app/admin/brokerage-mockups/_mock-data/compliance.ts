@@ -4,7 +4,7 @@ export const complianceItems: ComplianceItem[] = [
   // ── Overdue (3) ──
   {
     id: "CMP-001",
-    title: "Annual Monitoring Report — Whiteley Farm",
+    title: "Annual Monitoring Report - Whiteley Farm",
     category: "Monitoring",
     siteRef: "S-0001",
     siteName: "Whiteley Farm",
@@ -17,7 +17,7 @@ export const complianceItems: ComplianceItem[] = [
   },
   {
     id: "CMP-002",
-    title: "Water Quality Sampling — Botley Meadows",
+    title: "Water Quality Sampling - Botley Meadows",
     category: "Monitoring",
     siteRef: "S-0002",
     siteName: "Botley Meadows",
@@ -30,7 +30,7 @@ export const complianceItems: ComplianceItem[] = [
   },
   {
     id: "CMP-003",
-    title: "LPA Annual Return — Hamble Valley",
+    title: "LPA Annual Return - Hamble Valley",
     category: "Registration",
     siteRef: "S-0003",
     siteName: "Hamble Valley",
@@ -44,7 +44,7 @@ export const complianceItems: ComplianceItem[] = [
   // ── Due Soon (2) ──
   {
     id: "CMP-004",
-    title: "Insurance Renewal — Whiteley Farm",
+    title: "Insurance Renewal - Whiteley Farm",
     category: "Financial",
     siteRef: "S-0001",
     siteName: "Whiteley Farm",
@@ -57,7 +57,7 @@ export const complianceItems: ComplianceItem[] = [
   },
   {
     id: "CMP-005",
-    title: "HMMP Submission — Fareham Woodland",
+    title: "HMMP Submission - Fareham Woodland",
     category: "Legal",
     siteRef: "S-0008",
     siteName: "Fareham Woodland",
@@ -71,7 +71,7 @@ export const complianceItems: ComplianceItem[] = [
   // ── Upcoming (5) ──
   {
     id: "CMP-006",
-    title: "Quarterly Monitoring Visit — Manor Fields",
+    title: "Quarterly Monitoring Visit - Manor Fields",
     category: "Monitoring",
     siteRef: "S-0005",
     siteName: "Manor Fields",
@@ -84,7 +84,7 @@ export const complianceItems: ComplianceItem[] = [
   },
   {
     id: "CMP-007",
-    title: "Credit Allocation Confirmation — D-0030",
+    title: "Credit Allocation Confirmation - D-0030",
     category: "Registration",
     dealRef: "D-0030",
     dealTitle: "Bellway / Whiteley Farm",
@@ -97,7 +97,7 @@ export const complianceItems: ComplianceItem[] = [
   },
   {
     id: "CMP-008",
-    title: "5-Year Review — Botley Meadows",
+    title: "5-Year Review - Botley Meadows",
     category: "Monitoring",
     siteRef: "S-0002",
     siteName: "Botley Meadows",
@@ -110,7 +110,7 @@ export const complianceItems: ComplianceItem[] = [
   },
   {
     id: "CMP-009",
-    title: "S106 Compliance Certificate — Whiteley Farm",
+    title: "S106 Compliance Certificate - Whiteley Farm",
     category: "Legal",
     siteRef: "S-0001",
     siteName: "Whiteley Farm",
@@ -123,7 +123,7 @@ export const complianceItems: ComplianceItem[] = [
   },
   {
     id: "CMP-010",
-    title: "Natural England Registration Fee — Fareham Woodland",
+    title: "Natural England Registration Fee - Fareham Woodland",
     category: "Financial",
     siteRef: "S-0008",
     siteName: "Fareham Woodland",
@@ -137,7 +137,7 @@ export const complianceItems: ComplianceItem[] = [
   // ── Completed (5) ──
   {
     id: "CMP-011",
-    title: "Annual Monitoring Report — Hamble Valley",
+    title: "Annual Monitoring Report - Hamble Valley",
     category: "Monitoring",
     siteRef: "S-0003",
     siteName: "Hamble Valley",
@@ -151,7 +151,7 @@ export const complianceItems: ComplianceItem[] = [
   },
   {
     id: "CMP-012",
-    title: "S106 Execution — Whiteley Farm",
+    title: "S106 Execution - Whiteley Farm",
     category: "Legal",
     siteRef: "S-0001",
     siteName: "Whiteley Farm",
@@ -165,7 +165,7 @@ export const complianceItems: ComplianceItem[] = [
   },
   {
     id: "CMP-013",
-    title: "Payment Confirmation — D-0035",
+    title: "Payment Confirmation - D-0035",
     category: "Financial",
     dealRef: "D-0035",
     dealTitle: "Barratt / Botley Meadows",
@@ -179,7 +179,7 @@ export const complianceItems: ComplianceItem[] = [
   },
   {
     id: "CMP-014",
-    title: "Credit Registration — D-0035",
+    title: "Credit Registration - D-0035",
     category: "Registration",
     dealRef: "D-0035",
     dealTitle: "Barratt / Botley Meadows",
@@ -193,7 +193,7 @@ export const complianceItems: ComplianceItem[] = [
   },
   {
     id: "CMP-015",
-    title: "Baseline Assessment — Test Valley",
+    title: "Baseline Assessment - Test Valley",
     category: "Monitoring",
     siteRef: "S-0006",
     siteName: "Test Valley Grassland",
@@ -210,4 +210,4 @@ export const complianceItems: ComplianceItem[] = [
 export const overdueCount = complianceItems.filter((c) => c.status === "Overdue").length;
 export const dueSoonCount = complianceItems.filter((c) => c.status === "Due Soon").length;
 export const upcomingCount = complianceItems.filter((c) => c.status === "Upcoming").length;
-export const completedThisMonth = complianceItems.filter((c) => c.status === "Completed").length;
+export const completedTotal = complianceItems.filter((c) => c.status === "Completed").length;

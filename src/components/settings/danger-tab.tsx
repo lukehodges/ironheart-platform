@@ -10,7 +10,7 @@ import { Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 /**
- * DangerTab — Destructive actions for settings
+ * DangerTab - Destructive actions for settings
  *
  * Displays dangerous operations that require confirmation:
  * - Export all data button (GDPR compliance) - Coming soon

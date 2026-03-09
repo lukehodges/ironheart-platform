@@ -63,7 +63,7 @@ export default function CalendarPage() {
         onEventClick={handleEventClick}
       />
 
-      {/* Booking detail sheet — mounted at root so it slides over the calendar */}
+      {/* Booking detail sheet - mounted at root so it slides over the calendar */}
       <BookingDetailSheet
         bookingId={selectedBookingId}
         onClose={handleSheetClose}

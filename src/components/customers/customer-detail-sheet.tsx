@@ -313,12 +313,12 @@ function NotesTab({ customerId }: { customerId: string }) {
 }
 
 // ---------------------------------------------------------------------------
-// Forms Tab (placeholder — forms router returns completed form submissions)
+// Forms Tab (placeholder - forms router returns completed form submissions)
 // ---------------------------------------------------------------------------
 
 function FormsTab({ customerId }: { customerId: string }) {
   // Forms completed by this customer are not directly queryable in the current
-  // customer router — we display a helpful placeholder.
+  // customer router - we display a helpful placeholder.
   // When the forms router exposes a getByCustomer endpoint, wire it here.
   return (
     <EmptyState
@@ -502,7 +502,7 @@ export function CustomerDetailSheet({
                                 new Date(a.scheduledDate).getTime()
                             )[0]!.scheduledDate
                           )
-                        : "—"}
+                        : "-"}
                     </p>
                   </div>
                 </div>

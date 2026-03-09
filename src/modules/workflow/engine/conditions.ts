@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────────────────────────────────────
-// Condition evaluation — supports AND/OR nested groups
+// Condition evaluation - supports AND/OR nested groups
 // ──────────────────────────────────────────────────────────────────────────────
 
 import type { WorkflowCondition, WorkflowConditionGroup } from '../workflow.types'

@@ -85,7 +85,7 @@ describe("ConflictError", () => {
 });
 
 // ---------------------------------------------------------------------------
-// toTRPCError — unit tests
+// toTRPCError - unit tests
 // ---------------------------------------------------------------------------
 
 describe("toTRPCError", () => {
@@ -155,10 +155,10 @@ describe("toTRPCError", () => {
 });
 
 // ---------------------------------------------------------------------------
-// toTRPCError — property-based tests
+// toTRPCError - property-based tests
 // ---------------------------------------------------------------------------
 
-describe("toTRPCError — properties", () => {
+describe("toTRPCError - properties", () => {
   it("Property: always returns a TRPCError", () => {
     fc.assert(
       fc.property(

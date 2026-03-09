@@ -129,7 +129,7 @@ describe('reviewService.shouldRequestReview', () => {
     const settings = makeAutomationSettings({ enabled: true, preScreenEnabled: false })
     const result = await reviewService.shouldRequestReview(TENANT_ID, BOOKING_ID, settings)
     expect(result.proceed).toBe(true)
-    // bookingRepository.findById should not be called — we short-circuit
+    // bookingRepository.findById should not be called - we short-circuit
     expect(bookingRepository.findById).not.toHaveBeenCalled()
   })
 

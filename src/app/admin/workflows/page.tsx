@@ -55,7 +55,7 @@ import type { WorkflowRecord } from "@/modules/workflow/workflow.types"
 const PAGE_SIZE = 25
 
 function formatRelativeDate(date: Date | string | null | undefined): string {
-  if (!date) return "—"
+  if (!date) return "-"
   const d = typeof date === "string" ? new Date(date) : date
   const now = new Date()
   const diffMs = now.getTime() - d.getTime()
@@ -156,7 +156,7 @@ function WorkflowRow({ workflow, onView, onToggleActive, onDelete }: WorkflowRow
               </code>
             ))
           ) : (
-            <span className="text-xs text-muted-foreground">—</span>
+            <span className="text-xs text-muted-foreground">-</span>
           )}
         </div>
       </TableCell>
@@ -171,7 +171,7 @@ function WorkflowRow({ workflow, onView, onToggleActive, onDelete }: WorkflowRow
         </Badge>
       </TableCell>
 
-      {/* Last Run — not available in WorkflowRecord, show dash for now */}
+      {/* Last Run - not available in WorkflowRecord, show dash for now */}
       <TableCell>
         <span className="text-xs text-muted-foreground">
           {formatRelativeDate(null)}

@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────────────────────────────────────
-// Workflow Service — CRUD, graph validation, and workflow execution orchestration
+// Workflow Service - CRUD, graph validation, and workflow execution orchestration
 // ──────────────────────────────────────────────────────────────────────────────
 
 import { z } from 'zod'
@@ -283,7 +283,7 @@ export const workflowService = {
       const wf = await workflowRepository.findById(tenantId, workflowId)
       if (!wf) throw new NotFoundError('Workflow', workflowId)
       if (!wf.isActive) {
-        log.info({ workflowId }, 'Workflow is inactive — skipping')
+        log.info({ workflowId }, 'Workflow is inactive - skipping')
         return null
       }
       return wf
@@ -291,10 +291,10 @@ export const workflowService = {
 
     if (!workflow) return
 
-    // Step 2: Loop prevention — check __workflowDepth
+    // Step 2: Loop prevention - check __workflowDepth
     const depth = (triggerData.__workflowDepth ?? 0) as number
     if (depth >= 3) {
-      log.warn({ workflowId, depth }, 'Workflow depth limit reached — halting execution')
+      log.warn({ workflowId, depth }, 'Workflow depth limit reached - halting execution')
       return
     }
 
@@ -310,7 +310,7 @@ export const workflowService = {
         return workflowRepository.findExecution(workflowId, triggerEvent, bookingId)
       })
       if (existing && existing.status === 'completed') {
-        log.info({ workflowId, bookingId }, 'Workflow already completed for this booking — skipping')
+        log.info({ workflowId, bookingId }, 'Workflow already completed for this booking - skipping')
         return
       }
     }
@@ -352,7 +352,7 @@ export const workflowService = {
         const triggerNode = findMatchingTrigger(workflow.nodes, triggerEvent, enriched)
 
         if (!triggerNode) {
-          log.info({ workflowId, triggerEvent }, 'No matching TRIGGER node found for this event — skipping')
+          log.info({ workflowId, triggerEvent }, 'No matching TRIGGER node found for this event - skipping')
           await workflowRepository.updateExecution(executionId, {
             status: 'completed',
             completedAt: new Date(),
@@ -384,7 +384,7 @@ export const workflowService = {
             const { resolveContext } = await import('./engine/context')
             const shouldRun = evaluateConditionGroup(group, resolveContext(context))
             if (!shouldRun) {
-              log.info({ workflowId }, 'Workflow conditions not met — skipping execution')
+              log.info({ workflowId }, 'Workflow conditions not met - skipping execution')
               await workflowRepository.updateExecution(executionId, {
                 status: 'completed',
                 completedAt: new Date(),

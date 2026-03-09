@@ -111,7 +111,7 @@ export const DEALS: DealDetail[] = [
       {
         date: "2026-02-28",
         type: "note",
-        text: "EPC certificate confirmed — rating C (58)",
+        text: "EPC certificate confirmed - rating C (58)",
         agent: "DB",
       },
     ],
@@ -122,7 +122,7 @@ export const DEALS: DealDetail[] = [
       "Arrange accompanied viewing with Davies & Partners",
     ],
     notes:
-      "Davies & Partners are keen to move before their current lease expires in July. Strong covenant — likely to exchange quickly once HoT are agreed.",
+      "Davies & Partners are keen to move before their current lease expires in July. Strong covenant - likely to exchange quickly once HoT are agreed.",
   },
 
   {
@@ -149,7 +149,7 @@ export const DEALS: DealDetail[] = [
     },
     counterparty: {
       name: "Prospective Tenant TBC",
-      contact: "—",
+      contact: "-",
     },
     documents: [
       { id: "hot", label: "Heads of Terms", status: "pending" },
@@ -167,7 +167,7 @@ export const DEALS: DealDetail[] = [
       {
         date: "2026-02-25",
         type: "milestone",
-        text: "Property brought to market — Queen Street prime retail",
+        text: "Property brought to market - Queen Street prime retail",
         agent: "RJ",
         detail: "Cardiff Retail Ltd instructed BP2 as sole agent. Quoting £45,000 pa.",
       },
@@ -190,7 +190,7 @@ export const DEALS: DealDetail[] = [
       "Confirm EPC is registered on the national register",
     ],
     notes:
-      "High footfall location — client expects multiple offers. Advise against accepting first offer at asking without testing market for 2 further weeks.",
+      "High footfall location - client expects multiple offers. Advise against accepting first offer at asking without testing market for 2 further weeks.",
   },
 
   {
@@ -245,7 +245,7 @@ export const DEALS: DealDetail[] = [
       {
         date: "2026-03-01",
         type: "communication",
-        text: "Second viewing with Newport Logistics — 22,000 sq ft warehouse unit",
+        text: "Second viewing with Newport Logistics - 22,000 sq ft warehouse unit",
         agent: "DB",
       },
       {
@@ -261,7 +261,7 @@ export const DEALS: DealDetail[] = [
       "Confirm tenant's fit-out schedule and handover date requirement",
     ],
     notes:
-      "Newport Logistics expanding from 10,000 to 22,000 sq ft — strong growth story. Landlord eager to avoid void period; expect quick progression to HoT.",
+      "Newport Logistics expanding from 10,000 to 22,000 sq ft - strong growth story. Landlord eager to avoid void period; expect quick progression to HoT.",
   },
 
   // ─── UNDER OFFER ──────────────────────────────────────────────────────────
@@ -310,7 +310,7 @@ export const DEALS: DealDetail[] = [
       {
         date: "2026-02-20",
         type: "legal",
-        text: "Both solicitors instructed — draft lease to follow within 10 working days",
+        text: "Both solicitors instructed - draft lease to follow within 10 working days",
         agent: "DB",
       },
       {
@@ -329,20 +329,20 @@ export const DEALS: DealDetail[] = [
       {
         date: "2026-02-10",
         type: "financial",
-        text: "Rent deposit agreed at 6 months — £19,250",
+        text: "Rent deposit agreed at 6 months - £19,250",
         agent: "DB",
       },
       {
         date: "2026-02-05",
         type: "communication",
-        text: "Offer received from Cornerstone Bars Ltd — negotiation commenced",
+        text: "Offer received from Cornerstone Bars Ltd - negotiation commenced",
         agent: "DB",
         detail: "Initial offer at £35,000. Counter at £40,000. Final agreement at £38,500.",
       },
       {
         date: "2026-02-03",
         type: "communication",
-        text: "Third viewing with Cornerstone Bars — board-level decision expected imminently",
+        text: "Third viewing with Cornerstone Bars - board-level decision expected imminently",
         agent: "DB",
       },
     ],
@@ -352,7 +352,7 @@ export const DEALS: DealDetail[] = [
       "Chase Cornerstone for fit-out schedule and proposed start date",
     ],
     notes:
-      "Cornerstone Bars operating 4 other venues across Wales — strong covenant. Landlord very motivated. Aim to exchange by end of March.",
+      "Cornerstone Bars operating 4 other venues across Wales - strong covenant. Landlord very motivated. Aim to exchange by end of March.",
   },
 
   {
@@ -397,13 +397,13 @@ export const DEALS: DealDetail[] = [
       {
         date: "2026-03-01",
         type: "legal",
-        text: "Buyer's solicitors raised enquiries on title — vendor's team to respond within 5 working days",
+        text: "Buyer's solicitors raised enquiries on title - vendor's team to respond within 5 working days",
         agent: "RJ",
       },
       {
         date: "2026-02-22",
         type: "financial",
-        text: "Buyer's survey and structural report commissioned — expected 2 weeks",
+        text: "Buyer's survey and structural report commissioned - expected 2 weeks",
         agent: "RJ",
       },
       {
@@ -421,7 +421,7 @@ export const DEALS: DealDetail[] = [
       {
         date: "2026-02-05",
         type: "milestone",
-        text: "Heads of Terms agreed — £1.2m sale price",
+        text: "Heads of Terms agreed - £1.2m sale price",
         agent: "RJ",
         detail: "10% deposit payable on exchange. Completion 10 weeks post-exchange.",
       },
@@ -438,7 +438,7 @@ export const DEALS: DealDetail[] = [
       "Confirm search results ETA with buyer's solicitors",
     ],
     notes:
-      "Capital Industrial Fund acquiring for portfolio. No finance contingency — cash purchase. Good chance of exchange in 4 weeks if survey clean.",
+      "Capital Industrial Fund acquiring for portfolio. No finance contingency - cash purchase. Good chance of exchange in 4 weeks if survey clean.",
   },
 
   {
@@ -485,7 +485,7 @@ export const DEALS: DealDetail[] = [
       {
         date: "2026-02-25",
         type: "legal",
-        text: "Draft lease issued by landlord's solicitors — Toolstation team reviewing",
+        text: "Draft lease issued by landlord's solicitors - Toolstation team reviewing",
         agent: "MW",
       },
       {
@@ -504,7 +504,7 @@ export const DEALS: DealDetail[] = [
       {
         date: "2026-02-15",
         type: "communication",
-        text: "Toolstation property director approved deal — formal offer issued",
+        text: "Toolstation property director approved deal - formal offer issued",
         agent: "MW",
       },
       {
@@ -520,7 +520,7 @@ export const DEALS: DealDetail[] = [
       "Chase Toolstation on proposed occupation date",
     ],
     notes:
-      "National operator — covenant is excellent. Landlord anxious to get lease exchange. Draft lease comments expected from Toolstation's solicitors within the week.",
+      "National operator - covenant is excellent. Landlord anxious to get lease exchange. Draft lease comments expected from Toolstation's solicitors within the week.",
   },
 
   {
@@ -571,13 +571,13 @@ export const DEALS: DealDetail[] = [
       {
         date: "2026-02-18",
         type: "legal",
-        text: "Draft contract received — buyer's solicitors reviewing and raising enquiries",
+        text: "Draft contract received - buyer's solicitors reviewing and raising enquiries",
         agent: "DB",
       },
       {
         date: "2026-02-10",
         type: "financial",
-        text: "Building survey commissioned by buyer — 3 week turnaround expected",
+        text: "Building survey commissioned by buyer - 3 week turnaround expected",
         agent: "DB",
       },
       {
@@ -589,14 +589,14 @@ export const DEALS: DealDetail[] = [
       {
         date: "2026-01-28",
         type: "milestone",
-        text: "Heads of Terms signed — £3.4m acquisition price",
+        text: "Heads of Terms signed - £3.4m acquisition price",
         agent: "DB",
         detail: "10% deposit on exchange. 12-week completion target.",
       },
       {
         date: "2026-01-20",
         type: "communication",
-        text: "Final round of negotiations — price agreed at £3.4m after three rounds of offers",
+        text: "Final round of negotiations - price agreed at £3.4m after three rounds of offers",
         agent: "DB",
       },
     ],
@@ -654,20 +654,20 @@ export const DEALS: DealDetail[] = [
       {
         date: "2026-02-18",
         type: "milestone",
-        text: "Contracts exchanged — completion date set for 1 April 2026",
+        text: "Contracts exchanged - completion date set for 1 April 2026",
         agent: "DB",
         detail: "Rent deposit of £9,250 (6 months) paid on exchange.",
       },
       {
         date: "2026-02-18",
         type: "legal",
-        text: "All replies to enquiries received and satisfactory — exchange confirmed",
+        text: "All replies to enquiries received and satisfactory - exchange confirmed",
         agent: "DB",
       },
       {
         date: "2026-02-10",
         type: "legal",
-        text: "Hughes & Co raised 3 minor enquiries — landlord to respond",
+        text: "Hughes & Co raised 3 minor enquiries - landlord to respond",
         agent: "DB",
       },
       {
@@ -696,7 +696,7 @@ export const DEALS: DealDetail[] = [
       "Prepare BP2 invoice for issue on completion",
     ],
     notes:
-      "Smooth transaction — tenant is themselves a solicitors firm so negotiations were efficient. Keys handover to be coordinated with building facilities manager.",
+      "Smooth transaction - tenant is themselves a solicitors firm so negotiations were efficient. Keys handover to be coordinated with building facilities manager.",
   },
 
   {
@@ -741,26 +741,26 @@ export const DEALS: DealDetail[] = [
       {
         date: "2026-01-25",
         type: "milestone",
-        text: "Exchange of contracts completed — £875,000 purchase price",
+        text: "Exchange of contracts completed - £875,000 purchase price",
         agent: "RJ",
         detail: "10% deposit (£87,500) received by vendor's solicitors. Completion 15 April 2026.",
       },
       {
         date: "2026-02-10",
         type: "legal",
-        text: "All replies to enquiries received — buyer's solicitors satisfied",
+        text: "All replies to enquiries received - buyer's solicitors satisfied",
         agent: "RJ",
       },
       {
         date: "2026-02-01",
         type: "financial",
-        text: "Building survey report received — minor damp noted in eaves, £12k remediation quoted; price held",
+        text: "Building survey report received - minor damp noted in eaves, £12k remediation quoted; price held",
         agent: "RJ",
       },
       {
         date: "2026-01-22",
         type: "legal",
-        text: "Draft contract issued — clean title, no unusual restrictions",
+        text: "Draft contract issued - clean title, no unusual restrictions",
         agent: "RJ",
       },
       {
@@ -778,7 +778,7 @@ export const DEALS: DealDetail[] = [
       {
         date: "2026-01-08",
         type: "milestone",
-        text: "Heads of Terms agreed — £875,000 agreed after negotiation from asking £925,000",
+        text: "Heads of Terms agreed - £875,000 agreed after negotiation from asking £925,000",
         agent: "RJ",
       },
     ],
@@ -788,7 +788,7 @@ export const DEALS: DealDetail[] = [
       "Issue BP2 agency invoice on completion",
     ],
     notes:
-      "Minor damp issue surfaced in survey but Greens Logistics accepted without price reduction — strong motivation to acquire this specific building for logistics fit-out.",
+      "Minor damp issue surfaced in survey but Greens Logistics accepted without price reduction - strong motivation to acquire this specific building for logistics fit-out.",
   },
 
   // ─── COMPLETED ───────────────────────────────────────────────────────────
@@ -836,7 +836,7 @@ export const DEALS: DealDetail[] = [
       {
         date: "2026-01-06",
         type: "milestone",
-        text: "Completion — keys handed over to Greggs PLC fit-out team",
+        text: "Completion - keys handed over to Greggs PLC fit-out team",
         agent: "DB",
       },
       {
@@ -848,7 +848,7 @@ export const DEALS: DealDetail[] = [
       {
         date: "2025-12-20",
         type: "legal",
-        text: "All enquiries resolved — both parties ready to exchange",
+        text: "All enquiries resolved - both parties ready to exchange",
         agent: "DB",
       },
       {
@@ -866,13 +866,13 @@ export const DEALS: DealDetail[] = [
       {
         date: "2025-11-20",
         type: "milestone",
-        text: "Heads of Terms agreed — £26,000 pa, 10 years, 3 months rent free",
+        text: "Heads of Terms agreed - £26,000 pa, 10 years, 3 months rent free",
         agent: "DB",
       },
       {
         date: "2025-11-10",
         type: "communication",
-        text: "Greggs PLC estates team confirmed acquisition — formal offer issued",
+        text: "Greggs PLC estates team confirmed acquisition - formal offer issued",
         agent: "DB",
       },
     ],
@@ -882,7 +882,7 @@ export const DEALS: DealDetail[] = [
       "Request testimonial from Llanelli High Street Estates",
     ],
     notes:
-      "Greggs PLC — national covenant. Completed within 9 weeks of instruction. Landlord delighted. Good candidate for case study on our website.",
+      "Greggs PLC - national covenant. Completed within 9 weeks of instruction. Landlord delighted. Good candidate for case study on our website.",
   },
 
   {
@@ -930,7 +930,7 @@ export const DEALS: DealDetail[] = [
       {
         date: "2026-01-20",
         type: "milestone",
-        text: "Completion — Screwfix Ltd in occupation from today",
+        text: "Completion - Screwfix Ltd in occupation from today",
         agent: "MW",
       },
       {
@@ -942,7 +942,7 @@ export const DEALS: DealDetail[] = [
       {
         date: "2026-01-05",
         type: "legal",
-        text: "All replies to enquiries received and accepted — exchange confirmed for 10 January",
+        text: "All replies to enquiries received and accepted - exchange confirmed for 10 January",
         agent: "MW",
       },
       {
@@ -960,7 +960,7 @@ export const DEALS: DealDetail[] = [
       {
         date: "2025-12-01",
         type: "milestone",
-        text: "Heads of Terms agreed — £34,000 pa, 5 years, break at year 3",
+        text: "Heads of Terms agreed - £34,000 pa, 5 years, break at year 3",
         agent: "MW",
       },
     ],
@@ -970,7 +970,7 @@ export const DEALS: DealDetail[] = [
       "Request client testimonial from Bridgend Trade Park Ltd",
     ],
     notes:
-      "Screwfix national rollout — sixth South Wales location. MW built strong relationship with their estates team. Refer future Screwfix requirements to MW directly.",
+      "Screwfix national rollout - sixth South Wales location. MW built strong relationship with their estates team. Refer future Screwfix requirements to MW directly.",
   },
 
   {
@@ -1021,25 +1021,25 @@ export const DEALS: DealDetail[] = [
       {
         date: "2025-12-15",
         type: "milestone",
-        text: "Completion — £2.1m received. Keys handed to Atlantic Property Partners",
+        text: "Completion - £2.1m received. Keys handed to Atlantic Property Partners",
         agent: "RJ",
       },
       {
         date: "2025-12-05",
         type: "milestone",
-        text: "Exchange of contracts — 10% deposit (£210,000) received",
+        text: "Exchange of contracts - 10% deposit (£210,000) received",
         agent: "RJ",
       },
       {
         date: "2025-11-28",
         type: "legal",
-        text: "All replies to enquiries satisfactory — buyer confirmed ready to exchange",
+        text: "All replies to enquiries satisfactory - buyer confirmed ready to exchange",
         agent: "RJ",
       },
       {
         date: "2025-11-18",
         type: "financial",
-        text: "Survey clean — no material defects noted. Price held at £2.1m",
+        text: "Survey clean - no material defects noted. Price held at £2.1m",
         agent: "RJ",
       },
       {
@@ -1051,7 +1051,7 @@ export const DEALS: DealDetail[] = [
       {
         date: "2025-10-22",
         type: "milestone",
-        text: "Heads of Terms agreed — £2.1m following bidding process (3 competing offers)",
+        text: "Heads of Terms agreed - £2.1m following bidding process (3 competing offers)",
         agent: "RJ",
       },
     ],
@@ -1108,7 +1108,7 @@ export const DEALS: DealDetail[] = [
       {
         date: "2026-01-31",
         type: "milestone",
-        text: "Completion — Apex Accountants take occupation",
+        text: "Completion - Apex Accountants take occupation",
         agent: "DB",
       },
       {
@@ -1120,7 +1120,7 @@ export const DEALS: DealDetail[] = [
       {
         date: "2026-01-12",
         type: "legal",
-        text: "Replies to enquiries finalised — both teams ready to exchange",
+        text: "Replies to enquiries finalised - both teams ready to exchange",
         agent: "DB",
       },
       {
@@ -1138,7 +1138,7 @@ export const DEALS: DealDetail[] = [
       {
         date: "2025-12-05",
         type: "milestone",
-        text: "Heads of Terms agreed — £14,500 pa, 3 years, 1 month rent free",
+        text: "Heads of Terms agreed - £14,500 pa, 3 years, 1 month rent free",
         agent: "DB",
       },
     ],
@@ -1148,6 +1148,6 @@ export const DEALS: DealDetail[] = [
       "Request testimonial from Apex Accountants",
     ],
     notes:
-      "Repeat client — Apex Accountants previously instructed BP2 for their Mumbles office in 2023. Long-term relationship. Send completion card and follow up in 6 months.",
+      "Repeat client - Apex Accountants previously instructed BP2 for their Mumbles office in 2023. Long-term relationship. Send completion card and follow up in 6 months.",
   },
 ]

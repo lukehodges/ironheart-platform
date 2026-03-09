@@ -52,7 +52,7 @@ function reshapeUserWithRoles(raw: DrizzleUserWithRoles): UserWithRoles {
 }
 
 // ---------------------------------------------------------------------------
-// Rate limiters (module-level — not per-request)
+// Rate limiters (module-level - not per-request)
 // ---------------------------------------------------------------------------
 
 /**
@@ -88,13 +88,13 @@ export type Context = {
   tenantId: string;
   tenantSlug: string;
   /**
-   * Fully loaded user record from the Drizzle DB — set by tenantProcedure.
+   * Fully loaded user record from the Drizzle DB - set by tenantProcedure.
    * null in publicProcedure context.
    */
   user: UserWithRoles | null;
-  /** Unique identifier for this request — used for log correlation and Sentry context. */
+  /** Unique identifier for this request - used for log correlation and Sentry context. */
   requestId: string;
-  /** Raw Request object from the tRPC handler — used for header extraction. */
+  /** Raw Request object from the tRPC handler - used for header extraction. */
   req: Request;
   /** Platform admin is impersonating this tenant (set by tenantProcedure middleware). */
   isImpersonating?: boolean;
@@ -144,7 +144,7 @@ export async function createContext({
       };
     }
   } catch {
-    // Unauthenticated — leave session as null
+    // Unauthenticated - leave session as null
   }
 
   // Tenant detection from request headers / cookie / env.
@@ -152,7 +152,7 @@ export async function createContext({
   const tenantSlug =
     tenantSlugFromRequest ?? process.env.DEFAULT_TENANT_SLUG ?? "default";
 
-  // Resolve tenantId from slug — check Redis cache before hitting the DB.
+  // Resolve tenantId from slug - check Redis cache before hitting the DB.
   let tenantId = "default";
   if (tenantSlug !== "default") {
     const cacheKey = `tenant:slug:${tenantSlug}`;
@@ -184,7 +184,7 @@ export async function createContext({
       tenantId = resolvedTenantId;
     } else {
       // Slug was provided but resolution failed (DB timeout or slug not found).
-      // Do NOT fall through with tenantId="default" — it's not a valid UUID
+      // Do NOT fall through with tenantId="default" - it's not a valid UUID
       // and will cause cascading Postgres errors.
       throw new TRPCError({
         code: "INTERNAL_SERVER_ERROR",
@@ -194,7 +194,7 @@ export async function createContext({
   }
 
   // Run async startup tasks (permission sync, settings seed) on first request.
-  // initStartupTasks() is idempotent — no-op after the first call.
+  // initStartupTasks() is idempotent - no-op after the first call.
   await initStartupTasks().catch((err) => {
     logger.error({ err }, "Failed to run startup tasks (non-blocking)");
   });
@@ -307,7 +307,7 @@ export const middleware = t.middleware;
 export const createCallerFactory = t.createCallerFactory;
 
 // ---------------------------------------------------------------------------
-// Public procedure — rate limited per IP
+// Public procedure - rate limited per IP
 // ---------------------------------------------------------------------------
 
 export const publicProcedure = t.procedure
@@ -316,7 +316,7 @@ export const publicProcedure = t.procedure
   .use(rateLimitMiddleware);
 
 // ---------------------------------------------------------------------------
-// Protected procedure — requires a WorkOS session
+// Protected procedure - requires a WorkOS session
 // ---------------------------------------------------------------------------
 
 /**
@@ -342,7 +342,7 @@ export const protectedProcedure = t.procedure
   });
 
 // ---------------------------------------------------------------------------
-// Tenant procedure — requires auth + tenant context
+// Tenant procedure - requires auth + tenant context
 // ---------------------------------------------------------------------------
 
 /**
@@ -373,7 +373,7 @@ export const tenantProcedure = protectedProcedure.use(
     let impersonationData: ImpersonationSession | null = null;
 
     try {
-      // Upstash Redis auto-deserializes JSON — cached is already an object
+      // Upstash Redis auto-deserializes JSON - cached is already an object
       const cached = await redis.get(impersonationKey);
       if (cached) {
         // Validate it's the expected shape (guard against corrupt data)
@@ -386,7 +386,7 @@ export const tenantProcedure = protectedProcedure.use(
         ) {
           impersonationData = data as ImpersonationSession;
         } else {
-          // Corrupt data — clear it
+          // Corrupt data - clear it
           logger.warn({ impersonationKey }, "Corrupt impersonation session data, clearing");
           await redis.del(impersonationKey);
         }
@@ -602,7 +602,7 @@ export const tenantProcedure = protectedProcedure.use(
     if (rawUser.isPlatformAdmin) {
       const userWithRoles = reshapeUserWithRoles(rawUser);
 
-      // User-based rate limiting — applied after user is resolved.
+      // User-based rate limiting - applied after user is resolved.
       if (process.env.UPSTASH_REDIS_REST_URL && process.env.NODE_ENV !== "test") {
         const { success: userSuccess } = await userRatelimit.limit(`${userWithRoles.id}:${path}`);
         if (!userSuccess) {
@@ -633,7 +633,7 @@ export const tenantProcedure = protectedProcedure.use(
 
     const userWithRoles = reshapeUserWithRoles(rawUser);
 
-    // User-based rate limiting — applied after user is resolved.
+    // User-based rate limiting - applied after user is resolved.
     if (process.env.UPSTASH_REDIS_REST_URL && process.env.NODE_ENV !== "test") {
       const { success: userSuccess } = await userRatelimit.limit(`${userWithRoles.id}:${path}`);
       if (!userSuccess) {
@@ -655,12 +655,12 @@ export const tenantProcedure = protectedProcedure.use(
 );
 
 // ---------------------------------------------------------------------------
-// Permission procedure factory — RBAC gate
+// Permission procedure factory - RBAC gate
 // ---------------------------------------------------------------------------
 
 /**
  * Returns a procedure that requires a specific RBAC permission.
- * Extends tenantProcedure — also requires auth + tenant.
+ * Extends tenantProcedure - also requires auth + tenant.
  *
  * @example
  * // In a module router:
@@ -673,7 +673,7 @@ export function permissionProcedure(requiredPermission: string) {
     if (!ctx.user) {
       throw new TRPCError({
         code: "FORBIDDEN",
-        message: "User record not loaded — cannot check permissions",
+        message: "User record not loaded - cannot check permissions",
       });
     }
 
@@ -694,7 +694,7 @@ export function permissionProcedure(requiredPermission: string) {
 
 /**
  * Cross-tenant platform admin access.
- * Used for Ironheart internal admin tools — not tenant admin.
+ * Used for Ironheart internal admin tools - not tenant admin.
  *
  * Source of truth: the `users.isPlatformAdmin` boolean column in the database.
  *
@@ -702,7 +702,7 @@ export function permissionProcedure(requiredPermission: string) {
  *   If `isPlatformAdmin` is false/null AND the user's email appears in the
  *   `PLATFORM_ADMIN_EMAILS` environment variable (comma-separated), the flag
  *   is automatically set to `true` in the database and the request proceeds.
- *   This runs once per user — after that the env var is no longer consulted.
+ *   This runs once per user - after that the env var is no longer consulted.
  *
  * The env var (`PLATFORM_ADMIN_EMAILS`) should be removed from production
  * deployments once all initial platform admins have been bootstrapped.
@@ -809,7 +809,7 @@ export function createModuleMiddleware(moduleSlug: string) {
     if (!enabled) {
       logger.debug(
         { moduleSlug, tenantId: ctx.tenantId },
-        "Module access denied — not enabled for tenant"
+        "Module access denied - not enabled for tenant"
       );
       throw new TRPCError({
         code: "FORBIDDEN",

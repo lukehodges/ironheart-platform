@@ -183,7 +183,7 @@ describe('computeChurnLabel', () => {
     expect(computeChurnLabel(0.9, 61, 30)).toBe('HIGH') // 61 > 60
   })
 
-  it('returns MEDIUM when score exactly 0.4 (boundary — not > 0.4)', () => {
+  it('returns MEDIUM when score exactly 0.4 (boundary - not > 0.4)', () => {
     expect(computeChurnLabel(0.4, 30, 10)).toBe('LOW')
   })
 

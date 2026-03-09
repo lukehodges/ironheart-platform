@@ -9,7 +9,7 @@ import {
 import { z } from "zod";
 
 /**
- * Slot availability sub-router — all public endpoints for the customer portal.
+ * Slot availability sub-router - all public endpoints for the customer portal.
  *
  * createBookingFromSlot: creates a RESERVED booking (portal entry point).
  * getSlotsForDate / getSlotsForDateRange: query available slots.
@@ -19,7 +19,7 @@ export const slotAvailabilityRouter = router({
     .input(getSlotsForDateSchema)
     .query(({ input }) => {
       // Phase 2: resolve tenantId from slug, query slots
-      // Phase 1: stub — returns empty array
+      // Phase 1: stub - returns empty array
       return [];
     }),
 

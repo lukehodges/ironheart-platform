@@ -301,7 +301,7 @@ export default function DeveloperPage() {
                     <TableCell>
                       <span className="text-sm text-muted-foreground">
                         {endpoint.description || (
-                          <span className="italic text-xs">{"\u2014"}</span>
+                          <span className="italic text-xs">{" - "}</span>
                         )}
                       </span>
                     </TableCell>
@@ -456,7 +456,7 @@ export default function DeveloperPage() {
           <DialogHeader>
             <DialogTitle>Signing Secret</DialogTitle>
             <DialogDescription>
-              Use this secret to verify webhook payloads. Copy it now — it will
+              Use this secret to verify webhook payloads. Copy it now - it will
               not be shown again.
             </DialogDescription>
           </DialogHeader>

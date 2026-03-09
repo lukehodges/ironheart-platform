@@ -1,5 +1,5 @@
 /**
- * Auth / tenantProcedure behaviour tests — CTO review item 9.1
+ * Auth / tenantProcedure behaviour tests - CTO review item 9.1
  *
  * These tests cover the middleware logic implemented in src/shared/trpc.ts:
  * - Inactive users are rejected with FORBIDDEN (status !== "ACTIVE")
@@ -117,7 +117,7 @@ function makeUserWithRoles(
 // We verify the status check logic using the same conditions.
 // ---------------------------------------------------------------------------
 
-describe("tenantProcedure — inactive user rejection", () => {
+describe("tenantProcedure - inactive user rejection", () => {
   const inactiveStatuses = ["DELETED", "SUSPENDED", "PENDING"] as const;
 
   for (const status of inactiveStatuses) {
@@ -141,15 +141,15 @@ describe("tenantProcedure — inactive user rejection", () => {
       { status: "DELETED", type: "MEMBER" },
       ["bookings:read"]
     );
-    // hasPermission itself does not check status — the middleware does.
+    // hasPermission itself does not check status - the middleware does.
     // This test documents that status enforcement is the middleware's job,
     // not the RBAC functions'. The RBAC function returns true here, which is
-    // correct — the middleware layer is responsible for the gate.
+    // correct - the middleware layer is responsible for the gate.
     // Test the middleware invariant: status check must precede RBAC check.
     const isActive = inactiveUser.status === "ACTIVE";
     expect(isActive).toBe(false);
     // If the middleware were bypassed, hasPermission would (incorrectly) grant access.
-    // This is intentional — RBAC is not a substitute for auth layer status check.
+    // This is intentional - RBAC is not a substitute for auth layer status check.
     expect(hasPermission(inactiveUser, "bookings:read")).toBe(true);
   });
 });
@@ -161,7 +161,7 @@ describe("tenantProcedure — inactive user rejection", () => {
 //   throw FORBIDDEN
 // ---------------------------------------------------------------------------
 
-describe("tenantProcedure — tenant membership enforcement", () => {
+describe("tenantProcedure - tenant membership enforcement", () => {
   it("rejects when user tenantId differs from request tenantId", () => {
     const user = makeUser({ tenantId: "tenant-A" });
     const requestTenantId: string = "tenant-B";
@@ -178,7 +178,7 @@ describe("tenantProcedure — tenant membership enforcement", () => {
   });
 
   it("skips tenant check when request tenantId is 'default'", () => {
-    // Platform admin context — tenantId is not resolved from a slug
+    // Platform admin context - tenantId is not resolved from a slug
     const user = makeUser({ tenantId: "tenant-A" });
     const requestTenantId: string = "default";
     const shouldReject = requestTenantId !== "default" && user.tenantId !== requestTenantId;
@@ -194,17 +194,17 @@ describe("tenantProcedure — tenant membership enforcement", () => {
 });
 
 // ---------------------------------------------------------------------------
-// getUserPermissions — empty/deduplication cases (CTO review 9.1)
+// getUserPermissions - empty/deduplication cases (CTO review 9.1)
 // ---------------------------------------------------------------------------
 
-describe("getUserPermissions — edge cases", () => {
+describe("getUserPermissions - edge cases", () => {
   it("returns empty array for MEMBER with no roles", () => {
     const user: UserWithRoles = { ...makeUser({ type: "MEMBER" }), roles: [] };
     expect(getUserPermissions(user)).toEqual([]);
   });
 
   it("deduplicates permissions when user has multiple roles granting the same permission", () => {
-    // Two roles, each with bookings:read — result must have it only once
+    // Two roles, each with bookings:read - result must have it only once
     const sharedPerm = {
       permission: { id: "p1", resource: "bookings", action: "read", description: null },
     };
@@ -284,10 +284,10 @@ describe("getUserPermissions — edge cases", () => {
 });
 
 // ---------------------------------------------------------------------------
-// canAccessResource — no roles edge case (CTO review 9.1)
+// canAccessResource - no roles edge case (CTO review 9.1)
 // ---------------------------------------------------------------------------
 
-describe("canAccessResource — no roles", () => {
+describe("canAccessResource - no roles", () => {
   it("returns false when user has no roles and resourceOwnerId is null", () => {
     // MEMBER with no roles cannot access any resource where owner is unknown
     const user = makeUser({ type: "MEMBER", id: "user-1" });
@@ -307,10 +307,10 @@ describe("canAccessResource — no roles", () => {
 });
 
 // ---------------------------------------------------------------------------
-// hasPermission — CUSTOMER/API always denied (CTO review 9.1)
+// hasPermission - CUSTOMER/API always denied (CTO review 9.1)
 // ---------------------------------------------------------------------------
 
-describe("hasPermission — CUSTOMER and API always denied", () => {
+describe("hasPermission - CUSTOMER and API always denied", () => {
   it("CUSTOMER is denied even with wildcard permissions in roles", () => {
     const user = makeUserWithRoles({ type: "CUSTOMER" }, ["*:*"]);
     expect(hasPermission(user, "bookings:read")).toBe(false);
@@ -331,7 +331,7 @@ describe("hasPermission — CUSTOMER and API always denied", () => {
     // CUSTOMER falls through to the role-scan code but is denied at hasPermission.
     const user = makeUserWithRoles({ type: "CUSTOMER" }, ["bookings:read"]);
     // getUserPermissions does scan roles for CUSTOMER (it is not blocked at this layer)
-    // — the enforcement is in hasPermission. Document this explicitly.
+    // - the enforcement is in hasPermission. Document this explicitly.
     const perms = getUserPermissions(user);
     // CUSTOMER role perms ARE listed (getUserPermissions doesn't filter by type),
     // but hasPermission rejects CUSTOMER before checking them.

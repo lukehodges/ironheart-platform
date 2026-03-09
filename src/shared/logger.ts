@@ -15,7 +15,7 @@ export const logger = pino({
       : undefined,
 });
 
-// Convenience wrapper — structured logging convention:
+// Convenience wrapper - structured logging convention:
 // log.info("message", { contextData }) → logger.info({ contextData }, "message")
 export const log = {
   info: (msg: string, data?: object) => logger.info(data, msg),

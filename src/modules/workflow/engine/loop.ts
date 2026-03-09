@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────────────────────────────────────
-// Loop frame management — push/pop loop context for LOOP node execution
+// Loop frame management - push/pop loop context for LOOP node execution
 // ──────────────────────────────────────────────────────────────────────────────
 
 import type { WorkflowExecutionContext, LoopNodeConfig } from '../workflow.types'
@@ -55,7 +55,7 @@ export function popLoopFrame(
 ): WorkflowExecutionContext {
   return {
     ...result,
-    // Restore parent's loopStack — removes the frame we pushed
+    // Restore parent's loopStack - removes the frame we pushed
     loopStack: parent.loopStack,
     // Merge any new node outputs produced in this iteration
     nodes: { ...parent.nodes, ...result.nodes },

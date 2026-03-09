@@ -27,7 +27,7 @@ export function interpolate(
  * Priority:
  * 1. DB template bodyHtml (tenant custom HTML override) → rendered with interpolate()
  * 2. DB template body (plain text) rendered with interpolate()
- * 3. null — caller falls back to the React Email system template
+ * 3. null - caller falls back to the React Email system template
  *
  * Returns null when no DB template is available, signalling the caller to use
  * the React Email component instead.
@@ -63,7 +63,7 @@ export function resolveSmsContent(
 /**
  * Wrap plain text in minimal HTML for email delivery when no HTML template exists.
  * This is only used for DB templates that have `body` but no `bodyHtml`.
- * The React Email system templates produce proper HTML — this is the fallback.
+ * The React Email system templates produce proper HTML - this is the fallback.
  */
 function wrapInBasicHtml(text: string, subject: string): string {
   const escaped = text

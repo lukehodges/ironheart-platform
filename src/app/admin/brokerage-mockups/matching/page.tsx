@@ -41,7 +41,12 @@ import {
   Info,
   Settings2,
 } from "lucide-react"
-import { sites, deals } from "../_mock-data"
+import { sites, deals, contacts } from "../_mock-data"
+
+// Build a name→id lookup for linking contacts
+const CONTACT_ID_BY_NAME: Record<string, string> = Object.fromEntries(
+  contacts.map((c) => [c.name, c.id]),
+)
 
 // ---------------------------------------------------------------------------
 // Types
@@ -382,7 +387,7 @@ function sortMatches(matches: SupplyMatch[], sortBy: SortMode): SupplyMatch[] {
     case "quantity":
       return sorted.sort((a, b) => b.available - a.available)
     case "distance":
-      // Mock distance sort — same as price for now
+      // Mock distance sort - same as price for now
       return sorted.sort((a, b) => a.unitPrice - b.unitPrice)
     default:
       return sorted
@@ -390,7 +395,7 @@ function sortMatches(matches: SupplyMatch[], sortBy: SortMode): SupplyMatch[] {
 }
 
 // ---------------------------------------------------------------------------
-// V1 — Split Panel View
+// V1 - Split Panel View
 // ---------------------------------------------------------------------------
 
 function SplitPanelView() {
@@ -401,9 +406,9 @@ function SplitPanelView() {
   const matches = sortMatches(SUPPLY_MATCHES[selectedDealId] ?? [], sortBy)
 
   return (
-    <div className="flex flex-1 overflow-hidden" style={{ height: "calc(100vh - 170px)" }}>
+    <div className="flex flex-col md:flex-row flex-1 overflow-hidden min-h-0">
       {/* ---- Left Panel: Demand Selector ---- */}
-      <div className="w-[45%] shrink-0 border-r border-border flex flex-col bg-background">
+      <div className="w-full md:w-[45%] shrink-0 border-r border-border flex flex-col bg-background">
         {/* Panel header */}
         <div className="px-5 py-4 border-b border-border bg-card">
           <div className="flex items-center gap-2 mb-1">
@@ -500,7 +505,7 @@ function SplitPanelView() {
               </Card>
 
               {/* OR: Manual entry mockup */}
-              <div className="border border-dashed border-border rounded-xl p-4 bg-muted/50/50">
+              <div className="border border-dashed border-border rounded-xl p-4 bg-muted/50">
                 <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Or enter manually</p>
                 <p className="text-[11px] text-muted-foreground">
                   Unit type, quantity, catchment, and budget fields for ad-hoc matching
@@ -624,7 +629,7 @@ function SplitPanelView() {
                       <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center">
                         <User className="h-3 w-3 text-muted-foreground" />
                       </div>
-                      <span className="text-xs font-medium text-foreground">{match.contact}</span>
+                      <Link href={`/admin/brokerage-mockups/contacts/${CONTACT_ID_BY_NAME[match.contact] ?? "C-001"}`} className="text-xs font-medium text-foreground hover:text-primary hover:underline transition-colors">{match.contact}</Link>
                       <span className="text-[10px] text-muted-foreground">({match.contactRole})</span>
                     </div>
 
@@ -748,7 +753,7 @@ function SplitPanelView() {
 }
 
 // ---------------------------------------------------------------------------
-// V2 — Wizard Steps View
+// V2 - Wizard Steps View
 // ---------------------------------------------------------------------------
 
 function WizardView() {
@@ -851,7 +856,7 @@ function WizardView() {
                         </div>
                         <div>
                           <div className="flex items-center gap-2 mb-0.5">
-                            <span className="font-mono text-xs text-muted-foreground">{deal.ref}</span>
+                            <Link href={`/admin/brokerage-mockups/deals/${deal.ref}`} className="font-mono text-xs text-primary hover:underline">{deal.ref}</Link>
                             <h3 className="text-sm font-bold text-foreground">{deal.title}</h3>
                           </div>
                           <p className="text-xs text-muted-foreground">
@@ -910,7 +915,7 @@ function WizardView() {
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="font-mono text-xs text-muted-foreground">{selectedDeal.ref}</span>
+                        <Link href={`/admin/brokerage-mockups/deals/${selectedDeal.ref}`} className="font-mono text-xs text-primary hover:underline">{selectedDeal.ref}</Link>
                         <h3 className="text-base font-bold text-foreground">{selectedDeal.title}</h3>
                       </div>
                       <p className="text-xs text-muted-foreground">{selectedDeal.developer}</p>
@@ -996,7 +1001,7 @@ function WizardView() {
                   <h2 className="text-lg font-bold text-foreground mb-1">Ranked Matches</h2>
                   <p className="text-sm text-muted-foreground">
                     {matches.length} supply site{matches.length !== 1 ? "s" : ""} match{matches.length === 1 ? "es" : ""} the
-                    requirements for <span className="font-semibold text-foreground">{selectedDeal.ref} {selectedDeal.developer}</span>
+                    requirements for <Link href={`/admin/brokerage-mockups/deals/${selectedDeal.ref}`} className="font-semibold text-primary hover:underline">{selectedDeal.ref}</Link>{" "}<span className="font-semibold text-foreground">{selectedDeal.developer}</span>
                   </p>
                 </div>
                 <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortMode)}>
@@ -1052,7 +1057,7 @@ function WizardView() {
                         <div className="h-5 w-5 rounded-full bg-muted flex items-center justify-center">
                           <User className="h-2.5 w-2.5 text-muted-foreground" />
                         </div>
-                        <span className="text-xs font-medium text-foreground">{match.contact}</span>
+                        <Link href={`/admin/brokerage-mockups/contacts/${CONTACT_ID_BY_NAME[match.contact] ?? "C-001"}`} className="text-xs font-medium text-foreground hover:text-primary hover:underline transition-colors">{match.contact}</Link>
                       </div>
                     </div>
                   ))}
@@ -1232,6 +1237,11 @@ export default function MatchingToolPage() {
       {/* Header */}
       <div className="bg-card border-b border-border shadow-sm">
         <div className="px-6 py-4">
+          <div className="flex items-center gap-1.5 text-sm text-muted-foreground mb-4">
+            <Link href="/admin/brokerage-mockups/dashboard" className="hover:text-foreground transition-colors">Dashboard</Link>
+            <ChevronRight className="h-3.5 w-3.5" />
+            <span className="text-foreground font-medium">Matching</span>
+          </div>
           <div className="flex items-start justify-between">
             <div>
               <div className="flex items-center gap-2 mb-1">

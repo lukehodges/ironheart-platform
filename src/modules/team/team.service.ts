@@ -221,7 +221,7 @@ export const teamService = {
     if (input.replaceAll && input.entries.length === 0) {
       log.warn(
         { tenantId: ctx.tenantId, userId: input.userId },
-        "setAvailability called with replaceAll=true and empty entries — all availability will be cleared"
+        "setAvailability called with replaceAll=true and empty entries - all availability will be cleared"
       );
     }
 

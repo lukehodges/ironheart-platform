@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import Link from "next/link"
 import {
   Select,
   SelectContent,
@@ -9,11 +10,21 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
+import { Card, CardContent } from "@/components/ui/card"
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableHead,
+  TableRow,
+  TableCell,
+} from "@/components/ui/table"
 import {
   AlertTriangle,
   ArrowDownRight,
   ArrowUpRight,
   BarChart3,
+  ChevronRight,
   Droplets,
   Filter,
   Leaf,
@@ -67,6 +78,8 @@ interface SiteStockAlert {
   severity: "red" | "amber"
   title: string
   message: string
+  siteRef?: string
+  siteName?: string
 }
 
 // ---------------------------------------------------------------------------
@@ -91,12 +104,12 @@ const CATCHMENT_DATA: CatchmentRow[] = [
     catchment: "Solent",
     unitType: "BNG (units)",
     sites: 1,
-    total: 22.5,
+    total: 219.5,
     allocated: 0,
-    available: 22.5,
-    avgPrice: 14000,
-    demand: 6.5,
-    demandLabel: "6.5 units needed",
+    available: 219.5,
+    avgPrice: 25000,
+    demand: 22.5,
+    demandLabel: "22.5 HUs needed",
     hasGap: false,
     gapAmount: 0,
   },
@@ -115,16 +128,49 @@ const CATCHMENT_DATA: CatchmentRow[] = [
   },
 ]
 
+const allocatedNitrogen = totalNitrogenCredits - availableNitrogenCredits
 const NITROGEN_GAUGE_DATA = [
-  { name: "Allocated", value: 260, color: "#3b82f6" },
-  { name: "Available", value: 295, color: "#22c55e" },
-  { name: "Reserved", value: 45, color: "#f59e0b" },
+  { name: "Allocated", value: allocatedNitrogen, color: "#3b82f6" },
+  { name: "Available", value: availableNitrogenCredits, color: "#22c55e" },
 ]
 
 const BNG_GAUGE_DATA = [
   { name: "Allocated", value: 0, color: "#3b82f6" },
-  { name: "Available", value: 22.5, color: "#22c55e" },
+  { name: "Available", value: 219.5, color: "#22c55e" },
   { name: "Reserved", value: 0, color: "#f59e0b" },
+]
+
+// BNG habitat category breakdown — mirrors S-0008 Fareham Woodland habitatSummary
+const BNG_HABITAT_ROWS = [
+  {
+    category: "Areas",
+    icon: "🌳",
+    baselineHU: 59.0,
+    improvementHU: 206.0,
+    unitGain: 147.0,
+    allocatedHU: 0.0,
+    availableHU: 206.0,
+    size: "18.0 ha",
+    pricePerHU: 25000,
+    topHabitatTypes: ["Lowland Mixed Deciduous Woodland (145.2 HU)", "Woodland Edge (42.1 HU)", "Scrub Mosaic (10.8 HU)", "Species-rich Grassland (7.9 HU)"],
+  },
+  {
+    category: "Hedgerows",
+    icon: "🌿",
+    baselineHU: 1.2,
+    improvementHU: 13.5,
+    unitGain: 12.3,
+    allocatedHU: 0.0,
+    availableHU: 13.5,
+    size: "1.2 km",
+    pricePerHU: 25000,
+    topHabitatTypes: ["Native Species-rich Hedgerow (13.5 HU)"],
+  },
+]
+
+const SUPPLY_DEMAND_BNG_BY_CATEGORY = [
+  { label: "Area HUs", supply: 206.0, demand: 18.0 },
+  { label: "Hedgerow HUs", supply: 13.5, demand: 4.5 },
 ]
 
 const ALERTS: SiteStockAlert[] = [
@@ -138,7 +184,9 @@ const ALERTS: SiteStockAlert[] = [
     severity: "amber",
     title: "Whiteley Farm (S-0001): Low Stock",
     message:
-      "Only 15 kg/yr remaining — 92% allocated. Nearing full depletion.",
+      "Only 15 kg/yr remaining - 92% allocated. Nearing full depletion.",
+    siteRef: "S-0001",
+    siteName: "Whiteley Farm",
   },
 ]
 
@@ -153,9 +201,9 @@ const SUPPLY_DEMAND_COMPARISON = [
   },
   {
     label: "Solent / BNG",
-    supply: 22.5,
-    demand: 6.5,
-    total: 22.5,
+    supply: 219.5,
+    demand: 22.5,
+    total: 219.5,
     allocated: 0,
   },
   {
@@ -272,8 +320,8 @@ function AlertBanner({ alert }: { alert: SiteStockAlert }) {
       className={[
         "flex items-start gap-3 rounded-lg border-l-4 px-4 py-3",
         isRed
-          ? "border-l-red-600 bg-red-50 dark:bg-red-950/30"
-          : "border-l-amber-500 bg-amber-50 dark:bg-amber-950/30",
+          ? "border-l-red-600 bg-red-50"
+          : "border-l-amber-500 bg-amber-50",
       ].join(" ")}
     >
       <AlertTriangle
@@ -286,15 +334,19 @@ function AlertBanner({ alert }: { alert: SiteStockAlert }) {
         <p
           className={[
             "text-sm font-semibold",
-            isRed ? "text-red-800 dark:text-red-300" : "text-amber-800 dark:text-amber-300",
+            isRed ? "text-red-800" : "text-amber-800",
           ].join(" ")}
         >
-          {alert.title}
+          {alert.siteRef ? (
+            <Link href={`/admin/brokerage-mockups/sites/${alert.siteRef}`} className="hover:underline">{alert.title}</Link>
+          ) : (
+            alert.title
+          )}
         </p>
         <p
           className={[
             "text-xs mt-0.5",
-            isRed ? "text-red-700 dark:text-red-400" : "text-amber-700 dark:text-amber-400",
+            isRed ? "text-red-700" : "text-amber-700",
           ].join(" ")}
         >
           {alert.message}
@@ -338,34 +390,36 @@ function StatCardV1({
   ratioColor: string
 }) {
   return (
-    <div className="bg-card border border-border rounded-xl p-5 flex flex-col gap-3">
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          {label}
-        </span>
-        <div className={`p-2 rounded-lg ${accent}`}>
-          <Icon className="h-4 w-4" />
+    <Card>
+      <CardContent className="p-5 flex flex-col gap-3">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            {label}
+          </span>
+          <div className={`p-2 rounded-lg ${accent}`}>
+            <Icon className="h-4 w-4" />
+          </div>
         </div>
-      </div>
-      <div>
-        <span className="text-2xl font-bold tracking-tight text-foreground leading-none">
-          {value}
-        </span>
-        <p className="text-xs text-muted-foreground mt-1">{detail}</p>
-      </div>
-      <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
-        <div
-          className={`h-full rounded-full transition-all ${ratioColor}`}
-          style={{ width: `${ratio}%` }}
-        />
-      </div>
-    </div>
+        <div>
+          <span className="text-2xl font-bold tracking-tight text-foreground leading-none">
+            {value}
+          </span>
+          <p className="text-xs text-muted-foreground mt-1">{detail}</p>
+        </div>
+        <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
+          <div
+            className={`h-full rounded-full transition-all ${ratioColor}`}
+            style={{ width: `${ratio}%` }}
+          />
+        </div>
+      </CardContent>
+    </Card>
   )
 }
 
 function CatchmentTableV1() {
   return (
-    <div className="bg-card border border-border rounded-xl overflow-hidden">
+    <Card className="overflow-hidden">
       <div className="px-5 py-4 border-b border-border">
         <h3 className="text-sm font-semibold text-foreground">
           Availability by Catchment
@@ -374,62 +428,43 @@ function CatchmentTableV1() {
           Grouped by catchment area and credit type
         </p>
       </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-border bg-muted/50">
-              <th className="text-left px-5 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Catchment
-              </th>
-              <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Unit Type
-              </th>
-              <th className="text-right px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Sites
-              </th>
-              <th className="text-right px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Total
-              </th>
-              <th className="text-right px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Allocated
-              </th>
-              <th className="text-right px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Available
-              </th>
-              <th className="text-right px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Avg Price
-              </th>
-              <th className="text-right px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Demand
-              </th>
-              <th className="text-left px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Status
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
+      <CardContent className="p-0">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="whitespace-nowrap">Catchment</TableHead>
+              <TableHead className="whitespace-nowrap">Unit Type</TableHead>
+              <TableHead className="text-right whitespace-nowrap">Sites</TableHead>
+              <TableHead className="text-right whitespace-nowrap">Total</TableHead>
+              <TableHead className="text-right whitespace-nowrap">Allocated</TableHead>
+              <TableHead className="text-right whitespace-nowrap">Available</TableHead>
+              <TableHead className="text-right whitespace-nowrap">Avg Price</TableHead>
+              <TableHead className="text-right whitespace-nowrap">Demand</TableHead>
+              <TableHead className="whitespace-nowrap">Status</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {CATCHMENT_DATA.map((row, i) => (
-              <tr
+              <TableRow
                 key={i}
-                className={[
-                  "transition-colors",
+                className={
                   row.hasGap
-                    ? "bg-red-50/50 dark:bg-red-950/20 hover:bg-red-50 dark:hover:bg-red-950/30"
-                    : "hover:bg-accent/40",
-                ].join(" ")}
+                    ? "bg-red-50/50 hover:bg-red-50"
+                    : "hover:bg-muted/50"
+                }
               >
-                <td className="px-5 py-3.5">
+                <TableCell className="whitespace-nowrap">
                   <span className="font-semibold text-foreground">
                     {row.catchment}
                   </span>
-                </td>
-                <td className="px-4 py-3.5">
+                </TableCell>
+                <TableCell className="whitespace-nowrap">
                   <span
                     className={[
                       "inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-xs font-medium",
                       row.unitType === "Nitrogen (kg/yr)"
-                        ? "bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-950/30 dark:border-blue-800 dark:text-blue-400"
-                        : "bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-950/30 dark:border-emerald-800 dark:text-emerald-400",
+                        ? "border-blue-200 bg-blue-50 text-blue-700"
+                        : "border-emerald-200 bg-emerald-50 text-emerald-700",
                     ].join(" ")}
                   >
                     {row.unitType === "Nitrogen (kg/yr)" ? (
@@ -439,47 +474,47 @@ function CatchmentTableV1() {
                     )}
                     {row.unitType}
                   </span>
-                </td>
-                <td className="px-4 py-3.5 text-right tabular-nums font-medium text-foreground">
+                </TableCell>
+                <TableCell className="text-right tabular-nums font-medium text-foreground">
                   {row.sites}
-                </td>
-                <td className="px-4 py-3.5 text-right tabular-nums font-medium text-foreground">
+                </TableCell>
+                <TableCell className="text-right tabular-nums font-medium text-foreground">
                   {row.total}
-                </td>
-                <td className="px-4 py-3.5 text-right tabular-nums text-muted-foreground">
+                </TableCell>
+                <TableCell className="text-right tabular-nums text-muted-foreground">
                   {row.allocated}
-                </td>
-                <td className="px-4 py-3.5 text-right">
-                  <span className="tabular-nums font-bold text-emerald-700 dark:text-emerald-400">
+                </TableCell>
+                <TableCell className="text-right">
+                  <span className="tabular-nums font-bold text-emerald-700">
                     {row.available}
                   </span>
-                </td>
-                <td className="px-4 py-3.5 text-right tabular-nums font-medium text-foreground">
+                </TableCell>
+                <TableCell className="text-right tabular-nums font-medium text-foreground whitespace-nowrap">
                   {formatCurrency(row.avgPrice)}
-                </td>
-                <td
+                </TableCell>
+                <TableCell
                   className={[
-                    "px-4 py-3.5 text-right tabular-nums font-medium",
+                    "text-right tabular-nums font-medium whitespace-nowrap",
                     row.hasGap
-                      ? "text-red-700 dark:text-red-400"
+                      ? "text-red-700"
                       : "text-muted-foreground",
                   ].join(" ")}
                 >
                   {row.demandLabel}
-                </td>
-                <td className="px-4 py-3.5">
+                </TableCell>
+                <TableCell className="whitespace-nowrap">
                   {row.hasGap ? (
                     <div className="flex items-center gap-1.5">
-                      <span className="flex items-center gap-1 rounded-md bg-red-100 dark:bg-red-900/40 border border-red-300 dark:border-red-800 px-2 py-0.5 text-xs font-bold text-red-800 dark:text-red-300">
+                      <span className="flex items-center gap-1 rounded-md border border-red-200 bg-red-50 px-2 py-0.5 text-xs font-bold text-red-700">
                         <AlertTriangle className="h-3 w-3" />
                         SUPPLY GAP
                       </span>
-                      <span className="text-xs text-red-600 dark:text-red-400 font-medium">
+                      <span className="text-xs text-red-600 font-medium">
                         -{row.gapAmount}
                       </span>
                     </div>
                   ) : row.demand > 0 ? (
-                    <span className="inline-flex items-center gap-1 rounded-md bg-emerald-100 dark:bg-emerald-900/30 border border-emerald-300 dark:border-emerald-800 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">
+                    <span className="inline-flex items-center gap-1 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
                       Sufficient
                     </span>
                   ) : (
@@ -487,13 +522,13 @@ function CatchmentTableV1() {
                       No demand
                     </span>
                   )}
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
   )
 }
 
@@ -512,57 +547,58 @@ function DonutGaugeV1({
 }) {
   const total = data.reduce((s, d) => s + d.value, 0)
   return (
-    <div className="bg-card border border-border rounded-xl p-5">
-      <h4 className="text-sm font-semibold text-foreground mb-4">{title}</h4>
-      <div className="relative h-48">
-        <ResponsiveContainer width="100%" height="100%">
-          <PieChart>
-            <Pie
-              data={data.filter((d) => d.value > 0)}
-              cx="50%"
-              cy="50%"
-              innerRadius={55}
-              outerRadius={80}
-              paddingAngle={2}
-              dataKey="value"
-              stroke="none"
-            >
-              {data
-                .filter((d) => d.value > 0)
-                .map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color} />
-                ))}
-            </Pie>
-            <RechartsTooltip content={<GaugeTooltip />} />
-          </PieChart>
-        </ResponsiveContainer>
-        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-          <span className="text-2xl font-bold tabular-nums text-foreground">
-            {centerValue}
-          </span>
-          <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
-            {centerLabel}
-          </span>
-        </div>
-      </div>
-      <div className="flex items-center justify-center gap-4 mt-3">
-        {data.map((d) => (
-          <div key={d.name} className="flex items-center gap-1.5">
-            <div
-              className="h-2.5 w-2.5 rounded-full"
-              style={{ backgroundColor: d.color }}
-            />
-            <span className="text-xs text-muted-foreground">
-              {d.name}: <span className="font-semibold text-foreground tabular-nums">{d.value}</span>
+    <Card>
+      <CardContent className="p-5">
+        <h4 className="text-sm font-semibold text-foreground mb-4">{title}</h4>
+        <div className="relative h-48">
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={data.filter((d) => d.value > 0)}
+                cx="50%"
+                cy="50%"
+                innerRadius={55}
+                outerRadius={80}
+                paddingAngle={2}
+                dataKey="value"
+                stroke="none"
+              >
+                {data
+                  .filter((d) => d.value > 0)
+                  .map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+              </Pie>
+              <RechartsTooltip content={<GaugeTooltip />} />
+            </PieChart>
+          </ResponsiveContainer>
+          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+            <span className="text-2xl font-bold tabular-nums text-foreground">
+              {centerValue}
+            </span>
+            <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
+              {centerLabel}
             </span>
           </div>
-        ))}
-      </div>
-      <p className="text-center text-xs text-muted-foreground mt-1">
-        Total capacity: <span className="font-semibold">{total}</span>
-      </p>
-      {priceRange && (
-        <div className="mt-4 pt-3 border-t border-border">
+        </div>
+        <div className="flex items-center justify-center gap-4 mt-3">
+          {data.map((d) => (
+            <div key={d.name} className="flex items-center gap-1.5">
+              <div
+                className="h-2.5 w-2.5 rounded-full"
+                style={{ backgroundColor: d.color }}
+              />
+              <span className="text-xs text-muted-foreground">
+                {d.name}: <span className="font-semibold text-foreground tabular-nums">{d.value}</span>
+              </span>
+            </div>
+          ))}
+        </div>
+        <p className="text-center text-xs text-muted-foreground mt-1">
+          Total capacity: <span className="font-semibold">{total}</span>
+        </p>
+        {priceRange && (
+          <div className="mt-4 pt-3 border-t border-border">
           <p className="text-xs text-muted-foreground font-medium mb-2">
             Price Range (per unit)
           </p>
@@ -588,9 +624,10 @@ function DonutGaugeV1({
             </span>
             <span>{formatCurrency(priceRange.max)}</span>
           </div>
-        </div>
-      )}
-    </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   )
 }
 
@@ -611,7 +648,7 @@ function VariationOne() {
           value={`${totalNitrogenCredits} kg/yr`}
           detail={`across ${nSites} sites`}
           icon={Droplets}
-          accent="bg-blue-500/10 text-blue-600 dark:text-blue-400"
+          accent="bg-blue-50 text-blue-600"
           ratio={Number(nAvailPct)}
           ratioColor="bg-blue-500"
         />
@@ -620,26 +657,26 @@ function VariationOne() {
           value={`${availableNitrogenCredits} kg/yr`}
           detail={`${nAvailPct}% of total`}
           icon={Leaf}
-          accent="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+          accent="bg-emerald-50 text-emerald-600"
           ratio={Number(nAvailPct)}
           ratioColor="bg-emerald-500"
         />
         <StatCardV1
-          label="Total BNG Units"
-          value={`${totalBNGUnits} units`}
-          detail={`across ${bngSites} site${bngSites !== 1 ? "s" : ""}`}
+          label="BNG Area HUs"
+          value="206.0 HU"
+          detail={`from 1 site · 18.0 ha enhancement`}
           icon={TreePine}
-          accent="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-          ratio={Number(bngAvailPct)}
+          accent="bg-emerald-50 text-emerald-600"
+          ratio={100}
           ratioColor="bg-emerald-500"
         />
         <StatCardV1
-          label="Available BNG"
-          value={`${availableBNGUnits} units`}
-          detail={`${bngAvailPct}% ${allocatedBNG === 0 ? "(none allocated)" : "of total"}`}
+          label="BNG Hedgerow HUs"
+          value="13.5 HU"
+          detail="from 1 site · 1.2 km enhancement"
           icon={Package}
-          accent="bg-green-500/10 text-green-600 dark:text-green-400"
-          ratio={Number(bngAvailPct)}
+          accent="bg-green-50 text-green-600"
+          ratio={100}
           ratioColor="bg-green-500"
         />
       </div>
@@ -653,18 +690,108 @@ function VariationOne() {
           <DonutGaugeV1
             title="Nitrogen Credits"
             data={NITROGEN_GAUGE_DATA}
-            centerValue="600"
+            centerValue={String(totalNitrogenCredits)}
             centerLabel="Total kg/yr"
             priceRange={{ min: 2500, avg: 2925, max: 3200 }}
           />
           <DonutGaugeV1
             title="BNG Units"
             data={BNG_GAUGE_DATA}
-            centerValue="22.5"
-            centerLabel="Total units"
+            centerValue={String(totalBNGUnits)}
+            centerLabel="Total HUs"
           />
         </div>
       </div>
+
+      {/* BNG Habitat Category Breakdown */}
+      <Card className="overflow-hidden">
+        <div className="px-5 py-4 border-b border-border flex items-center justify-between">
+          <div>
+            <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+              <TreePine className="h-4 w-4 text-emerald-600" />
+              BNG Habitat Breakdown — Fareham Woodland (S-0008)
+            </h3>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Area HUs and hedgerow HUs are separate unit types — tracked and traded independently
+            </p>
+          </div>
+          <Link href="/admin/brokerage-mockups/sites/S-0008" className="text-xs text-primary hover:underline flex items-center gap-1">
+            View site <ChevronRight className="h-3 w-3" />
+          </Link>
+        </div>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Habitat Category</TableHead>
+                <TableHead className="text-right">Size</TableHead>
+                <TableHead className="text-right">Baseline HUs</TableHead>
+                <TableHead className="text-right">Improvement HUs</TableHead>
+                <TableHead className="text-right">HU Gain</TableHead>
+                <TableHead className="text-right">Allocated</TableHead>
+                <TableHead className="text-right">Available</TableHead>
+                <TableHead className="text-right">Price / HU</TableHead>
+                <TableHead className="text-right">Est. Value</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {BNG_HABITAT_ROWS.map((row) => (
+                <TableRow key={row.category}>
+                  <TableCell>
+                    <div>
+                      <div className="font-semibold text-foreground">{row.category}</div>
+                      <div className="text-xs text-muted-foreground mt-0.5">
+                        {row.topHabitatTypes.map((t, i) => (
+                          <span key={i} className="block">{t}</span>
+                        ))}
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums text-muted-foreground">{row.size}</TableCell>
+                  <TableCell className="text-right tabular-nums text-muted-foreground">{row.baselineHU.toFixed(1)}</TableCell>
+                  <TableCell className="text-right tabular-nums font-medium text-foreground">{row.improvementHU.toFixed(1)}</TableCell>
+                  <TableCell className="text-right tabular-nums">
+                    <span className="font-semibold text-emerald-700">+{row.unitGain.toFixed(1)}</span>
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums text-muted-foreground">{row.allocatedHU.toFixed(1)}</TableCell>
+                  <TableCell className="text-right tabular-nums">
+                    <span className="font-bold text-emerald-700">{row.availableHU.toFixed(1)}</span>
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums text-muted-foreground">
+                    {formatCurrency(row.pricePerHU)}
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums font-semibold text-foreground">
+                    {formatCurrency(row.availableHU * row.pricePerHU)}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+            <tfoot>
+              <tr className="border-t border-border bg-muted/30 font-semibold">
+                <td className="px-4 py-2 text-sm text-foreground">TOTAL</td>
+                <td className="px-4 py-2" />
+                <td className="px-4 py-2 text-right text-sm tabular-nums">
+                  {BNG_HABITAT_ROWS.reduce((s, r) => s + r.baselineHU, 0).toFixed(1)}
+                </td>
+                <td className="px-4 py-2 text-right text-sm tabular-nums">
+                  {BNG_HABITAT_ROWS.reduce((s, r) => s + r.improvementHU, 0).toFixed(1)}
+                </td>
+                <td className="px-4 py-2 text-right text-sm text-emerald-700 tabular-nums">
+                  +{BNG_HABITAT_ROWS.reduce((s, r) => s + r.unitGain, 0).toFixed(1)}
+                </td>
+                <td className="px-4 py-2 text-right text-sm tabular-nums">0.0</td>
+                <td className="px-4 py-2 text-right text-sm text-emerald-700 tabular-nums">
+                  {BNG_HABITAT_ROWS.reduce((s, r) => s + r.availableHU, 0).toFixed(1)}
+                </td>
+                <td className="px-4 py-2" />
+                <td className="px-4 py-2 text-right text-sm tabular-nums">
+                  {formatCurrency(BNG_HABITAT_ROWS.reduce((s, r) => s + r.availableHU * r.pricePerHU, 0))}
+                </td>
+              </tr>
+            </tfoot>
+          </Table>
+        </CardContent>
+      </Card>
 
       {/* Alerts */}
       <div className="space-y-3">
@@ -701,12 +828,13 @@ function GaugeCardLarge({
 }) {
   const total = data.reduce((s, d) => s + d.value, 0)
   return (
-    <div className="bg-card border border-border rounded-xl p-6">
-      <div className="flex items-center gap-2 mb-1">
-        <Icon className="h-4 w-4 text-muted-foreground" />
-        <h3 className="text-base font-semibold text-foreground">{title}</h3>
-      </div>
-      <p className="text-xs text-muted-foreground mb-4">{subtitle}</p>
+    <Card>
+      <CardContent className="p-6">
+        <div className="flex items-center gap-2 mb-1">
+          <Icon className="h-4 w-4 text-muted-foreground" />
+          <h3 className="text-base font-semibold text-foreground">{title}</h3>
+        </div>
+        <p className="text-xs text-muted-foreground mb-4">{subtitle}</p>
       <div className="relative h-56">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
@@ -754,10 +882,11 @@ function GaugeCardLarge({
           </div>
         ))}
       </div>
-      <p className="text-center text-xs text-muted-foreground mt-3 pt-3 border-t border-border">
-        Total capacity: <span className="font-bold text-foreground">{total}</span>
-      </p>
-    </div>
+        <p className="text-center text-xs text-muted-foreground mt-3 pt-3 border-t border-border">
+          Total capacity: <span className="font-bold text-foreground">{total}</span>
+        </p>
+      </CardContent>
+    </Card>
   )
 }
 
@@ -770,7 +899,7 @@ function CatchmentGridCard({ row }: { row: CatchmentRow }) {
       className={[
         "border rounded-xl p-4 transition-all",
         row.hasGap
-          ? "border-red-300 dark:border-red-800 bg-red-50/50 dark:bg-red-950/20 ring-1 ring-red-200 dark:ring-red-900"
+          ? "border-red-200 bg-red-50/50 ring-1 ring-red-200"
           : "border-border bg-card",
       ].join(" ")}
     >
@@ -781,10 +910,10 @@ function CatchmentGridCard({ row }: { row: CatchmentRow }) {
           </span>
           <span
             className={[
-              "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold",
+              "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold",
               row.unitType === "Nitrogen (kg/yr)"
-                ? "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300"
-                : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
+                ? "border-blue-200 bg-blue-50 text-blue-700"
+                : "border-emerald-200 bg-emerald-50 text-emerald-700",
             ].join(" ")}
           >
             {row.unitType === "Nitrogen (kg/yr)" ? (
@@ -796,7 +925,7 @@ function CatchmentGridCard({ row }: { row: CatchmentRow }) {
           </span>
         </div>
         {row.hasGap && (
-          <span className="flex items-center gap-1 text-xs font-bold text-red-700 dark:text-red-400 animate-pulse">
+          <span className="flex items-center gap-1 text-xs font-bold text-red-700 animate-pulse">
             <AlertTriangle className="h-3.5 w-3.5" />
             GAP
           </span>
@@ -838,13 +967,13 @@ function CatchmentGridCard({ row }: { row: CatchmentRow }) {
           <p className="text-[9px] text-muted-foreground uppercase">Total</p>
         </div>
         <div>
-          <p className="text-xs font-bold tabular-nums text-blue-600 dark:text-blue-400">
+          <p className="text-xs font-bold tabular-nums text-blue-600">
             {row.allocated}
           </p>
           <p className="text-[9px] text-muted-foreground uppercase">Alloc</p>
         </div>
         <div>
-          <p className="text-xs font-bold tabular-nums text-emerald-600 dark:text-emerald-400">
+          <p className="text-xs font-bold tabular-nums text-emerald-600">
             {row.available}
           </p>
           <p className="text-[9px] text-muted-foreground uppercase">Avail</p>
@@ -854,9 +983,9 @@ function CatchmentGridCard({ row }: { row: CatchmentRow }) {
             className={[
               "text-xs font-bold tabular-nums",
               row.hasGap
-                ? "text-red-700 dark:text-red-400"
+                ? "text-red-700"
                 : row.demand > 0
-                ? "text-amber-700 dark:text-amber-400"
+                ? "text-amber-700"
                 : "text-muted-foreground",
             ].join(" ")}
           >
@@ -878,9 +1007,9 @@ function CatchmentGridCard({ row }: { row: CatchmentRow }) {
 
       {/* Supply gap banner */}
       {row.hasGap && (
-        <div className="mt-2 rounded-md bg-red-100 dark:bg-red-900/40 border border-red-200 dark:border-red-800 px-3 py-1.5 flex items-center gap-2">
-          <TrendingDown className="h-3.5 w-3.5 text-red-600 dark:text-red-400 shrink-0" />
-          <p className="text-[11px] font-semibold text-red-800 dark:text-red-300">
+        <div className="mt-2 rounded-md border border-red-200 bg-red-50 px-3 py-1.5 flex items-center gap-2">
+          <TrendingDown className="h-3.5 w-3.5 text-red-600 shrink-0" />
+          <p className="text-[11px] font-semibold text-red-700">
             Supply gap: {row.gapAmount} units short
           </p>
         </div>
@@ -893,21 +1022,21 @@ function VariationTwo() {
   return (
     <div className="space-y-6">
       {/* Top banner for supply gap */}
-      <div className="rounded-xl border-2 border-red-400 dark:border-red-700 bg-red-50 dark:bg-red-950/30 p-4 flex items-center gap-4">
-        <div className="p-3 rounded-full bg-red-100 dark:bg-red-900/50">
-          <AlertTriangle className="h-6 w-6 text-red-600 dark:text-red-400" />
+      <div className="rounded-xl border-2 border-red-200 bg-red-50 p-4 flex items-center gap-4">
+        <div className="p-3 rounded-full bg-red-100">
+          <AlertTriangle className="h-6 w-6 text-red-600" />
         </div>
         <div className="flex-1">
-          <p className="text-sm font-bold text-red-800 dark:text-red-300">
+          <p className="text-sm font-bold text-red-800">
             Active Supply Gap: Solent Nitrogen
           </p>
-          <p className="text-xs text-red-700 dark:text-red-400">
+          <p className="text-xs text-red-700">
             145 kg/yr available vs 160 kg/yr demand pipeline. Shortfall of 15 kg/yr requires urgent sourcing.
           </p>
         </div>
-        <div className="flex flex-col items-center px-4 py-2 rounded-lg bg-red-100 dark:bg-red-900/50">
-          <span className="text-2xl font-bold text-red-700 dark:text-red-300 tabular-nums">-15</span>
-          <span className="text-[10px] text-red-600 dark:text-red-400 font-medium uppercase tracking-wider">kg/yr short</span>
+        <div className="flex flex-col items-center px-4 py-2 rounded-lg bg-red-100">
+          <span className="text-2xl font-bold text-red-700 tabular-nums">-15</span>
+          <span className="text-[10px] text-red-600 font-medium uppercase tracking-wider">kg/yr short</span>
         </div>
       </div>
 
@@ -916,27 +1045,28 @@ function VariationTwo() {
         <GaugeCardLarge
           title="Nitrogen Credits"
           data={NITROGEN_GAUGE_DATA}
-          centerValue="295"
+          centerValue={String(availableNitrogenCredits)}
           centerLabel="kg/yr available"
           icon={Droplets}
-          subtitle="53.2% available across 5 sites"
+          subtitle={`${totalNitrogenCredits > 0 ? ((availableNitrogenCredits / totalNitrogenCredits) * 100).toFixed(1) : 0}% available across ${sites.filter(s => s.unitType === "Nitrogen").length} sites`}
         />
         <GaugeCardLarge
           title="BNG Units"
           data={BNG_GAUGE_DATA}
-          centerValue="22.5"
+          centerValue={String(BNG_GAUGE_DATA.find(d => d.name === "Available")?.value ?? availableBNGUnits)}
           centerLabel="units available"
           icon={TreePine}
-          subtitle="100% available across 1 site"
+          subtitle={`${totalBNGUnits > 0 ? ((availableBNGUnits / totalBNGUnits) * 100).toFixed(1) : 0}% available across ${sites.filter(s => s.unitType === "BNG").length} site`}
         />
       </div>
 
       {/* Price range card */}
-      <div className="bg-card border border-border rounded-xl p-5">
-        <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
-          <BarChart3 className="h-4 w-4 text-muted-foreground" />
-          Price Ranges
-        </h3>
+      <Card>
+        <CardContent className="p-5">
+          <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
+            <BarChart3 className="h-4 w-4 text-muted-foreground" />
+            Price Ranges
+          </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <p className="text-xs text-muted-foreground mb-2 font-medium">
@@ -991,7 +1121,8 @@ function VariationTwo() {
             </div>
           </div>
         </div>
-      </div>
+        </CardContent>
+      </Card>
 
       {/* Catchment grid */}
       <div>
@@ -1029,29 +1160,29 @@ function VariationThree() {
             label: "Total Nitrogen",
             value: `${totalNitrogenCredits} kg/yr`,
             sub: `${sites.filter((s) => s.unitType === "Nitrogen").length} sites`,
-            color: "text-blue-600 dark:text-blue-400",
-            bg: "bg-blue-50 dark:bg-blue-950/30",
+            color: "text-blue-600",
+            bg: "bg-blue-50",
           },
           {
             label: "Available Nitrogen",
             value: `${availableNitrogenCredits} kg/yr`,
             sub: `${totalNitrogenCredits > 0 ? ((availableNitrogenCredits / totalNitrogenCredits) * 100).toFixed(1) : 0}%`,
-            color: "text-emerald-600 dark:text-emerald-400",
-            bg: "bg-emerald-50 dark:bg-emerald-950/30",
+            color: "text-emerald-600",
+            bg: "bg-emerald-50",
           },
           {
             label: "Total BNG",
             value: `${totalBNGUnits} units`,
             sub: `${sites.filter((s) => s.unitType === "BNG").length} site${sites.filter((s) => s.unitType === "BNG").length !== 1 ? "s" : ""}`,
-            color: "text-emerald-600 dark:text-emerald-400",
-            bg: "bg-emerald-50 dark:bg-emerald-950/30",
+            color: "text-emerald-600",
+            bg: "bg-emerald-50",
           },
           {
             label: "Available BNG",
             value: `${availableBNGUnits} units`,
             sub: `${totalBNGUnits > 0 ? ((availableBNGUnits / totalBNGUnits) * 100).toFixed(1) : 0}%`,
-            color: "text-green-600 dark:text-green-400",
-            bg: "bg-green-50 dark:bg-green-950/30",
+            color: "text-green-600",
+            bg: "bg-green-50",
           },
         ].map((stat) => (
           <div
@@ -1077,8 +1208,8 @@ function VariationThree() {
             className={[
               "flex items-center gap-2 rounded-md px-3 py-2 text-xs font-medium",
               alert.severity === "red"
-                ? "bg-red-100 dark:bg-red-950/40 text-red-800 dark:text-red-300 border border-red-200 dark:border-red-800"
-                : "bg-amber-100 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800",
+                ? "border border-red-200 bg-red-50 text-red-800"
+                : "border border-amber-200 bg-amber-50 text-amber-800",
             ].join(" ")}
           >
             <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
@@ -1089,7 +1220,7 @@ function VariationThree() {
       </div>
 
       {/* Dense analytical table with inline supply/demand bars */}
-      <div className="bg-card border border-border rounded-xl overflow-hidden">
+      <Card className="overflow-hidden">
         <div className="px-5 py-3 border-b border-border bg-muted/50 flex items-center justify-between">
           <h3 className="text-sm font-semibold text-foreground">
             Supply vs Demand Analysis
@@ -1098,40 +1229,22 @@ function VariationThree() {
             Inline comparison bars
           </span>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="border-b border-border bg-muted/30">
-                <th className="text-left px-4 py-2.5 font-semibold uppercase tracking-wider text-muted-foreground text-[10px]">
-                  Catchment / Type
-                </th>
-                <th className="text-right px-3 py-2.5 font-semibold uppercase tracking-wider text-muted-foreground text-[10px]">
-                  Total
-                </th>
-                <th className="text-right px-3 py-2.5 font-semibold uppercase tracking-wider text-muted-foreground text-[10px]">
-                  Alloc
-                </th>
-                <th className="text-right px-3 py-2.5 font-semibold uppercase tracking-wider text-muted-foreground text-[10px]">
-                  Avail
-                </th>
-                <th className="text-right px-3 py-2.5 font-semibold uppercase tracking-wider text-muted-foreground text-[10px]">
-                  Demand
-                </th>
-                <th className="px-4 py-2.5 font-semibold uppercase tracking-wider text-muted-foreground text-[10px] w-[280px]">
-                  Supply vs Demand
-                </th>
-                <th className="text-right px-3 py-2.5 font-semibold uppercase tracking-wider text-muted-foreground text-[10px]">
-                  Surplus
-                </th>
-                <th className="text-right px-3 py-2.5 font-semibold uppercase tracking-wider text-muted-foreground text-[10px]">
-                  Price
-                </th>
-                <th className="text-left px-3 py-2.5 font-semibold uppercase tracking-wider text-muted-foreground text-[10px]">
-                  Status
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="whitespace-nowrap text-[10px]">Catchment / Type</TableHead>
+                <TableHead className="text-right whitespace-nowrap text-[10px]">Total</TableHead>
+                <TableHead className="text-right whitespace-nowrap text-[10px]">Alloc</TableHead>
+                <TableHead className="text-right whitespace-nowrap text-[10px]">Avail</TableHead>
+                <TableHead className="text-right whitespace-nowrap text-[10px]">Demand</TableHead>
+                <TableHead className="whitespace-nowrap text-[10px] w-[280px]">Supply vs Demand</TableHead>
+                <TableHead className="text-right whitespace-nowrap text-[10px]">Surplus</TableHead>
+                <TableHead className="text-right whitespace-nowrap text-[10px]">Price</TableHead>
+                <TableHead className="whitespace-nowrap text-[10px]">Status</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {CATCHMENT_DATA.map((row, i) => {
                 const surplus = row.available - row.demand
                 const maxVal = Math.max(row.available, row.demand, 1)
@@ -1139,27 +1252,26 @@ function VariationThree() {
                 const demandWidth = (row.demand / maxVal) * 100
 
                 return (
-                  <tr
+                  <TableRow
                     key={i}
-                    className={[
-                      "transition-colors",
+                    className={
                       row.hasGap
-                        ? "bg-red-50/60 dark:bg-red-950/20"
-                        : "hover:bg-accent/40",
-                    ].join(" ")}
+                        ? "bg-red-50/60"
+                        : "hover:bg-muted/50"
+                    }
                   >
-                    <td className="px-4 py-3">
+                    <TableCell>
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-foreground text-sm">
+                        <span className="font-bold text-foreground text-sm whitespace-nowrap">
                           {row.catchment}
                         </span>
                         <span className="text-muted-foreground">/</span>
                         <span
                           className={[
-                            "inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-semibold",
+                            "inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[10px] font-semibold whitespace-nowrap",
                             row.unitType === "Nitrogen (kg/yr)"
-                              ? "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300"
-                              : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
+                              ? "border-blue-200 bg-blue-50 text-blue-700"
+                              : "border-emerald-200 bg-emerald-50 text-emerald-700",
                           ].join(" ")}
                         >
                           {row.unitType === "Nitrogen (kg/yr)" ? (
@@ -1173,29 +1285,29 @@ function VariationThree() {
                       <span className="text-[10px] text-muted-foreground">
                         {row.sites} site{row.sites !== 1 ? "s" : ""}
                       </span>
-                    </td>
-                    <td className="px-3 py-3 text-right tabular-nums font-semibold text-foreground">
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums font-semibold text-foreground">
                       {row.total}
-                    </td>
-                    <td className="px-3 py-3 text-right tabular-nums text-blue-600 dark:text-blue-400 font-medium">
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums text-blue-600 font-medium">
                       {row.allocated}
-                    </td>
-                    <td className="px-3 py-3 text-right tabular-nums font-bold text-emerald-700 dark:text-emerald-400">
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums font-bold text-emerald-700">
                       {row.available}
-                    </td>
-                    <td
+                    </TableCell>
+                    <TableCell
                       className={[
-                        "px-3 py-3 text-right tabular-nums font-bold",
+                        "text-right tabular-nums font-bold",
                         row.hasGap
-                          ? "text-red-700 dark:text-red-400"
+                          ? "text-red-700"
                           : row.demand > 0
-                          ? "text-amber-700 dark:text-amber-400"
+                          ? "text-amber-700"
                           : "text-muted-foreground",
                       ].join(" ")}
                     >
                       {row.demand}
-                    </td>
-                    <td className="px-4 py-3">
+                    </TableCell>
+                    <TableCell>
                       <div className="space-y-1">
                         {/* Supply bar */}
                         <div className="flex items-center gap-2">
@@ -1208,7 +1320,7 @@ function VariationThree() {
                               style={{ width: `${supplyWidth}%` }}
                             />
                           </div>
-                          <span className="text-[10px] font-bold tabular-nums text-emerald-700 dark:text-emerald-400 w-8 text-right">
+                          <span className="text-[10px] font-bold tabular-nums text-emerald-700 w-8 text-right">
                             {row.available}
                           </span>
                         </div>
@@ -1239,9 +1351,9 @@ function VariationThree() {
                             className={[
                               "text-[10px] font-bold tabular-nums w-8 text-right",
                               row.hasGap
-                                ? "text-red-700 dark:text-red-400"
+                                ? "text-red-700"
                                 : row.demand > 0
-                                ? "text-amber-700 dark:text-amber-400"
+                                ? "text-amber-700"
                                 : "text-muted-foreground",
                             ].join(" ")}
                           >
@@ -1249,15 +1361,15 @@ function VariationThree() {
                           </span>
                         </div>
                       </div>
-                    </td>
-                    <td className="px-3 py-3 text-right">
+                    </TableCell>
+                    <TableCell className="text-right">
                       <span
                         className={[
                           "inline-flex items-center gap-0.5 text-xs font-bold tabular-nums",
                           surplus < 0
-                            ? "text-red-700 dark:text-red-400"
+                            ? "text-red-700"
                             : surplus > 0
-                            ? "text-emerald-700 dark:text-emerald-400"
+                            ? "text-emerald-700"
                             : "text-muted-foreground",
                         ].join(" ")}
                       >
@@ -1268,18 +1380,18 @@ function VariationThree() {
                         ) : null}
                         {surplus > 0 ? `+${surplus}` : surplus === 0 ? "0" : surplus}
                       </span>
-                    </td>
-                    <td className="px-3 py-3 text-right tabular-nums font-medium text-foreground">
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums font-medium text-foreground whitespace-nowrap">
                       {formatCurrency(row.avgPrice)}
-                    </td>
-                    <td className="px-3 py-3">
+                    </TableCell>
+                    <TableCell>
                       {row.hasGap ? (
-                        <span className="inline-flex items-center gap-1 rounded bg-red-100 dark:bg-red-900/40 border border-red-300 dark:border-red-700 px-2 py-0.5 text-[10px] font-bold text-red-800 dark:text-red-300 whitespace-nowrap">
+                        <span className="inline-flex items-center gap-1 rounded border border-red-200 bg-red-50 px-2 py-0.5 text-[10px] font-bold text-red-700 whitespace-nowrap">
                           <AlertTriangle className="h-2.5 w-2.5" />
                           SUPPLY GAP
                         </span>
                       ) : row.demand > 0 ? (
-                        <span className="inline-flex items-center rounded bg-emerald-100 dark:bg-emerald-900/30 border border-emerald-300 dark:border-emerald-700 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 whitespace-nowrap">
+                        <span className="inline-flex items-center rounded border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 whitespace-nowrap">
                           OK
                         </span>
                       ) : (
@@ -1287,13 +1399,13 @@ function VariationThree() {
                           No demand
                         </span>
                       )}
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 )
               })}
-            </tbody>
-          </table>
-        </div>
+            </TableBody>
+          </Table>
+        </CardContent>
 
         {/* Table summary footer */}
         <div className="border-t border-border bg-muted/30 px-5 py-3">
@@ -1318,14 +1430,15 @@ function VariationThree() {
             </div>
           </div>
         </div>
-      </div>
+      </Card>
 
       {/* Bar chart: Supply vs Demand side-by-side */}
-      <div className="bg-card border border-border rounded-xl p-5">
-        <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
-          <BarChart3 className="h-4 w-4 text-muted-foreground" />
-          Supply vs Demand Comparison
-        </h3>
+      <Card>
+        <CardContent className="p-5">
+          <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
+            <BarChart3 className="h-4 w-4 text-muted-foreground" />
+            Supply vs Demand Comparison
+          </h3>
         <div className="h-64">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart
@@ -1369,139 +1482,125 @@ function VariationThree() {
             </BarChart>
           </ResponsiveContainer>
         </div>
-      </div>
+        </CardContent>
+      </Card>
 
       {/* Allocation breakdown mini table */}
-      <div className="bg-card border border-border rounded-xl overflow-hidden">
+      <Card className="overflow-hidden">
         <div className="px-5 py-3 border-b border-border bg-muted/50">
           <h3 className="text-sm font-semibold text-foreground">
             Allocation Breakdown
           </h3>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="border-b border-border bg-muted/30">
-                <th className="text-left px-4 py-2 font-semibold uppercase tracking-wider text-muted-foreground text-[10px]">
-                  Metric
-                </th>
-                <th className="text-right px-4 py-2 font-semibold uppercase tracking-wider text-muted-foreground text-[10px]">
-                  Nitrogen
-                </th>
-                <th className="text-right px-4 py-2 font-semibold uppercase tracking-wider text-muted-foreground text-[10px]">
-                  BNG
-                </th>
-                <th className="text-right px-4 py-2 font-semibold uppercase tracking-wider text-muted-foreground text-[10px]">
-                  Combined
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              <tr className="hover:bg-accent/40">
-                <td className="px-4 py-2.5 font-medium text-foreground">
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="whitespace-nowrap text-[10px]">Metric</TableHead>
+                <TableHead className="text-right whitespace-nowrap text-[10px]">Nitrogen</TableHead>
+                <TableHead className="text-right whitespace-nowrap text-[10px]">BNG</TableHead>
+                <TableHead className="text-right whitespace-nowrap text-[10px]">Combined</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <TableRow className="hover:bg-muted/50">
+                <TableCell className="font-medium text-foreground whitespace-nowrap">
                   Total Capacity
-                </td>
-                <td className="px-4 py-2.5 text-right tabular-nums font-semibold">
-                  555 kg/yr
-                </td>
-                <td className="px-4 py-2.5 text-right tabular-nums font-semibold">
-                  22.5 units
-                </td>
-                <td className="px-4 py-2.5 text-right text-muted-foreground">
+                </TableCell>
+                <TableCell className="text-right tabular-nums font-semibold whitespace-nowrap">
+                  {totalNitrogenCredits} kg/yr
+                </TableCell>
+                <TableCell className="text-right tabular-nums font-semibold whitespace-nowrap">
+                  {totalBNGUnits} units
+                </TableCell>
+                <TableCell className="text-right text-muted-foreground">
                   --
-                </td>
-              </tr>
-              <tr className="hover:bg-accent/40">
-                <td className="px-4 py-2.5 font-medium text-foreground">
+                </TableCell>
+              </TableRow>
+              <TableRow className="hover:bg-muted/50">
+                <TableCell className="font-medium text-foreground whitespace-nowrap">
                   Allocated
-                </td>
-                <td className="px-4 py-2.5 text-right tabular-nums text-blue-600 dark:text-blue-400 font-medium">
-                  260 kg/yr (46.8%)
-                </td>
-                <td className="px-4 py-2.5 text-right tabular-nums text-blue-600 dark:text-blue-400 font-medium">
-                  0 units (0%)
-                </td>
-                <td className="px-4 py-2.5 text-right text-muted-foreground">
+                </TableCell>
+                <TableCell className="text-right tabular-nums text-blue-600 font-medium whitespace-nowrap">
+                  {allocatedNitrogen} kg/yr ({pct(allocatedNitrogen, totalNitrogenCredits)})
+                </TableCell>
+                <TableCell className="text-right tabular-nums text-blue-600 font-medium whitespace-nowrap">
+                  {totalBNGUnits - availableBNGUnits} units ({pct(totalBNGUnits - availableBNGUnits, totalBNGUnits)})
+                </TableCell>
+                <TableCell className="text-right text-muted-foreground">
                   --
-                </td>
-              </tr>
-              <tr className="hover:bg-accent/40">
-                <td className="px-4 py-2.5 font-medium text-foreground">
-                  Reserved
-                </td>
-                <td className="px-4 py-2.5 text-right tabular-nums text-amber-600 dark:text-amber-400 font-medium">
-                  45 kg/yr (8.1%)
-                </td>
-                <td className="px-4 py-2.5 text-right tabular-nums text-amber-600 dark:text-amber-400 font-medium">
-                  0 units (0%)
-                </td>
-                <td className="px-4 py-2.5 text-right text-muted-foreground">
-                  --
-                </td>
-              </tr>
-              <tr className="bg-emerald-50/50 dark:bg-emerald-950/20">
-                <td className="px-4 py-2.5 font-bold text-foreground">
+                </TableCell>
+              </TableRow>
+              <TableRow className="bg-emerald-50/50">
+                <TableCell className="font-bold text-foreground whitespace-nowrap">
                   Available
-                </td>
-                <td className="px-4 py-2.5 text-right tabular-nums font-bold text-emerald-700 dark:text-emerald-400">
-                  295 kg/yr (53.2%)
-                </td>
-                <td className="px-4 py-2.5 text-right tabular-nums font-bold text-emerald-700 dark:text-emerald-400">
-                  22.5 units (100%)
-                </td>
-                <td className="px-4 py-2.5 text-right text-muted-foreground">
+                </TableCell>
+                <TableCell className="text-right tabular-nums font-bold text-emerald-700 whitespace-nowrap">
+                  {availableNitrogenCredits} kg/yr ({pct(availableNitrogenCredits, totalNitrogenCredits)})
+                </TableCell>
+                <TableCell className="text-right tabular-nums font-bold text-emerald-700 whitespace-nowrap">
+                  {availableBNGUnits} units ({pct(availableBNGUnits, totalBNGUnits)})
+                </TableCell>
+                <TableCell className="text-right text-muted-foreground">
                   --
-                </td>
-              </tr>
-              <tr className="bg-red-50/50 dark:bg-red-950/15">
-                <td className="px-4 py-2.5 font-bold text-foreground flex items-center gap-1.5">
-                  <AlertTriangle className="h-3 w-3 text-red-500" />
-                  Pipeline Demand
-                </td>
-                <td className="px-4 py-2.5 text-right tabular-nums font-bold text-red-700 dark:text-red-400">
-                  160 kg/yr
-                </td>
-                <td className="px-4 py-2.5 text-right tabular-nums font-medium text-amber-700 dark:text-amber-400">
-                  6.5 units
-                </td>
-                <td className="px-4 py-2.5 text-right text-muted-foreground">
-                  --
-                </td>
-              </tr>
-              <tr
-                className={[
-                  "border-t-2 border-border font-bold",
-                  "bg-red-50/30 dark:bg-red-950/10",
-                ].join(" ")}
-              >
-                <td className="px-4 py-2.5 font-bold text-foreground">
-                  Net Surplus / (Gap)
-                </td>
-                <td className="px-4 py-2.5 text-right tabular-nums">
-                  <span className="inline-flex items-center gap-1 text-red-700 dark:text-red-400 font-bold">
-                    <ArrowDownRight className="h-3 w-3" />
-                    -15 kg/yr *
+                </TableCell>
+              </TableRow>
+              <TableRow className="bg-red-50/50">
+                <TableCell className="font-bold text-foreground whitespace-nowrap">
+                  <span className="flex items-center gap-1.5">
+                    <AlertTriangle className="h-3 w-3 text-red-500" />
+                    Pipeline Demand
                   </span>
-                </td>
-                <td className="px-4 py-2.5 text-right tabular-nums font-bold text-emerald-700 dark:text-emerald-400">
+                </TableCell>
+                <TableCell className="text-right tabular-nums font-bold text-red-700 whitespace-nowrap">
+                  160 kg/yr
+                </TableCell>
+                <TableCell className="text-right tabular-nums font-medium text-amber-700 whitespace-nowrap">
+                  6.5 units
+                </TableCell>
+                <TableCell className="text-right text-muted-foreground">
+                  --
+                </TableCell>
+              </TableRow>
+              <TableRow className="border-t-2 border-border font-bold bg-red-50/30">
+                <TableCell className="font-bold text-foreground whitespace-nowrap">
+                  Net Surplus / (Gap)
+                </TableCell>
+                <TableCell className="text-right tabular-nums whitespace-nowrap">
+                  {(() => {
+                    const nSurplus = availableNitrogenCredits - 160
+                    return nSurplus < 0 ? (
+                      <span className="inline-flex items-center gap-1 text-red-700 font-bold">
+                        <ArrowDownRight className="h-3 w-3" />
+                        {nSurplus} kg/yr *
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 text-emerald-700 font-bold">
+                        <ArrowUpRight className="h-3 w-3" />
+                        +{nSurplus} kg/yr
+                      </span>
+                    )
+                  })()}
+                </TableCell>
+                <TableCell className="text-right tabular-nums font-bold text-emerald-700 whitespace-nowrap">
                   <span className="inline-flex items-center gap-1">
                     <ArrowUpRight className="h-3 w-3" />
-                    +16.0 units
+                    +{(availableBNGUnits - 6.5).toFixed(1)} units
                   </span>
-                </td>
-                <td className="px-4 py-2.5 text-right text-muted-foreground">
+                </TableCell>
+                <TableCell className="text-right text-muted-foreground">
                   --
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+        </CardContent>
         <div className="px-5 py-2 border-t border-border bg-muted/30">
-          <p className="text-[10px] text-red-600 dark:text-red-400 font-medium">
+          <p className="text-[10px] text-red-600 font-medium">
             * Solent nitrogen demand (160 kg/yr) exceeds available supply (145 kg/yr). Surplus includes Test Valley (150 kg/yr) which is in a different catchment and cannot offset Solent.
           </p>
         </div>
-      </div>
+      </Card>
     </div>
   )
 }
@@ -1518,6 +1617,11 @@ export default function InventoryAvailabilityPage() {
       {/* Page header */}
       <div className="border-b border-border bg-background">
         <div className="max-w-screen-2xl mx-auto px-6 py-5">
+          <div className="flex items-center gap-1.5 text-sm text-muted-foreground mb-4">
+            <Link href="/admin/brokerage-mockups/dashboard" className="hover:text-foreground transition-colors">Dashboard</Link>
+            <ChevronRight className="h-3.5 w-3.5" />
+            <span className="text-foreground font-medium">Inventory</span>
+          </div>
           <div className="flex items-start justify-between mb-4">
             <div>
               <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-1">

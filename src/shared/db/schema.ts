@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Barrel re-export — all per-module schema files re-exported from a single
+// Barrel re-export - all per-module schema files re-exported from a single
 // entry point so that all existing imports from "@/shared/db/schema" continue
 // to work without any changes.
 // ---------------------------------------------------------------------------

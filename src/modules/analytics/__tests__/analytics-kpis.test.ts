@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 // ---------------------------------------------------------------------------
-// Mocks — must be declared before any import that touches the mocked modules
+// Mocks - must be declared before any import that touches the mocked modules
 // ---------------------------------------------------------------------------
 
 vi.mock('../analytics.repository', () => ({
@@ -450,7 +450,7 @@ describe('getChurnRisk', () => {
 // Additional edge case tests
 // ===========================================================================
 
-describe('getKPIs — period-specific behaviour', () => {
+describe('getKPIs - period-specific behaviour', () => {
   it('calls repository with correct period dates for QUARTER period', async () => {
     vi.mocked(analyticsRepository.getBookingCounts)
       .mockResolvedValue(mockBookingCounts({ created: 100 }))
@@ -496,7 +496,7 @@ describe('getKPIs — period-specific behaviour', () => {
   })
 })
 
-describe('getStaffUtilization — cache key construction', () => {
+describe('getStaffUtilization - cache key construction', () => {
   it('constructs cache key with date params when provided', async () => {
     vi.mocked(redis.get).mockResolvedValue(null)
     vi.mocked(analyticsRepository.getStaffUtilization).mockResolvedValue([])
@@ -522,7 +522,7 @@ describe('getStaffUtilization — cache key construction', () => {
   })
 })
 
-describe('getChurnRisk — candidates with single booking are excluded from scoring', () => {
+describe('getChurnRisk - candidates with single booking are excluded from scoring', () => {
   it('handles candidates that have exactly 2 dates where one is barely overdue', async () => {
     vi.mocked(redis.get).mockResolvedValue(null)
     vi.mocked(redis.setex).mockResolvedValue(undefined as never)

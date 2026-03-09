@@ -30,7 +30,7 @@ import type {
  *   MICROSOFT_CLIENT_SECRET
  *   MICROSOFT_TENANT_ID (or 'common' for multi-tenant)
  *
- * All method signatures are locked — implement the bodies only.
+ * All method signatures are locked - implement the bodies only.
  */
 export class OutlookCalendarProvider implements CalendarProvider {
   readonly providerName = 'OUTLOOK_CALENDAR' as const

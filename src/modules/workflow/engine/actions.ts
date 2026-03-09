@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────────────────────────────────────
-// Action executor — handles all 7 workflow action types
+// Action executor - handles all 7 workflow action types
 // Shared by both linear engine and graph engine
 // ──────────────────────────────────────────────────────────────────────────────
 
@@ -74,7 +74,7 @@ export async function executeAction(
 
       case 'WEBHOOK': {
         const cfg = config as WebhookActionConfig
-        // HTTPS only — reject non-HTTPS URLs
+        // HTTPS only - reject non-HTTPS URLs
         if (!cfg.url.startsWith('https://')) {
           throw new Error(`WEBHOOK action requires HTTPS URL, got: ${cfg.url}`)
         }
@@ -160,7 +160,7 @@ export async function executeAction(
           dueDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // default: 7 days
         }
 
-        // projectId is required by the tasks table — resolve from context or config
+        // projectId is required by the tasks table - resolve from context or config
         const projectId = String(
           (data.projectId as string | undefined) ??
           (config as Record<string, unknown>).projectId ??
@@ -215,7 +215,7 @@ export async function executeAction(
       }
 
       default: {
-        log.warn({ actionType }, 'Unknown action type — skipping')
+        log.warn({ actionType }, 'Unknown action type - skipping')
         return { success: false, error: `Unknown action type: ${actionType}` }
       }
     }

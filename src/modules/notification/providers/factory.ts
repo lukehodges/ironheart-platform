@@ -65,7 +65,7 @@ export function getSmsProvider(): SMSProvider {
   return _smsProvider
 }
 
-// Legacy named exports for backward compatibility — delegate to lazy getters.
+// Legacy named exports for backward compatibility - delegate to lazy getters.
 // Do NOT access these at module evaluation time from other modules;
 // use the getter functions above instead.
 export const emailProvider: EmailProvider = new Proxy({} as EmailProvider, {

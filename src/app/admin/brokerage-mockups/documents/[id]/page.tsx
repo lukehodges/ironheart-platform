@@ -54,7 +54,16 @@ const VERSION_STATUS_STYLES: Record<string, string> = {
 }
 
 // ---------------------------------------------------------------------------
-// Signature timeline data for DOC-001
+// Helpers
+// ---------------------------------------------------------------------------
+
+function formatDate(dateStr: string): string {
+  const d = new Date(dateStr)
+  return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
+}
+
+// ---------------------------------------------------------------------------
+// Signature timeline builder
 // ---------------------------------------------------------------------------
 
 interface SignatureStep {
@@ -63,22 +72,49 @@ interface SignatureStep {
   completed: boolean
 }
 
-const signatureTimeline: SignatureStep[] = [
-  { label: "Created by James Harris", date: "15 Jan 2026", completed: true },
-  { label: "Sent to Robert Whiteley", date: "16 Jan 2026", completed: true },
-  { label: "Viewed by Robert Whiteley", date: "17 Jan 2026", completed: true },
-  { label: "Signed by Robert Whiteley", date: "20 Jan 2026", completed: true },
-  { label: "Sent to Eastleigh LPA", date: "21 Jan 2026", completed: true },
-  { label: "Signed by LPA", date: "5 Feb 2026", completed: true },
-]
+function buildSignatureTimeline(doc: (typeof documents)[number]): SignatureStep[] {
+  const steps: SignatureStep[] = []
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
+  // "Created" entry from first version
+  if (doc.versions?.length) {
+    const first = doc.versions[0]
+    steps.push({
+      label: `Created by ${first.author}`,
+      date: formatDate(first.date),
+      completed: true,
+    })
+  }
 
-function formatDate(dateStr: string): string {
-  const d = new Date(dateStr)
-  return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
+  // Uploaded entry (if different from created)
+  if (doc.versions && doc.versions.length > 1) {
+    const latest = doc.versions[doc.versions.length - 1]
+    steps.push({
+      label: `Version ${latest.version} uploaded by ${latest.author}`,
+      date: formatDate(latest.date),
+      completed: true,
+    })
+  }
+
+  // Signatory entries
+  if (doc.signatories?.length) {
+    for (const sig of doc.signatories) {
+      if (sig.signed && sig.signedDate) {
+        steps.push({
+          label: `Signed by ${sig.name}`,
+          date: formatDate(sig.signedDate),
+          completed: true,
+        })
+      } else {
+        steps.push({
+          label: `Awaiting signature from ${sig.name}`,
+          date: "Pending",
+          completed: false,
+        })
+      }
+    }
+  }
+
+  return steps
 }
 
 // ---------------------------------------------------------------------------
@@ -110,6 +146,8 @@ export default function DocumentDetailPage() {
   const relatedContacts = contacts.filter((c) => relatedContactIds.includes(c.id))
 
   const versionLabels = ["Draft", "Reviewed", "Final"]
+  const signatureTimeline = buildSignatureTimeline(doc)
+  const allSigned = signatureTimeline.length > 0 && signatureTimeline.every((s) => s.completed)
 
   return (
     <div className="max-w-screen-xl mx-auto px-6 py-6 space-y-6">
@@ -149,7 +187,7 @@ export default function DocumentDetailPage() {
 
       {/* Two-column layout */}
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-6">
-        {/* Left Column — Document Preview */}
+        {/* Left Column - Document Preview */}
         <div className="space-y-6">
           {/* PDF Viewer Mock */}
           <div className="rounded-lg border border-border bg-card overflow-hidden">
@@ -168,21 +206,83 @@ export default function DocumentDetailPage() {
             <div className="bg-muted/30 p-8 flex items-center justify-center min-h-[500px]">
               <div className="bg-card border border-border rounded-lg shadow-sm w-full max-w-md p-8 space-y-6">
                 <div className="text-center space-y-2">
-                  <h2 className="text-lg font-bold text-foreground">S106 Agreement</h2>
-                  <p className="text-xs text-muted-foreground">Section 106 Town and Country Planning Act 1990</p>
+                  <h2 className="text-lg font-bold text-foreground">{doc.name}</h2>
+                  <p className="text-xs text-muted-foreground">{doc.type}</p>
                   <Separator className="my-4" />
                 </div>
                 <div className="space-y-3 text-xs text-muted-foreground">
-                  <p><span className="font-semibold text-foreground">Between:</span></p>
-                  <p className="pl-4">Robert Whiteley (Landowner)</p>
-                  <p className="pl-4">Eastleigh Borough Council (Local Planning Authority)</p>
-                  <Separator className="my-3" />
-                  <p><span className="font-semibold text-foreground">Site:</span> Whiteley Farm, Whiteley Lane, Fareham PO15 7LR</p>
-                  <p><span className="font-semibold text-foreground">Credits:</span> 95 kg/yr Nitrogen</p>
-                  <p><span className="font-semibold text-foreground">Commitment:</span> 80 years</p>
+                  {doc.type === "S106" && (
+                    <>
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground/70">Section 106 Town and Country Planning Act 1990</p>
+                      {doc.signatories?.length ? (
+                        <>
+                          <p><span className="font-semibold text-foreground">Between:</span></p>
+                          {doc.signatories.map((s, i) => (
+                            <p key={i} className="pl-4">{s.name}</p>
+                          ))}
+                        </>
+                      ) : null}
+                      <Separator className="my-3" />
+                      <p><span className="font-semibold text-foreground">Linked Entity:</span> {doc.linkedEntityLabel}</p>
+                    </>
+                  )}
+                  {doc.type === "Purchase Agreement" && (
+                    <>
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground/70">Purchase Agreement</p>
+                      {doc.signatories?.length ? (
+                        <>
+                          <p><span className="font-semibold text-foreground">Parties:</span></p>
+                          {doc.signatories.map((s, i) => (
+                            <p key={i} className="pl-4">{s.name}</p>
+                          ))}
+                        </>
+                      ) : null}
+                      <Separator className="my-3" />
+                      <p><span className="font-semibold text-foreground">Reference:</span> {doc.linkedEntityLabel}</p>
+                    </>
+                  )}
+                  {doc.type === "Conservation Covenant" && (
+                    <>
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground/70">Conservation Covenant under Environment Act 2021</p>
+                      {doc.signatories?.length ? (
+                        <>
+                          <p><span className="font-semibold text-foreground">Parties:</span></p>
+                          {doc.signatories.map((s, i) => (
+                            <p key={i} className="pl-4">{s.name}</p>
+                          ))}
+                        </>
+                      ) : null}
+                      <Separator className="my-3" />
+                      <p><span className="font-semibold text-foreground">Site:</span> {doc.linkedEntityLabel}</p>
+                    </>
+                  )}
+                  {doc.type === "Heads of Terms" && (
+                    <>
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground/70">Heads of Terms -- Non-Binding</p>
+                      {doc.signatories?.length ? (
+                        <>
+                          <p><span className="font-semibold text-foreground">Parties:</span></p>
+                          {doc.signatories.map((s, i) => (
+                            <p key={i} className="pl-4">{s.name}</p>
+                          ))}
+                        </>
+                      ) : null}
+                      <Separator className="my-3" />
+                      <p><span className="font-semibold text-foreground">Reference:</span> {doc.linkedEntityLabel}</p>
+                    </>
+                  )}
+                  {!["S106", "Purchase Agreement", "Conservation Covenant", "Heads of Terms"].includes(doc.type) && (
+                    <>
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground/70">Document Preview</p>
+                      <Separator className="my-3" />
+                      <p><span className="font-semibold text-foreground">Type:</span> {doc.type}</p>
+                      <p><span className="font-semibold text-foreground">Linked Entity:</span> {doc.linkedEntityLabel}</p>
+                      <p><span className="font-semibold text-foreground">Uploaded by:</span> {doc.uploadedBy}</p>
+                    </>
+                  )}
                   <Separator className="my-3" />
                   <div className="bg-muted/50 rounded p-3 text-center text-[10px] text-muted-foreground/60">
-                    [Document content continues... 8 pages]
+                    [Document content continues...]
                   </div>
                 </div>
               </div>
@@ -204,7 +304,7 @@ export default function DocumentDetailPage() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-foreground">
-                        Version {v.version} — <span className={VERSION_STATUS_STYLES[vLabel] ?? "text-foreground"}>{vLabel}</span>
+                        Version {v.version} - <span className={VERSION_STATUS_STYLES[vLabel] ?? "text-foreground"}>{vLabel}</span>
                       </p>
                       <p className="text-xs text-muted-foreground">
                         {formatDate(v.date)} by {v.author}
@@ -260,8 +360,17 @@ export default function DocumentDetailPage() {
               {/* Final status */}
               <div className="mt-4 pt-3 border-t border-border">
                 <div className="flex items-center gap-2">
-                  <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-                  <span className="text-sm font-bold text-emerald-700 dark:text-emerald-400">Completed</span>
+                  {allSigned ? (
+                    <>
+                      <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                      <span className="text-sm font-bold text-emerald-700 dark:text-emerald-400">Completed</span>
+                    </>
+                  ) : (
+                    <>
+                      <Clock className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                      <span className="text-sm font-bold text-amber-700 dark:text-amber-400">Awaiting Signatures</span>
+                    </>
+                  )}
                 </div>
               </div>
             </div>

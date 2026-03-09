@@ -215,7 +215,7 @@ export const formsRepository = {
   },
 
   async deleteTemplate(tenantId: string, templateId: string): Promise<void> {
-    // Hard delete — formTemplates has no deletedAt column
+    // Hard delete - formTemplates has no deletedAt column
     await db
       .delete(formTemplates)
       .where(

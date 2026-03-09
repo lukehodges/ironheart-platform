@@ -5,7 +5,7 @@ const MATCHED_STAGES: LifecycleStage[] = [
   "Agreement", "Payment", "Allocate", "Confirm", "Compliance",
 ];
 
-const STAGE_TO_LIFECYCLE: Record<DealStage, LifecycleStage> = {
+export const STAGE_TO_LIFECYCLE: Record<DealStage, LifecycleStage> = {
   "Prospecting": "Prospect",
   "Initial Contact": "Prospect",
   "Requirements Gathered": "Match",

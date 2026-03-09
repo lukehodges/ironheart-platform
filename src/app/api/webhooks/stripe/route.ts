@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  // Bridge to Inngest — all business logic lives in the durable Inngest handler
+  // Bridge to Inngest - all business logic lives in the durable Inngest handler
   await inngest.send({
     name: 'stripe/webhook.received',
     data: {

@@ -8,7 +8,7 @@ const log = logger.child({ module: 'developer.events' })
 
 /**
  * Dispatches webhooks to all subscribed endpoints when business events occur.
- * Retries are handled internally by deliverWebhook — Inngest retries are disabled.
+ * Retries are handled internally by deliverWebhook - Inngest retries are disabled.
  */
 export const dispatchWebhooks = inngest.createFunction(
   { id: 'dispatch-webhooks', retries: 0 },

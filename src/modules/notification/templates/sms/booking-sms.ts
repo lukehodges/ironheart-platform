@@ -1,8 +1,8 @@
 import type { TemplateVariables, MessageTrigger } from '../../notification.types'
 
 /**
- * SMS template functions — each returns a string body (max 160 chars for single segment).
- * Variables are substituted directly — no template engine needed for SMS.
+ * SMS template functions - each returns a string body (max 160 chars for single segment).
+ * Variables are substituted directly - no template engine needed for SMS.
  */
 
 const SMS_TEMPLATES: Partial<Record<MessageTrigger, (vars: TemplateVariables) => string>> = {

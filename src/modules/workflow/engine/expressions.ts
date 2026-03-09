@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────────────────────────────────────
-// Expression evaluator — AST-based safe parser
+// Expression evaluator - AST-based safe parser
 // Invariant I9: no eval(), no Function() constructor
 // Uses expr-eval library (zero dependencies, 8KB minified, no member access)
 // ──────────────────────────────────────────────────────────────────────────────
@@ -9,7 +9,7 @@ import type { WorkflowExecutionContext } from '../workflow.types'
 import { substituteVariables } from './context'
 
 const parser = new Parser({
-  allowMemberAccess: false, // blocks obj.prop traversal — prevents prototype chain attacks
+  allowMemberAccess: false, // blocks obj.prop traversal - prevents prototype chain attacks
 })
 
 /**
@@ -37,7 +37,7 @@ export function evaluateExpression(
     if (typeof result === 'number' && !isNaN(result) && isFinite(result)) return result
     if (typeof result === 'boolean') return result
   } catch {
-    // Not a parseable expression — return as string literal
+    // Not a parseable expression - return as string literal
   }
 
   return substituted

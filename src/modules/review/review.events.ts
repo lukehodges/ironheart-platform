@@ -5,7 +5,7 @@ const log = logger.child({ module: "review.events" });
 
 /**
  * Inngest function that handles review request sending with optional delay.
- * Handles the 'review/request.send' event — timing/scheduling only.
+ * Handles the 'review/request.send' event - timing/scheduling only.
  * Email dispatch is handled by the notification module.
  */
 const scheduleReviewRequest = inngest.createFunction(
@@ -20,10 +20,10 @@ const scheduleReviewRequest = inngest.createFunction(
 
     log.info(
       { bookingId, customerId },
-      "Review request scheduled — email dispatch via notification module"
+      "Review request scheduled - email dispatch via notification module"
     );
   }
 );
 
-/** All review Inngest functions — register in src/app/api/inngest/route.ts */
+/** All review Inngest functions - register in src/app/api/inngest/route.ts */
 export const reviewFunctions = [scheduleReviewRequest];

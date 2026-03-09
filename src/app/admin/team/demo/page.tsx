@@ -1,7 +1,7 @@
 "use client"
 
 /**
- * /admin/team/demo — Premium Team Management Demo Dashboard
+ * /admin/team/demo - Premium Team Management Demo Dashboard
  *
  * PROTECTED: In production this route is covered by the admin layout which
  * uses withAuth({ ensureSignedIn: true }) from @workos-inc/authkit-nextjs.

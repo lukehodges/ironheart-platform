@@ -3,7 +3,7 @@
  *
  * Every email provider implementation must satisfy this contract.
  * Swap Resend → Postmark → SES → SendGrid by swapping the implementation
- * behind this interface — zero application code changes required.
+ * behind this interface - zero application code changes required.
  *
  * Usage:
  *   import { emailProvider } from '../factory'
@@ -17,7 +17,7 @@ export interface EmailSendInput {
   subject: string
   /** Rendered HTML body (pre-rendered via @react-email/render) */
   html: string
-  /** Plain text fallback — auto-generated from html if not provided */
+  /** Plain text fallback - auto-generated from html if not provided */
   text?: string
   /** Reply-to address */
   replyTo?: string
@@ -40,7 +40,7 @@ export interface EmailSendResult {
  *
  * Implementations:
  * - ResendEmailProvider  (production)
- * - ConsoleEmailProvider (development / CI — logs to console, no real emails)
+ * - ConsoleEmailProvider (development / CI - logs to console, no real emails)
  */
 export interface EmailProvider {
   send(input: EmailSendInput): Promise<EmailSendResult>

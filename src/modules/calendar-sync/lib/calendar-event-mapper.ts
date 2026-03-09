@@ -59,7 +59,7 @@ export function bookingToCalendarEvent(
     calendarId,
     summary: [
       booking.service?.name ?? 'Appointment',
-      '\u2014',
+      ' - ',
       customerName,
     ].join(' '),
     description: descriptionLines.join('\n'),
@@ -77,7 +77,7 @@ export function bookingToCalendarEvent(
  * Combine a Date (date portion) and a "HH:MM" time string into a UTC Date.
  * The scheduledDate from the DB is stored in UTC, and the scheduledTime is
  * stored as a wall-clock time in the tenant's local timezone.
- * For simplicity we treat both as UTC here — the service layer should handle
+ * For simplicity we treat both as UTC here - the service layer should handle
  * timezone conversion if tenant timezones are tracked in future.
  */
 function buildStartDateTime(date: Date, time: string): Date {

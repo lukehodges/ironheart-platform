@@ -98,7 +98,7 @@ const tierConfig = {
   },
   upcoming: {
     label: "Upcoming",
-    sublabel: "Plan ahead — 91 to 180 days",
+    sublabel: "Plan ahead - 91 to 180 days",
     borderColor: "border-l-border",
     headerBg: "bg-muted/40",
     headerBorder: "border-border",
@@ -109,7 +109,7 @@ const tierConfig = {
   },
   planned: {
     label: "Planned",
-    sublabel: "On the horizon — 181+ days",
+    sublabel: "On the horizon - 181+ days",
     borderColor: "border-l-border",
     headerBg: "bg-muted/30",
     headerBorder: "border-border",
@@ -123,7 +123,7 @@ const tierConfig = {
 const eventTypeConfig: Record<EventType, { color: string; bg: string; tooltip: string }> = {
   "Rent Review":           { color: "text-violet-700 dark:text-violet-400", bg: "bg-violet-500/10 border-violet-500/20", tooltip: "A point at which the landlord can formally review and increase the passing rent, typically every 5 years under an upward-only clause." },
   "Break Clause":          { color: "text-orange-700 dark:text-orange-400", bg: "bg-orange-500/10 border-orange-500/20", tooltip: "A contractual option allowing the tenant or landlord to terminate the lease early at a specified date. Missing the notice window forfeits this right permanently." },
-  "Lease Expiry":          { color: "text-red-700 dark:text-red-400",       bg: "bg-red-500/10 border-red-500/20",       tooltip: "The natural end date of the lease. Under the Landlord & Tenant Act 1954, commercial tenants may have security of tenure — but only if proper procedures are followed." },
+  "Lease Expiry":          { color: "text-red-700 dark:text-red-400",       bg: "bg-red-500/10 border-red-500/20",       tooltip: "The natural end date of the lease. Under the Landlord & Tenant Act 1954, commercial tenants may have security of tenure - but only if proper procedures are followed." },
   "Lease Renewal":         { color: "text-sky-700 dark:text-sky-400",       bg: "bg-sky-500/10 border-sky-500/20",       tooltip: "Formal negotiation to agree new lease terms. Typically begins 12–18 months before expiry to allow sufficient time for heads of terms and legals." },
   "Service Charge Review": { color: "text-teal-700 dark:text-teal-400",     bg: "bg-teal-500/10 border-teal-500/20",     tooltip: "Annual or periodic reconciliation of service charge budgets versus actual expenditure. Tenants may challenge items under the RICS Service Charge Code." },
 }
@@ -207,7 +207,7 @@ function MonthlyCalendar() {
         <div className="flex items-center gap-2.5">
           <CalendarRange className="w-4 h-4 text-muted-foreground" />
           <span className="text-sm font-semibold text-foreground">Portfolio Calendar</span>
-          <span className="text-xs text-muted-foreground">Mar 2026 — Jan 2027</span>
+          <span className="text-xs text-muted-foreground">Mar 2026 - Jan 2027</span>
         </div>
         <div className="flex items-center gap-4 text-[11px] text-muted-foreground">
           <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-red-500 shrink-0" />Critical</span>
@@ -276,7 +276,7 @@ function MonthlyCalendar() {
                 ))}
                 {evs.length === 0 && (
                   <div className="flex-1 flex items-start justify-center pt-4">
-                    <span className="text-[10px] text-muted-foreground/25">—</span>
+                    <span className="text-[10px] text-muted-foreground/25">-</span>
                   </div>
                 )}
               </div>
@@ -519,7 +519,7 @@ export default function LeaseCalendarPage() {
                 {noActionCritical.length} critical event{noActionCritical.length !== 1 ? "s" : ""} with no action taken
               </p>
               <p className="text-xs text-red-600/70 dark:text-red-400/70 mt-0.5">
-                {noActionCritical.map((e) => e.property).join(" · ")} — immediate attention required
+                {noActionCritical.map((e) => e.property).join(" · ")} - immediate attention required
               </p>
             </div>
           </div>
@@ -560,7 +560,7 @@ export default function LeaseCalendarPage() {
         <div className="border-t border-border pt-6 flex flex-wrap items-start justify-between gap-4">
           <p className="text-xs text-muted-foreground max-w-2xl leading-relaxed">
             All dates are those recorded in executed lease documents. This calendar does not constitute legal advice.
-            Notice periods under the Landlord &amp; Tenant Act 1954 and PACT procedures vary by lease type — consult your solicitor before serving any formal notice.
+            Notice periods under the Landlord &amp; Tenant Act 1954 and PACT procedures vary by lease type - consult your solicitor before serving any formal notice.
           </p>
           <span className="text-[10px] text-muted-foreground uppercase tracking-widest shrink-0">
             BP2 Property · South Wales · Lease Advisory

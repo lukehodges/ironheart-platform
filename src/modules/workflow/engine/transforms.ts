@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────────────────────────────────────
-// Transform utilities — used by TRANSFORM node mappings
+// Transform utilities - used by TRANSFORM node mappings
 // ──────────────────────────────────────────────────────────────────────────────
 
 /**

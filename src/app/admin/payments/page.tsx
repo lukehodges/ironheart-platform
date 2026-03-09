@@ -97,7 +97,7 @@ function formatCurrency(amountInPence: number | string): string {
 }
 
 function formatDate(date: Date | string | null | undefined): string {
-  if (!date) return "\u2014"
+  if (!date) return " - "
   const d = typeof date === "string" ? new Date(date) : date
   return d.toLocaleDateString("en-GB", {
     day: "numeric",
@@ -107,7 +107,7 @@ function formatDate(date: Date | string | null | undefined): string {
 }
 
 function formatRelativeDate(date: Date | string | null | undefined): string {
-  if (!date) return "\u2014"
+  if (!date) return " - "
   const d = typeof date === "string" ? new Date(date) : date
   const now = new Date()
   const diffMs = now.getTime() - d.getTime()
@@ -231,7 +231,7 @@ function InvoiceRow({
       {/* Customer */}
       <TableCell>
         <span className="text-sm text-muted-foreground truncate max-w-[160px] block">
-          {invoice.customerId?.slice(0, 8) ?? "\u2014"}
+          {invoice.customerId?.slice(0, 8) ?? " - "}
         </span>
       </TableCell>
 
@@ -836,7 +836,7 @@ export default function PaymentsPage() {
                             <span className="tabular-nums font-medium">
                               {item.amount != null
                                 ? formatCurrency(item.amount)
-                                : "\u2014"}
+                                : " - "}
                             </span>
                           </div>
                         ))}

@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────────────────────────────────────────
-// Workflow Module — TypeScript interfaces only (no Zod)
+// Workflow Module - TypeScript interfaces only (no Zod)
 // ──────────────────────────────────────────────────────────────────────────────
 
 // ---------------------------------------------------------------------------
@@ -96,7 +96,7 @@ export interface SwitchNodeConfig {
 
 export interface MergeNodeConfig {
   mode: 'wait_all' | 'wait_any' | 'append'
-  /** ISO 8601 duration — for wait_all, give up after this duration */
+  /** ISO 8601 duration - for wait_all, give up after this duration */
   timeout?: string
 }
 
@@ -107,7 +107,7 @@ export interface LoopNodeConfig {
   itemVariableName: string
   /** Name to expose current index: "index" */
   indexVariableName?: string
-  /** Safety guard — default 100 */
+  /** Safety guard - default 100 */
   maxIterations?: number
   mode: 'sequential' | 'parallel'
 }

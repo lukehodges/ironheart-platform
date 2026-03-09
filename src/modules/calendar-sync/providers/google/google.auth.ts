@@ -60,7 +60,7 @@ export function decryptOAuthTokens(stored: {
   tokenExpiresAt: Date | null
 }): OAuthTokens {
   if (!stored.encryptedAccessToken || !stored.encryptedRefreshToken) {
-    throw new Error('Integration is missing encrypted tokens — user must re-authenticate')
+    throw new Error('Integration is missing encrypted tokens - user must re-authenticate')
   }
 
   try {
@@ -70,7 +70,7 @@ export function decryptOAuthTokens(stored: {
       expiresAt: stored.tokenExpiresAt?.getTime() ?? 0,
     }
   } catch (err) {
-    log.error({ err }, 'Failed to decrypt OAuth tokens — possible key rotation issue')
+    log.error({ err }, 'Failed to decrypt OAuth tokens - possible key rotation issue')
     throw new Error('Failed to decrypt OAuth tokens. User must re-authenticate.')
   }
 }

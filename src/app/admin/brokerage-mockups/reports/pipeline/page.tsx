@@ -147,7 +147,8 @@ export default function PipelineAnalyticsPage() {
   // Win/Loss pie
   const winLossData = useMemo(() => {
     const completed = deals.filter((d) => d.stage === "Completed").length
-    const lost = 10 // hardcoded historical
+    // Illustrative data: lost count includes historical deals not present in the current dataset
+    const lost = 10
     const inProgress = deals.filter((d) => d.stage !== "Completed").length
     return [
       { name: "Won", value: completed },
@@ -320,7 +321,7 @@ export default function PipelineAnalyticsPage() {
         <Card className="border-border bg-card">
           <CardContent className="p-5">
             <h2 className="text-sm font-bold text-foreground mb-1">Win/Loss Analysis</h2>
-            <p className="text-xs text-muted-foreground mb-4">Deal outcomes breakdown</p>
+            <p className="text-xs text-muted-foreground mb-4">Deal outcomes breakdown <span className="italic">(includes historical data)</span></p>
             <div className="h-[280px]">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>

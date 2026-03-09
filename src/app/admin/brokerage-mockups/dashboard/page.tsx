@@ -47,64 +47,152 @@ import {
   Pie,
   Cell,
 } from "recharts"
+import {
+  deals as sharedDeals,
+  pipelineValue,
+  activeDealsCount,
+  commissionYTD,
+  sites as sharedSites,
+  availableNitrogenCredits,
+  totalNitrogenCredits,
+  complianceItems as sharedCompliance,
+  overdueCount,
+  STAGE_TO_LIFECYCLE,
+  assessments as sharedAssessments,
+  invoices as sharedInvoices,
+} from "../_mock-data"
 
-// ─── Mock Data ─────────────────────────────────────────────────────────────
+// ─── Mock Data (derived from shared _mock-data where possible) ────────────
 
-const DEALS_BY_STAGE = [
-  { stage: "Lead", count: 3, value: 321000, color: "#94a3b8" },
-  { stage: "Qualified", count: 3, value: 550000, color: "#60a5fa" },
-  { stage: "Assessment Booked", count: 2, value: 380000, color: "#818cf8" },
-  { stage: "Assessment Complete", count: 1, value: 237500, color: "#a78bfa" },
-  { stage: "S106 In Progress", count: 1, value: 198800, color: "#f59e0b" },
-  { stage: "NE Registered", count: 1, value: 212500, color: "#34d399" },
-  { stage: "Matched", count: 1, value: 90000, color: "#fbbf24" },
-  { stage: "Quote Sent", count: 1, value: 165000, color: "#fb923c" },
-  { stage: "Credits Reserved", count: 1, value: 135000, color: "#eab308" },
-  { stage: "Contract Signed", count: 1, value: 114000, color: "#22c55e" },
-]
+// Site name → site ref lookup for linking
+const siteRefLookup: Record<string, string> = Object.fromEntries(
+  sharedSites.map((s) => [s.name, s.ref])
+)
+
+function getSiteLink(siteName: string): string {
+  const ref = siteRefLookup[siteName]
+  return ref
+    ? `/admin/brokerage-mockups/sites/${ref}`
+    : "/admin/brokerage-mockups/sites"
+}
+
+// Aggregate deals by stage for the bar chart
+const stageColors: Record<string, string> = {
+  Prospecting: "#94a3b8",
+  "Initial Contact": "#94a3b8",
+  "Requirements Gathered": "#60a5fa",
+  "Site Matched": "#818cf8",
+  "Quote Sent": "#fb923c",
+  "Quote Accepted": "#f59e0b",
+  "Legal Drafting": "#a78bfa",
+  "Legal Review": "#a78bfa",
+  "Contracts Signed": "#22c55e",
+  "Payment Pending": "#eab308",
+  "Payment Received": "#34d399",
+  "Credits Allocated": "#34d399",
+  "LPA Confirmed": "#10b981",
+  Completed: "#10b981",
+}
+
+const DEALS_BY_STAGE = Object.entries(
+  sharedDeals.reduce<Record<string, { count: number; value: number }>>((acc, d) => {
+    if (d.stage === "Completed") return acc
+    const entry = (acc[d.stage] ??= { count: 0, value: 0 })
+    entry.count++
+    entry.value += d.value
+    return acc
+  }, {})
+).map(([stage, data]) => ({
+  stage,
+  count: data.count,
+  value: data.value,
+  color: stageColors[stage] ?? "#94a3b8",
+}))
+
+const LIFECYCLE_COLORS: Record<string, string> = {
+  Prospect: "#94a3b8",
+  Assess: "#60a5fa",
+  Legal: "#818cf8",
+  Match: "#a78bfa",
+  Quote: "#f59e0b",
+  Agreement: "#fb923c",
+  Payment: "#eab308",
+  Allocate: "#34d399",
+  Confirm: "#22c55e",
+  Compliance: "#10b981",
+}
+
+const lifecycleCounts = sharedDeals.reduce<Record<string, number>>((acc, d) => {
+  const lc = STAGE_TO_LIFECYCLE[d.stage]
+  if (lc) acc[lc] = (acc[lc] ?? 0) + 1
+  return acc
+}, {})
 
 const LIFECYCLE_STAGES = [
-  { stage: "Prospect", count: 5, color: "#94a3b8" },
-  { stage: "Assess", count: 3, color: "#60a5fa" },
-  { stage: "Legal", count: 2, color: "#818cf8" },
-  { stage: "Match", count: 3, color: "#a78bfa" },
-  { stage: "Quote", count: 2, color: "#f59e0b" },
-  { stage: "Agreement", count: 1, color: "#fb923c" },
-  { stage: "Payment", count: 1, color: "#eab308" },
-  { stage: "Allocate", count: 1, color: "#34d399" },
-  { stage: "Confirm", count: 1, color: "#22c55e" },
-  { stage: "Compliance", count: 1, color: "#10b981" },
-]
+  "Prospect", "Assess", "Legal", "Match", "Quote",
+  "Agreement", "Payment", "Allocate", "Confirm", "Compliance",
+].map((stage) => ({
+  stage,
+  count: lifecycleCounts[stage] ?? 0,
+  color: LIFECYCLE_COLORS[stage] ?? "#94a3b8",
+}))
+
+// Nitrogen-only credit allocation from shared sites data
+const nitrogenAllocated = sharedSites
+  .filter((s) => s.unitType === "Nitrogen")
+  .reduce((sum, s) => sum + s.allocated, 0)
 
 const CREDITS_GAUGE = [
-  { name: "Allocated", value: 260, color: "#3b82f6" },
-  { name: "Available", value: 295, color: "#22c55e" },
-  { name: "Reserved", value: 45, color: "#f59e0b" },
+  { name: "Allocated", value: nitrogenAllocated, color: "#3b82f6" },
+  { name: "Available", value: availableNitrogenCredits, color: "#22c55e" },
 ]
 
-const UPCOMING_ASSESSMENTS = [
-  { date: "Mon 10 Mar", site: "Whiteley Farm", assessor: "Tom Jenkins", initials: "TJ", status: "Confirmed" as const },
-  { date: "Wed 12 Mar", site: "Manor Fields", assessor: "Sarah Croft", initials: "SC", status: "Scheduled" as const },
-  { date: "Fri 14 Mar", site: "Riverside Meadows", assessor: "Tom Jenkins", initials: "TJ", status: "Scheduled" as const },
-  { date: "Tue 18 Mar", site: "Oakwood Estate", assessor: "Sarah Croft", initials: "SC", status: "Confirmed" as const },
-]
+const UPCOMING_ASSESSMENTS = sharedAssessments
+  .filter((a) => a.status === "Scheduled")
+  .map((a) => {
+    const d = new Date(a.date)
+    const dayName = d.toLocaleDateString("en-GB", { weekday: "short" })
+    const dayNum = d.toLocaleDateString("en-GB", { day: "2-digit" })
+    const month = d.toLocaleDateString("en-GB", { month: "short" })
+    const initials = a.assessorName.split(" ").map((n) => n[0]).join("")
+    return {
+      date: `${dayName} ${dayNum} ${month}`,
+      site: a.siteName,
+      siteRef: a.siteRef,
+      assessor: a.assessorName,
+      initials,
+      type: a.type,
+      status: "Scheduled" as "Scheduled" | "Confirmed",
+    }
+  })
 
-const OVERDUE_COMPLIANCE = [
-  { title: "Annual Habitat Monitoring Report", site: "Whiteley Farm", due: "28 Feb 2026", daysOverdue: 7, assigned: "Tom Jenkins", initials: "TJ" },
-  { title: "NE Registry Update", site: "Botley Meadows", due: "01 Mar 2026", daysOverdue: 6, assigned: "James Harris", initials: "JH" },
-  { title: "S106 Compliance Review", site: "Hamble Wetlands", due: "03 Mar 2026", daysOverdue: 4, assigned: "James Harris", initials: "JH" },
-]
+// Derive overdue compliance from shared data
+const OVERDUE_COMPLIANCE = sharedCompliance
+  .filter((c) => c.status === "Overdue")
+  .map((c) => ({
+    title: c.title,
+    site: c.siteName ?? "",
+    siteRef: c.siteRef ?? "",
+    due: new Date(c.dueDate).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }),
+    daysOverdue: Math.floor((Date.now() - new Date(c.dueDate).getTime()) / 86400000),
+    assigned: c.assigned,
+    initials: c.assignedInitials,
+  }))
 
 const RECENT_ACTIVITY = [
   { time: "2 hours ago", user: "James Harris", initials: "JH", action: "moved Deal D-0042 to", entity: "Quote Sent", icon: "move" as const },
   { time: "3 hours ago", user: "Sarah Croft", initials: "SC", action: "completed assessment at", entity: "Manor Fields", icon: "check" as const },
-  { time: "Yesterday", user: "System", initials: "SY", action: "Credits Reserved for D-0038 (45 kg N/yr from", entity: "Whiteley Farm)", icon: "credit" as const },
+  { time: "Yesterday", user: "System", initials: "SY", action: "Credits Reserved for D-0038 (30 kg/yr from", entity: "Whiteley Farm)", icon: "credit" as const },
   { time: "Yesterday", user: "James Harris", initials: "JH", action: "added note on D-0041:", entity: "'Developer confirmed budget'", icon: "note" as const },
   { time: "2 days ago", user: "James Harris", initials: "JH", action: "New contact added:", entity: "Bellway Homes (Developer)", icon: "contact" as const },
   { time: "2 days ago", user: "Sarah Croft", initials: "SC", action: "uploaded document to", entity: "Manor Fields assessment", icon: "doc" as const },
-  { time: "3 days ago", user: "Tom Jenkins", initials: "TJ", action: "scheduled assessment for", entity: "Riverside Meadows", icon: "calendar" as const },
-  { time: "4 days ago", user: "System", initials: "SY", action: "Deal D-0050 moved to", entity: "Payment Received", icon: "move" as const },
+  { time: "3 days ago", user: "Tom Jenkins", initials: "TJ", action: "scheduled assessment for", entity: "Test Valley Grassland", icon: "calendar" as const },
+  { time: "4 days ago", user: "System", initials: "SY", action: "Deal D-0046 moved to", entity: "Payment Received", icon: "move" as const },
 ]
+
+// Formatted display values from shared data
+const pipelineDisplay = `\u00A3${pipelineValue.toLocaleString("en-GB")}`
+const commissionDisplay = `\u00A3${commissionYTD.toLocaleString("en-GB")}`
 
 type Variation = "v1" | "v2" | "v3"
 type DateRange = "7d" | "30d" | "90d" | "YTD"
@@ -203,8 +291,8 @@ function DashboardV1({ dateRange, setDateRange }: { dateRange: DateRange; setDat
                   <ArrowUpRight className="h-3 w-3" /> +12%
                 </div>
               </div>
-              <p className="text-2xl font-bold tracking-tight">{"\u00A3"}2,403,800</p>
-              <p className="text-xs text-muted-foreground mt-1">Active Pipeline &middot; 17 active deals</p>
+              <p className="text-2xl font-bold tracking-tight">{pipelineDisplay}</p>
+              <p className="text-xs text-muted-foreground mt-1">Active Pipeline &middot; {activeDealsCount} active deals</p>
             </CardContent>
           </Card>
         </Link>
@@ -220,8 +308,8 @@ function DashboardV1({ dateRange, setDateRange }: { dateRange: DateRange; setDat
                   <ArrowDownRight className="h-3 w-3" /> -8%
                 </div>
               </div>
-              <p className="text-2xl font-bold tracking-tight">295 <span className="text-sm font-medium text-muted-foreground">kg N/yr</span></p>
-              <p className="text-xs text-muted-foreground mt-1">Credits Available &middot; across 4 active sites</p>
+              <p className="text-2xl font-bold tracking-tight">{availableNitrogenCredits} <span className="text-sm font-medium text-muted-foreground">kg N/yr</span></p>
+              <p className="text-xs text-muted-foreground mt-1">Credits Available &middot; across {sharedSites.filter(s => s.unitType === "Nitrogen" && s.available > 0).length} active sites</p>
             </CardContent>
           </Card>
         </Link>
@@ -237,8 +325,8 @@ function DashboardV1({ dateRange, setDateRange }: { dateRange: DateRange; setDat
                   <ArrowUpRight className="h-3 w-3" /> +24%
                 </div>
               </div>
-              <p className="text-2xl font-bold tracking-tight">{"\u00A3"}187,400</p>
-              <p className="text-xs text-muted-foreground mt-1">Commission YTD &middot; {"\u00A3"}42,600 this month</p>
+              <p className="text-2xl font-bold tracking-tight">{commissionDisplay}</p>
+              <p className="text-xs text-muted-foreground mt-1">Commission YTD</p>
             </CardContent>
           </Card>
         </Link>
@@ -250,10 +338,10 @@ function DashboardV1({ dateRange, setDateRange }: { dateRange: DateRange; setDat
                 <div className="p-2 rounded-lg bg-red-500/10">
                   <AlertTriangle className="h-4 w-4 text-red-600" />
                 </div>
-                <Badge className="bg-red-500 text-white text-[10px] px-1.5 py-0 border-0">3</Badge>
+                <Badge className="bg-red-500 text-white text-[10px] px-1.5 py-0 border-0">{overdueCount}</Badge>
               </div>
-              <p className="text-2xl font-bold tracking-tight">3 <span className="text-sm font-medium text-muted-foreground">items</span></p>
-              <p className="text-xs text-muted-foreground mt-1">Overdue Compliance &middot; 7 due this week</p>
+              <p className="text-2xl font-bold tracking-tight">{overdueCount} <span className="text-sm font-medium text-muted-foreground">items</span></p>
+              <p className="text-xs text-muted-foreground mt-1">Overdue Compliance</p>
             </CardContent>
           </Card>
         </Link>
@@ -320,7 +408,7 @@ function DashboardV1({ dateRange, setDateRange }: { dateRange: DateRange; setDat
               </ResponsiveContainer>
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                 <div className="text-center">
-                  <p className="text-lg font-bold">600</p>
+                  <p className="text-lg font-bold">{totalNitrogenCredits}</p>
                   <p className="text-[10px] text-muted-foreground">kg total capacity</p>
                 </div>
               </div>
@@ -377,14 +465,19 @@ function DashboardV1({ dateRange, setDateRange }: { dateRange: DateRange; setDat
         {/* Upcoming Assessments */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-semibold flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-              Upcoming Assessments
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                <Calendar className="h-4 w-4 text-muted-foreground" />
+                Upcoming Assessments
+              </CardTitle>
+              <Link href="/admin/brokerage-mockups/assessments" className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
+                View All <ArrowRight className="h-3 w-3" />
+              </Link>
+            </div>
           </CardHeader>
           <CardContent className="space-y-3">
             {UPCOMING_ASSESSMENTS.map((a, i) => (
-              <div key={i} className="flex items-center gap-3 p-2.5 rounded-lg border border-border hover:bg-accent/30 transition-colors">
+              <Link key={i} href={`/admin/brokerage-mockups/sites/${a.siteRef}`} className="flex items-center gap-3 p-2.5 rounded-lg border border-border hover:bg-accent/30 hover:shadow-sm transition-all cursor-pointer">
                 <div className="bg-muted rounded-md px-2.5 py-1.5 text-center shrink-0">
                   <p className="text-[10px] font-medium text-muted-foreground leading-none">{a.date.split(" ")[0]}</p>
                   <p className="text-sm font-bold leading-tight">{a.date.split(" ")[1]}</p>
@@ -405,7 +498,7 @@ function DashboardV1({ dateRange, setDateRange }: { dateRange: DateRange; setDat
                 }>
                   {a.status}
                 </Badge>
-              </div>
+              </Link>
             ))}
           </CardContent>
         </Card>
@@ -428,7 +521,7 @@ function DashboardV1({ dateRange, setDateRange }: { dateRange: DateRange; setDat
           </CardHeader>
           <CardContent className="space-y-3">
             {OVERDUE_COMPLIANCE.map((item, i) => (
-              <div key={i} className="border-l-2 border-red-500 pl-3 py-2 rounded-r-lg bg-red-500/[0.03] hover:bg-red-500/[0.06] transition-colors">
+              <Link key={i} href="/admin/brokerage-mockups/compliance" className="block border-l-2 border-red-500 pl-3 py-2 rounded-r-lg bg-red-500/[0.03] hover:bg-red-500/[0.06] hover:shadow-sm transition-all cursor-pointer">
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="text-sm font-medium">{item.title}</p>
@@ -441,7 +534,7 @@ function DashboardV1({ dateRange, setDateRange }: { dateRange: DateRange; setDat
                 <p className="text-xs text-red-600 font-medium mt-1">
                   Due {item.due} &middot; {item.daysOverdue} days overdue
                 </p>
-              </div>
+              </Link>
             ))}
           </CardContent>
         </Card>
@@ -450,10 +543,15 @@ function DashboardV1({ dateRange, setDateRange }: { dateRange: DateRange; setDat
       {/* Activity Feed */}
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-semibold flex items-center gap-2">
-            <Activity className="h-4 w-4 text-muted-foreground" />
-            Recent Activity
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <Activity className="h-4 w-4 text-muted-foreground" />
+              Recent Activity
+            </CardTitle>
+            <Link href="/admin/brokerage-mockups/reports" className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
+              View All <ArrowRight className="h-3 w-3" />
+            </Link>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="space-y-1">
@@ -547,9 +645,9 @@ function DashboardV2({ dateRange, setDateRange }: { dateRange: DateRange; setDat
                 <ArrowUpRight className="h-3 w-3" /> 12%
               </div>
             </div>
-            <p className="text-3xl font-bold tracking-tight">{"\u00A3"}2.40M</p>
+            <p className="text-3xl font-bold tracking-tight">{pipelineDisplay}</p>
             <p className="text-xs text-slate-400 mt-1.5">Active Pipeline</p>
-            <p className="text-[11px] text-slate-500 mt-0.5">17 active deals</p>
+            <p className="text-[11px] text-slate-500 mt-0.5">{activeDealsCount} active deals</p>
           </div>
         </Link>
 
@@ -563,9 +661,9 @@ function DashboardV2({ dateRange, setDateRange }: { dateRange: DateRange; setDat
                 <ArrowDownRight className="h-3 w-3" /> 8%
               </div>
             </div>
-            <p className="text-3xl font-bold tracking-tight">295</p>
+            <p className="text-3xl font-bold tracking-tight">{availableNitrogenCredits}</p>
             <p className="text-xs text-slate-400 mt-1.5">Credits Available (kg N/yr)</p>
-            <p className="text-[11px] text-slate-500 mt-0.5">Across 4 active sites</p>
+            <p className="text-[11px] text-slate-500 mt-0.5">Across {sharedSites.filter(s => s.unitType === "Nitrogen" && s.available > 0).length} active sites</p>
           </div>
         </Link>
 
@@ -579,9 +677,8 @@ function DashboardV2({ dateRange, setDateRange }: { dateRange: DateRange; setDat
                 <ArrowUpRight className="h-3 w-3" /> 24%
               </div>
             </div>
-            <p className="text-3xl font-bold tracking-tight">{"\u00A3"}187.4K</p>
+            <p className="text-3xl font-bold tracking-tight">{commissionDisplay}</p>
             <p className="text-xs text-slate-400 mt-1.5">Commission YTD</p>
-            <p className="text-[11px] text-slate-500 mt-0.5">{"\u00A3"}42,600 this month</p>
           </div>
         </Link>
 
@@ -592,12 +689,11 @@ function DashboardV2({ dateRange, setDateRange }: { dateRange: DateRange; setDat
                 <AlertTriangle className="h-5 w-5 text-red-400" />
               </div>
               <div className="h-6 w-6 rounded-full bg-red-500 text-white text-xs font-bold flex items-center justify-center animate-pulse">
-                3
+                {overdueCount}
               </div>
             </div>
-            <p className="text-3xl font-bold tracking-tight">3</p>
+            <p className="text-3xl font-bold tracking-tight">{overdueCount}</p>
             <p className="text-xs text-slate-400 mt-1.5">Overdue Compliance</p>
-            <p className="text-[11px] text-slate-500 mt-0.5">7 due this week</p>
           </div>
         </Link>
       </div>
@@ -657,7 +753,7 @@ function DashboardV2({ dateRange, setDateRange }: { dateRange: DateRange; setDat
             </ResponsiveContainer>
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
               <div className="text-center">
-                <p className="text-xl font-bold text-white">600</p>
+                <p className="text-xl font-bold text-white">{totalNitrogenCredits}</p>
                 <p className="text-[10px] text-slate-400">kg total capacity</p>
               </div>
             </div>
@@ -678,13 +774,18 @@ function DashboardV2({ dateRange, setDateRange }: { dateRange: DateRange; setDat
       <div className="grid grid-cols-2 gap-4">
         {/* Upcoming Assessments */}
         <div className="rounded-xl bg-gradient-to-br from-slate-900 to-slate-800 border border-slate-700/50 p-5">
-          <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
-            <Calendar className="h-4 w-4 text-slate-400" />
-            Upcoming Assessments
-          </h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-slate-400" />
+              Upcoming Assessments
+            </h3>
+            <Link href="/admin/brokerage-mockups/assessments" className="text-xs text-slate-400 hover:text-white transition-colors flex items-center gap-1">
+              View All <ArrowRight className="h-3 w-3" />
+            </Link>
+          </div>
           <div className="space-y-2.5">
             {UPCOMING_ASSESSMENTS.map((a, i) => (
-              <div key={i} className="flex items-center gap-3 p-3 rounded-lg bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.06] transition-colors">
+              <Link key={i} href={`/admin/brokerage-mockups/sites/${a.siteRef}`} className="flex items-center gap-3 p-3 rounded-lg bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.06] transition-colors cursor-pointer">
                 <div className="bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1.5 text-center shrink-0">
                   <p className="text-[10px] font-medium text-slate-500 leading-none">{a.date.split(" ")[0]}</p>
                   <p className="text-sm font-bold text-white leading-tight">{a.date.split(" ")[1]}</p>
@@ -706,7 +807,7 @@ function DashboardV2({ dateRange, setDateRange }: { dateRange: DateRange; setDat
                 }`}>
                   {a.status}
                 </span>
-              </div>
+              </Link>
             ))}
           </div>
         </div>
@@ -729,7 +830,7 @@ function DashboardV2({ dateRange, setDateRange }: { dateRange: DateRange; setDat
           </div>
           <div className="space-y-2.5">
             {OVERDUE_COMPLIANCE.map((item, i) => (
-              <div key={i} className="border-l-2 border-red-500 pl-3 py-2.5 pr-3 rounded-r-lg bg-red-500/[0.05] hover:bg-red-500/[0.08] transition-colors">
+              <Link key={i} href="/admin/brokerage-mockups/compliance" className="block border-l-2 border-red-500 pl-3 py-2.5 pr-3 rounded-r-lg bg-red-500/[0.05] hover:bg-red-500/[0.08] transition-colors cursor-pointer">
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="text-sm font-medium text-white">{item.title}</p>
@@ -742,7 +843,7 @@ function DashboardV2({ dateRange, setDateRange }: { dateRange: DateRange; setDat
                 <p className="text-xs text-red-400 font-medium mt-1.5">
                   Due {item.due} &middot; {item.daysOverdue} days overdue
                 </p>
-              </div>
+              </Link>
             ))}
           </div>
         </div>
@@ -750,10 +851,15 @@ function DashboardV2({ dateRange, setDateRange }: { dateRange: DateRange; setDat
 
       {/* Activity Feed */}
       <div className="rounded-xl bg-gradient-to-br from-slate-900 to-slate-800 border border-slate-700/50 p-5">
-        <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
-          <Activity className="h-4 w-4 text-slate-400" />
-          Recent Activity
-        </h3>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+            <Activity className="h-4 w-4 text-slate-400" />
+            Recent Activity
+          </h3>
+          <Link href="/admin/brokerage-mockups/reports" className="text-xs text-slate-400 hover:text-white transition-colors flex items-center gap-1">
+            View All <ArrowRight className="h-3 w-3" />
+          </Link>
+        </div>
         <div className="space-y-0.5">
           {RECENT_ACTIVITY.map((item, i) => (
             <div key={i} className="flex items-center gap-3 py-2.5 px-3 rounded-lg hover:bg-white/[0.03] transition-colors">
@@ -831,12 +937,12 @@ function DashboardV3({ dateRange, setDateRange }: { dateRange: DateRange; setDat
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between">
-                <p className="text-lg font-bold tracking-tight leading-none">{"\u00A3"}2,403,800</p>
+                <p className="text-2xl font-bold tracking-tight leading-none">{pipelineDisplay}</p>
                 <span className="text-[10px] font-semibold text-emerald-600 flex items-center gap-0.5">
                   <ArrowUpRight className="h-2.5 w-2.5" />12%
                 </span>
               </div>
-              <p className="text-[10px] text-muted-foreground mt-0.5">Active Pipeline &middot; 17 deals</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">Active Pipeline &middot; {activeDealsCount} deals</p>
             </div>
           </div>
         </Link>
@@ -848,12 +954,12 @@ function DashboardV3({ dateRange, setDateRange }: { dateRange: DateRange; setDat
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between">
-                <p className="text-lg font-bold tracking-tight leading-none">295 <span className="text-[10px] font-normal text-muted-foreground">kg</span></p>
+                <p className="text-2xl font-bold tracking-tight leading-none">{availableNitrogenCredits} <span className="text-[10px] font-normal text-muted-foreground">kg</span></p>
                 <span className="text-[10px] font-semibold text-amber-600 flex items-center gap-0.5">
                   <ArrowDownRight className="h-2.5 w-2.5" />8%
                 </span>
               </div>
-              <p className="text-[10px] text-muted-foreground mt-0.5">Credits &middot; 4 sites</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">Credits &middot; {sharedSites.filter(s => s.unitType === "Nitrogen" && s.available > 0).length} sites</p>
             </div>
           </div>
         </Link>
@@ -865,12 +971,12 @@ function DashboardV3({ dateRange, setDateRange }: { dateRange: DateRange; setDat
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between">
-                <p className="text-lg font-bold tracking-tight leading-none">{"\u00A3"}187,400</p>
+                <p className="text-2xl font-bold tracking-tight leading-none">{commissionDisplay}</p>
                 <span className="text-[10px] font-semibold text-emerald-600 flex items-center gap-0.5">
                   <ArrowUpRight className="h-2.5 w-2.5" />24%
                 </span>
               </div>
-              <p className="text-[10px] text-muted-foreground mt-0.5">Commission &middot; {"\u00A3"}42.6K/mo</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">Commission YTD</p>
             </div>
           </div>
         </Link>
@@ -882,10 +988,10 @@ function DashboardV3({ dateRange, setDateRange }: { dateRange: DateRange; setDat
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between">
-                <p className="text-lg font-bold tracking-tight leading-none text-red-600">3</p>
+                <p className="text-2xl font-bold tracking-tight leading-none text-red-600">{overdueCount}</p>
                 <span className="text-[10px] font-semibold bg-red-500 text-white px-1.5 py-0 rounded-full">!</span>
               </div>
-              <p className="text-[10px] text-muted-foreground mt-0.5">Overdue &middot; 7 due this week</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">Overdue Compliance</p>
             </div>
           </div>
         </Link>
@@ -894,7 +1000,7 @@ function DashboardV3({ dateRange, setDateRange }: { dateRange: DateRange; setDat
       {/* Dense 3-column layout */}
       <div className="grid grid-cols-12 gap-3">
         {/* Charts Column - 5 cols */}
-        <div className="col-span-5 space-y-3">
+        <div className="col-span-12 lg:col-span-5 space-y-3">
           {/* Deals by Stage */}
           <Card className="shadow-none">
             <CardContent className="p-3">
@@ -944,7 +1050,7 @@ function DashboardV3({ dateRange, setDateRange }: { dateRange: DateRange; setDat
                   </ResponsiveContainer>
                   <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                     <div className="text-center">
-                      <p className="text-xs font-bold">600</p>
+                      <p className="text-xs font-bold">{totalNitrogenCredits}</p>
                       <p className="text-[8px] text-muted-foreground">total kg</p>
                     </div>
                   </div>
@@ -971,14 +1077,19 @@ function DashboardV3({ dateRange, setDateRange }: { dateRange: DateRange; setDat
         </div>
 
         {/* Middle Column - Assessments + Compliance - 4 cols */}
-        <div className="col-span-4 space-y-3">
+        <div className="col-span-12 lg:col-span-4 space-y-3">
           {/* Upcoming Assessments - compact */}
           <Card className="shadow-none">
             <CardContent className="p-3">
-              <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">Upcoming Assessments</h3>
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Upcoming Assessments</h3>
+                <Link href="/admin/brokerage-mockups/assessments" className="text-[10px] text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
+                  View All <ArrowRight className="h-2.5 w-2.5" />
+                </Link>
+              </div>
               <div className="space-y-1">
                 {UPCOMING_ASSESSMENTS.map((a, i) => (
-                  <div key={i} className="flex items-center gap-2 py-1.5 px-2 rounded hover:bg-accent/30 transition-colors">
+                  <Link key={i} href={`/admin/brokerage-mockups/sites/${a.siteRef}`} className="flex items-center gap-2 py-1.5 px-2 rounded hover:bg-accent/30 transition-colors cursor-pointer">
                     <span className="text-[10px] font-mono font-medium text-muted-foreground w-16 shrink-0">{a.date}</span>
                     <span className="text-xs font-medium truncate flex-1">{a.site}</span>
                     <TooltipProvider delayDuration={200}>
@@ -998,7 +1109,7 @@ function DashboardV3({ dateRange, setDateRange }: { dateRange: DateRange; setDat
                     }`}>
                       {a.status === "Confirmed" ? "CONF" : "SCHED"}
                     </span>
-                  </div>
+                  </Link>
                 ))}
               </div>
             </CardContent>
@@ -1018,13 +1129,13 @@ function DashboardV3({ dateRange, setDateRange }: { dateRange: DateRange; setDat
               </div>
               <div className="space-y-1">
                 {OVERDUE_COMPLIANCE.map((item, i) => (
-                  <div key={i} className="border-l-2 border-red-500 pl-2 py-1.5">
+                  <Link key={i} href="/admin/brokerage-mockups/compliance" className="block border-l-2 border-red-500 pl-2 py-1.5 hover:bg-red-500/[0.04] rounded-r transition-colors cursor-pointer">
                     <p className="text-xs font-medium leading-tight">{item.title}</p>
                     <div className="flex items-center justify-between mt-0.5">
                       <span className="text-[10px] text-muted-foreground">{item.site}</span>
                       <span className="text-[10px] text-red-600 font-medium">{item.daysOverdue}d overdue</span>
                     </div>
-                  </div>
+                  </Link>
                 ))}
               </div>
             </CardContent>
@@ -1037,7 +1148,7 @@ function DashboardV3({ dateRange, setDateRange }: { dateRange: DateRange; setDat
               <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
                 <div className="flex items-center justify-between text-[11px]">
                   <span className="text-muted-foreground">Avg Deal Value</span>
-                  <span className="font-semibold tabular-nums">{"\u00A3"}130K</span>
+                  <span className="font-semibold tabular-nums">{"\u00A3"}{activeDealsCount > 0 ? `${Math.round(pipelineValue / activeDealsCount / 1000)}K` : "–"}</span>
                 </div>
                 <div className="flex items-center justify-between text-[11px]">
                   <span className="text-muted-foreground">Win Rate</span>
@@ -1053,7 +1164,7 @@ function DashboardV3({ dateRange, setDateRange }: { dateRange: DateRange; setDat
                 </div>
                 <div className="flex items-center justify-between text-[11px]">
                   <span className="text-muted-foreground">Sites Active</span>
-                  <span className="font-semibold tabular-nums">6</span>
+                  <span className="font-semibold tabular-nums">{sharedSites.filter(s => ["Active", "Registered", "Fully Allocated"].includes(s.status)).length}</span>
                 </div>
                 <div className="flex items-center justify-between text-[11px]">
                   <span className="text-muted-foreground">Supply Gap</span>
@@ -1065,7 +1176,7 @@ function DashboardV3({ dateRange, setDateRange }: { dateRange: DateRange; setDat
                 </div>
                 <div className="flex items-center justify-between text-[11px]">
                   <span className="text-muted-foreground">Invoices Pending</span>
-                  <span className="font-semibold tabular-nums text-amber-600">3</span>
+                  <span className="font-semibold tabular-nums text-amber-600">{sharedInvoices.filter(i => i.status !== "Paid" && i.status !== "Draft").length}</span>
                 </div>
               </div>
             </CardContent>
@@ -1073,10 +1184,15 @@ function DashboardV3({ dateRange, setDateRange }: { dateRange: DateRange; setDat
         </div>
 
         {/* Activity Column - 3 cols */}
-        <div className="col-span-3">
+        <div className="col-span-12 lg:col-span-3">
           <Card className="shadow-none h-full">
             <CardContent className="p-3 h-full flex flex-col">
-              <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">Activity Feed</h3>
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Activity Feed</h3>
+                <Link href="/admin/brokerage-mockups/reports" className="text-[10px] text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
+                  View All <ArrowRight className="h-2.5 w-2.5" />
+                </Link>
+              </div>
               <ScrollArea className="flex-1">
                 <div className="space-y-0.5 pr-2">
                   {RECENT_ACTIVITY.map((item, i) => (

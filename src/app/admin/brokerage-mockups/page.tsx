@@ -1,4 +1,5 @@
 import Link from "next/link"
+import { totalCommissionYTD } from "./_mock-data"
 import {
   LayoutDashboard,
   Handshake,
@@ -13,6 +14,7 @@ import {
   BarChart3,
   Settings,
   Play,
+  Brain,
 } from "lucide-react"
 
 const sections = [
@@ -92,7 +94,7 @@ const sections = [
     href: "/admin/brokerage-mockups/financials",
     title: "Financials",
     description: "Commission tracking, invoice management, and payment ledger. Split breakdowns and broker performance.",
-    stat: "£187K earned YTD",
+    stat: `£${Math.round(totalCommissionYTD / 1000)}K earned YTD`,
     color: "bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800 text-green-700 dark:text-green-300",
     icon: PoundSterling,
   },
@@ -108,17 +110,25 @@ const sections = [
     href: "/admin/brokerage-mockups/settings",
     title: "Settings",
     description: "Verticals, commission rates, team management, integrations, and notification preferences.",
-    stat: "Configure",
+    stat: "3 verticals",
     color: "bg-slate-50 dark:bg-slate-950/30 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300",
     icon: Settings,
   },
   {
     href: "/admin/brokerage-mockups/demo",
     title: "Demo Walkthrough",
-    description: "Guided tour through a complete deal lifecycle — from new landowner contact to credit allocation and compliance.",
+    description: "Guided tour through a complete deal lifecycle - from new landowner contact to credit allocation and compliance.",
     stat: "14 steps",
     color: "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300",
     icon: Play,
+  },
+  {
+    href: "/admin/brokerage-mockups/ai-assistant",
+    title: "AI Platform Vision",
+    description: "Pitch-deck style walkthrough of the 5-phase AI roadmap. Read-only intelligence → autonomous overnight operations. Includes infrastructure architecture diagram.",
+    stat: "5 phases",
+    color: "bg-violet-50 dark:bg-violet-950/30 border-violet-200 dark:border-violet-800 text-violet-700 dark:text-violet-300",
+    icon: Brain,
   },
 ]
 
@@ -144,7 +154,7 @@ export default function BrokerageMockupsPage() {
             <Link
               key={s.href}
               href={s.href}
-              className="group border border-border rounded-xl p-6 hover:border-primary/30 hover:shadow-sm transition-all bg-card"
+              className="group border border-border rounded-xl p-6 hover:border-primary/30 hover:shadow-sm transition-all bg-card h-full flex flex-col"
             >
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-2.5">
@@ -159,7 +169,7 @@ export default function BrokerageMockupsPage() {
                   {s.stat}
                 </span>
               </div>
-              <p className="text-sm text-muted-foreground leading-relaxed">
+              <p className="text-sm text-muted-foreground leading-relaxed flex-1">
                 {s.description}
               </p>
               <div className="mt-4 flex items-center gap-1 text-xs text-primary font-medium opacity-0 group-hover:opacity-100 transition-opacity">

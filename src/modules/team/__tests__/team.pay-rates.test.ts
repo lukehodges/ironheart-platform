@@ -106,7 +106,7 @@ function setQueue(...results: unknown[][]) {
 }
 
 // ---------------------------------------------------------------------------
-// teamRepository — Pay Rates
+// teamRepository - Pay Rates
 // ---------------------------------------------------------------------------
 
 describe('teamRepository.createPayRate', () => {

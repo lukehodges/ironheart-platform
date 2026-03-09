@@ -126,7 +126,7 @@ describe('validateWorkflowGraph', () => {
     ]
     const edges: WorkflowEdge[] = [
       makeEdge('e-trigger', 't1', 'if1'),
-      // Only false edge — missing true edge
+      // Only false edge - missing true edge
       makeEdge('e-false', 'if1', 'e1', 'false'),
     ]
     const errors = validateWorkflowGraph(nodes, edges)
@@ -141,7 +141,7 @@ describe('validateWorkflowGraph', () => {
     ]
     const edges: WorkflowEdge[] = [
       makeEdge('e-trigger', 't1', 'if1'),
-      // Only true edge — missing false edge
+      // Only true edge - missing false edge
       makeEdge('e-true', 'if1', 'e1', 'true'),
     ]
     const errors = validateWorkflowGraph(nodes, edges)
@@ -184,7 +184,7 @@ describe('validateWorkflowGraph', () => {
     ]
     const edges: WorkflowEdge[] = [
       makeEdge('e-trigger', 't1', 'wait1'),
-      // Only timeout edge — no "received" edge
+      // Only timeout edge - no "received" edge
       makeEdge('e-timeout', 'wait1', 'e1', 'timeout'),
     ]
     const errors = validateWorkflowGraph(nodes, edges)

@@ -30,7 +30,7 @@ interface StaffFilterChipsProps {
 }
 
 // ---------------------------------------------------------------------------
-// Loading skeleton — 4 chips
+// Loading skeleton - 4 chips
 // ---------------------------------------------------------------------------
 
 function StaffFilterChipsSkeleton() {

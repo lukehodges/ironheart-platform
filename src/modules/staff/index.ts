@@ -1,2 +1,2 @@
-// Placeholder — implemented in Phase 5
+// Placeholder - implemented in Phase 5
 export {};

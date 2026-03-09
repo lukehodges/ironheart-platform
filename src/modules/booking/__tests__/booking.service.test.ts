@@ -65,7 +65,7 @@ vi.mock("@/modules/payment/payment.service", () => ({
   voidInvoice: vi.fn().mockResolvedValue(undefined),
 }));
 
-// Stateful Redis mock — tracks stored values so get() returns what set() stored.
+// Stateful Redis mock - tracks stored values so get() returns what set() stored.
 // This is required to test the lock token check in releaseSlotLock correctly.
 const redisStore: Record<string, string> = {};
 vi.mock("@/shared/redis", () => ({
@@ -147,7 +147,7 @@ describe("bookingService.createBooking", () => {
   });
 
   it("acquires Redis lock before capacity check", async () => {
-    // redis.set/get/del use the stateful mock from beforeEach — no override needed
+    // redis.set/get/del use the stateful mock from beforeEach - no override needed
     vi.mocked(bookingRepository.findSlotById).mockResolvedValue(makeSlot() as never);
     vi.mocked(bookingRepository.create).mockResolvedValue(makeBooking() as never);
     vi.mocked(bookingRepository.decrementSlotCapacity).mockResolvedValue(undefined);
@@ -157,7 +157,7 @@ describe("bookingService.createBooking", () => {
 
     expect(redis.set).toHaveBeenCalledWith(
       `lock:slot:${TENANT_ID}:${SLOT_ID}`,
-      expect.any(String), // UUID token — exact value not known ahead of time
+      expect.any(String), // UUID token - exact value not known ahead of time
       { nx: true, px: 5000 }
     );
     expect(redis.del).toHaveBeenCalled();
@@ -173,7 +173,7 @@ describe("bookingService.createBooking", () => {
   });
 
   it("releases lock even when slot capacity check throws", async () => {
-    // redis.set/get/del use the stateful mock from beforeEach — no override needed
+    // redis.set/get/del use the stateful mock from beforeEach - no override needed
     vi.mocked(bookingRepository.findSlotById).mockResolvedValue(makeSlot({ available: false }) as never);
 
     await expect(bookingService.createBooking(TENANT_ID, makeMinimalInput()))
@@ -182,9 +182,9 @@ describe("bookingService.createBooking", () => {
     expect(redis.del).toHaveBeenCalled();
   });
 
-  // CTO review item 9.2 — explicit slot capacity check: bookedCount >= capacity
+  // CTO review item 9.2 - explicit slot capacity check: bookedCount >= capacity
   it("throws ConflictError when slot bookedCount equals capacity (slot full)", async () => {
-    // redis.set/get/del use the stateful mock from beforeEach — no override needed
+    // redis.set/get/del use the stateful mock from beforeEach - no override needed
     vi.mocked(bookingRepository.findSlotById).mockResolvedValue(
       makeSlot({ available: true, capacity: 5, bookedCount: 5 }) as never
     );
@@ -199,7 +199,7 @@ describe("bookingService.createBooking", () => {
   });
 
   it("throws ConflictError when slot bookedCount exceeds capacity", async () => {
-    // redis.set/get/del use the stateful mock from beforeEach — no override needed
+    // redis.set/get/del use the stateful mock from beforeEach - no override needed
     vi.mocked(bookingRepository.findSlotById).mockResolvedValue(
       makeSlot({ available: true, capacity: 3, bookedCount: 7 }) as never
     );
@@ -212,7 +212,7 @@ describe("bookingService.createBooking", () => {
   });
 
   it("returns a 64-char confirmation token for RESERVED bookings", async () => {
-    // redis.set/get/del use the stateful mock from beforeEach — no override needed
+    // redis.set/get/del use the stateful mock from beforeEach - no override needed
     vi.mocked(bookingRepository.findSlotById).mockResolvedValue(makeSlot() as never);
     vi.mocked(bookingRepository.create).mockResolvedValue(makeBooking() as never);
     vi.mocked(bookingRepository.decrementSlotCapacity).mockResolvedValue(undefined);
@@ -236,7 +236,7 @@ describe("bookingService.createBooking", () => {
   });
 
   it("fires slot/reserved Inngest event for RESERVED bookings", async () => {
-    // redis.set/get/del use the stateful mock from beforeEach — no override needed
+    // redis.set/get/del use the stateful mock from beforeEach - no override needed
     vi.mocked(bookingRepository.findSlotById).mockResolvedValue(makeSlot() as never);
     vi.mocked(bookingRepository.create).mockResolvedValue(makeBooking() as never);
     vi.mocked(bookingRepository.decrementSlotCapacity).mockResolvedValue(undefined);
@@ -325,9 +325,9 @@ describe("bookingService.confirmReservation", () => {
     const confirmedBooking = makeBooking({ status: "CONFIRMED", confirmationTokenHash: correctHash });
 
     // findByIdPublic is called 3 times in the CONFIRMED path:
-    // 1. Initial read (line 159) — returns RESERVED
-    // 2. Re-read inside slot lock (line 202) — returns RESERVED
-    // 3. Final return after saga completes (line 268) — returns CONFIRMED
+    // 1. Initial read (line 159) - returns RESERVED
+    // 2. Re-read inside slot lock (line 202) - returns RESERVED
+    // 3. Final return after saga completes (line 268) - returns CONFIRMED
     vi.mocked(bookingRepository.findByIdPublic)
       .mockResolvedValueOnce(reservedBooking as never)
       .mockResolvedValueOnce(reservedBooking as never)
@@ -352,9 +352,9 @@ describe("bookingService.confirmReservation", () => {
     const confirmedBooking = makeBooking({ status: "CONFIRMED", confirmationTokenHash: correctHash });
 
     // findByIdPublic is called 3 times in the CONFIRMED path:
-    // 1. Initial read — returns RESERVED
-    // 2. Re-read inside slot lock — returns RESERVED
-    // 3. Final return after saga completes — returns CONFIRMED
+    // 1. Initial read - returns RESERVED
+    // 2. Re-read inside slot lock - returns RESERVED
+    // 3. Final return after saga completes - returns CONFIRMED
     vi.mocked(bookingRepository.findByIdPublic)
       .mockResolvedValueOnce(reservedBooking as never)
       .mockResolvedValueOnce(reservedBooking as never)
@@ -362,7 +362,7 @@ describe("bookingService.confirmReservation", () => {
     vi.mocked(bookingRepository.findCustomerEmailForBooking).mockResolvedValue("Customer@Example.COM");
     vi.mocked(bookingRepository.recordStatusChange).mockResolvedValue(undefined);
 
-    // Should succeed — emails match case-insensitively
+    // Should succeed - emails match case-insensitively
     const result = await bookingService.confirmReservation(BOOKING_ID, "customer@example.com", correctToken);
     expect(result.status).toBe("CONFIRMED");
   });

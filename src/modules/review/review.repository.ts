@@ -18,7 +18,7 @@ import type {
 const log = logger.child({ module: "review.repository" });
 
 // ---------------------------------------------------------------------------
-// Mappers — bridge schema shape to domain types
+// Mappers - bridge schema shape to domain types
 // ---------------------------------------------------------------------------
 
 function mapReview(row: typeof reviews.$inferSelect): ReviewRecord {
@@ -104,7 +104,7 @@ export const reviewRepository = {
       "createRequest"
     );
 
-    // Need customer name/email — use placeholder values since they're required by schema
+    // Need customer name/email - use placeholder values since they're required by schema
     // In practice the service layer should look these up before calling
     const [row] = await db
       .insert(reviewRequests)

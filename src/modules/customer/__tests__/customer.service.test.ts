@@ -146,7 +146,7 @@ describe('customerService.mergeCustomers', () => {
     const ctx = makeCtx()
     await customerService.mergeCustomers(ctx, SOURCE_ID, TARGET_ID)
 
-    // merge() is called — it handles soft-delete as part of the 7-table cascade
+    // merge() is called - it handles soft-delete as part of the 7-table cascade
     expect(customerRepository.merge).toHaveBeenCalledTimes(1)
   })
 })

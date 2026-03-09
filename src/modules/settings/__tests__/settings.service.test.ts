@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 // ---------------------------------------------------------------------------
-// Mocks — must be defined before imports
+// Mocks - must be defined before imports
 // ---------------------------------------------------------------------------
 
 vi.mock('../settings.repository', () => ({
@@ -32,7 +32,7 @@ vi.mock('@/shared/logger', () => ({
 }))
 
 // ---------------------------------------------------------------------------
-// Imports — after mocks
+// Imports - after mocks
 // ---------------------------------------------------------------------------
 
 import { settingsService } from '../settings.service'

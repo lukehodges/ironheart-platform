@@ -4,7 +4,7 @@ import type { CalendarIntegrationProvider } from '../calendar-sync.types'
 /**
  * Resolve the CalendarProvider implementation for a given provider enum value.
  *
- * This is called per-integration — the provider value is stored in
+ * This is called per-integration - the provider value is stored in
  * userIntegrations.provider and drives which implementation is used.
  *
  * Adding a new calendar provider requires:

@@ -58,7 +58,7 @@ export function checkUserPermission(
 }
 
 /**
- * usePermission hook — returns boolean.
+ * usePermission hook - returns boolean.
  * Requires user to be passed from the parent auth context.
  * Auth is provided by WorkOS AuthKit via the admin layout.
  */

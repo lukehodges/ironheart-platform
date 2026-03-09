@@ -43,7 +43,7 @@ import { buildNavSections } from "./nav-builder"
 
 /**
  * Map of icon string names (from module manifests) to Lucide icon components.
- * Shared with sidebar-nav.tsx — kept in sync.
+ * Shared with sidebar-nav.tsx - kept in sync.
  */
 const ICON_MAP: Record<string, LucideIcon> = {
   LayoutDashboard,

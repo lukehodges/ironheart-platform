@@ -1,7 +1,7 @@
 /**
  * Calendar-Sync Service
  *
- * Orchestrates calendar operations — OAuth flows, event push/pull,
+ * Orchestrates calendar operations - OAuth flows, event push/pull,
  * webhook handling, and token/watch-channel lifecycle management.
  *
  * Schema notes carried forward from the repository:
@@ -46,10 +46,10 @@ export const calendarSyncService = {
   ): Promise<CalendarPushResult | null> {
     // 1. Find the user's active integration
     // Note: DB enum is CONNECTED | DISCONNECTED | ERROR | EXPIRED; UserIntegrationRecord.status
-    // type has different values — cast to string for comparison to avoid TS2367.
+    // type has different values - cast to string for comparison to avoid TS2367.
     const integration = await calendarSyncRepository.findUserIntegration(userId, tenantId)
     if (!integration || (integration.status as string) !== 'CONNECTED') {
-      log.info({ userId, tenantId }, 'No active calendar integration — skipping push')
+      log.info({ userId, tenantId }, 'No active calendar integration - skipping push')
       return null
     }
 
@@ -73,7 +73,7 @@ export const calendarSyncService = {
     const calendarEvent = await provider.createEvent(tokens, eventInput)
 
     // 6. Upsert the external event record
-    // startTime and endTime are NOT NULL in the DB — fall back to now if missing
+    // startTime and endTime are NOT NULL in the DB - fall back to now if missing
     // (in practice the provider will always return them for a created event)
     const now = new Date()
     await calendarSyncRepository.upsertExternalEvent({
@@ -100,13 +100,13 @@ export const calendarSyncService = {
   },
 
   /**
-   * Pull external calendar events for a user (full range scan — no syncToken in current schema).
+   * Pull external calendar events for a user (full range scan - no syncToken in current schema).
    */
   async pullCalendarEvents(userIntegrationId: string): Promise<SyncResult> {
     const result: SyncResult = { eventsCreated: 0, eventsUpdated: 0, eventsDeleted: 0, errors: [] }
 
     const integration = await calendarSyncRepository.findUserIntegrationById(userIntegrationId)
-    // DB enum is CONNECTED | DISCONNECTED | ERROR | EXPIRED — cast to string to satisfy TS.
+    // DB enum is CONNECTED | DISCONNECTED | ERROR | EXPIRED - cast to string to satisfy TS.
     if (!integration || (integration.status as string) !== 'CONNECTED') {
       result.errors.push('Integration not found or not connected')
       return result
@@ -137,7 +137,7 @@ export const calendarSyncService = {
         })
 
         for (const event of events) {
-          // startTime / endTime are NOT NULL in the DB — skip events without them
+          // startTime / endTime are NOT NULL in the DB - skip events without them
           if (!event.startTime || !event.endTime) {
             log.warn(
               { externalEventId: event.externalId },
@@ -240,14 +240,14 @@ export const calendarSyncService = {
       const calendarId = integration.calendarId ?? 'primary'
       const webhookUrl = `${process.env.APP_URL ?? ''}/api/webhooks/google-calendar`
 
-      // Stop existing channel if present — resourceId maps to watchResourceId in the DB
+      // Stop existing channel if present - resourceId maps to watchResourceId in the DB
       if (integration.watchChannelId && integration.resourceId) {
         try {
           await provider.stopWatch(tokens, integration.watchChannelId, integration.resourceId)
         } catch (err) {
           log.warn(
             { userIntegrationId, err },
-            'Failed to stop old watch channel — continuing with renewal'
+            'Failed to stop old watch channel - continuing with renewal'
           )
         }
       }
@@ -263,7 +263,7 @@ export const calendarSyncService = {
         }
       }
 
-      // updateWatchChannel accepts resourceId — maps to DB watchResourceId internally
+      // updateWatchChannel accepts resourceId - maps to DB watchResourceId internally
       await calendarSyncRepository.updateWatchChannel(integration.id, {
         watchChannelId: watchResult.channelId,
         watchChannelToken: watchResult.channelToken,
@@ -289,7 +289,7 @@ export const calendarSyncService = {
   },
 
   /**
-   * Handle a calendar webhook notification — trigger incremental pull.
+   * Handle a calendar webhook notification - trigger incremental pull.
    * Called by the Inngest handler for calendar/webhook.received.
    */
   async handleWebhook(channelId: string, _resourceId: string): Promise<void> {
@@ -298,12 +298,12 @@ export const calendarSyncService = {
       log.warn({ channelId }, 'Webhook received for unknown channel')
       return
     }
-    log.info({ channelId, integrationId: integration.id }, 'Webhook received — triggering pull')
+    log.info({ channelId, integrationId: integration.id }, 'Webhook received - triggering pull')
     await calendarSyncService.pullCalendarEvents(integration.id)
   },
 
   /**
-   * Start OAuth flow — generate state, return auth URL.
+   * Start OAuth flow - generate state, return auth URL.
    */
   async initiateOAuth(
     userId: string,
@@ -317,7 +317,7 @@ export const calendarSyncService = {
   },
 
   /**
-   * Complete OAuth flow — exchange code, encrypt tokens, store integration.
+   * Complete OAuth flow - exchange code, encrypt tokens, store integration.
    */
   async completeOAuth(
     code: string,
@@ -341,11 +341,11 @@ export const calendarSyncService = {
       calendarId: 'primary',
     })
 
-    log.info({ userId, tenantId, provider }, 'Calendar OAuth completed — integration created')
+    log.info({ userId, tenantId, provider }, 'Calendar OAuth completed - integration created')
   },
 
   /**
-   * Disconnect a user integration — stop watch channels, clear tokens.
+   * Disconnect a user integration - stop watch channels, clear tokens.
    */
   async disconnect(
     userId: string,
@@ -391,7 +391,7 @@ async function getValidTokens(integration: UserIntegrationRecord): Promise<OAuth
     const decrypted = decryptOAuthTokens(integration)
 
     if (isTokenExpired(decrypted.expiresAt)) {
-      log.info({ integrationId: integration.id }, 'Access token expired — refreshing')
+      log.info({ integrationId: integration.id }, 'Access token expired - refreshing')
       const provider = await getCalendarProvider(integration.provider)
       const newTokens = await provider.refreshToken(decrypted.refreshToken)
       const encrypted = encryptOAuthTokens(newTokens)

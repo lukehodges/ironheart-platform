@@ -88,7 +88,7 @@ function DepartmentTreeNode({
           {department.memberCount}
         </Badge>
 
-        {/* Action buttons — visible on hover */}
+        {/* Action buttons - visible on hover */}
         <div className="ml-auto flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
           <Button
             variant="ghost"

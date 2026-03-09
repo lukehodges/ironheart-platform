@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Audit Module — Type Definitions
+// Audit Module - Type Definitions
 // ---------------------------------------------------------------------------
 
 /** A single audit log entry as returned from the database. */
@@ -34,11 +34,11 @@ export interface AuditLogFilters {
   userId?: string
   dateFrom?: Date
   dateTo?: Date
-  /** Alias for userId — used by the filters UI actor dropdown. */
+  /** Alias for userId - used by the filters UI actor dropdown. */
   actorId?: string
-  /** Alias for dateFrom — used by the filters UI date range picker. */
+  /** Alias for dateFrom - used by the filters UI date range picker. */
   from?: Date
-  /** Alias for dateTo — used by the filters UI date range picker. */
+  /** Alias for dateTo - used by the filters UI date range picker. */
   to?: Date
 }
 

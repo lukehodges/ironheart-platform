@@ -2,10 +2,10 @@
  * WorkOS AuthKit configuration.
  *
  * Required environment variables:
- *   WORKOS_CLIENT_ID       — From WorkOS dashboard → API Keys
- *   WORKOS_API_KEY         — From WorkOS dashboard → API Keys
- *   WORKOS_REDIRECT_URI    — http://localhost:3000/api/auth/callback (dev)
- *   WORKOS_COOKIE_PASSWORD — 32+ char random string (openssl rand -base64 32)
+ *   WORKOS_CLIENT_ID       - From WorkOS dashboard → API Keys
+ *   WORKOS_API_KEY         - From WorkOS dashboard → API Keys
+ *   WORKOS_REDIRECT_URI    - http://localhost:3000/api/auth/callback (dev)
+ *   WORKOS_COOKIE_PASSWORD - 32+ char random string (openssl rand -base64 32)
  *
  * @see https://workos.com/docs/user-management
  */
@@ -23,7 +23,7 @@ export type WorkOSUser = {
 };
 
 /**
- * WorkOS session shape — available in tRPC context after authentication.
+ * WorkOS session shape - available in tRPC context after authentication.
  */
 export type WorkOSSession = {
   user: WorkOSUser;

@@ -27,7 +27,7 @@ export const settingsRouter = router({
     ),
 
   // -----------------------------------------------------------------------
-  // Module tabs — registry-driven discovery
+  // Module tabs - registry-driven discovery
   // -----------------------------------------------------------------------
 
   getModuleTabs: tenantProcedure

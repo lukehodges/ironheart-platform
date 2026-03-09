@@ -6,7 +6,7 @@
  * Responsibilities:
  *   - Load booking data and build template variables
  *   - Resolve DB custom templates (with fallback to React Email system templates)
- *   - Emit Inngest events — providers are invoked by the Inngest event handlers,
+ *   - Emit Inngest events - providers are invoked by the Inngest event handlers,
  *     NOT directly from this service
  *
  * Idempotency is enforced by the event handler (notification.events.ts) which
@@ -43,7 +43,7 @@ const log = logger.child({ module: 'notification.service' })
  * trigger and variable set.
  *
  * Returns null when no system template is mapped to the trigger (e.g.
- * BOOKING_CREATED, PAYMENT_RECEIVED — no customer-facing email is needed by
+ * BOOKING_CREATED, PAYMENT_RECEIVED - no customer-facing email is needed by
  * default).
  *
  * Components are called as plain functions (not JSX) because this is a .ts
@@ -72,7 +72,7 @@ async function renderSystemEmailTemplate(
       const html = await render(BookingConfirmedEmail(props))
       const text = await render(BookingConfirmedEmail(props), { plainText: true })
       return {
-        subject: `Booking Confirmed — ${vars.serviceName}`,
+        subject: `Booking Confirmed - ${vars.serviceName}`,
         html,
         text,
       }
@@ -171,11 +171,11 @@ async function renderSystemEmailTemplate(
     }
 
     case 'REVIEW_REQUEST': {
-      // reviewUrl is required by ReviewRequestEmail — skip if absent.
+      // reviewUrl is required by ReviewRequestEmail - skip if absent.
       if (!vars.reviewUrl) {
         log.warn(
           { trigger, bookingNumber: vars.bookingNumber },
-          'notification.service: REVIEW_REQUEST skipped — reviewUrl is missing'
+          'notification.service: REVIEW_REQUEST skipped - reviewUrl is missing'
         )
         return null
       }
@@ -198,11 +198,11 @@ async function renderSystemEmailTemplate(
     }
 
     case 'PORTAL_INVITE': {
-      // portalUrl is required — skip if absent.
+      // portalUrl is required - skip if absent.
       if (!vars.portalUrl) {
         log.warn(
           { trigger },
-          'notification.service: PORTAL_INVITE skipped — portalUrl is missing'
+          'notification.service: PORTAL_INVITE skipped - portalUrl is missing'
         )
         return null
       }
@@ -365,7 +365,7 @@ export const notificationService = {
     if (!booking) {
       log.warn(
         { bookingId, trigger, tenantId },
-        'notification.service: booking not found — skipping notification'
+        'notification.service: booking not found - skipping notification'
       )
       return
     }
@@ -420,7 +420,7 @@ export const notificationService = {
       } else {
         log.warn(
           { bookingId, trigger, tenantId },
-          'notification.service: no email template available for trigger — skipping email'
+          'notification.service: no email template available for trigger - skipping email'
         )
       }
     }
@@ -478,8 +478,8 @@ export const notificationService = {
  * defined in BookingForVariables (no serviceId). We use a cast here to pass
  * the serviceId to resolveTemplate without modifying the public interface.
  *
- * In practice, the raw DB row always has a serviceId — it is NOT NULL in the
- * schema — so this cast is safe.
+ * In practice, the raw DB row always has a serviceId - it is NOT NULL in the
+ * schema - so this cast is safe.
  */
 interface BookingWithServiceId {
   serviceId: string

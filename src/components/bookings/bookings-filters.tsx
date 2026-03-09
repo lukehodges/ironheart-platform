@@ -53,7 +53,7 @@ const STATUS_OPTIONS: { value: BookingStatus; label: string }[] = [
 // ---------------------------------------------------------------------------
 
 export function BookingsFilters({ filters, onChange }: BookingsFiltersProps) {
-  // Debounced search — we store the raw (immediate) value locally to keep the
+  // Debounced search - we store the raw (immediate) value locally to keep the
   // input responsive, then propagate the debounced value to the parent.
   const searchInputRef = useRef<HTMLInputElement>(null)
 

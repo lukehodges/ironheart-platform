@@ -4,14 +4,14 @@
  * Thin router that exposes notification management endpoints to the frontend.
  *
  * Procedures:
- *   - listTriggers       — tenant, query: all registered triggers with module info
- *   - listTemplates      — tenant, query: message templates with optional filters
- *   - getTemplate        — tenant, query: single template by id
- *   - createTemplate     — permission, mutation: create a new template
- *   - updateTemplate     — permission, mutation: update an existing template
- *   - deleteTemplate     — permission, mutation: delete a template
- *   - listSentMessages   — tenant, query: audit trail for a booking
- *   - sendTest           — platform admin, mutation: trigger a test notification
+ *   - listTriggers       - tenant, query: all registered triggers with module info
+ *   - listTemplates      - tenant, query: message templates with optional filters
+ *   - getTemplate        - tenant, query: single template by id
+ *   - createTemplate     - permission, mutation: create a new template
+ *   - updateTemplate     - permission, mutation: update an existing template
+ *   - deleteTemplate     - permission, mutation: delete a template
+ *   - listSentMessages   - tenant, query: audit trail for a booking
+ *   - sendTest           - platform admin, mutation: trigger a test notification
  */
 
 import { z } from 'zod'
@@ -77,7 +77,7 @@ export const notificationRouter = router({
   /**
    * List sent messages for a booking (for audit/history display).
    *
-   * Currently returns empty array — full query can be added when UI is built.
+   * Currently returns empty array - full query can be added when UI is built.
    * The endpoint signature is locked so the frontend client type is stable.
    */
   listSentMessages: moduleProcedure
@@ -91,7 +91,7 @@ export const notificationRouter = router({
    * Send a test notification (platform admin only).
    *
    * Calls notificationService.sendForBooking with a placeholder bookingId.
-   * Only triggers email channel — SMS requires a real phone and is skipped
+   * Only triggers email channel - SMS requires a real phone and is skipped
    * if no bookingId resolves (service returns early when booking not found).
    */
   sendTest: platformAdminProcedure

@@ -18,6 +18,7 @@ import {
   LayoutList,
   Columns2,
   Contact as ContactIcon,
+  ChevronRight,
   Clock,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -113,7 +114,7 @@ function InitialsAvatar({
 }
 
 // ---------------------------------------------------------------------------
-// Variation 1 — Data Table with Tabs
+// Variation 1 - Data Table with Tabs
 // ---------------------------------------------------------------------------
 
 function V1DataTable({
@@ -264,7 +265,7 @@ function V1DataTable({
                                 <div className="h-1.5 w-6 rounded-full bg-muted overflow-hidden">
                                   <div
                                     className="h-full rounded-full bg-primary"
-                                    style={{ width: `${Math.min(c.activeDeals * 50, 100)}%` }}
+                                    style={{ width: `${Math.round((c.activeDeals / Math.max(...contacts.map(ct => ct.activeDeals), 1)) * 100)}%` }}
                                   />
                                 </div>
                               </div>
@@ -326,7 +327,7 @@ function V1DataTable({
 }
 
 // ---------------------------------------------------------------------------
-// Variation 2 — Two-Column Card Layout (Supply | Demand split)
+// Variation 2 - Two-Column Card Layout (Supply | Demand split)
 // ---------------------------------------------------------------------------
 
 function V2SplitCards({
@@ -372,6 +373,8 @@ function V2SplitCards({
             <SelectItem value="Farmer">Farmer</SelectItem>
             <SelectItem value="Developer">Developer</SelectItem>
             <SelectItem value="Housebuilder">Housebuilder</SelectItem>
+            <SelectItem value="Land Agent">Land Agent</SelectItem>
+            <SelectItem value="Assessor">Assessor</SelectItem>
           </SelectContent>
         </Select>
         <div className="flex items-center gap-2 text-sm">
@@ -537,7 +540,7 @@ function V2SplitCards({
 }
 
 // ---------------------------------------------------------------------------
-// Variation 3 — CRM-style List
+// Variation 3 - CRM-style List
 // ---------------------------------------------------------------------------
 
 function V3CrmList({
@@ -546,6 +549,8 @@ function V3CrmList({
   setSearchQuery,
   typeFilter,
   setTypeFilter,
+  sideTab,
+  setSideTab,
   activeDealsOnly,
   setActiveDealsOnly,
 }: {
@@ -554,6 +559,8 @@ function V3CrmList({
   setSearchQuery: (v: string) => void
   typeFilter: string
   setTypeFilter: (v: string) => void
+  sideTab: string
+  setSideTab: (v: string) => void
   activeDealsOnly: boolean
   setActiveDealsOnly: (v: boolean) => void
 }) {
@@ -580,9 +587,11 @@ function V3CrmList({
             <SelectItem value="Farmer">Farmer</SelectItem>
             <SelectItem value="Developer">Developer</SelectItem>
             <SelectItem value="Housebuilder">Housebuilder</SelectItem>
+            <SelectItem value="Land Agent">Land Agent</SelectItem>
+            <SelectItem value="Assessor">Assessor</SelectItem>
           </SelectContent>
         </Select>
-        <Select defaultValue="all">
+        <Select value={sideTab} onValueChange={setSideTab}>
           <SelectTrigger className="w-[140px]">
             <SelectValue placeholder="Side" />
           </SelectTrigger>
@@ -781,6 +790,12 @@ export default function ContactsPage() {
 
   return (
     <div className="max-w-screen-2xl mx-auto px-6 py-6">
+      <div className="flex items-center gap-1.5 text-sm text-muted-foreground mb-4">
+        <Link href="/admin/brokerage-mockups/dashboard" className="hover:text-foreground transition-colors">Dashboard</Link>
+        <ChevronRight className="h-3.5 w-3.5" />
+        <span className="text-foreground font-medium">Contacts</span>
+      </div>
+
       {/* Page Header */}
       <div className="flex items-start justify-between mb-6">
         <div>
@@ -922,6 +937,8 @@ export default function ContactsPage() {
           setSearchQuery={setSearchQuery}
           typeFilter={typeFilter}
           setTypeFilter={setTypeFilter}
+          sideTab={sideTab}
+          setSideTab={setSideTab}
           activeDealsOnly={activeDealsOnly}
           setActiveDealsOnly={setActiveDealsOnly}
         />

@@ -21,7 +21,7 @@ import { toast } from "sonner"
 import { formatDistanceToNow } from "date-fns"
 
 /**
- * SecurityTab — API keys and webhooks management
+ * SecurityTab - API keys and webhooks management
  *
  * Features:
  * - API keys table with masking (shows only last 4 chars)

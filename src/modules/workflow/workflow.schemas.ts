@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
 // ---------------------------------------------------------------------------
-// Node / Edge schemas (broad acceptance — JSONB storage)
+// Node / Edge schemas (broad acceptance - JSONB storage)
 // ---------------------------------------------------------------------------
 
 export const workflowNodePositionSchema = z.object({

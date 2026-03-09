@@ -155,7 +155,7 @@ function StepIndicator({ current, total }: { current: WizardStep; total: number 
 }
 
 // ---------------------------------------------------------------------------
-// Step 1 — Customer selection
+// Step 1 - Customer selection
 // ---------------------------------------------------------------------------
 
 interface Step1Props {
@@ -374,7 +374,7 @@ function Step1Customer({ onSelect, selected }: Step1Props) {
 }
 
 // ---------------------------------------------------------------------------
-// Step 2 — Service + Slot + Staff
+// Step 2 - Service + Slot + Staff
 // ---------------------------------------------------------------------------
 
 interface Step2Props {
@@ -429,7 +429,7 @@ function Step2ServiceSlot({ onSelect, selected }: Step2Props) {
 
   const staffMembers = staffData?.rows ?? []
 
-  // Available time slots — use slots from API if available, otherwise fall back to static times
+  // Available time slots - use slots from API if available, otherwise fall back to static times
   const availableSlots = slotsData?.length
     ? slotsData.filter((s) => s.available).map((s) => ({
         id: s.id,
@@ -623,7 +623,7 @@ function Step2ServiceSlot({ onSelect, selected }: Step2Props) {
 }
 
 // ---------------------------------------------------------------------------
-// Step 3 — Summary + confirm
+// Step 3 - Summary + confirm
 // ---------------------------------------------------------------------------
 
 interface Step3Props {
@@ -683,7 +683,7 @@ function Step3Summary({ customer, slot, onConfirm, isPending }: Step3Props) {
             <div className="flex items-center gap-2 text-sm">
               <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
               <span className="text-foreground">
-                {slot.time} — {slot.endTime}
+                {slot.time} - {slot.endTime}
                 <span className="ml-1.5 text-xs text-muted-foreground">
                   ({slot.durationMinutes} min)
                 </span>

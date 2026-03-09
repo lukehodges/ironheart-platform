@@ -475,13 +475,13 @@ export default function DealsPipelinePage() {
           <span>BP2 Property · Commercial Agency · South Wales</span>
           <div className="flex items-center gap-4">
             <span className="flex items-center gap-1.5">
-              <span className="h-1.5 w-1.5 rounded-full bg-red-500 inline-block" />&gt;30 days — overdue
+              <span className="h-1.5 w-1.5 rounded-full bg-red-500 inline-block" />&gt;30 days - overdue
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="h-1.5 w-1.5 rounded-full bg-amber-500 inline-block" />14–30 days — watch
+              <span className="h-1.5 w-1.5 rounded-full bg-amber-500 inline-block" />14–30 days - watch
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground inline-block" />&lt;14 days — on track
+              <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground inline-block" />&lt;14 days - on track
             </span>
           </div>
         </div>

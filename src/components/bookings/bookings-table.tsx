@@ -220,7 +220,7 @@ export function BookingsTable({ filters, onRowClick }: BookingsTableProps) {
         const bVal = new Date(b.createdAt).getTime()
         return sort.direction === "asc" ? aVal - bVal : bVal - aVal
       }
-      // status — alphabetical
+      // status - alphabetical
       return sort.direction === "asc"
         ? a.status.localeCompare(b.status)
         : b.status.localeCompare(a.status)

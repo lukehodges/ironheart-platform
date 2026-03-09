@@ -106,7 +106,7 @@ function enqueue(...items: unknown[]) {
 // Tests
 // ---------------------------------------------------------------------------
 
-describe('team.repository — notes', () => {
+describe('team.repository - notes', () => {
   beforeEach(() => {
     ;(globalThis as Record<string, unknown>).__teamTestSelectQueue = []
   })

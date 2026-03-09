@@ -6,7 +6,7 @@ import { logger } from '@/shared/logger'
 const log = logger.child({ module: 'workflow.events' })
 
 // ---------------------------------------------------------------------------
-// Trigger dispatchers — each listens to a domain event and dispatches
+// Trigger dispatchers - each listens to a domain event and dispatches
 // 'workflow/execute' for every matching workflow registered for that trigger.
 // ---------------------------------------------------------------------------
 
@@ -210,7 +210,7 @@ const triggerOnReviewSubmitted = inngest.createFunction(
 )
 
 // ---------------------------------------------------------------------------
-// Executor — runs a single workflow for a given trigger event + data
+// Executor - runs a single workflow for a given trigger event + data
 // ---------------------------------------------------------------------------
 
 /**
@@ -225,7 +225,7 @@ const executeWorkflow = inngest.createFunction(
   }
 )
 
-/** All workflow Inngest functions — register in src/app/api/inngest/route.ts */
+/** All workflow Inngest functions - register in src/app/api/inngest/route.ts */
 export const workflowFunctions = [
   triggerOnBookingCreated,
   triggerOnBookingConfirmed,

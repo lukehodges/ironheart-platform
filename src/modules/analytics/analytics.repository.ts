@@ -39,7 +39,7 @@ export async function upsertSnapshot(snapshot: {
   periodStart: Date
   value: number
 }) {
-  // metricSnapshots has no unique constraint — delete-then-insert to achieve upsert semantics
+  // metricSnapshots has no unique constraint - delete-then-insert to achieve upsert semantics
   // Wrapped in a transaction for atomicity (U5.10)
   await db.transaction(async (tx) => {
     await tx
@@ -272,7 +272,7 @@ export async function getTenantCohortStats(tenantId: string): Promise<CohortStat
     .groupBy(bookings.customerId)
 
   if (customerRows.length === 0) {
-    // No bookings at all — return sensible defaults
+    // No bookings at all - return sensible defaults
     return { minR: 0, maxR: 365, minF: 0, maxF: 12, minM: 0, maxM: 500 }
   }
 
@@ -332,7 +332,7 @@ export async function getTenantCohortStats(tenantId: string): Promise<CohortStat
 }
 
 // ---------------------------------------------------------------------------
-// Revenue chart — time series data grouped by date bucket
+// Revenue chart - time series data grouped by date bucket
 // ---------------------------------------------------------------------------
 
 export async function getRevenueChart(
@@ -371,7 +371,7 @@ export async function getRevenueChart(
 }
 
 // ---------------------------------------------------------------------------
-// Bookings by status — status distribution for donut chart
+// Bookings by status - status distribution for donut chart
 // ---------------------------------------------------------------------------
 
 export async function getBookingsByStatus(
@@ -399,7 +399,7 @@ export async function getBookingsByStatus(
 }
 
 // ---------------------------------------------------------------------------
-// Top services — ranked by booking count
+// Top services - ranked by booking count
 // ---------------------------------------------------------------------------
 
 export async function getTopServices(
@@ -435,7 +435,7 @@ export async function getTopServices(
 }
 
 // ---------------------------------------------------------------------------
-// Staff utilization — booking count + hours per staff member
+// Staff utilization - booking count + hours per staff member
 // ---------------------------------------------------------------------------
 
 export async function getStaffUtilization(
@@ -473,7 +473,7 @@ export async function getStaffUtilization(
 }
 
 // ---------------------------------------------------------------------------
-// Churn risk — customers with overdue booking intervals
+// Churn risk - customers with overdue booking intervals
 // ---------------------------------------------------------------------------
 
 export interface ChurnRiskCustomer {

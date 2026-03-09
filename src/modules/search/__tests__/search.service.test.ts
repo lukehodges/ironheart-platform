@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 // ---------------------------------------------------------------------------
-// Mocks — must be before imports
+// Mocks - must be before imports
 // ---------------------------------------------------------------------------
 
 const mockProviders = [

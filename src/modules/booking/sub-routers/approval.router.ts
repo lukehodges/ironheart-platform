@@ -4,7 +4,7 @@ import { approveBookingSchema, rejectBookingSchema, bulkApproveSchema } from "..
 import { z } from "zod";
 
 /**
- * Approval sub-router — handles PENDING → APPROVED / REJECTED transitions.
+ * Approval sub-router - handles PENDING → APPROVED / REJECTED transitions.
  *
  * NOTE Phase 0: All procedures throw UNAUTHORIZED until Phase 3 wires up WorkOS session.
  */

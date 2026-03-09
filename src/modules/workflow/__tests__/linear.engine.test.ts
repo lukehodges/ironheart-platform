@@ -39,7 +39,7 @@ const baseContext: WorkflowExecutionContext = {
   __workflowDepth: 0,
 }
 
-// Mock step object — simulates Inngest step interface
+// Mock step object - simulates Inngest step interface
 function makeStep() {
   return {
     run: vi.fn((id: string, fn: () => Promise<unknown>) => fn()),

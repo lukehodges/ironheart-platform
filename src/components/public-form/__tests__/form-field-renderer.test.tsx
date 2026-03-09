@@ -65,7 +65,7 @@ describe("FormFieldRenderer", () => {
       const input = screen.getByRole("textbox");
       await user.type(input, "Hello");
 
-      // Controlled input with static value="" — each keystroke fires onChange
+      // Controlled input with static value="" - each keystroke fires onChange
       // with the new value of the input at that moment. Because the parent
       // never updates the value prop, the input resets to "" between renders,
       // so each call receives just the single typed character.
@@ -188,7 +188,7 @@ describe("FormFieldRenderer", () => {
       const input = screen.getByRole("textbox");
       await user.type(input, "test@example.com");
 
-      // Controlled input with static value="" — each keystroke fires onChange
+      // Controlled input with static value="" - each keystroke fires onChange
       // with just the single character (parent never updates value prop).
       expect(onChange).toHaveBeenCalledTimes("test@example.com".length);
       expect(onChange).toHaveBeenNthCalledWith(1, "t");

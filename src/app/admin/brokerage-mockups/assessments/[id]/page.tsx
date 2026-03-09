@@ -20,6 +20,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   ChevronRight,
   MapPin,
@@ -63,20 +64,49 @@ const TIMELINE_STEPS: { label: string; status: AssessmentStatus }[] = [
   { label: "Approved", status: "Approved" },
 ]
 
-const TIMELINE_DATES: Record<string, string> = {
-  Scheduled: "10 May 2025",
-  Visited: "20 May 2025",
-  "Data Submitted": "22 May 2025",
-  Reviewed: "28 May 2025",
-  Approved: "1 Jun 2025",
+const STATUS_ORDER: AssessmentStatus[] = [
+  "Scheduled",
+  "In Progress",
+  "Data Submitted",
+  "Under Review",
+  "Approved",
+]
+
+function getTimelineDates(assessment: { date: string; status: AssessmentStatus }): Record<string, string> {
+  const baseDate = new Date(assessment.date)
+  const statusIdx = STATUS_ORDER.indexOf(assessment.status)
+  const fmt = (d: Date) =>
+    d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
+
+  const dates: Record<string, string> = {}
+
+  // "Scheduled" step always shows the assessment date
+  dates["Scheduled"] = fmt(baseDate)
+
+  // Steps after "Scheduled" only show dates if the assessment has progressed past them
+  if (statusIdx >= 1) {
+    // Visited = same as assessment date (the site visit happened on the scheduled date)
+    dates["Visited"] = fmt(baseDate)
+  }
+  if (statusIdx >= 2) {
+    const submitted = new Date(baseDate)
+    submitted.setDate(submitted.getDate() + 3)
+    dates["Data Submitted"] = fmt(submitted)
+  }
+  if (statusIdx >= 3) {
+    const reviewed = new Date(baseDate)
+    reviewed.setDate(reviewed.getDate() + 10)
+    dates["Reviewed"] = fmt(reviewed)
+  }
+  if (statusIdx >= 4) {
+    const approved = new Date(baseDate)
+    approved.setDate(approved.getDate() + 14)
+    dates["Approved"] = fmt(approved)
+  }
+
+  return dates
 }
 
-const HABITAT_DATA = [
-  { type: "Arable (cereal)", area: "35.0 ha", condition: 2.1, distinctiveness: "Low" },
-  { type: "Improved grassland", area: "18.0 ha", condition: 3.5, distinctiveness: "Low" },
-  { type: "Riparian buffer (proposed)", area: "4.5 ha", condition: "N/A", distinctiveness: "Medium" },
-  { type: "Hedgerow network", area: "2.5 ha", condition: 4.0, distinctiveness: "Medium" },
-]
 
 const PHOTO_CAPTIONS = [
   "Northern boundary - arable land",
@@ -107,6 +137,7 @@ export default function AssessmentDetail() {
   const statusIndex = TIMELINE_STEPS.findIndex(
     (s) => s.status === assessment.status
   )
+  const timelineDates = getTimelineDates(assessment)
 
   return (
     <div className="space-y-6">
@@ -195,29 +226,36 @@ export default function AssessmentDetail() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Type</TableHead>
+                      <TableHead>Habitat Type</TableHead>
                       <TableHead>Area</TableHead>
-                      <TableHead>Condition Score</TableHead>
+                      <TableHead>Condition</TableHead>
                       <TableHead>Distinctiveness</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {HABITAT_DATA.map((h) => (
-                      <TableRow key={h.type}>
-                        <TableCell className="font-medium text-foreground">
-                          {h.type}
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {h.area}
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {h.condition}
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {h.distinctiveness}
-                        </TableCell>
+                    {assessment.metricOutput?.baselineParcels ? (
+                      assessment.metricOutput.baselineParcels.map((p) => (
+                        <TableRow key={p.id}>
+                          <TableCell className="font-medium text-foreground">{p.specificHabitatType}</TableCell>
+                          <TableCell className="text-muted-foreground">{p.size} {p.sizeUnit}</TableCell>
+                          <TableCell className="text-muted-foreground capitalize">{p.condition.replace(/_/g, " ")}</TableCell>
+                          <TableCell className="text-muted-foreground capitalize">{p.distinctiveness === "v_low" ? "V.Low" : p.distinctiveness === "v_high" ? "V.High" : p.distinctiveness}</TableCell>
+                        </TableRow>
+                      ))
+                    ) : assessment.habitatTypes && assessment.habitatTypes.length > 0 ? (
+                      assessment.habitatTypes.map((ht, i) => (
+                        <TableRow key={i}>
+                          <TableCell className="font-medium text-foreground">{ht}</TableCell>
+                          <TableCell className="text-muted-foreground">{i === 0 ? `${site?.areaHectares ?? "?"} ha` : "—"}</TableCell>
+                          <TableCell className="text-muted-foreground">—</TableCell>
+                          <TableCell className="text-muted-foreground">—</TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={4} className="text-muted-foreground italic">Survey data not available</TableCell>
                       </TableRow>
-                    ))}
+                    )}
                   </TableBody>
                 </Table>
               </div>
@@ -270,23 +308,25 @@ export default function AssessmentDetail() {
           </Card>
 
           {/* Photos */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Site Photos</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                {PHOTO_CAPTIONS.map((caption) => (
-                  <div key={caption} className="space-y-1.5">
-                    <div className="flex h-28 items-center justify-center rounded-lg bg-muted">
-                      <Camera className="h-8 w-8 text-muted-foreground/50" />
+          {assessment.status !== "Scheduled" ? (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Site Photos</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  {PHOTO_CAPTIONS.map((caption) => (
+                    <div key={caption} className="space-y-1.5">
+                      <div className="flex h-28 items-center justify-center rounded-lg bg-muted">
+                        <Camera className="h-8 w-8 text-muted-foreground/50" />
+                      </div>
+                      <p className="text-xs text-muted-foreground">{caption}</p>
                     </div>
-                    <p className="text-xs text-muted-foreground">{caption}</p>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          ) : null}
 
           {/* Findings */}
           <Card>
@@ -322,50 +362,198 @@ export default function AssessmentDetail() {
             </CardContent>
           </Card>
 
-          {/* Metric Calculation Results */}
+          {/* Metric Calculation Results — NN */}
           {assessment.type === "NN Baseline" && (
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">
-                  Metric Calculation Results
-                </CardTitle>
+                <CardTitle className="text-base">Metric Calculation Results</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-3 gap-4">
                   <div className="rounded-lg border border-border bg-muted/50 p-4 text-center">
-                    <p className="text-xs text-muted-foreground">Current Loading</p>
+                    <p className="text-xs text-muted-foreground">Baseline Loading</p>
                     <p className="mt-1 text-lg font-bold text-foreground">
-                      2,538 kg/yr
+                      {assessment.nutrientOutput?.baselineLoadingKgYr.toLocaleString() ?? "—"} kg/yr
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      42.3 kg/ha x 60 ha
+                      {assessment.nutrientOutput
+                        ? `${assessment.nutrientOutput.loadingFactorBaseline} kg/ha × ${site?.areaHectares ?? "?"} ha`
+                        : "current land use"}
                     </p>
                   </div>
                   <div className="rounded-lg border border-border bg-muted/50 p-4 text-center">
                     <p className="text-xs text-muted-foreground">Proposed Loading</p>
                     <p className="mt-1 text-lg font-bold text-foreground">
-                      510 kg/yr
+                      {assessment.nutrientOutput?.proposedLoadingKgYr.toLocaleString() ?? "—"} kg/yr
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      8.5 kg/ha x 60 ha
+                      {assessment.nutrientOutput
+                        ? `${assessment.nutrientOutput.loadingFactorProposed} kg/ha × ${site?.areaHectares ?? "?"} ha`
+                        : "after mitigation"}
                     </p>
                   </div>
                   <div className="rounded-lg border border-border bg-muted/50 p-4 text-center">
                     <p className="text-xs text-muted-foreground">Credit Yield</p>
                     <p className="mt-1 text-lg font-bold text-green-600 dark:text-green-400">
-                      {assessment.creditYield ?? 95} kg/yr
+                      {assessment.nutrientOutput?.creditYieldKgYr ?? assessment.creditYield ?? "—"} kg/yr
                     </p>
-                    <p className="text-xs text-muted-foreground">
-                      after 80yr adjustment
-                    </p>
+                    <p className="text-xs text-muted-foreground">nitrogen credits</p>
                   </div>
                 </div>
+                {assessment.nutrientOutput && (
+                  <div className="rounded-lg bg-muted/50 p-3 text-sm text-muted-foreground">
+                    <span className="font-medium text-foreground">Land use change: </span>
+                    {assessment.nutrientOutput.landUseChange}
+                  </div>
+                )}
                 <div className="rounded-lg border-2 border-green-200 bg-green-50 p-4 text-center dark:border-green-800 dark:bg-green-950/30">
                   <p className="text-sm text-green-800 dark:text-green-300">
                     This site can generate{" "}
                     <span className="font-bold">
-                      {assessment.creditYield ?? 95} kg/year nitrogen credits
+                      {assessment.nutrientOutput?.creditYieldKgYr ?? assessment.creditYield ?? "—"} kg/year nitrogen credits
                     </span>
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Biodiversity Metric Results — BNG */}
+          {assessment.type === "BNG Habitat Survey" && assessment.metricOutput && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Biodiversity Metric Results</CardTitle>
+                <p className="text-xs text-muted-foreground">
+                  {assessment.metricOutput.metricVersion} · Calculated {assessment.metricOutput.calculationDate}
+                </p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Tabs defaultValue="baseline">
+                  <TabsList className="mb-3">
+                    <TabsTrigger value="baseline">Baseline Survey</TabsTrigger>
+                    <TabsTrigger value="proposed">Proposed Enhancement</TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="baseline">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="text-xs">
+                          <TableHead>Habitat Type</TableHead>
+                          <TableHead>Distinctiveness</TableHead>
+                          <TableHead>Condition</TableHead>
+                          <TableHead>Strategic Significance</TableHead>
+                          <TableHead className="text-right">Parcels</TableHead>
+                          <TableHead className="text-right">Size</TableHead>
+                          <TableHead className="text-right">HUs</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {assessment.metricOutput.baselineParcels.map(p => (
+                          <TableRow key={p.id}>
+                            <TableCell className="text-sm font-medium text-foreground">{p.specificHabitatType}</TableCell>
+                            <TableCell>
+                              <span className={`inline-flex items-center rounded border px-1.5 py-0.5 text-xs font-medium ${
+                                p.distinctiveness === "v_high" ? "bg-green-100 text-green-800 border-green-300 dark:bg-green-900/40 dark:text-green-300"
+                                : p.distinctiveness === "high" ? "bg-emerald-50 text-emerald-700 border-emerald-300"
+                                : p.distinctiveness === "medium" ? "bg-amber-50 text-amber-700 border-amber-300"
+                                : "bg-slate-100 text-slate-700 border-slate-300"
+                              }`}>
+                                {p.distinctiveness === "v_low" ? "V.Low" : p.distinctiveness === "v_high" ? "V.High" : p.distinctiveness.charAt(0).toUpperCase() + p.distinctiveness.slice(1)}
+                              </span>
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground capitalize">
+                              {p.condition.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground capitalize">{p.strategicSignificance}</TableCell>
+                            <TableCell className="text-right text-sm">{p.parcelCount}</TableCell>
+                            <TableCell className="text-right text-sm">{p.size} {p.sizeUnit}</TableCell>
+                            <TableCell className="text-right text-sm font-mono">{p.biodiversityUnits.toFixed(2)}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                      <tfoot>
+                        <tr className="border-t border-border bg-muted/30">
+                          <td colSpan={6} className="px-4 py-2 text-sm font-semibold">TOTAL</td>
+                          <td className="px-4 py-2 text-sm font-semibold text-right font-mono">
+                            {assessment.metricOutput.totalBaselineHUs.toFixed(2)}
+                          </td>
+                        </tr>
+                      </tfoot>
+                    </Table>
+                  </TabsContent>
+
+                  <TabsContent value="proposed">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="text-xs">
+                          <TableHead>Habitat Type</TableHead>
+                          <TableHead>Distinctiveness</TableHead>
+                          <TableHead>Strategic Significance</TableHead>
+                          <TableHead className="text-right">Parcels</TableHead>
+                          <TableHead className="text-right">Size</TableHead>
+                          <TableHead className="text-right">HUs</TableHead>
+                          <TableHead className="text-right">HU Gain</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {assessment.metricOutput.improvementParcels.map(p => (
+                          <TableRow key={p.id}>
+                            <TableCell className="text-sm font-medium text-foreground">
+                              <div>{p.specificHabitatType}</div>
+                              {p.temporalRisk && (
+                                <div className="text-xs text-muted-foreground">Temporal risk x{p.temporalRisk}</div>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <span className={`inline-flex items-center rounded border px-1.5 py-0.5 text-xs font-medium ${
+                                p.distinctiveness === "v_high" ? "bg-green-100 text-green-800 border-green-300 dark:bg-green-900/40 dark:text-green-300"
+                                : p.distinctiveness === "high" ? "bg-emerald-50 text-emerald-700 border-emerald-300"
+                                : p.distinctiveness === "medium" ? "bg-amber-50 text-amber-700 border-amber-300"
+                                : "bg-slate-100 text-slate-700 border-slate-300"
+                              }`}>
+                                {p.distinctiveness === "v_low" ? "V.Low" : p.distinctiveness === "v_high" ? "V.High" : p.distinctiveness.charAt(0).toUpperCase() + p.distinctiveness.slice(1)}
+                              </span>
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground capitalize">{p.strategicSignificance}</TableCell>
+                            <TableCell className="text-right text-sm">{p.parcelCount}</TableCell>
+                            <TableCell className="text-right text-sm">{p.size} {p.sizeUnit}</TableCell>
+                            <TableCell className="text-right text-sm font-mono">{p.biodiversityUnits.toFixed(2)}</TableCell>
+                            <TableCell className="text-right text-sm">
+                              {p.unitGain !== null ? (
+                                <span className="font-semibold text-green-600 dark:text-green-400">+{p.unitGain.toFixed(2)}</span>
+                              ) : "—"}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                      <tfoot>
+                        <tr className="border-t border-border bg-muted/30">
+                          <td colSpan={5} className="px-4 py-2 text-sm font-semibold">TOTAL</td>
+                          <td className="px-4 py-2 text-sm font-semibold text-right font-mono">
+                            {assessment.metricOutput.totalImprovementHUs.toFixed(2)}
+                          </td>
+                          <td className="px-4 py-2 text-sm font-semibold text-right text-green-600 dark:text-green-400">
+                            +{assessment.metricOutput.totalHUGain.toFixed(2)}
+                          </td>
+                        </tr>
+                      </tfoot>
+                    </Table>
+                  </TabsContent>
+                </Tabs>
+
+                {/* Result banner */}
+                <div className="rounded-xl border-2 border-green-200 bg-green-50 p-5 text-center dark:border-green-800 dark:bg-green-950/30">
+                  <p className="text-sm font-semibold text-green-800 dark:text-green-300">
+                    Net biodiversity gain available to register
+                  </p>
+                  <p className="mt-2 text-2xl font-bold text-green-700 dark:text-green-400">
+                    +{assessment.metricOutput.totalHUGain.toFixed(1)} area HUs
+                    <span className="text-base font-medium ml-2">
+                      · +{assessment.metricOutput.hedgerowHUGain.toFixed(1)} hedgerow HUs
+                    </span>
+                  </p>
+                  <p className="mt-1 text-xs text-green-700 dark:text-green-400">
+                    {assessment.metricOutput.metricVersion} · {assessment.assessorName} · {assessment.metricOutput.calculationDate}
                   </p>
                 </div>
               </CardContent>
@@ -417,9 +605,9 @@ export default function AssessmentDetail() {
                         >
                           {step.label}
                         </p>
-                        {isComplete && (
+                        {isComplete && timelineDates[step.label] && (
                           <p className="text-xs text-muted-foreground">
-                            {TIMELINE_DATES[step.label] ?? "--"}
+                            {timelineDates[step.label]}
                           </p>
                         )}
                       </div>
@@ -482,24 +670,30 @@ export default function AssessmentDetail() {
               <CardTitle className="text-base">Linked Documents</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-2">
-                {LINKED_DOCUMENTS.map((doc) => (
-                  <div
-                    key={doc.name}
-                    className="flex items-center gap-3 rounded-lg border border-border p-2.5"
-                  >
-                    <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-foreground">
-                        {doc.name}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {doc.type} &middot; {doc.date}
-                      </p>
+              {assessment.status !== "Scheduled" ? (
+                <div className="space-y-2">
+                  {LINKED_DOCUMENTS.map((doc) => (
+                    <div
+                      key={doc.name}
+                      className="flex items-center gap-3 rounded-lg border border-border p-2.5"
+                    >
+                      <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium text-foreground">
+                          {doc.name}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {doc.type} &middot; {doc.date}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground italic">
+                  No documents yet. Documents will be available after the site visit.
+                </p>
+              )}
             </CardContent>
           </Card>
 

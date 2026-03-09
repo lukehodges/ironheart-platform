@@ -1,5 +1,5 @@
 /**
- * Notification Module — Type Definitions
+ * Notification Module - Type Definitions
  *
  * All types are kept in one file so other module files can import from a
  * single source of truth without circular dependencies.
@@ -7,7 +7,7 @@
 
 // ─── Trigger Enum ─────────────────────────────────────────────────────────────
 
-/** Mirrors the messageTrigger DB enum — keep in sync with notifications.schema.ts */
+/** Mirrors the messageTrigger DB enum - keep in sync with notifications.schema.ts */
 export type MessageTrigger =
   | 'BOOKING_CREATED'
   | 'BOOKING_CONFIRMED'

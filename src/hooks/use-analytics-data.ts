@@ -100,7 +100,7 @@ export function useAnalyticsData(filters: AnalyticsFilters) {
   const dateRange = useMemo(() => getDateRange(filters), [filters.preset, filters.from, filters.to])
   const periodType = mapPresetToPeriodType(filters.preset)
 
-  // KPI summary — maps filter preset to server-side period
+  // KPI summary - maps filter preset to server-side period
   const kpis = api.analytics.getSummary.useQuery(
     { period },
     { refetchInterval: 60_000 }, // refresh every 60s
@@ -117,7 +117,7 @@ export function useAnalyticsData(filters: AnalyticsFilters) {
     { refetchInterval: 120_000 },
   )
 
-  // Bookings by status — derived from the KPI summary data
+  // Bookings by status - derived from the KPI summary data
   const bookingsByStatus = useMemo(() => {
     if (!kpis.data) {
       return {

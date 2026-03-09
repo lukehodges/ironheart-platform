@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 /**
  * GET /api/ready
- * Readiness probe — checks DB and Redis connectivity.
+ * Readiness probe - checks DB and Redis connectivity.
  * Returns 200 when the process is ready to serve traffic, 503 otherwise.
  * Reports per-service status so partial failures are visible.
  */

@@ -1,7 +1,7 @@
 "use client"
 
 /**
- * /admin/team/demo/member — Individual Team Member Profile Demo
+ * /admin/team/demo/member - Individual Team Member Profile Demo
  *
  * Static demo using mock data. In production this route is /admin/team/[id]
  * and fetches via api.team.getById. Protected by WorkOS AuthKit at layout level.
@@ -541,7 +541,7 @@ function ScheduleTab() {
         <div className="rounded-lg border border-amber-100 bg-amber-50/60 px-4 py-3">
           <p className="text-xs text-amber-700">
             <span className="font-semibold">Wed:</span>{" "}
-            {SCHEDULE.find((d) => d.note)?.note} — recurring block
+            {SCHEDULE.find((d) => d.note)?.note} - recurring block
           </p>
         </div>
       )}

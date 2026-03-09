@@ -25,6 +25,7 @@ import {
   Plus,
   Receipt,
   Shield,
+  TreePine,
   Upload,
   User,
   Zap,
@@ -32,6 +33,15 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import { Progress } from "@/components/ui/progress"
 import {
   BarChart,
   Bar,
@@ -71,7 +81,7 @@ const DEAL_STAGES = [
 ] as const
 
 // ============================================================================
-// DEALS LOOKUP — dynamic data per deal
+// DEALS LOOKUP - dynamic data per deal
 // ============================================================================
 
 interface DealData {
@@ -148,6 +158,7 @@ interface DealData {
     assigneeInitials: string
     assigneeColor: string
   }[]
+  isBNG?: boolean
 }
 
 const DEALS_LOOKUP: Record<string, DealData> = {
@@ -272,7 +283,7 @@ const DEALS_LOOKUP: Record<string, DealData> = {
     activityItems: [
       { id: 1, type: "stage", date: "5 Mar 2026", time: "14:32", user: "James Harris", initials: "JH", description: "Moved deal to Credits Reserved", detail: "Stage changed from Quote Sent to Credits Reserved after deposit confirmation." },
       { id: 2, type: "note", date: "4 Mar 2026", time: "11:15", user: "James Harris", initials: "JH", description: "Added note", detail: "Taylor Wimpey legal team confirmed. Awaiting deposit payment before proceeding to contract stage." },
-      { id: 3, type: "email", date: "28 Feb 2026", time: "09:45", user: "James Harris", initials: "JH", description: "Email sent to Rachel Morrison", detail: "Credit Reservation Confirmation \u2014 45 kg N/yr reserved at Manor Fields for Taylor Wimpey Southern." },
+      { id: 3, type: "email", date: "28 Feb 2026", time: "09:45", user: "James Harris", initials: "JH", description: "Email sent to Rachel Morrison", detail: "Credit Reservation Confirmation  -  45 kg N/yr reserved at Manor Fields for Taylor Wimpey Southern." },
       { id: 4, type: "stage", date: "25 Feb 2026", time: "16:20", user: "James Harris", initials: "JH", description: "Moved deal to Matched", detail: "Demand matched to Manor Fields supply. 45 kg N/yr available in Solent catchment at agreed price." },
       { id: 5, type: "system", date: "20 Feb 2026", time: "08:00", user: "System", initials: "SY", description: "Auto-matched demand to Manor Fields", detail: "System identified Manor Fields (S-0005) as matching supply: 45 kg N/yr available in Solent catchment." },
       { id: 6, type: "email", date: "17 Feb 2026", time: "10:30", user: "Rachel Morrison", initials: "RM", description: "Enquiry received from Taylor Wimpey", detail: "Rachel Morrison (Taylor Wimpey Southern) submitted enquiry: 30-50 kg N/yr needed in Solent catchment for Hedge End development." },
@@ -361,6 +372,72 @@ const DEALS_LOOKUP: Record<string, DealData> = {
       { title: "Ecological Impact Assessment", due: "Due 20 May 2026", assignee: "Tom Jenkins", assigneeInitials: "TJ", assigneeColor: "bg-emerald-100 text-emerald-700" },
       { title: "S106 Agreement Review", due: "Due 10 Jun 2026", assignee: "Sarah Croft", assigneeInitials: "SC", assigneeColor: "bg-purple-100 text-purple-700" },
     ],
+  },
+  "D-0037": {
+    id: "D-0037",
+    title: "Fareham Woodland BNG / TBD",
+    stage: "Prospecting",
+    stageIndex: 0,
+    probability: 10,
+    broker: "James Harris",
+    brokerInitials: "JH",
+    value: 562500,
+    commission: 101250,
+    commissionRate: 18,
+    landownerReceives: 461250,
+    unitType: "Biodiversity Credits",
+    unitLabel: "(BNG HUs)",
+    quantity: "22.5 BNG HUs (18.0 area + 4.5 hedgerow)",
+    unitPrice: "£25,000 / HU",
+    catchment: "Solent",
+    paymentStatus: "Not Started",
+    created: "10 Feb 2026",
+    stageChanged: "10 Feb 2026",
+    expectedClose: "Dec 2026",
+    daysInPipeline: 27,
+    daysLeft: 265,
+    supply: {
+      name: "Ian Stockbridge",
+      initials: "IS",
+      role: "Landowner",
+      company: "Stockbridge Estates Ltd",
+      phone: "07700 900801",
+      email: "i.stockbridge@stockbridgeestates.co.uk",
+      contactSlug: "C-008",
+    },
+    demand: {
+      name: "TBD — No buyer matched yet",
+      initials: "?",
+      role: "Developer",
+      company: "—",
+      phone: "—",
+      email: "—",
+      contactSlug: "",
+    },
+    site: {
+      id: "S-0008",
+      name: "Fareham Woodland",
+      status: "Under Assessment",
+      catchment: "Solent",
+      availability: "206.0 area HU + 13.5 hedgerow HU available",
+    },
+    activityItems: [
+      { id: 1, type: "stage", date: "10 Feb 2026", time: "11:24", user: "James Harris", initials: "JH", description: "Deal created in Prospecting stage", detail: "Initial supply registration for Fareham Woodland BNG credits. Site under assessment — metric calculation in progress." },
+      { id: 2, type: "system", date: "10 Feb 2026", time: "11:24", user: "System", initials: "SY", description: "BNG site S-0008 linked to deal", detail: "Site capacity: 206.0 area HUs (147.0 HU net gain) + 13.5 hedgerow HUs (12.3 HU net gain) · Statutory Metric 1.0 · Conservation Covenant · 30-year commitment" },
+      { id: 3, type: "note", date: "24 Feb 2026", time: "14:10", user: "James Harris", initials: "JH", description: "Note added", detail: "BGS registration application submitted. HMMP draft under preparation by Tom Jenkins. Target NE registration by Jun 2026." },
+    ],
+    documents: [],
+    commissionSplitData: [
+      { label: "Total Deal Value", value: 562500, color: "#3b82f6" },
+      { label: "Platform Commission (18%)", value: 101250, color: "#10b981" },
+      { label: "Landowner Receives", value: 461250, color: "#6366f1" },
+    ],
+    complianceItems: [
+      { title: "BNG Habitat Survey Approval (NE)", due: "Due 01 Jun 2026", assignee: "Tom Jenkins", assigneeInitials: "TJ", assigneeColor: "bg-emerald-100 text-emerald-700" },
+      { title: "Biodiversity Gain Site Registration", due: "Due 30 Jun 2026", assignee: "James Harris", assigneeInitials: "JH", assigneeColor: "bg-blue-100 text-blue-700" },
+      { title: "HMMP Approval", due: "Due 01 Aug 2026", assignee: "Tom Jenkins", assigneeInitials: "TJ", assigneeColor: "bg-emerald-100 text-emerald-700" },
+    ],
+    isBNG: true,
   },
 }
 
@@ -1007,13 +1084,241 @@ function CompliancePanel({ deal }: { deal: DealData }) {
 }
 
 // ============================================================================
+// BNG CREDIT BREAKDOWN (shown for BNG deals)
+// ============================================================================
+
+const DISTINCTIVENESS_COLORS: Record<string, string> = {
+  v_low: "bg-slate-100 text-slate-700 border-slate-300",
+  low: "bg-slate-100 text-slate-700 border-slate-300",
+  medium: "bg-amber-50 text-amber-700 border-amber-300",
+  high: "bg-emerald-50 text-emerald-700 border-emerald-300",
+  v_high: "bg-green-100 text-green-800 border-green-300",
+}
+const DISTINCTIVENESS_LABELS: Record<string, string> = {
+  v_low: "V.Low", low: "Low", medium: "Medium", high: "High", v_high: "V.High",
+}
+const CONDITION_LABELS: Record<string, string> = {
+  poor: "Poor", fairly_poor: "Fairly Poor", moderate: "Moderate",
+  fairly_good: "Fairly Good", good: "Good",
+}
+
+function BNGCreditBreakdown({ dealSiteId, dealId }: { dealSiteId: string; dealId: string }) {
+  const sharedDeal = sharedDeals.find(d => d.id === dealId)
+  const site = sharedSites.find(s => s.ref === dealSiteId)
+
+  if (!site || !site.habitatSummary) return null
+
+  const bngAllocation = sharedDeal?.bngAllocation ?? []
+  const habitatSummary = site.habitatSummary
+  const improvementHabitats = site.improvementHabitats ?? []
+
+  const totalBNGUnits = bngAllocation.reduce((s, a) => s + a.units, 0)
+  const totalValue = bngAllocation.reduce((s, a) => s + a.value, 0)
+
+  return (
+    <div className="space-y-4">
+      {/* Header */}
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-2">
+          <TreePine className="h-3.5 w-3.5 text-emerald-600" />
+          BNG Credit Breakdown
+        </p>
+      </div>
+
+      {/* Deal allocation summary cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {bngAllocation.map((alloc) => (
+          <Card key={alloc.category}>
+            <CardContent className="p-4">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                {alloc.categoryLabel}
+              </p>
+              <p className="text-xl font-bold text-foreground">{alloc.units.toFixed(1)}</p>
+              <p className="text-xs text-muted-foreground">{alloc.unitLabel}</p>
+              <p className="text-xs font-medium text-emerald-700 mt-1">
+                £{(alloc.value).toLocaleString("en-GB")}
+              </p>
+            </CardContent>
+          </Card>
+        ))}
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+              Total HUs
+            </p>
+            <p className="text-xl font-bold text-foreground">{totalBNGUnits.toFixed(1)}</p>
+            <p className="text-xs text-muted-foreground">combined</p>
+            <p className="text-xs font-medium text-emerald-700 mt-1">
+              £{totalValue.toLocaleString("en-GB")}
+            </p>
+          </CardContent>
+        </Card>
+        <Card className="border-emerald-200 bg-emerald-50/30">
+          <CardContent className="p-4">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+              Unit Price
+            </p>
+            <p className="text-xl font-bold text-foreground">£25,000</p>
+            <p className="text-xs text-muted-foreground">per HU</p>
+            <p className="text-xs font-medium text-muted-foreground mt-1">
+              18% commission
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Site capacity vs deal allocation */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <TreePine className="h-4 w-4 text-emerald-600" />
+              Site Capacity vs. Deal Allocation
+            </CardTitle>
+            <Link
+              href={`/admin/brokerage-mockups/sites/${dealSiteId}`}
+              className="text-xs text-primary hover:underline flex items-center gap-1"
+            >
+              View site <ExternalLink className="h-3 w-3" />
+            </Link>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {site.name} ({dealSiteId}) · {site.metricVersion ?? "Statutory Metric 1.0"} · {site.legalAgreement ?? "Conservation Covenant"} · {site.commitmentYears ?? 30}-year commitment
+          </p>
+        </CardHeader>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow className="text-xs">
+                <TableHead>Category</TableHead>
+                <TableHead className="text-right">Site Total</TableHead>
+                <TableHead className="text-right">Baseline HUs</TableHead>
+                <TableHead className="text-right">Improvement HUs</TableHead>
+                <TableHead className="text-right">HU Gain</TableHead>
+                <TableHead className="text-right">This Deal</TableHead>
+                <TableHead className="text-right">Remaining</TableHead>
+                <TableHead className="text-right">% Used</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {habitatSummary.map((row) => {
+                const dealAlloc = bngAllocation.find(a => a.category === row.category)
+                const dealUnits = dealAlloc?.units ?? 0
+                const remaining = row.improvementUnits - dealUnits
+                const pctUsed = row.improvementUnits > 0 ? (dealUnits / row.improvementUnits) * 100 : 0
+                return (
+                  <TableRow key={row.category}>
+                    <TableCell className="font-medium text-foreground">{row.categoryLabel}</TableCell>
+                    <TableCell className="text-right tabular-nums text-muted-foreground">
+                      {row.improvementSize} {row.sizeUnit}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums text-muted-foreground">{row.baselineUnits.toFixed(1)}</TableCell>
+                    <TableCell className="text-right tabular-nums font-medium text-foreground">{row.improvementUnits.toFixed(1)}</TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      <span className="text-emerald-700 font-semibold">+{row.unitGain.toFixed(1)}</span>
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {dealUnits > 0 ? (
+                        <span className="font-semibold text-blue-700">{dealUnits.toFixed(1)}</span>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums text-emerald-700">{remaining.toFixed(1)}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <Progress value={pctUsed} className="h-1.5 w-16" />
+                        <span className="text-xs text-muted-foreground w-8 text-right">{pctUsed.toFixed(1)}%</span>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )
+              })}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      {/* Improvement habitat parcels being offered */}
+      {improvementHabitats.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-semibold">Enhancement Habitats (Source Parcels)</CardTitle>
+            <p className="text-xs text-muted-foreground">
+              These improvement parcels generate the biodiversity units being offered in this deal
+            </p>
+          </CardHeader>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow className="text-xs">
+                  <TableHead>Habitat Type</TableHead>
+                  <TableHead>Distinctiveness</TableHead>
+                  <TableHead>Condition</TableHead>
+                  <TableHead className="text-right">Size</TableHead>
+                  <TableHead className="text-right">HUs</TableHead>
+                  <TableHead className="text-right">HU Gain</TableHead>
+                  <TableHead className="text-right">Temporal Risk</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {improvementHabitats.map((p) => (
+                  <TableRow key={p.id}>
+                    <TableCell>
+                      <div className="font-medium text-foreground text-sm">{p.specificHabitatType}</div>
+                      <div className="text-xs text-muted-foreground">{p.broadHabitatType}</div>
+                    </TableCell>
+                    <TableCell>
+                      <span className={`inline-flex items-center rounded border px-1.5 py-0.5 text-xs font-medium ${DISTINCTIVENESS_COLORS[p.distinctiveness] ?? ""}`}>
+                        {DISTINCTIVENESS_LABELS[p.distinctiveness] ?? p.distinctiveness}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {CONDITION_LABELS[p.condition] ?? p.condition}
+                    </TableCell>
+                    <TableCell className="text-right text-sm tabular-nums">{p.size} {p.sizeUnit}</TableCell>
+                    <TableCell className="text-right text-sm tabular-nums font-medium">{p.biodiversityUnits.toFixed(1)}</TableCell>
+                    <TableCell className="text-right text-sm">
+                      {p.unitGain !== null ? (
+                        <span className="text-emerald-700 font-semibold">+{p.unitGain.toFixed(1)}</span>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right text-sm text-muted-foreground">
+                      {p.temporalRisk !== null ? `×${p.temporalRisk}` : "—"}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+              <tfoot>
+                <tr className="border-t border-border bg-muted/30">
+                  <td colSpan={4} className="px-4 py-2 text-sm font-semibold text-foreground">TOTAL</td>
+                  <td className="px-4 py-2 text-sm font-semibold text-right tabular-nums">
+                    {improvementHabitats.reduce((s, p) => s + p.biodiversityUnits, 0).toFixed(1)}
+                  </td>
+                  <td className="px-4 py-2 text-sm font-semibold text-right text-emerald-700 tabular-nums">
+                    +{improvementHabitats.filter(p => p.unitGain !== null).reduce((s, p) => s + (p.unitGain ?? 0), 0).toFixed(1)}
+                  </td>
+                  <td className="px-4 py-2" />
+                </tr>
+              </tfoot>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  )
+}
+
+// ============================================================================
 // V1: TWO-COLUMN LAYOUT
 // ============================================================================
 
 function TwoColumnLayout({ deal }: { deal: DealData }) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[1fr_400px] gap-6">
-      {/* LEFT COLUMN — Main Content */}
+      {/* LEFT COLUMN - Main Content */}
       <div className="flex flex-col gap-5">
         {/* Parties */}
         <div>
@@ -1037,6 +1342,11 @@ function TwoColumnLayout({ deal }: { deal: DealData }) {
         {/* Unit Details */}
         <UnitDetailsGrid deal={deal} />
 
+        {/* BNG Credit Breakdown (BNG deals only) */}
+        {deal.isBNG && deal.site.id && (
+          <BNGCreditBreakdown dealSiteId={deal.site.id} dealId={deal.id} />
+        )}
+
         {/* Activity Timeline */}
         <ActivityTimeline deal={deal} />
 
@@ -1044,7 +1354,7 @@ function TwoColumnLayout({ deal }: { deal: DealData }) {
         <DocumentsSection deal={deal} />
       </div>
 
-      {/* RIGHT COLUMN — Sidebar */}
+      {/* RIGHT COLUMN - Sidebar */}
       <div className="flex flex-col gap-5">
         <FinancialsPanel deal={deal} />
         <KeyDatesPanel deal={deal} />
@@ -1174,6 +1484,11 @@ function TabbedLayout({ deal }: { deal: DealData }) {
 
           {/* Unit Details full width */}
           <UnitDetailsGrid deal={deal} />
+
+          {/* BNG Credit Breakdown (BNG deals only) */}
+          {deal.isBNG && deal.site.id && (
+            <BNGCreditBreakdown dealSiteId={deal.site.id} dealId={deal.id} />
+          )}
 
           {/* Compliance */}
           <div>
@@ -1361,9 +1676,106 @@ function TabbedLayout({ deal }: { deal: DealData }) {
 export default function DealDetailPage() {
   const params = useParams()
   const dealId = typeof params.id === "string" ? params.id : DEFAULT_DEAL_ID
-  const deal = DEALS_LOOKUP[dealId] ?? DEALS_LOOKUP[DEFAULT_DEAL_ID]!
+  const lookupDeal = DEALS_LOOKUP[dealId]
+
+  // Fallback: build DealData from shared mock data when no DEALS_LOOKUP entry
+  const deal: DealData | null = lookupDeal ?? (() => {
+    const shared = sharedDeals.find(d => d.id === dealId)
+    if (!shared) return null
+    const supplyContact = sharedContacts.find(c => c.id === shared.supplyContact)
+    const demandContact = sharedContacts.find(c => c.id === shared.demandContact)
+    const dealSite = sharedSites.find(s => s.ref === shared.siteRef)
+    const stageIdx = DEAL_STAGES.findIndex(s => s.label.toLowerCase().replace(/\s+/g, "-") === shared.stage.toLowerCase().replace(/\s+/g, "-"))
+    return {
+      id: shared.id,
+      title: shared.title,
+      stage: shared.stage,
+      stageIndex: stageIdx >= 0 ? stageIdx : 0,
+      probability: shared.probability,
+      broker: shared.broker,
+      brokerInitials: shared.brokerInitials,
+      value: shared.value,
+      commission: shared.commission,
+      commissionRate: shared.commissionRate,
+      landownerReceives: shared.value - shared.commission,
+      unitType: shared.unitType === "BNG" ? "BNG Unit" : "Nitrogen Credit",
+      unitLabel: shared.unitType === "BNG" ? "(area HUs)" : "(kg/yr)",
+      quantity: shared.unitsLabel,
+      unitPrice: shared.units > 0 ? `£${Math.round(shared.value / shared.units).toLocaleString()} / ${shared.unitType === "BNG" ? "unit" : "kg"}` : "—",
+      catchment: shared.catchment,
+      paymentStatus: "—",
+      created: shared.createdDate,
+      stageChanged: shared.createdDate,
+      expectedClose: shared.expectedClose,
+      daysInPipeline: Math.max(0, Math.round((Date.now() - new Date(shared.createdDate).getTime()) / 86400000)),
+      daysLeft: Math.max(0, Math.round((new Date(shared.expectedClose).getTime() - Date.now()) / 86400000)),
+      supply: {
+        name: supplyContact?.name ?? shared.supplyContactName,
+        initials: supplyContact?.initials ?? shared.supplyContactName.split(" ").map(w => w[0]).join(""),
+        role: supplyContact?.type ?? "Landowner",
+        company: supplyContact?.company ?? "",
+        phone: supplyContact?.phone ?? "",
+        email: supplyContact?.email ?? "",
+        contactSlug: supplyContact?.id ?? "",
+      },
+      demand: {
+        name: demandContact?.name ?? shared.demandContactName,
+        initials: demandContact?.initials ?? shared.demandContactName.split(" ").map(w => w[0]).join(""),
+        role: demandContact?.type ?? "Developer",
+        company: demandContact?.company ?? "",
+        phone: demandContact?.phone ?? "",
+        email: demandContact?.email ?? "",
+        contactSlug: demandContact?.id ?? "",
+      },
+      site: {
+        id: shared.siteRef,
+        name: shared.siteName,
+        status: dealSite?.status ?? "—",
+        catchment: shared.catchment,
+        availability: dealSite ? `${dealSite.available} of ${dealSite.total} ${dealSite.unitType === "BNG" ? "HUs" : "kg N/yr"} available` : "—",
+      },
+      activityItems: [
+        { id: 1, type: "stage" as const, date: shared.createdDate, time: "09:00", user: shared.broker, initials: shared.brokerInitials, description: "Deal created", detail: `New deal: ${shared.title}` },
+      ],
+      documents: [],
+      commissionSplitData: [
+        { label: "Developer Pays", value: shared.value, color: "#3b82f6" },
+        { label: "Platform Commission", value: shared.commission, color: "#10b981" },
+        { label: "Landowner Receives", value: shared.value - shared.commission, color: "#6366f1" },
+      ],
+      complianceItems: [],
+      isBNG: shared.unitType === "BNG",
+    } satisfies DealData
+  })()
 
   const [variant, setVariant] = useState<"v1" | "v2">("v1")
+
+  if (!deal) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="max-w-screen-xl mx-auto px-6 py-6">
+          <Link
+            href="/admin/brokerage-mockups/deals"
+            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to Deals
+          </Link>
+          <div className="flex flex-col items-center justify-center py-24">
+            <h2 className="text-xl font-semibold text-foreground mb-2">Deal not found</h2>
+            <p className="text-sm text-muted-foreground mb-6">
+              No deal with ID <span className="font-mono font-medium">{dealId}</span> exists.
+            </p>
+            <Link href="/admin/brokerage-mockups/deals">
+              <button className="px-4 py-2 text-sm font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
+                View all deals
+              </button>
+            </Link>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -1442,7 +1854,16 @@ export default function DealDetailPage() {
               </p>
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              <Badge className="bg-amber-50 text-amber-700 border-amber-200">
+              <Badge className={(() => {
+                const s = deal.stage.toLowerCase();
+                if (s === "completed" || s === "credits allocated" || s === "payment received")
+                  return "bg-emerald-50 text-emerald-700 border-emerald-200";
+                if (s === "lost")
+                  return "bg-red-50 text-red-700 border-red-200";
+                if (s === "matched" || s === "quote sent" || s === "credits reserved" || s === "contract signed")
+                  return "bg-blue-50 text-blue-700 border-blue-200";
+                return "bg-amber-50 text-amber-700 border-amber-200";
+              })()}>
                 {deal.stage}
               </Badge>
               <Badge variant="outline">
@@ -1472,13 +1893,6 @@ export default function DealDetailPage() {
             </div>
           </div>
         </div>
-
-        {/* STAGE PROGRESS BAR */}
-        <Card className="mb-6">
-          <CardContent className="p-4">
-            <StageProgressBar currentIndex={deal.stageIndex} />
-          </CardContent>
-        </Card>
 
         {/* LAYOUT VARIANT */}
         {variant === "v1" ? <TwoColumnLayout deal={deal} /> : <TabbedLayout deal={deal} />}

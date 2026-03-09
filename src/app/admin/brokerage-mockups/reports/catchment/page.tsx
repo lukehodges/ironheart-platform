@@ -138,13 +138,15 @@ export default function CatchmentHeatmapPage() {
       const simulated = simulatedCatchments[name]
 
       if (catchSites.length > 0) {
-        const prices = catchSites.map((s) => s.price).filter((p) => p > 0)
+        // Filter to nitrogen sites only for kg/yr credit totals (avoid mixing BNG HUs with nitrogen kg/yr)
+        const nitrogenSites = catchSites.filter((s) => s.unitType === "Nitrogen")
+        const prices = nitrogenSites.map((s) => s.price).filter((p) => p > 0)
         stats[name] = {
           supplySites: catchSites.length,
-          totalCredits: catchSites.reduce((s, site) => s + site.total, 0),
-          availableCredits: catchSites.reduce((s, site) => s + site.available, 0),
+          totalCredits: nitrogenSites.reduce((s, site) => s + site.total, 0),
+          availableCredits: nitrogenSites.reduce((s, site) => s + site.available, 0),
           dealCount: catchDeals.length,
-          unitsNeeded: catchDeals.reduce((s, d) => s + d.units, 0),
+          unitsNeeded: catchDeals.filter((d) => d.unitType === "Nitrogen").reduce((s, d) => s + d.units, 0),
           priceMin: prices.length > 0 ? Math.min(...prices) : 0,
           priceMax: prices.length > 0 ? Math.max(...prices) : 0,
           deals: catchDeals,

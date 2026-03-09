@@ -1,5 +1,5 @@
 /**
- * Notification Module — Public API
+ * Notification Module - Public API
  *
  * Import from this barrel when referencing the notification module from:
  *   - src/server/root.ts (router)

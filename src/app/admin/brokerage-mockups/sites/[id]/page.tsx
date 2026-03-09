@@ -26,6 +26,10 @@ import {
   Pencil,
   MailIcon,
   ArrowRight,
+  TreeDeciduous,
+  Sprout,
+  Globe,
+  Building2,
 } from "lucide-react"
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts"
 
@@ -58,6 +62,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Progress } from "@/components/ui/progress"
 
 // ---------------------------------------------------------------------------
 // Site data lookup
@@ -66,7 +71,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 interface SiteData {
   ref: string
   name: string
-  status: "Active" | "Registered" | "Under Assessment" | "Legal In Progress" | "Prospecting"
+  status: "Active" | "Registered" | "Under Assessment" | "Legal In Progress" | "Prospecting" | "Fully Allocated"
   address: string
   lat: number
   lng: number
@@ -188,7 +193,7 @@ const SITES_DATA: Record<string, SiteData> = {
 // Default fallback for unrecognized IDs
 const DEFAULT_SITE_REF = "S-0005"
 
-// Module-level mutable references — set by the page component before render
+// Module-level mutable references - set by the page component before render
 let site = { ref: SITES_DATA[DEFAULT_SITE_REF].ref, name: SITES_DATA[DEFAULT_SITE_REF].name, status: SITES_DATA[DEFAULT_SITE_REF].status, address: SITES_DATA[DEFAULT_SITE_REF].address, lat: SITES_DATA[DEFAULT_SITE_REF].lat, lng: SITES_DATA[DEFAULT_SITE_REF].lng, catchment: SITES_DATA[DEFAULT_SITE_REF].catchment, lpa: SITES_DATA[DEFAULT_SITE_REF].lpa, region: SITES_DATA[DEFAULT_SITE_REF].region }
 let owner = SITES_DATA[DEFAULT_SITE_REF].owner
 let registration = SITES_DATA[DEFAULT_SITE_REF].registration
@@ -228,26 +233,609 @@ const complianceBorderColor: Record<string, string> = {
   Overdue: "border-l-red-400",
 }
 
+// ── BNG helpers ──────────────────────────────────────────────────────────────
+
+const DISTINCTIVENESS_LABELS: Record<string, string> = {
+  v_low: "V.Low", low: "Low", medium: "Medium", high: "High", v_high: "V.High",
+}
+
+const DISTINCTIVENESS_COLORS: Record<string, string> = {
+  v_low: "bg-slate-100 text-slate-700 border-slate-300 dark:bg-slate-800 dark:text-slate-300",
+  low: "bg-slate-100 text-slate-700 border-slate-300 dark:bg-slate-800 dark:text-slate-300",
+  medium: "bg-amber-50 text-amber-700 border-amber-300 dark:bg-amber-900/30 dark:text-amber-300",
+  high: "bg-emerald-50 text-emerald-700 border-emerald-300 dark:bg-emerald-900/30 dark:text-emerald-300",
+  v_high: "bg-green-100 text-green-800 border-green-300 dark:bg-green-900/40 dark:text-green-300",
+}
+
+const CONDITION_LABELS: Record<string, string> = {
+  poor: "Poor", fairly_poor: "Fairly Poor", moderate: "Moderate",
+  fairly_good: "Fairly Good", good: "Good",
+}
+
+const CATEGORY_LABELS: Record<string, string> = {
+  area: "Areas", hedgerow: "Hedgerows", watercourse: "Watercourses", individual_tree: "Ind. Trees",
+}
+
 function activityIcon(type: string) {
   switch (type) {
     case "stage":
       return <ArrowRight className="w-3.5 h-3.5 text-blue-500" />
     case "note":
-      return <Pencil className="w-3.5 h-3.5 text-slate-500" />
+      return <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
     case "email":
       return <MailIcon className="w-3.5 h-3.5 text-indigo-500" />
     case "doc":
       return <FileText className="w-3.5 h-3.5 text-emerald-500" />
     default:
-      return <Clock className="w-3.5 h-3.5 text-slate-400" />
+      return <Clock className="w-3.5 h-3.5 text-muted-foreground" />
   }
+}
+
+// ── BNG Site Content (habitat tabs + enriched sidebar) ───────────────────────
+
+function BNGSiteContent({ sharedSite }: { sharedSite: NonNullable<ReturnType<typeof sharedSites.find>> }) {
+  const [activeTab, setActiveTab] = useState("summary")
+  const [baselineFilter, setBaselineFilter] = useState<string>("all")
+  const [enhancementFilter, setEnhancementFilter] = useState<string>("all")
+
+  const habitatSummary = sharedSite.habitatSummary ?? []
+  const baselineHabitats = sharedSite.baselineHabitats ?? []
+  const improvementHabitats = sharedSite.improvementHabitats ?? []
+
+  const filteredBaseline = baselineFilter === "all"
+    ? baselineHabitats
+    : baselineHabitats.filter(h => h.category === baselineFilter)
+
+  const filteredImprovement = enhancementFilter === "all"
+    ? improvementHabitats
+    : improvementHabitats.filter(h => h.category === enhancementFilter)
+
+  const totalBaselineHUs = habitatSummary.reduce((s, r) => s + r.baselineUnits, 0)
+  const totalImprovementHUs = habitatSummary.reduce((s, r) => s + r.improvementUnits, 0)
+  const totalHUGain = habitatSummary.reduce((s, r) => s + r.unitGain, 0)
+  const totalAllocatedHUs = habitatSummary.reduce((s, r) => s + r.allocatedUnits, 0)
+
+  return (
+    <div className="mt-6 space-y-6">
+      {/* Top stat cards */}
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <div className="rounded-xl border border-border bg-card p-4 text-center">
+          <p className="text-xs text-muted-foreground">Net HU Gain</p>
+          <p className="mt-1 text-2xl font-bold text-green-600 dark:text-green-400">+{totalHUGain.toFixed(1)}</p>
+          <p className="text-xs text-muted-foreground">area HUs</p>
+        </div>
+        <div className="rounded-xl border border-border bg-card p-4 text-center">
+          <p className="text-xs text-muted-foreground">Improvement HUs</p>
+          <p className="mt-1 text-2xl font-bold text-foreground">{totalImprovementHUs.toFixed(1)}</p>
+          <p className="text-xs text-muted-foreground">total capacity</p>
+        </div>
+        <div className="rounded-xl border border-border bg-card p-4 text-center">
+          <p className="text-xs text-muted-foreground">Allocated</p>
+          <p className="mt-1 text-2xl font-bold text-foreground">{totalAllocatedHUs.toFixed(1)}</p>
+          <p className="text-xs text-muted-foreground">area HUs</p>
+        </div>
+        <div className="rounded-xl border border-border bg-card p-4 text-center">
+          <p className="text-xs text-muted-foreground">Available</p>
+          <p className="mt-1 text-2xl font-bold text-blue-600 dark:text-blue-400">
+            {(totalImprovementHUs - totalAllocatedHUs).toFixed(1)}
+          </p>
+          <p className="text-xs text-muted-foreground">area HUs</p>
+        </div>
+      </div>
+
+      {/* Main tabs */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_300px]">
+        <div>
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="mb-4">
+              <TabsTrigger value="summary">Habitat Summary</TabsTrigger>
+              <TabsTrigger value="baseline">Baseline</TabsTrigger>
+              <TabsTrigger value="enhancement">Enhancement</TabsTrigger>
+              <TabsTrigger value="allocations">Allocations</TabsTrigger>
+            </TabsList>
+
+            {/* ── Habitat Summary tab ─────────────────────────────────── */}
+            <TabsContent value="summary">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Habitat Category Summary</CardTitle>
+                  <p className="text-xs text-muted-foreground">
+                    Mirrors Natural England Biodiversity Gain Site Register format
+                  </p>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="text-xs">
+                          <TableHead>Category</TableHead>
+                          <TableHead className="text-right">Parcels</TableHead>
+                          <TableHead className="text-right">Baseline</TableHead>
+                          <TableHead className="text-right">Baseline HUs</TableHead>
+                          <TableHead className="text-right">Improvement</TableHead>
+                          <TableHead className="text-right">Improve HUs</TableHead>
+                          <TableHead className="text-right">HU Gain</TableHead>
+                          <TableHead className="text-right">Alloc'd HUs</TableHead>
+                          <TableHead className="text-right">% Alloc</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {["area", "hedgerow", "watercourse", "individual_tree"].map(cat => {
+                          const row = habitatSummary.find(r => r.category === cat)
+                          if (!row) {
+                            return (
+                              <TableRow key={cat} className="text-muted-foreground">
+                                <TableCell className="font-medium">{CATEGORY_LABELS[cat]}</TableCell>
+                                <TableCell className="text-right">0</TableCell>
+                                <TableCell className="text-right">—</TableCell>
+                                <TableCell className="text-right">—</TableCell>
+                                <TableCell className="text-right">—</TableCell>
+                                <TableCell className="text-right">—</TableCell>
+                                <TableCell className="text-right">—</TableCell>
+                                <TableCell className="text-right">—</TableCell>
+                                <TableCell className="text-right">—</TableCell>
+                              </TableRow>
+                            )
+                          }
+                          const parcelCount = row.baselineParcelCount + row.improvementParcelCount
+                          return (
+                            <TableRow key={cat}>
+                              <TableCell className="font-medium text-foreground">{row.categoryLabel}</TableCell>
+                              <TableCell className="text-right">{parcelCount}</TableCell>
+                              <TableCell className="text-right text-muted-foreground">
+                                {row.baselineSize} {row.sizeUnit}
+                              </TableCell>
+                              <TableCell className="text-right">{row.baselineUnits.toFixed(2)}</TableCell>
+                              <TableCell className="text-right text-muted-foreground">
+                                {row.improvementSize} {row.sizeUnit}
+                              </TableCell>
+                              <TableCell className="text-right">{row.improvementUnits.toFixed(2)}</TableCell>
+                              <TableCell className="text-right">
+                                <span className="font-semibold text-green-600 dark:text-green-400">
+                                  +{row.unitGain.toFixed(2)}
+                                </span>
+                              </TableCell>
+                              <TableCell className="text-right">{row.allocatedUnits.toFixed(2)}</TableCell>
+                              <TableCell className="text-right">
+                                <div className="flex items-center justify-end gap-2">
+                                  <Progress value={row.allocatedPercent} className="h-1.5 w-16" />
+                                  <span className="text-xs text-muted-foreground w-10 text-right">
+                                    {row.allocatedPercent.toFixed(1)}%
+                                  </span>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          )
+                        })}
+                      </TableBody>
+                      <tfoot>
+                        <tr className="border-t border-border font-semibold bg-muted/30">
+                          <td className="px-4 py-2 text-sm font-semibold text-foreground">TOTAL</td>
+                          <td className="px-4 py-2 text-sm text-right">
+                            {habitatSummary.reduce((s, r) => s + r.baselineParcelCount + r.improvementParcelCount, 0)}
+                          </td>
+                          <td className="px-4 py-2" />
+                          <td className="px-4 py-2 text-sm text-right">{totalBaselineHUs.toFixed(2)}</td>
+                          <td className="px-4 py-2" />
+                          <td className="px-4 py-2 text-sm text-right">{totalImprovementHUs.toFixed(2)}</td>
+                          <td className="px-4 py-2 text-sm text-right text-green-600 dark:text-green-400 font-semibold">
+                            +{totalHUGain.toFixed(2)}
+                          </td>
+                          <td className="px-4 py-2 text-sm text-right">{totalAllocatedHUs.toFixed(2)}</td>
+                          <td className="px-4 py-2" />
+                        </tr>
+                      </tfoot>
+                    </Table>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* ── Baseline tab ────────────────────────────────────────── */}
+            <TabsContent value="baseline">
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-base">Baseline Habitats</CardTitle>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {baselineHabitats.length} parcels surveyed · {baselineHabitats.reduce((s, p) => s + p.size, 0).toFixed(1)} ha + {baselineHabitats.filter(p => p.category === "hedgerow").reduce((s, p) => s + p.size, 0).toFixed(1)} km hedgerow
+                      </p>
+                    </div>
+                    <select
+                      value={baselineFilter}
+                      onChange={e => setBaselineFilter(e.target.value)}
+                      className="text-xs rounded-md border border-border bg-background px-2 py-1 text-foreground"
+                    >
+                      <option value="all">All Categories</option>
+                      <option value="area">Areas</option>
+                      <option value="hedgerow">Hedgerows</option>
+                    </select>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="text-xs">
+                        <TableHead>Habitat Type</TableHead>
+                        <TableHead>Broad Type</TableHead>
+                        <TableHead>Distinctiveness</TableHead>
+                        <TableHead>Condition</TableHead>
+                        <TableHead className="text-right">Parcels</TableHead>
+                        <TableHead className="text-right">Size</TableHead>
+                        <TableHead className="text-right">HUs</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredBaseline.map(p => (
+                        <TableRow key={p.id}>
+                          <TableCell className="font-medium text-foreground text-sm">
+                            {p.specificHabitatType}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground text-sm">{p.broadHabitatType}</TableCell>
+                          <TableCell>
+                            <span className={`inline-flex items-center rounded border px-1.5 py-0.5 text-xs font-medium ${DISTINCTIVENESS_COLORS[p.distinctiveness]}`}>
+                              {DISTINCTIVENESS_LABELS[p.distinctiveness]}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground capitalize">
+                            {CONDITION_LABELS[p.condition]}
+                          </TableCell>
+                          <TableCell className="text-right text-sm">{p.parcelCount}</TableCell>
+                          <TableCell className="text-right text-sm">{p.size} {p.sizeUnit}</TableCell>
+                          <TableCell className="text-right text-sm font-mono">{p.biodiversityUnits.toFixed(2)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                    <tfoot>
+                      <tr className="border-t border-border bg-muted/30">
+                        <td colSpan={4} className="px-4 py-2 text-sm font-semibold text-foreground">TOTAL</td>
+                        <td className="px-4 py-2 text-sm font-semibold text-right">
+                          {filteredBaseline.reduce((s, p) => s + p.parcelCount, 0)}
+                        </td>
+                        <td className="px-4 py-2" />
+                        <td className="px-4 py-2 text-sm font-semibold text-right font-mono">
+                          {filteredBaseline.reduce((s, p) => s + p.biodiversityUnits, 0).toFixed(2)}
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </Table>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* ── Enhancement tab ─────────────────────────────────────── */}
+            <TabsContent value="enhancement">
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-base">Enhancement Habitats</CardTitle>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Target habitat types after management · temporal risk multipliers applied
+                      </p>
+                    </div>
+                    <select
+                      value={enhancementFilter}
+                      onChange={e => setEnhancementFilter(e.target.value)}
+                      className="text-xs rounded-md border border-border bg-background px-2 py-1 text-foreground"
+                    >
+                      <option value="all">All Categories</option>
+                      <option value="area">Areas</option>
+                      <option value="hedgerow">Hedgerows</option>
+                    </select>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="text-xs">
+                        <TableHead>Habitat Type</TableHead>
+                        <TableHead>Distinctiveness</TableHead>
+                        <TableHead>Condition</TableHead>
+                        <TableHead className="text-right">Parcels</TableHead>
+                        <TableHead className="text-right">Size</TableHead>
+                        <TableHead className="text-right">HUs</TableHead>
+                        <TableHead className="text-right">HU Gain</TableHead>
+                        <TableHead className="text-right">% Alloc</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredImprovement.map(p => (
+                        <TableRow key={p.id}>
+                          <TableCell className="font-medium text-foreground text-sm">
+                            <div>{p.specificHabitatType}</div>
+                            {p.temporalRisk !== null && (
+                              <div className="text-xs text-muted-foreground">
+                                Temporal risk ×{p.temporalRisk}
+                              </div>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <span className={`inline-flex items-center rounded border px-1.5 py-0.5 text-xs font-medium ${DISTINCTIVENESS_COLORS[p.distinctiveness]}`}>
+                              {DISTINCTIVENESS_LABELS[p.distinctiveness]}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {CONDITION_LABELS[p.condition]}
+                          </TableCell>
+                          <TableCell className="text-right text-sm">{p.parcelCount}</TableCell>
+                          <TableCell className="text-right text-sm">{p.size} {p.sizeUnit}</TableCell>
+                          <TableCell className="text-right text-sm font-mono">{p.biodiversityUnits.toFixed(2)}</TableCell>
+                          <TableCell className="text-right text-sm">
+                            {p.unitGain !== null ? (
+                              <span className="font-semibold text-green-600 dark:text-green-400">
+                                +{p.unitGain.toFixed(2)}
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-1.5">
+                              <Progress value={p.allocatedPercent} className="h-1.5 w-12" />
+                              <span className="text-xs text-muted-foreground w-8 text-right">
+                                {p.allocatedPercent.toFixed(0)}%
+                              </span>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                    <tfoot>
+                      <tr className="border-t border-border bg-muted/30">
+                        <td colSpan={3} className="px-4 py-2 text-sm font-semibold text-foreground">TOTAL</td>
+                        <td className="px-4 py-2 text-sm font-semibold text-right">
+                          {filteredImprovement.reduce((s, p) => s + p.parcelCount, 0)}
+                        </td>
+                        <td className="px-4 py-2" />
+                        <td className="px-4 py-2 text-sm font-semibold text-right font-mono">
+                          {filteredImprovement.reduce((s, p) => s + p.biodiversityUnits, 0).toFixed(2)}
+                        </td>
+                        <td className="px-4 py-2 text-sm font-semibold text-right text-green-600 dark:text-green-400">
+                          +{totalHUGain.toFixed(2)}
+                        </td>
+                        <td className="px-4 py-2" />
+                      </tr>
+                    </tfoot>
+                  </Table>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* ── Allocations tab ──────────────────────────────────────── */}
+            <TabsContent value="allocations">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Allocations</CardTitle>
+                  <p className="text-xs text-muted-foreground">
+                    No allocations yet — site is Under Assessment
+                  </p>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-col items-center justify-center py-12 text-center">
+                    <div className="rounded-full bg-muted p-4 mb-3">
+                      <Leaf className="h-6 w-6 text-muted-foreground" />
+                    </div>
+                    <p className="text-sm font-medium text-foreground">No allocations yet</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Allocations will appear here once the site is registered and matched to developments.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        </div>
+
+        {/* BNG right sidebar */}
+        <div className="space-y-4">
+          {/* Registration */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Shield className="h-4 w-4 text-muted-foreground" />
+                Registration
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              <div>
+                <p className="text-xs text-muted-foreground">BGS Reference</p>
+                <p className="font-mono font-medium text-foreground">{sharedSite.bgsReference ?? "Pending"}</p>
+              </div>
+              <Separator />
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <p className="text-xs text-muted-foreground">Legal Agreement</p>
+                  <p className="font-medium text-foreground">{sharedSite.legalAgreement ?? "—"}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Commitment</p>
+                  <p className="font-medium text-foreground">{sharedSite.commitmentYears ?? 30} years</p>
+                </div>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Enhancement Start</p>
+                <p className="font-medium text-foreground">{sharedSite.enhancementStartDate ?? "TBD"}</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Geography */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Globe className="h-4 w-4 text-muted-foreground" />
+                Geography
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              <div>
+                <p className="text-xs text-muted-foreground">National Character Area</p>
+                <p className="font-medium text-foreground">{sharedSite.nationalCharacterArea ?? "—"}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">LNRS Area</p>
+                <p className="font-medium text-foreground">{sharedSite.lnrsArea ?? "—"}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <p className="text-xs text-muted-foreground">LPA</p>
+                  <p className="font-medium text-foreground">{sharedSite.lpa}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">IMD Decile</p>
+                  <p className="font-medium text-foreground">{sharedSite.imdDecile ?? "—"} / 10</p>
+                </div>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">LSOA</p>
+                <p className="font-medium text-foreground">{sharedSite.lsoa ?? "—"}</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Metric */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Sprout className="h-4 w-4 text-muted-foreground" />
+                Biodiversity Metric
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              <div>
+                <p className="text-xs text-muted-foreground">Metric Version</p>
+                <p className="font-medium text-foreground">{sharedSite.metricVersion ?? "—"}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">HMMP Status</p>
+                <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium capitalize ${
+                  sharedSite.hmmpStatus === "approved"
+                    ? "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300"
+                    : sharedSite.hmmpStatus === "submitted"
+                    ? "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300"
+                    : "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300"
+                }`}>
+                  {sharedSite.hmmpStatus ?? "not started"}
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Nutrient Budget Card ─────────────────────────────────────────────────────
+
+function NutrientBudgetCard({ sharedSite }: { sharedSite: NonNullable<ReturnType<typeof sharedSites.find>> }) {
+  if (!sharedSite.baselineLoading || !sharedSite.proposedLoading) return null
+  const creditYield = sharedSite.baselineLoading - sharedSite.proposedLoading
+  const reductionPct = Math.round((creditYield / sharedSite.baselineLoading) * 100)
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base flex items-center gap-2">
+          <Leaf className="h-4 w-4 text-emerald-500" />
+          Nutrient Budget
+        </CardTitle>
+        {sharedSite.mitigationType && (
+          <p className="text-sm text-muted-foreground">{sharedSite.mitigationType}</p>
+        )}
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-3 font-mono text-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-muted-foreground">Baseline loading</span>
+            <span className="font-semibold text-foreground">{sharedSite.baselineLoading.toLocaleString()} kg N/yr</span>
+          </div>
+          <div className="flex items-center justify-between text-muted-foreground">
+            <span className="pl-2">({(sharedSite.baselineLoading / sharedSite.areaHectares).toFixed(2)} kg N/ha/yr × {sharedSite.areaHectares} ha)</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-muted-foreground">Proposed loading</span>
+            <span className="font-semibold text-foreground">− {sharedSite.proposedLoading.toLocaleString()} kg N/yr</span>
+          </div>
+          <div className="flex items-center justify-between text-muted-foreground">
+            <span className="pl-2">({(sharedSite.proposedLoading / sharedSite.areaHectares).toFixed(2)} kg N/ha/yr × {sharedSite.areaHectares} ha)</span>
+          </div>
+          <div className="h-px bg-border" />
+          <div className="flex items-center justify-between">
+            <span className="font-medium text-foreground">Credit yield</span>
+            <span className="font-bold text-green-600 dark:text-green-400">{creditYield.toLocaleString()} kg N/yr</span>
+          </div>
+        </div>
+        <div className="rounded-lg border-2 border-green-200 bg-green-50 p-3 dark:border-green-800 dark:bg-green-950/30 text-center">
+          <p className="text-sm font-semibold text-green-800 dark:text-green-300">
+            {reductionPct}% reduction in nitrogen loading to watercourse
+          </p>
+          <p className="text-xs text-green-700 dark:text-green-400 mt-0.5">
+            {creditYield.toLocaleString()} kg/yr available · {sharedSite.legalAgreement ?? "S106"} · {sharedSite.commitmentYears ?? 80}-year commitment
+          </p>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+function GeographyCard({ sharedSite }: { sharedSite: NonNullable<ReturnType<typeof sharedSites.find>> }) {
+  if (!sharedSite.nationalCharacterArea && !sharedSite.lnrsArea) return null
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-sm flex items-center gap-2">
+          <Globe className="h-4 w-4 text-muted-foreground" />
+          Geography
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-2 text-sm">
+        {sharedSite.nationalCharacterArea && (
+          <div>
+            <p className="text-xs text-muted-foreground">National Character Area</p>
+            <p className="font-medium text-foreground">{sharedSite.nationalCharacterArea}</p>
+          </div>
+        )}
+        {sharedSite.lnrsArea && (
+          <div>
+            <p className="text-xs text-muted-foreground">LNRS Area</p>
+            <p className="font-medium text-foreground">{sharedSite.lnrsArea}</p>
+          </div>
+        )}
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <p className="text-xs text-muted-foreground">Catchment</p>
+            <p className="font-medium text-foreground">{sharedSite.catchment}</p>
+          </div>
+          {sharedSite.lsoa && (
+            <div>
+              <p className="text-xs text-muted-foreground">LSOA</p>
+              <p className="font-medium text-foreground">{sharedSite.lsoa}</p>
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  )
 }
 
 // ---------------------------------------------------------------------------
 // Shared sub-components used by both layouts
 // ---------------------------------------------------------------------------
 
+const STATUS_BADGE_COLORS: Record<string, string> = {
+  Active: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  Registered: "bg-green-50 text-green-700 border-green-200",
+  "Under Assessment": "bg-blue-50 text-blue-700 border-blue-200",
+  "Legal In Progress": "bg-amber-50 text-amber-700 border-amber-200",
+  "Fully Allocated": "bg-purple-50 text-purple-700 border-purple-200",
+}
+
 function PageHeader({ variant, setVariant }: { variant: "v1" | "v2"; setVariant: (v: "v1" | "v2") => void }) {
+  const badgeColor = STATUS_BADGE_COLORS[site.status] ?? "bg-slate-50 text-slate-700 border-slate-200"
+
   return (
     <div className="border-b border-border bg-background">
       <div className="max-w-screen-2xl mx-auto px-6 py-6">
@@ -263,7 +851,7 @@ function PageHeader({ variant, setVariant }: { variant: "v1" | "v2"; setVariant:
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-semibold tracking-tight">{site.name}</h1>
-            <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200">{site.status}</Badge>
+            <Badge className={badgeColor}>{site.status}</Badge>
           </div>
 
           <div className="flex items-center gap-2">
@@ -610,7 +1198,7 @@ function ActivityTimeline() {
               <div className="flex-1 min-w-0">
                 <p className="text-xs text-foreground">
                   <span className="font-medium">{a.user}</span>
-                  {" — "}
+                  {" - "}
                   {a.text}
                 </p>
                 <p className="text-[11px] text-muted-foreground mt-0.5">{a.time}</p>
@@ -653,7 +1241,7 @@ function LinkedDealsSection() {
                 </TableCell>
                 <TableCell className="text-xs">{d.title}</TableCell>
                 <TableCell>
-                  <Badge className={`text-[10px] border ${dealStageColor[d.stage] ?? "bg-slate-50 text-slate-700 border-slate-200"}`}>
+                  <Badge className={`text-[10px] border ${dealStageColor[d.stage] ?? "bg-muted text-muted-foreground border-border"}`}>
                     {d.stage}
                   </Badge>
                 </TableCell>
@@ -784,6 +1372,8 @@ function CapacityPanel() {
   const total = siteData.capacityTotal
   const allocated = siteData.capacityAllocated
   const available = siteData.capacityAvailable
+  const allocatedPct = total > 0 ? ((allocated / total) * 100).toFixed(1) : "0"
+  const availablePct = total > 0 ? ((available / total) * 100).toFixed(1) : "0"
 
   return (
     <Card>
@@ -821,7 +1411,7 @@ function CapacityPanel() {
         <div className="space-y-2 mt-4">
           <div className="flex items-center justify-between text-sm">
             <span className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-slate-200" />
+              <span className="w-2.5 h-2.5 rounded-full bg-muted-foreground/30" />
               Total
             </span>
             <span className="font-medium">{total} kg N/yr</span>
@@ -831,14 +1421,14 @@ function CapacityPanel() {
               <span className="w-2.5 h-2.5 rounded-full bg-blue-500" />
               Allocated
             </span>
-            <span className="font-medium">{allocated} kg N/yr <span className="text-muted-foreground text-xs">(52.6%)</span></span>
+            <span className="font-medium">{allocated} kg N/yr <span className="text-muted-foreground text-xs">({allocatedPct}%)</span></span>
           </div>
           <div className="flex items-center justify-between text-sm">
             <span className="flex items-center gap-2">
               <span className="w-2.5 h-2.5 rounded-full bg-green-500" />
               Available
             </span>
-            <span className="font-medium">{available} kg N/yr <span className="text-muted-foreground text-xs">(47.4%)</span></span>
+            <span className="font-medium">{available} kg N/yr <span className="text-muted-foreground text-xs">({availablePct}%)</span></span>
           </div>
         </div>
 
@@ -942,16 +1532,18 @@ function CompliancePanel() {
 // V1: Two-column layout (65 / 35)
 // ---------------------------------------------------------------------------
 
-function TwoColumnLayout() {
+function TwoColumnLayout({ sharedSite, isBNG }: { sharedSite: ReturnType<typeof sharedSites.find> | null; isBNG: boolean }) {
   return (
     <div className="max-w-screen-2xl mx-auto px-6 py-6">
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-6">
-        {/* Left column — main content */}
+        {/* Left column - main content */}
         <div className="space-y-6">
           <LocationSection />
           <OwnerCard />
           <RegistrationSection />
           <BaselineSection />
+          {isBNG && sharedSite && <BNGSiteContent sharedSite={sharedSite} />}
+          {!isBNG && sharedSite && <NutrientBudgetCard sharedSite={sharedSite} />}
           <AllocationsTable />
           <AssessmentHistorySection />
           <LegalStatusSection />
@@ -960,11 +1552,12 @@ function TwoColumnLayout() {
           <LinkedDealsSection />
         </div>
 
-        {/* Right column — sidebar */}
+        {/* Right column - sidebar */}
         <div className="space-y-6">
-          <CapacityPanel />
+          {!isBNG && <CapacityPanel />}
           <AssessmentPanel />
           <CompliancePanel />
+          {sharedSite && <GeographyCard sharedSite={sharedSite} />}
         </div>
       </div>
     </div>
@@ -972,10 +1565,10 @@ function TwoColumnLayout() {
 }
 
 // ---------------------------------------------------------------------------
-// V2: Tabbed layout — full width
+// V2: Tabbed layout - full width
 // ---------------------------------------------------------------------------
 
-function TabbedLayout() {
+function TabbedLayout({ sharedSite, isBNG }: { sharedSite: ReturnType<typeof sharedSites.find> | null; isBNG: boolean }) {
   return (
     <div className="max-w-screen-2xl mx-auto px-6 py-6">
       <Tabs defaultValue="overview" className="w-full">
@@ -993,9 +1586,11 @@ function TabbedLayout() {
             <div className="lg:col-span-2">
               <LocationSection />
             </div>
-            <div>
-              <CapacityPanel />
-            </div>
+            {!isBNG && (
+              <div>
+                <CapacityPanel />
+              </div>
+            )}
 
             {/* Second row: owner + assessment */}
             <OwnerCard />
@@ -1032,6 +1627,21 @@ function TabbedLayout() {
               <RegistrationSection />
             </div>
             <BaselineSection />
+
+            {/* BNG / Nutrient enrichment */}
+            {isBNG && sharedSite && (
+              <div className="lg:col-span-3">
+                <BNGSiteContent sharedSite={sharedSite} />
+              </div>
+            )}
+            {!isBNG && sharedSite && (
+              <>
+                <div className="lg:col-span-2">
+                  <NutrientBudgetCard sharedSite={sharedSite} />
+                </div>
+                <GeographyCard sharedSite={sharedSite} />
+              </>
+            )}
 
             {/* Fourth row: activity + linked deals */}
             <div className="lg:col-span-2">
@@ -1252,28 +1862,129 @@ function TabbedLayout() {
 export default function SiteDetailPage() {
   const params = useParams()
   const siteId = typeof params.id === "string" ? params.id : DEFAULT_SITE_REF
-  const siteData = SITES_DATA[siteId] ?? SITES_DATA[DEFAULT_SITE_REF]
+  const siteData = SITES_DATA[siteId]
+
+  const [variant, setVariant] = useState<"v1" | "v2">("v1")
+  const sharedSite = sharedSites.find(s => s.ref === siteId) ?? null
+  const isBNG = sharedSite?.unitType === "BNG"
+
+  if (!siteData && !sharedSite) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="max-w-screen-2xl mx-auto px-6 py-6">
+          <Link href="/admin/brokerage-mockups/sites" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
+            <ArrowRight className="h-4 w-4 rotate-180" />
+            Back to Sites
+          </Link>
+          <div className="flex flex-col items-center justify-center py-24">
+            <h2 className="text-xl font-semibold text-foreground mb-2">Site not found</h2>
+            <p className="text-sm text-muted-foreground mb-6">
+              No site with ID <span className="font-mono font-medium">{siteId}</span> exists.
+            </p>
+            <Link href="/admin/brokerage-mockups/sites">
+              <Button size="sm">View all sites</Button>
+            </Link>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   // Assign module-level variables from the looked-up site data
   // This allows all sub-components to work without prop-drilling
-  site = { ref: siteData.ref, name: siteData.name, status: siteData.status, address: siteData.address, lat: siteData.lat, lng: siteData.lng, catchment: siteData.catchment, lpa: siteData.lpa, region: siteData.region }
-  owner = siteData.owner
-  registration = siteData.registration
-  baseline = siteData.baseline
-  allocations = siteData.allocations
-  documents = siteData.documents
-  linkedDeals = siteData.linkedDeals
-  activities = siteData.activities
-  capacityData = siteData.capacityData
-  complianceItems = siteData.complianceItems
-  assessment = siteData.assessment
+  if (siteData) {
+    site = { ref: siteData.ref, name: siteData.name, status: siteData.status, address: siteData.address, lat: siteData.lat, lng: siteData.lng, catchment: siteData.catchment, lpa: siteData.lpa, region: siteData.region }
+    owner = siteData.owner
+    registration = siteData.registration
+    baseline = siteData.baseline
+    allocations = siteData.allocations
+    documents = siteData.documents
+    linkedDeals = siteData.linkedDeals
+    activities = siteData.activities
+    capacityData = siteData.capacityData
+    complianceItems = siteData.complianceItems
+    assessment = siteData.assessment
+  } else if (sharedSite) {
+    // Fallback: populate from shared mock data for sites without inline SITES_DATA entries
+    const siteAssessments = sharedAssessments.filter(a => a.siteRef === sharedSite.ref)
+    const siteDeals = sharedDeals.filter(d => d.siteRef === sharedSite.ref)
+    const siteDocs = sharedDocuments.filter(d => d.linkedEntityType === "site" && d.linkedEntityId === sharedSite.ref)
+    const contact = sharedContacts.find(c => c.id === sharedSite.contact)
 
-  const [variant, setVariant] = useState<"v1" | "v2">("v1")
+    site = {
+      ref: sharedSite.ref,
+      name: sharedSite.name,
+      status: sharedSite.status as SiteData["status"],
+      address: sharedSite.address,
+      lat: sharedSite.lat,
+      lng: sharedSite.lng,
+      catchment: sharedSite.catchment,
+      lpa: sharedSite.lpa,
+      region: "Hampshire",
+    }
+    owner = {
+      name: contact?.name ?? sharedSite.contactName,
+      role: contact?.type ?? "Landowner",
+      company: contact?.company ?? "",
+      phone: contact?.phone ?? "",
+      email: contact?.email ?? "",
+      initials: contact?.initials ?? sharedSite.contactName.split(" ").map(w => w[0]).join(""),
+    }
+    registration = {
+      ref: sharedSite.registrationRef ?? sharedSite.bgsReference ?? "Pending",
+      date: sharedSite.registeredDate ?? "Pending",
+      agreement: sharedSite.legalAgreement ?? "—",
+      commitment: `${sharedSite.commitmentYears ?? 30} years`,
+      expires: "—",
+      cost: "—",
+    }
+    baseline = {
+      landUse: sharedSite.currentUse,
+      area: `${sharedSite.areaHectares} ha`,
+      soil: sharedSite.soilType,
+      currentLoading: sharedSite.baselineLoading ? `${sharedSite.baselineLoading} kg N/yr` : "—",
+      proposedLoading: sharedSite.proposedLoading ? `${sharedSite.proposedLoading} kg N/yr` : "—",
+      mitigation: sharedSite.mitigationType ?? "—",
+    }
+    allocations = siteDeals.map(d => ({
+      ref: d.id,
+      deal: d.id,
+      buyer: d.demandContactName,
+      quantity: d.unitsLabel,
+      unitPrice: `£${d.value > 0 && d.units > 0 ? Math.round(d.value / d.units).toLocaleString() : "—"}`,
+      total: d.displayValue,
+      status: "Reserved" as const,
+      date: d.expectedClose,
+    }))
+    documents = siteDocs.map(d => ({
+      name: d.name,
+      type: d.type,
+      size: d.fileSize,
+      uploaded: d.uploadedDate,
+      by: d.uploadedBy,
+    }))
+    linkedDeals = siteDeals.map(d => ({
+      ref: d.id,
+      title: d.title,
+      stage: d.stage,
+      contact: d.demandContactName,
+      value: d.displayValue,
+    }))
+    activities = []
+    capacityData = [
+      { name: "Allocated", value: sharedSite.allocated, color: "#3b82f6" },
+      { name: "Available", value: sharedSite.available, color: "#22c55e" },
+    ]
+    complianceItems = []
+    assessment = siteAssessments[0]
+      ? { date: siteAssessments[0].date, assessor: siteAssessments[0].assessorName, initials: siteAssessments[0].assessorName.split(" ").map(w => w[0]).join(""), type: siteAssessments[0].type }
+      : { date: "—", assessor: "—", initials: "—", type: "—" }
+  }
 
   return (
     <div className="min-h-screen bg-background">
       <PageHeader variant={variant} setVariant={setVariant} />
-      {variant === "v1" ? <TwoColumnLayout /> : <TabbedLayout />}
+      {variant === "v1" ? <TwoColumnLayout sharedSite={sharedSite} isBNG={isBNG} /> : <TabbedLayout sharedSite={sharedSite} isBNG={isBNG} />}
     </div>
   )
 }

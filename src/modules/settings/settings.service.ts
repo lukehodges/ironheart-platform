@@ -23,7 +23,7 @@ function generateApiKey(): string {
 }
 
 /**
- * SHA-256 hash of the raw API key — this is what gets stored in the DB.
+ * SHA-256 hash of the raw API key - this is what gets stored in the DB.
  */
 function hashApiKey(rawKey: string): string {
   return createHash("sha256").update(rawKey).digest("hex");
@@ -39,7 +39,7 @@ export const settingsService = {
   // -------------------------------------------------------------------------
 
   /**
-   * Create a new API key. Returns the raw key exactly once — it is never
+   * Create a new API key. Returns the raw key exactly once - it is never
    * stored or retrievable after this call.
    */
   async createApiKey(
@@ -122,7 +122,7 @@ export const settingsService = {
   },
 
   // -------------------------------------------------------------------------
-  // Module tabs — registry-driven discovery
+  // Module tabs - registry-driven discovery
   // -------------------------------------------------------------------------
 
   /**

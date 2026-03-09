@@ -65,10 +65,10 @@ function makeTaxRule(overrides: Partial<TaxRule> = {}): TaxRule {
 }
 
 // ---------------------------------------------------------------------------
-// assertValidInvoiceTransition — valid transitions
+// assertValidInvoiceTransition - valid transitions
 // ---------------------------------------------------------------------------
 
-describe('assertValidInvoiceTransition — valid transitions', () => {
+describe('assertValidInvoiceTransition - valid transitions', () => {
   it('allows DRAFT → SENT', () => {
     expect(() => assertValidInvoiceTransition('DRAFT', 'SENT')).not.toThrow()
   })
@@ -135,10 +135,10 @@ describe('assertValidInvoiceTransition — valid transitions', () => {
 })
 
 // ---------------------------------------------------------------------------
-// assertValidInvoiceTransition — invalid transitions
+// assertValidInvoiceTransition - invalid transitions
 // ---------------------------------------------------------------------------
 
-describe('assertValidInvoiceTransition — invalid transitions', () => {
+describe('assertValidInvoiceTransition - invalid transitions', () => {
   it('throws BadRequestError for DRAFT → PAID (skips SENT)', () => {
     expect(() => assertValidInvoiceTransition('DRAFT', 'PAID')).toThrow(BadRequestError)
   })
@@ -242,7 +242,7 @@ describe('isTerminalInvoiceStatus', () => {
     expect(isTerminalInvoiceStatus('OVERDUE')).toBe(false)
   })
 
-  it('returns false for PAID (not terminal — can still refund)', () => {
+  it('returns false for PAID (not terminal - can still refund)', () => {
     expect(isTerminalInvoiceStatus('PAID')).toBe(false)
   })
 })
@@ -278,10 +278,10 @@ describe('getValidInvoiceTransitions', () => {
 })
 
 // ---------------------------------------------------------------------------
-// applyPricingRules — modifier types
+// applyPricingRules - modifier types
 // ---------------------------------------------------------------------------
 
-describe('applyPricingRules — modifier types', () => {
+describe('applyPricingRules - modifier types', () => {
   it('PERCENT_DISCOUNT: applies percentage off base price', () => {
     const rule = makePricingRule({ modifierType: 'PERCENT_DISCOUNT', modifierValue: 10 })
     const ctx = makePricingContext({ basePrice: 100 })
@@ -326,10 +326,10 @@ describe('applyPricingRules — modifier types', () => {
 })
 
 // ---------------------------------------------------------------------------
-// applyPricingRules — rule filtering (enabled, maxUses, dates, serviceIds)
+// applyPricingRules - rule filtering (enabled, maxUses, dates, serviceIds)
 // ---------------------------------------------------------------------------
 
-describe('applyPricingRules — rule filtering', () => {
+describe('applyPricingRules - rule filtering', () => {
   it('returns base price when no rules provided', () => {
     const ctx = makePricingContext({ basePrice: 100 })
     expect(applyPricingRules([], ctx)).toBe(100)
@@ -398,10 +398,10 @@ describe('applyPricingRules — rule filtering', () => {
 })
 
 // ---------------------------------------------------------------------------
-// applyPricingRules — serviceIds filtering
+// applyPricingRules - serviceIds filtering
 // ---------------------------------------------------------------------------
 
-describe('applyPricingRules — serviceIds filtering', () => {
+describe('applyPricingRules - serviceIds filtering', () => {
   it('applies rule when booking.serviceId matches serviceIds list', () => {
     const rule = makePricingRule({
       serviceIds: ['svc-1', 'svc-2'],
@@ -434,10 +434,10 @@ describe('applyPricingRules — serviceIds filtering', () => {
 })
 
 // ---------------------------------------------------------------------------
-// applyPricingRules — conditions matching
+// applyPricingRules - conditions matching
 // ---------------------------------------------------------------------------
 
-describe('applyPricingRules — conditions matching', () => {
+describe('applyPricingRules - conditions matching', () => {
   it('applies rule when AND conditions all match', () => {
     const rule = makePricingRule({
       modifierType: 'PERCENT_DISCOUNT',
@@ -465,7 +465,7 @@ describe('applyPricingRules — conditions matching', () => {
       conditions: {
         logic: 'AND',
         conditions: [
-          { field: 'booking.dayOfWeek', operator: 'eq', value: 6 }, // Saturday — does not match Monday
+          { field: 'booking.dayOfWeek', operator: 'eq', value: 6 }, // Saturday - does not match Monday
         ],
       },
     })
@@ -484,7 +484,7 @@ describe('applyPricingRules — conditions matching', () => {
       conditions: {
         logic: 'OR',
         conditions: [
-          { field: 'booking.dayOfWeek', operator: 'eq', value: 6 }, // Saturday — does not match
+          { field: 'booking.dayOfWeek', operator: 'eq', value: 6 }, // Saturday - does not match
           { field: 'customer.bookingCount', operator: 'gte', value: 5 }, // matches
         ],
       },
@@ -500,7 +500,7 @@ describe('applyPricingRules — conditions matching', () => {
       conditions: {
         logic: 'OR',
         conditions: [
-          { field: 'booking.dayOfWeek', operator: 'eq', value: 6 }, // Saturday — no match (Monday)
+          { field: 'booking.dayOfWeek', operator: 'eq', value: 6 }, // Saturday - no match (Monday)
           { field: 'customer.bookingCount', operator: 'gt', value: 100 }, // no match (count=5)
         ],
       },
@@ -534,7 +534,7 @@ describe('applyPricingRules — conditions matching', () => {
       conditions: { logic: 'AND', conditions: [] },
     })
     const ctx = makePricingContext({ basePrice: 100 })
-    // Only rule1 should be applied — first match wins
+    // Only rule1 should be applied - first match wins
     expect(applyPricingRules([rule2, rule1], ctx)).toBe(90)
   })
 
@@ -559,7 +559,7 @@ describe('applyPricingRules — conditions matching', () => {
     expect(applyPricingRules([rule1, rule2], ctx)).toBe(80)
   })
 
-  it('condition: in operator — field value in array', () => {
+  it('condition: in operator - field value in array', () => {
     const rule = makePricingRule({
       modifierType: 'FIXED_DISCOUNT',
       modifierValue: 15,
@@ -578,7 +578,7 @@ describe('applyPricingRules — conditions matching', () => {
     expect(applyPricingRules([rule], ctxMon)).toBe(100)
   })
 
-  it('condition: not_in operator — field value not in array', () => {
+  it('condition: not_in operator - field value not in array', () => {
     const rule = makePricingRule({
       modifierType: 'FIXED_DISCOUNT',
       modifierValue: 5,
@@ -589,7 +589,7 @@ describe('applyPricingRules — conditions matching', () => {
         ],
       },
     })
-    // Monday (1) is not in [0,6] — matches
+    // Monday (1) is not in [0,6] - matches
     const ctx = makePricingContext({ basePrice: 100 })
     expect(applyPricingRules([rule], ctx)).toBe(95)
   })
@@ -598,7 +598,7 @@ describe('applyPricingRules — conditions matching', () => {
     const rule = makePricingRule({ modifierType: 'PERCENT_DISCOUNT', modifierValue: 33.3 })
     const ctx = makePricingContext({ basePrice: 100 })
     const result = applyPricingRules([rule], ctx)
-    // 100 * (1 - 33.3/100) = 66.7 — check 2 dp
+    // 100 * (1 - 33.3/100) = 66.7 - check 2 dp
     const decimalParts = String(result).split('.')
     if (decimalParts[1]) {
       expect(decimalParts[1].length).toBeLessThanOrEqual(2)
@@ -659,7 +659,7 @@ describe('calculateTax', () => {
   })
 
   it('rounding invariant: taxAmount has at most 2 decimal places', () => {
-    const rule = makeTaxRule({ rate: 0.19 }) // 19% German USt — common rounding edge case
+    const rule = makeTaxRule({ rate: 0.19 }) // 19% German USt - common rounding edge case
     const result = calculateTax(99.99, rule)
     const decimalParts = String(result.taxAmount).split('.')
     if (decimalParts[1]) {

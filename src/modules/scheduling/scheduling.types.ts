@@ -152,7 +152,7 @@ export interface WaitlistEntry {
   createdAt: Date
 }
 
-// Booking shape used by scheduling lib (minimal — avoids circular import with booking module)
+// Booking shape used by scheduling lib (minimal - avoids circular import with booking module)
 export interface SchedulingBooking {
   id: string;
   tenantId: string;

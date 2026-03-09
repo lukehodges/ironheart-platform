@@ -145,7 +145,7 @@ export const tenantRepository = {
       .limit(1);
 
     if (existing[0]) {
-      // Build update data — only include defined fields
+      // Build update data - only include defined fields
       const updateData: Record<string, unknown> = { updatedAt: now };
 
       const fieldMap: Array<[keyof Partial<OrganizationSettings>, string]> = [

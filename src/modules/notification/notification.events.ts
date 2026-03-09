@@ -3,7 +3,7 @@
  *
  * Handles email and SMS delivery events emitted by notification.service.ts.
  * Each handler performs:
- *   1. Idempotency check (sentMessages table) — skips if already sent
+ *   1. Idempotency check (sentMessages table) - skips if already sent
  *   2. Provider delivery (emailProvider / smsProvider singletons)
  *   3. Audit log write (sentMessages table)
  *
@@ -34,7 +34,7 @@ export const handleNotificationSendEmail = inngest.createFunction(
   async ({ event, step }) => {
     const { to, subject, html, text, bookingId, tenantId, trigger, templateId } = event.data
 
-    // Idempotency check — skip if already sent for this booking+trigger+channel
+    // Idempotency check - skip if already sent for this booking+trigger+channel
     if (bookingId) {
       const alreadySent = await step.run('check-idempotency', async () => {
         return notificationRepository.hasNotificationBeenSent(
@@ -44,7 +44,7 @@ export const handleNotificationSendEmail = inngest.createFunction(
         )
       })
       if (alreadySent) {
-        log.info({ bookingId, trigger }, 'Email already sent — skipping (idempotent)')
+        log.info({ bookingId, trigger }, 'Email already sent - skipping (idempotent)')
         return { skipped: true, reason: 'already-sent' }
       }
     }
@@ -92,7 +92,7 @@ export const handleNotificationSendSms = inngest.createFunction(
   async ({ event, step }) => {
     const { to, body, bookingId, tenantId, trigger, templateId } = event.data
 
-    // Idempotency check — skip if already sent for this booking+trigger+channel
+    // Idempotency check - skip if already sent for this booking+trigger+channel
     if (bookingId) {
       const alreadySent = await step.run('check-idempotency', async () => {
         return notificationRepository.hasNotificationBeenSent(
@@ -102,7 +102,7 @@ export const handleNotificationSendSms = inngest.createFunction(
         )
       })
       if (alreadySent) {
-        log.info({ bookingId, trigger }, 'SMS already sent — skipping (idempotent)')
+        log.info({ bookingId, trigger }, 'SMS already sent - skipping (idempotent)')
         return { skipped: true, reason: 'already-sent' }
       }
     }
@@ -143,7 +143,7 @@ export const handleNotificationSendSms = inngest.createFunction(
  *
  * NOTE: This function uses the same Inngest function ID as the stub in
  * booking.events.ts ("send-booking-confirmation-email"). The stub will be
- * removed from booking.events.ts in Wave 6 — until then, only one of these
+ * removed from booking.events.ts in Wave 6 - until then, only one of these
  * should be registered in the inngest route.ts serve() call.
  */
 export const sendBookingConfirmationEmail = inngest.createFunction(

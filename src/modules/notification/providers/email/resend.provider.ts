@@ -16,7 +16,7 @@ export class ResendEmailProvider implements EmailProvider {
 
   async send(input: EmailSendInput): Promise<EmailSendResult> {
     if (!process.env.RESEND_API_KEY) {
-      log.warn({ to: input.to }, 'RESEND_API_KEY not set — email not sent')
+      log.warn({ to: input.to }, 'RESEND_API_KEY not set - email not sent')
       return { success: false, error: 'RESEND_API_KEY not configured' }
     }
 

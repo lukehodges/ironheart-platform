@@ -34,7 +34,7 @@ import type {
  * Uses the `sent_messages` table as the durable idempotency store.
  * Returns true if a row exists with status SENT (not FAILED / QUEUED).
  *
- * NOTE: The DB `messageTrigger` enum does not include PORTAL_INVITE — callers
+ * NOTE: The DB `messageTrigger` enum does not include PORTAL_INVITE - callers
  * must guard against inserting that value (see recordSentMessage).
  */
 export const notificationRepository = {
@@ -43,7 +43,7 @@ export const notificationRepository = {
     trigger: MessageTrigger,
     channel: MessageChannel
   ): Promise<boolean> {
-    // PORTAL_INVITE is not in the DB enum — treat as never sent so the service
+    // PORTAL_INVITE is not in the DB enum - treat as never sent so the service
     // can still attempt delivery without a DB check.
     if (trigger === 'PORTAL_INVITE') return false
 
@@ -69,7 +69,7 @@ export const notificationRepository = {
   /**
    * Persist a record of a sent (or failed) message.
    *
-   * `recipientType` defaults to 'CUSTOMER' — the `sent_messages` table requires
+   * `recipientType` defaults to 'CUSTOMER' - the `sent_messages` table requires
    * it as NOT NULL but the application always sends to customers.
    * `recipientId` is set to the `bookingId` when available (acts as a proxy
    * for the customer reference); a stable UUID placeholder is used otherwise.
@@ -89,7 +89,7 @@ export const notificationRepository = {
     providerRef?: string
     errorMessage?: string
   }): Promise<void> {
-    // PORTAL_INVITE is absent from the DB messageTrigger enum — skip recording.
+    // PORTAL_INVITE is absent from the DB messageTrigger enum - skip recording.
     if (data.trigger === 'PORTAL_INVITE') return
 
     const id = crypto.randomUUID()
@@ -127,7 +127,7 @@ export const notificationRepository = {
    *   1. serviceId match
    *   2. serviceId IS NULL (applies to all services)
    *
-   * If no template exists, returns null — caller falls back to the React Email
+   * If no template exists, returns null - caller falls back to the React Email
    * system template.
    */
   async resolveTemplate(
@@ -342,7 +342,7 @@ export const notificationRepository = {
    * Joins: bookings → customers → services → users (staff) → tenants
    *
    * NOTE: The `tenants` table has no phone / email / website / settings columns.
-   * These fields are returned as null — the variable-builder handles them with
+   * These fields are returned as null - the variable-builder handles them with
    * safe fallbacks.
    */
   async loadBookingForNotification(
@@ -426,7 +426,7 @@ export const notificationRepository = {
               name: row.tenantName ?? '',
               slug: row.tenantSlug ?? '',
               // The tenants table has no phone / email / website / settings columns.
-              // These are intentionally null — buildTemplateVariables applies defaults.
+              // These are intentionally null - buildTemplateVariables applies defaults.
               phone: null,
               email: null,
               website: null,

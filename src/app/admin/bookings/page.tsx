@@ -85,7 +85,7 @@ export default function BookingsPage() {
         title="Bookings"
         description="Manage all bookings across your organisation."
       >
-        {/* Page size control — surfaced at page level for global filter coordination */}
+        {/* Page size control - surfaced at page level for global filter coordination */}
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <span className="hidden sm:inline">Show</span>
           <Select
@@ -124,7 +124,7 @@ export default function BookingsPage() {
       {/* Data table */}
       <BookingsTable filters={filters} onRowClick={handleRowClick} />
 
-      {/* Detail sheet — mounted at root so it doesn't re-mount on table re-renders */}
+      {/* Detail sheet - mounted at root so it doesn't re-mount on table re-renders */}
       <BookingDetailSheet
         bookingId={selectedBookingId}
         onClose={handleSheetClose}

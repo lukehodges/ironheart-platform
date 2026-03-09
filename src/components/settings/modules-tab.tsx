@@ -28,7 +28,7 @@ interface MergedModule {
 }
 
 /**
- * ModulesTab — Module toggle cards + dependency tree for settings
+ * ModulesTab - Module toggle cards + dependency tree for settings
  *
  * The server-side module registry is the source of truth for which modules
  * exist. DB data (tenant.listModules) provides the enabled/disabled state.
@@ -56,7 +56,7 @@ export function ModulesTab() {
   // Optimistic state: moduleSlug -> isEnabled
   const [optimisticState, setOptimisticState] = useState<Record<string, boolean>>({})
 
-  // Merge registry manifests with DB data — registry takes precedence
+  // Merge registry manifests with DB data - registry takes precedence
   const modules = useMemo<MergedModule[]>(() => {
     const allManifests = moduleRegistry.getAllManifests()
     const dbMap = new Map(
@@ -283,7 +283,7 @@ export function ModulesTab() {
 }
 
 /**
- * ModuleSettingsSection — Renders tabbed settings forms for enabled modules
+ * ModuleSettingsSection - Renders tabbed settings forms for enabled modules
  * that have settingsDefinitions in their manifest.
  */
 function ModuleSettingsSection({

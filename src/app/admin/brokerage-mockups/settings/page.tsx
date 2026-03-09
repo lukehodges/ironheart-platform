@@ -71,16 +71,20 @@ const regions = [
 ]
 
 const dealStages = [
-  { name: "Lead", colour: "bg-blue-500", enabled: true },
-  { name: "Qualified", colour: "bg-indigo-500", enabled: true },
-  { name: "Proposal Sent", colour: "bg-purple-500", enabled: true },
-  { name: "Negotiation", colour: "bg-amber-500", enabled: true },
-  { name: "Due Diligence", colour: "bg-orange-500", enabled: true },
-  { name: "Awaiting Approval", colour: "bg-cyan-500", enabled: true },
-  { name: "Contracted", colour: "bg-emerald-500", enabled: true },
+  { name: "Prospecting", colour: "bg-slate-400", enabled: true },
+  { name: "Initial Contact", colour: "bg-blue-400", enabled: true },
+  { name: "Requirements Gathered", colour: "bg-blue-500", enabled: true },
+  { name: "Site Matched", colour: "bg-indigo-500", enabled: true },
+  { name: "Quote Sent", colour: "bg-purple-500", enabled: true },
+  { name: "Quote Accepted", colour: "bg-violet-500", enabled: true },
+  { name: "Legal Drafting", colour: "bg-amber-500", enabled: true },
+  { name: "Legal Review", colour: "bg-orange-500", enabled: true },
+  { name: "Contracts Signed", colour: "bg-cyan-500", enabled: true },
+  { name: "Payment Pending", colour: "bg-teal-500", enabled: true },
+  { name: "Payment Received", colour: "bg-emerald-400", enabled: true },
+  { name: "Credits Allocated", colour: "bg-emerald-500", enabled: true },
+  { name: "LPA Confirmed", colour: "bg-green-500", enabled: true },
   { name: "Completed", colour: "bg-green-600", enabled: true },
-  { name: "Lost", colour: "bg-red-500", enabled: true },
-  { name: "On Hold", colour: "bg-gray-400", enabled: false },
 ]
 
 const unitTypes = [
@@ -117,7 +121,7 @@ export default function SettingsGeneralPage() {
             Manage your brokerage configuration and preferences
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {settingsLinks.map((link) => {
             const Icon = link.icon
             return (

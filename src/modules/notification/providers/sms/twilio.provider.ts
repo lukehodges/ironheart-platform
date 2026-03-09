@@ -13,7 +13,7 @@ export class TwilioSmsProvider implements SMSProvider {
     if (!accountSid || !authToken || !fromNumber) {
       log.warn(
         { to: input.to, missing: { accountSid: !accountSid, authToken: !authToken, fromNumber: !fromNumber } },
-        'Twilio credentials not configured — SMS not sent'
+        'Twilio credentials not configured - SMS not sent'
       )
       return { success: false, error: 'Twilio credentials not configured' }
     }

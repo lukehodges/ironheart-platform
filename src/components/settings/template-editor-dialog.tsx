@@ -153,7 +153,7 @@ export function TemplateEditorDialog({
             {isEditMode ? "Edit Template" : "Create Template"}
           </DialogTitle>
           <DialogDescription>
-            {trigger.label} — {trigger.description}
+            {trigger.label} - {trigger.description}
           </DialogDescription>
         </DialogHeader>
 

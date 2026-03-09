@@ -33,7 +33,7 @@ import type {
  *   APPLE_TEAM_ID
  *   APPLE_KEY_ID
  *
- * All method signatures are locked — implement the bodies only.
+ * All method signatures are locked - implement the bodies only.
  */
 export class AppleCalendarProvider implements CalendarProvider {
   readonly providerName = 'APPLE_CALENDAR' as const
@@ -75,7 +75,7 @@ export class AppleCalendarProvider implements CalendarProvider {
 
   /**
    * Apple CalDAV does not support push webhook notifications.
-   * Always returns null — callers should use polling instead.
+   * Always returns null - callers should use polling instead.
    */
   async watchCalendar(
     _tokens: OAuthTokens,
@@ -86,7 +86,7 @@ export class AppleCalendarProvider implements CalendarProvider {
   }
 
   async stopWatch(_tokens: OAuthTokens, _channelId: string, _resourceId: string): Promise<void> {
-    // No-op for Apple — no watch channels to stop
+    // No-op for Apple - no watch channels to stop
     return
   }
 
@@ -94,7 +94,7 @@ export class AppleCalendarProvider implements CalendarProvider {
     _request: Request,
     _storedChannelToken: string
   ): Promise<string | null> {
-    // No-op for Apple — no webhooks to validate
+    // No-op for Apple - no webhooks to validate
     return null
   }
 }

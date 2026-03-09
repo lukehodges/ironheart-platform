@@ -92,7 +92,7 @@ export function DepartmentMembersDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{department.name} — Members</DialogTitle>
+          <DialogTitle>{department.name} - Members</DialogTitle>
           <DialogDescription>
             Add or remove staff members from this department.
           </DialogDescription>

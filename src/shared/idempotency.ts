@@ -19,13 +19,13 @@ export async function withIdempotency<T>(
 
   const cached = await redis.get(cacheKey)
   if (cached) {
-    log.info({ key }, 'Idempotency cache hit — returning cached result')
+    log.info({ key }, 'Idempotency cache hit - returning cached result')
     return JSON.parse(cached as string) as T
   }
 
   const acquired = await redis.set(lockKey, '1', { nx: true, ex: 30 })
   if (!acquired) {
-    throw new ConflictError('Duplicate request in flight — retry in 30 seconds')
+    throw new ConflictError('Duplicate request in flight - retry in 30 seconds')
   }
 
   try {

@@ -7,7 +7,7 @@ import type { CustomerInsights, RevenueForecast, MetricKey, MetricSummary, Cohor
 const log = logger.child({ module: 'analytics.service' })
 
 // ---------------------------------------------------------------------------
-// getSummary — real DB aggregation
+// getSummary - real DB aggregation
 // ---------------------------------------------------------------------------
 
 export type SummaryPeriod = 'TODAY' | 'WEEK' | 'MONTH' | 'QUARTER' | 'YEAR'
@@ -198,7 +198,7 @@ export async function getRevenueForecast(
 }
 
 // ---------------------------------------------------------------------------
-// getKPIs — period comparison (current vs previous period)
+// getKPIs - period comparison (current vs previous period)
 // ---------------------------------------------------------------------------
 
 export interface KPIMetric {
@@ -282,7 +282,7 @@ export async function getKPIs(tenantId: string, period: SummaryPeriod): Promise<
 }
 
 // ---------------------------------------------------------------------------
-// getRevenueChart — time series data for revenue chart
+// getRevenueChart - time series data for revenue chart
 // ---------------------------------------------------------------------------
 
 export interface RevenueDataPoint {
@@ -309,7 +309,7 @@ export async function getRevenueChart(
 }
 
 // ---------------------------------------------------------------------------
-// getBookingsByStatus — status distribution for donut chart
+// getBookingsByStatus - status distribution for donut chart
 // ---------------------------------------------------------------------------
 
 export interface BookingStatusCount {
@@ -334,7 +334,7 @@ export async function getBookingsByStatus(
 }
 
 // ---------------------------------------------------------------------------
-// getTopServices — ranked services by booking count
+// getTopServices - ranked services by booking count
 // ---------------------------------------------------------------------------
 
 export interface TopService {
@@ -363,7 +363,7 @@ export async function getTopServices(
 }
 
 // ---------------------------------------------------------------------------
-// getStaffUtilization — staff utilization data (cached 5 min)
+// getStaffUtilization - staff utilization data (cached 5 min)
 // ---------------------------------------------------------------------------
 
 export interface StaffUtilization {
@@ -402,7 +402,7 @@ export async function getStaffUtilization(
 }
 
 // ---------------------------------------------------------------------------
-// getChurnRisk — at-risk customers (cached 10 min)
+// getChurnRisk - at-risk customers (cached 10 min)
 // ---------------------------------------------------------------------------
 
 export interface ChurnRiskCustomer {

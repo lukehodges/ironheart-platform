@@ -35,12 +35,12 @@ import { SkeletonList } from "@/components/ui/skeleton"
  * │ │ [Filter panel - collapsible]                │ │
  * │ └─────────────────────────────────────────────┘ │
  * ├─────────────────────────────────────────────────┤
- * │ ○ 2 hours ago — John Doe updated Booking #123   │
+ * │ ○ 2 hours ago - John Doe updated Booking #123   │
  * │   └─ Changed status from PENDING to CONFIRMED   │
  * ├─────────────────────────────────────────────────┤
- * │ ○ 5 hours ago — Jane Smith created Customer #45 │
+ * │ ○ 5 hours ago - Jane Smith created Customer #45 │
  * ├─────────────────────────────────────────────────┤
- * │ ○ 1 day ago — Admin deleted Service #7          │
+ * │ ○ 1 day ago - Admin deleted Service #7          │
  * │   └─ [View changes]                             │
  * └─────────────────────────────────────────────────┘
  * ```

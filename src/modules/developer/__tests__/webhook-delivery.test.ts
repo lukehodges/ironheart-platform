@@ -150,7 +150,7 @@ describe('verifyHmacSignature', () => {
     const body     = 'payload'
     const secret   = 'secret'
     const computed = createHmacSignature(body, secret)
-    // Take first half — different length → should fail
+    // Take first half - different length → should fail
     const partial  = computed.slice(0, 32)
     expect(verifyHmacSignature(body, secret, partial)).toBe(false)
   })

@@ -43,7 +43,7 @@ describe('resolveField', () => {
     expect(resolveField('foo.nested', data)).toBeUndefined()
   })
 
-  it('handles null intermediate — returns undefined', () => {
+  it('handles null intermediate - returns undefined', () => {
     const data = { booking: null }
     expect(resolveField('booking.serviceId', data as Record<string, unknown>)).toBeUndefined()
   })
@@ -82,10 +82,10 @@ describe('substituteVariables', () => {
 })
 
 // ---------------------------------------------------------------------------
-// resolveContext — variable priority order
+// resolveContext - variable priority order
 // ---------------------------------------------------------------------------
 
-describe('resolveContext — variable priority order', () => {
+describe('resolveContext - variable priority order', () => {
   it('variables override triggerData on key collision', () => {
     const ctx = makeCtx(
       { bookingId: 'trigger-id' },
