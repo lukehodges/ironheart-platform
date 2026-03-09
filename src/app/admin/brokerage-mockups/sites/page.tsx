@@ -653,73 +653,67 @@ function MapView({ sites, selectedRef, onSelect }: {
       {/* Left: Map placeholder */}
       <div className="lg:w-[55%] p-4">
         <div className="relative w-full h-full min-h-[400px] lg:min-h-[520px] rounded-xl overflow-hidden bg-gradient-to-br from-muted via-muted/50 to-background border border-border">
-          {/* Hampshire outline shape (stylized CSS polygon) */}
+          {/* SVG Hampshire map */}
           <div className="absolute inset-4">
-            {/* Water area bottom-right (Solent) */}
-            <div className="absolute bottom-0 right-0 w-[70%] h-[25%] bg-sky-100/60 rounded-tl-3xl" />
-            <div className="absolute bottom-0 right-[30%] w-[25%] h-[15%] bg-sky-100/40 rounded-t-2xl" />
+            <svg viewBox="0 0 400 360" className="w-full h-full">
+              {/* Hampshire county polygon */}
+              <polygon
+                points="60,20 340,20 370,60 380,110 370,160 350,200 310,230 280,260 240,275 200,280 160,275 130,260 100,240 80,210 60,180 50,140 45,100 50,60"
+                fill="hsl(var(--muted)/0.4)"
+                stroke="hsl(var(--border))"
+                strokeWidth="1.5"
+                strokeLinejoin="round"
+              />
 
-            {/* Area labels */}
-            <div className="absolute top-[18%] left-[22%] text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-widest">
-              Test Valley
-            </div>
-            <div className="absolute top-[40%] left-[38%] text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-widest">
-              Winchester
-            </div>
-            <div className="absolute top-[50%] left-[55%] text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-widest">
-              Eastleigh
-            </div>
-            <div className="absolute top-[65%] left-[52%] text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-widest">
-              Fareham
-            </div>
-            <div className="absolute bottom-[8%] right-[10%] text-[10px] font-medium text-sky-400/80 uppercase tracking-wider">
-              The Solent
-            </div>
+              {/* Solent water area */}
+              <path
+                d="M 240,275 Q 280,290 320,285 Q 360,278 380,265 L 380,300 Q 360,320 300,330 Q 240,340 200,335 Q 170,330 160,320 L 180,300 Q 210,290 240,275 Z"
+                fill="#bae6fd"
+                fillOpacity="0.45"
+                stroke="#7dd3fc"
+                strokeWidth="1"
+              />
 
-            {/* Site pins */}
-            {sites.map((site) => {
-              const cfg = STATUS_CONFIG[site.status]
-              const isSelected = selectedRef === site.ref
-              return (
-                <button
-                  key={site.ref}
-                  onClick={() => onSelect(isSelected ? null : site.ref)}
-                  className="absolute group"
-                  style={{
-                    left: `${site.mapX}%`,
-                    top: `${site.mapY}%`,
-                    transform: "translate(-50%, -50%)",
-                  }}
-                >
-                  {/* Pin dot */}
-                  <div
-                    className={`w-4 h-4 rounded-full border-2 border-white shadow-md transition-transform ${cfg.dot} ${
-                      isSelected ? "scale-150 ring-2 ring-emerald-400 ring-offset-1" : "group-hover:scale-125"
-                    }`}
-                  />
-                  {/* Tooltip on hover */}
-                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-10">
-                    <div className="bg-foreground text-background text-xs rounded-lg px-3 py-2 whitespace-nowrap shadow-lg">
-                      <div className="font-medium">{site.name}</div>
-                      {site.unitType === "BNG" && site.habitatSummary && site.habitatSummary.length > 0 ? (
-                        <div className="mt-0.5 space-y-0.5">
-                          {site.habitatSummary.map((cat) => (
-                            <div key={cat.category} className="text-background/70 text-[11px]">
-                              {cat.categoryLabel}: {(cat.improvementUnits - cat.allocatedUnits).toFixed(1)} HU avail
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="text-background/70 mt-0.5">
-                          {site.availableLabel} {site.unitType} available
-                        </div>
-                      )}
-                      <div className="absolute top-full left-1/2 -translate-x-1/2 w-2 h-2 bg-foreground rotate-45 -mt-1" />
-                    </div>
-                  </div>
-                </button>
-              )
-            })}
+              {/* Isle of Wight */}
+              <ellipse cx="290" cy="340" rx="40" ry="12" fill="#bae6fd" fillOpacity="0.5" stroke="#7dd3fc" strokeWidth="1" />
+
+              {/* Area labels */}
+              <text x="80" y="90" fontSize="9" fontWeight="600" fill="currentColor" opacity="0.4" style={{ textTransform: "uppercase", letterSpacing: "0.08em" }}>Test Valley</text>
+              <text x="195" y="130" fontSize="9" fontWeight="600" fill="currentColor" opacity="0.4" style={{ textTransform: "uppercase", letterSpacing: "0.08em" }}>Winchester</text>
+              <text x="245" y="185" fontSize="9" fontWeight="600" fill="currentColor" opacity="0.4" style={{ textTransform: "uppercase", letterSpacing: "0.08em" }}>Eastleigh</text>
+              <text x="255" y="225" fontSize="9" fontWeight="600" fill="currentColor" opacity="0.4" style={{ textTransform: "uppercase", letterSpacing: "0.08em" }}>Fareham</text>
+              <text x="270" y="300" fontSize="8" fontWeight="500" fill="#38bdf8" style={{ letterSpacing: "0.06em" }}>The Solent</text>
+
+              {/* Site pins */}
+              {sites.map((site) => {
+                const isSelected = selectedRef === site.ref
+                const cx = (site.mapX / 100) * 400
+                const cy = (site.mapY / 100) * 360
+                const STATUS_SVG_COLORS: Record<string, string> = {
+                  Active:              "#10b981",
+                  Registered:          "#22c55e",
+                  "Under Assessment":  "#3b82f6",
+                  "Legal In Progress": "#f59e0b",
+                  Prospecting:         "#94a3b8",
+                  "Fully Allocated":   "#a855f7",
+                }
+                const fillColor = STATUS_SVG_COLORS[site.status] ?? "#94a3b8"
+                return (
+                  <g
+                    key={site.ref}
+                    onClick={() => onSelect(isSelected ? null : site.ref)}
+                    className="cursor-pointer"
+                  >
+                    {isSelected && (
+                      <circle cx={cx} cy={cy} r="14" fill={fillColor} fillOpacity="0.2" />
+                    )}
+                    <circle cx={cx} cy={cy} r={isSelected ? 10 : 8} fill="white" stroke="white" strokeWidth="2" />
+                    <circle cx={cx} cy={cy} r={isSelected ? 8 : 6} fill={fillColor} />
+                    <title>{site.name} — {site.status}</title>
+                  </g>
+                )
+              })}
+            </svg>
           </div>
 
           {/* Map legend */}

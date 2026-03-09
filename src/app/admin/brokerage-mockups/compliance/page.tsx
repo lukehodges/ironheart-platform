@@ -87,6 +87,8 @@ function mapCategory(category: SharedComplianceItem["category"]): ComplianceCate
     case "Legal": return "LEGAL"
     case "Registration": return "REGISTRATION"
     case "Financial": return "FINANCIAL"
+    case "Management": return "MONITORING"
+    case "Certification": return "REGISTRATION"
   }
 }
 

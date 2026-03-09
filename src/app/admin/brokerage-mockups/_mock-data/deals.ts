@@ -450,21 +450,13 @@ export const deals: Deal[] = [
   },
 ];
 
-export const pipelineValue = deals
-  .filter((d) => d.stage !== "Completed")
-  .reduce((sum, d) => sum + d.value, 0);
+export const pipelineValue = 8_400_000;
 
-export const activeDealsCount = deals.filter(
-  (d) => d.stage !== "Completed",
-).length;
+export const activeDealsCount = 42;
 
 export const dealsByStage = deals.reduce<Record<string, Deal[]>>((acc, d) => {
   (acc[d.stage] ??= []).push(d);
   return acc;
 }, {});
 
-export const commissionYTD = deals
-  .filter((d) =>
-    ["Payment Received", "Credits Allocated", "LPA Confirmed", "Completed"].includes(d.stage),
-  )
-  .reduce((sum, d) => sum + d.commission, 0);
+export const commissionYTD = 312_500;

@@ -44,6 +44,8 @@ import {
   Plug,
   Bell,
   Layers,
+  RefreshCw,
+  ExternalLink,
 } from "lucide-react"
 
 const tabs = [
@@ -416,6 +418,47 @@ export default function SettingsGeneralPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Natural England Register Sync */}
+      <Card className="mt-6 border-amber-200/60 bg-amber-50/30 dark:border-amber-800/40 dark:bg-amber-950/10">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-amber-100 dark:bg-amber-900/40">
+                <RefreshCw className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+              </div>
+              <div>
+                <CardTitle className="text-base">Natural England Register Sync</CardTitle>
+                <CardDescription className="mt-0.5">
+                  Sync site registrations, credit verifications, and BGS reference
+                  numbers directly with the Natural England BNG Register
+                </CardDescription>
+              </div>
+            </div>
+            <Badge
+              variant="outline"
+              className="bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-700 font-semibold shrink-0"
+            >
+              Coming soon
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between rounded-lg border border-amber-200/60 dark:border-amber-800/40 bg-white/60 dark:bg-background/40 px-4 py-3">
+            <div className="space-y-0.5">
+              <p className="text-sm font-medium text-foreground">NE BNG Register API</p>
+              <p className="text-xs text-muted-foreground">
+                Automatically verify credit certificates and sync BGS reference numbers
+                on deal completion
+              </p>
+            </div>
+            <Button disabled size="sm" className="ml-4 gap-1.5 shrink-0">
+              <ExternalLink className="w-3.5 h-3.5" />
+              Connect
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Save button */}
       <div className="mt-6 flex justify-end">

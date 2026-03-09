@@ -267,7 +267,7 @@ export interface Document {
 
 // ── Compliance ──
 export type ComplianceStatus = "Overdue" | "Due Soon" | "Upcoming" | "Completed";
-export type ComplianceCategory = "Monitoring" | "Legal" | "Registration" | "Financial";
+export type ComplianceCategory = "Monitoring" | "Legal" | "Registration" | "Financial" | "Management" | "Certification";
 export type Frequency = "One-off" | "Annual" | "Quarterly" | "Monthly" | "5-yearly";
 
 export interface ComplianceItem {

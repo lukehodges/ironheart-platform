@@ -37,6 +37,7 @@ import {
   GitCompareArrows,
   ShieldCheck,
   PoundSterling,
+  LockKeyhole,
   type LucideIcon,
 } from "lucide-react"
 
@@ -75,6 +76,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   GitCompareArrows,
   ShieldCheck,
   PoundSterling,
+  LockKeyhole,
 }
 
 function resolveIcon(iconName: string): LucideIcon {
@@ -127,6 +129,16 @@ function buildStaticBrokerageSection(): NavSection {
   }
 }
 
+function buildStaticPortalsSection(): NavSection {
+  return {
+    title: "Portals (Preview)",
+    items: [
+      { title: "Landowner Portal",     href: "/admin/brokerage-mockups/portals/landowner",  icon: "LockKeyhole" },
+      { title: "Developer Evidence",   href: "/admin/brokerage-mockups/portals/developer",  icon: "LockKeyhole" },
+    ],
+  }
+}
+
 function buildStaticAccountSection(permissions: string[]): NavSection | null {
   const items: NavSection["items"] = []
 
@@ -169,6 +181,7 @@ export function SidebarNav({
   // Merge: if nav-builder already produced an "Account" section (e.g. Settings from tenant manifest),
   // append our static account items into it rather than duplicating
   const brokerageSection = buildStaticBrokerageSection()
+  const portalsSection = buildStaticPortalsSection()
 
   const sections: NavSection[] = [dashboardSection]
 
@@ -185,8 +198,11 @@ export function SidebarNav({
     }
   }
 
-  // Brokerage section - after module sections, before Account
+  // Brokerage section - after module sections, before Portals and Account
   sections.push(brokerageSection)
+
+  // Portals (Preview) section - after Brokerage, before Account
+  sections.push(portalsSection)
 
   // Account section - always last
   if (mergedAccountSection) {

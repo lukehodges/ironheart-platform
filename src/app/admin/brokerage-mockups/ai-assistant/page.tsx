@@ -23,9 +23,9 @@ const phases = [
   {
     id: "A",
     href: "/admin/brokerage-mockups/ai-assistant/phase-a",
-    title: "Read-only Intelligence",
+    title: "Today — Read-only Intelligence",
     tagline: "The agent reads everything, recommends intelligently, touches nothing.",
-    status: "In Development" as const,
+    status: "Today" as const,
     deliverables: [
       "Chat with streaming tool calls across all 7 modules",
       "BNG-specific entity cards (sites, deals, units)",
@@ -38,9 +38,9 @@ const phases = [
   {
     id: "B",
     href: "/admin/brokerage-mockups/ai-assistant/phase-b",
-    title: "Actionable Agent",
+    title: "Q2 2026 — Actionable Agent",
     tagline: "Three-tier approval system gives you control over every action.",
-    status: "Planned Q2" as const,
+    status: "Q2 2026" as const,
     deliverables: [
       "CONFIRM approval cards with approve / edit / reject",
       "Trust ratchet: tools auto-promote after 50 approvals",
@@ -53,9 +53,9 @@ const phases = [
   {
     id: "C",
     href: "/admin/brokerage-mockups/ai-assistant/phase-c",
-    title: "Workflow Intelligence",
+    title: "Q4 2026 — Workflow Intelligence",
     tagline: "Describe a process in plain English. The agent builds the workflow.",
-    status: "Planned Q2" as const,
+    status: "Q4 2026" as const,
     deliverables: [
       "Natural language \u2192 visual workflow generation",
       "AI_DECISION nodes with confidence scoring",
@@ -68,9 +68,9 @@ const phases = [
   {
     id: "D",
     href: "/admin/brokerage-mockups/ai-assistant/phase-d",
-    title: "Memory & Context",
+    title: "2027 — Memory & Context",
     tagline: "The agent remembers what you taught it, cites its sources, learns from corrections.",
-    status: "Planned Q3" as const,
+    status: "2027" as const,
     deliverables: [
       "Cross-session memory: 'Last time you were on Deal D-0089...'",
       "Knowledge base: upload BNG docs, agent cites them",
@@ -83,9 +83,9 @@ const phases = [
   {
     id: "E",
     href: "/admin/brokerage-mockups/ai-assistant/phase-e",
-    title: "Autonomous Operations",
+    title: "2027+ — Autonomous Operations",
     tagline: "The Ghost Operator works overnight. You review the briefing at 8am.",
-    status: "Planned Q3" as const,
+    status: "2027+" as const,
     deliverables: [
       "Ghost Operator: confirms bookings, processes invoices at 2am",
       "Morning briefing: overnight summary + today's priorities",
