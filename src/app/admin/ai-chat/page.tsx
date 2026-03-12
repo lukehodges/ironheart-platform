@@ -13,6 +13,9 @@ import {
   AlertCircle,
   Sparkles,
   Archive,
+  Code2,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -70,6 +73,8 @@ type StreamEvent =
   | { type: "tool_result"; toolName: string; result: unknown; durationMs: number }
   | { type: "text_delta"; content: string }
   | { type: "error"; message: string; recoverable: boolean }
+  | { type: "code_executing"; code: string }
+  | { type: "code_result"; result: unknown; durationMs: number; callCount: number; error?: string }
   | { type: "done"; content: string; tokenUsage: TokenUsage; toolCallCount: number; conversationId?: string }
 
 // ---------------------------------------------------------------------------
@@ -251,6 +256,85 @@ function summarizeResult(toolName: string, result: unknown): string {
 }
 
 // ---------------------------------------------------------------------------
+// Code Execution Block
+// ---------------------------------------------------------------------------
+
+function CodeExecutionBlock({
+  code,
+  result,
+  durationMs,
+  callCount,
+  error,
+  isStreaming,
+}: {
+  code: string
+  result?: unknown
+  durationMs?: number
+  callCount?: number
+  error?: string
+  isStreaming?: boolean
+}) {
+  const [expanded, setExpanded] = useState(false)
+  const isDone = result !== undefined || error !== undefined
+
+  return (
+    <div className="my-2">
+      {/* Summary line */}
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="flex items-center gap-2 text-xs w-full text-left hover:bg-muted/50 rounded px-1 py-0.5 -mx-1 transition-colors"
+      >
+        <div className="shrink-0">
+          {isDone ? (
+            error ? (
+              <AlertCircle className="h-3.5 w-3.5 text-red-500" />
+            ) : (
+              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+            )
+          ) : (
+            <Loader2 className="h-3.5 w-3.5 animate-spin text-primary/60" />
+          )}
+        </div>
+        <Code2 className="h-3.5 w-3.5 text-muted-foreground" />
+        <span className="text-foreground">
+          {isDone
+            ? error
+              ? "Code execution failed"
+              : `Executed ${callCount ?? 0} tRPC call${callCount === 1 ? "" : "s"} in ${durationMs}ms`
+            : "Executing code..."}
+        </span>
+        <div className="ml-auto shrink-0">
+          {expanded ? (
+            <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+          ) : (
+            <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+          )}
+        </div>
+      </button>
+
+      {/* Expanded: code + result */}
+      {expanded && (
+        <div className="mt-1.5 border border-border rounded-lg overflow-hidden text-xs">
+          <pre className="bg-muted/50 p-3 overflow-x-auto font-mono text-foreground/80 leading-relaxed">
+            {code}
+          </pre>
+          {isDone && (
+            <>
+              <div className="border-t border-border" />
+              <pre className={`p-3 overflow-x-auto font-mono leading-relaxed ${error ? "text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/20" : "text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/20"}`}>
+                {error
+                  ? `Error: ${error}`
+                  : `Result: ${JSON.stringify(result, null, 2)}`}
+              </pre>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Message Bubble
 // ---------------------------------------------------------------------------
 
@@ -301,13 +385,51 @@ function MessageBubble({ message }: { message: Message }) {
             <div className="rounded-2xl rounded-tl-sm bg-card border border-border px-4 py-3">
               {message.toolCalls && message.toolCalls.length > 0 && (
                 <>
-                  <p className="text-xs text-muted-foreground italic mb-2">
-                    Reasoning across modules...
-                  </p>
-                  <ToolCallDisplay
-                    toolCalls={message.toolCalls}
-                    toolResults={message.toolResults}
-                  />
+                  {message.toolCalls.some((tc) => tc.name === "execute_code") ? (
+                    <>
+                      {message.toolCalls
+                        .filter((tc) => tc.name === "describe_module")
+                        .map((tc) => {
+                          const result = (message.toolResults ?? []).find((r) => r.toolCallId === tc.id)
+                          return (
+                            <StreamingToolCall
+                              key={tc.id}
+                              toolName={tc.name}
+                              input={tc.input}
+                              result={result?.output}
+                              durationMs={undefined}
+                              error={result?.error}
+                            />
+                          )
+                        })}
+                      {message.toolCalls
+                        .filter((tc) => tc.name === "execute_code")
+                        .map((tc) => {
+                          const result = (message.toolResults ?? []).find((r) => r.toolCallId === tc.id)
+                          const codeInput = tc.input as { code: string }
+                          return (
+                            <CodeExecutionBlock
+                              key={tc.id}
+                              code={codeInput.code}
+                              result={result?.output}
+                              durationMs={undefined}
+                              callCount={undefined}
+                              error={result?.error}
+                            />
+                          )
+                        })}
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-xs text-muted-foreground italic mb-2">
+                        Reasoning across modules...
+                      </p>
+                      <ToolCallDisplay
+                        toolCalls={message.toolCalls}
+                        toolResults={message.toolResults}
+                      />
+                    </>
+                  )}
                   {message.content && <Separator className="my-3" />}
                 </>
               )}
@@ -349,13 +471,23 @@ interface StreamingToolState {
   error?: string
 }
 
+interface StreamingCodeState {
+  code: string
+  result?: unknown
+  durationMs?: number
+  callCount?: number
+  error?: string
+}
+
 function StreamingBubble({
   content,
   toolCalls,
+  codeBlocks,
   statusMessage,
 }: {
   content: string
   toolCalls: StreamingToolState[]
+  codeBlocks: StreamingCodeState[]
   statusMessage: string | null
 }) {
   return (
@@ -396,6 +528,22 @@ function StreamingBubble({
                     />
                   ))}
                 </div>
+                {content && <Separator className="my-3" />}
+              </>
+            )}
+            {codeBlocks.length > 0 && (
+              <>
+                {codeBlocks.map((cb, i) => (
+                  <CodeExecutionBlock
+                    key={`code-${i}`}
+                    code={cb.code}
+                    result={cb.result}
+                    durationMs={cb.durationMs}
+                    callCount={cb.callCount}
+                    error={cb.error}
+                    isStreaming={cb.result === undefined && cb.error === undefined}
+                  />
+                ))}
                 {content && <Separator className="my-3" />}
               </>
             )}
@@ -573,6 +721,7 @@ export default function AIChatPage() {
   const [streamingContent, setStreamingContent] = useState("")
   const [streamingToolCalls, setStreamingToolCalls] = useState<StreamingToolState[]>([])
   const [streamingStatus, setStreamingStatus] = useState<string | null>(null)
+  const [streamingCodeBlocks, setStreamingCodeBlocks] = useState<StreamingCodeState[]>([])
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
@@ -616,7 +765,7 @@ export default function AIChatPage() {
   // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }, [messages, isStreaming, streamingContent, streamingToolCalls])
+  }, [messages, isStreaming, streamingContent, streamingToolCalls, streamingCodeBlocks])
 
   const handleSend = useCallback(async () => {
     const text = inputValue.trim()
@@ -641,6 +790,7 @@ export default function AIChatPage() {
     setStreamError(null)
     setStreamingContent("")
     setStreamingToolCalls([])
+    setStreamingCodeBlocks([])
     setStreamingStatus("Thinking...")
 
     const controller = new AbortController()
@@ -669,6 +819,7 @@ export default function AIChatPage() {
       let finalTokenUsage: TokenUsage | null = null
       let finalConversationId: string | undefined
       const collectedToolCalls: StreamingToolState[] = []
+      const collectedCodeBlocks: StreamingCodeState[] = []
 
       for await (const event of readSSEStream(response)) {
         if (controller.signal.aborted) break
@@ -699,6 +850,26 @@ export default function AIChatPage() {
                 durationMs: event.durationMs,
               }
               setStreamingToolCalls([...collectedToolCalls])
+            }
+            break
+          }
+
+          case "code_executing": {
+            const codeBlock: StreamingCodeState = { code: event.code }
+            collectedCodeBlocks.push(codeBlock)
+            setStreamingCodeBlocks([...collectedCodeBlocks])
+            setStreamingStatus(null)
+            break
+          }
+
+          case "code_result": {
+            const lastBlock = collectedCodeBlocks[collectedCodeBlocks.length - 1]
+            if (lastBlock) {
+              lastBlock.result = event.result
+              lastBlock.durationMs = event.durationMs
+              lastBlock.callCount = event.callCount
+              if (event.error) lastBlock.error = event.error
+              setStreamingCodeBlocks([...collectedCodeBlocks])
             }
             break
           }
@@ -763,6 +934,7 @@ export default function AIChatPage() {
       setIsStreaming(false)
       setStreamingContent("")
       setStreamingToolCalls([])
+      setStreamingCodeBlocks([])
       setStreamingStatus(null)
       abortControllerRef.current = null
     }
@@ -863,6 +1035,7 @@ export default function AIChatPage() {
                 <StreamingBubble
                   content={streamingContent}
                   toolCalls={streamingToolCalls}
+                  codeBlocks={streamingCodeBlocks}
                   statusMessage={streamingStatus}
                 />
               )}
