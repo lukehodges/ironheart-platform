@@ -37,7 +37,9 @@ export async function commitEntities(
         name: entities.customer.name ?? "Unknown",
         email: entities.customer.email,
         phone: entities.customer.phone,
-        company: entities.customer.company,
+        notes: entities.customer.company
+          ? `Company: ${entities.customer.company}${entities.customer.notes ? `. ${entities.customer.notes}` : ""}`
+          : entities.customer.notes,
       })
       result.customerId = customer.id
       log.info({ tenantId: ctx.tenantId, customerId: customer.id }, "Customer created from paste")
