@@ -10,6 +10,7 @@ import { aiRepository } from "./ai.repository"
 import { agentTools, handleDescribeModule } from "./tools"
 import { executeCode } from "./ai.executor"
 import { buildSystemPrompt } from "./ai.prompts"
+import { CircleDetector } from "./ai.circle-detector"
 import type {
   AgentContext,
   AgentResponse,
@@ -33,10 +34,12 @@ function getClient(): Anthropic {
 
 // Lazy-init to avoid circular import (ai.service -> root -> ai module -> ai.service)
 let cachedCreateCaller: ReturnType<typeof createCallerFactory> | null = null
-function getCreateCaller() {
+async function getCreateCaller() {
   if (!cachedCreateCaller) {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { appRouter } = require("@/server/root") as { appRouter: Parameters<typeof createCallerFactory>[0] }
+    const { appRouter } = await import("@/server/root")
+    if (!appRouter) {
+      throw new Error("appRouter is undefined — circular dependency may not be resolved yet")
+    }
     cachedCreateCaller = createCallerFactory(appRouter)
   }
   return cachedCreateCaller
@@ -46,6 +49,7 @@ const MAX_TOOL_ITERATIONS = 5
 const DEFAULT_MODEL = "claude-sonnet-4-20250514"
 const MAX_TOKENS = 4096
 const TOKEN_BUDGET = 50_000
+
 const RATE_LIMIT_PER_MINUTE = 20
 
 async function checkRateLimit(tenantId: string, userId: string): Promise<boolean> {
@@ -67,8 +71,8 @@ async function checkRateLimit(tenantId: string, userId: string): Promise<boolean
  *
  * The original `Request` is threaded through for correct IP-based rate limiting.
  */
-function buildTrpcCaller(ctx: AgentContext, req: Request) {
-  const createCaller = getCreateCaller()
+async function buildTrpcCaller(ctx: AgentContext, req: Request) {
+  const createCaller = await getCreateCaller()
   return createCaller({
     db,
     session: { user: { id: ctx.workosUserId } } as any,
@@ -86,24 +90,20 @@ function buildTrpcCaller(ctx: AgentContext, req: Request) {
 async function handleToolCall(
   toolName: string,
   toolInput: unknown,
-  trpcCaller: ReturnType<typeof buildTrpcCaller>,
+  trpcCaller: Awaited<ReturnType<typeof buildTrpcCaller>>,
   ctx: AgentContext
-): Promise<{ result: unknown; durationMs: number; callCount?: number; error?: string }> {
+): Promise<{ result: unknown; durationMs: number; error?: string }> {
   if (toolName === "describe_module") {
     const input = toolInput as { module: string }
-    return handleDescribeModule(input)
+    return await handleDescribeModule(input)
   }
 
   if (toolName === "execute_code") {
     const input = toolInput as { code: string }
     try {
-      // Count tRPC calls by wrapping the caller with a proxy
-      let callCount = 0
-      const countingCaller = createCountingProxy(trpcCaller, () => { callCount++ })
-
       const { result, durationMs } = await executeCode(
         input.code,
-        countingCaller,
+        trpcCaller,
         {
           tenantId: ctx.tenantId,
           userId: ctx.userId,
@@ -111,7 +111,7 @@ async function handleToolCall(
           pageContext: ctx.pageContext,
         }
       )
-      return { result, durationMs, callCount }
+      return { result, durationMs }
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : "Code execution failed"
       log.error({ err, code: input.code.slice(0, 200) }, "Code execution error")
@@ -122,29 +122,6 @@ async function handleToolCall(
   return { result: null, durationMs: 0, error: `Unknown tool: ${toolName}` }
 }
 
-/**
- * Create a proxy that counts procedure calls on the tRPC caller.
- * Works by intercepting property access at the procedure level.
- */
-function createCountingProxy(caller: unknown, onCall: () => void): unknown {
-  return new Proxy(caller as object, {
-    get(target, prop, receiver) {
-      const value = Reflect.get(target, prop, receiver)
-      if (typeof value === "function") {
-        // This is a procedure call (e.g., trpc.booking.list)
-        return (...args: unknown[]) => {
-          onCall()
-          return (value as (...a: unknown[]) => unknown).apply(target, args)
-        }
-      }
-      if (typeof value === "object" && value !== null) {
-        // This is a namespace (e.g., trpc.booking) — recurse
-        return createCountingProxy(value, onCall)
-      }
-      return value
-    },
-  })
-}
 
 export const aiService = {
   async *sendMessageStreaming(
@@ -196,7 +173,7 @@ export const aiService = {
 
     // 5. Build agent context and tRPC caller
     const ctx: AgentContext = { tenantId, userId, workosUserId, userPermissions, pageContext: input.pageContext }
-    const trpcCaller = buildTrpcCaller(ctx, req)
+    const trpcCaller = await buildTrpcCaller(ctx, req)
 
     // 6. Agent loop with streaming
     const allToolCalls: ToolCallRecord[] = []
@@ -204,14 +181,16 @@ export const aiService = {
     let totalInputTokens = 0
     let totalOutputTokens = 0
     let finalContent = ""
+    const systemPrompt = await buildSystemPrompt(input.pageContext)
+    const circleDetector = new CircleDetector()
 
     for (let iteration = 0; iteration < MAX_TOOL_ITERATIONS; iteration++) {
-      log.info({ conversationId: conversation.id, iteration }, "Agent streaming iteration")
+      log.info({ conversationId: conversation.id, iteration, maxIterations: MAX_TOOL_ITERATIONS }, "Agent streaming iteration")
 
       const stream = getClient().messages.stream({
         model: DEFAULT_MODEL,
         max_tokens: MAX_TOKENS,
-        system: buildSystemPrompt(input.pageContext),
+        system: systemPrompt,
         messages: anthropicMessages,
         tools: agentTools,
       })
@@ -223,6 +202,16 @@ export const aiService = {
 
       const textBlocks = response.content.filter((b) => b.type === "text")
       const toolUseBlocks = response.content.filter((b) => b.type === "tool_use")
+
+      log.info({
+        conversationId: conversation.id,
+        iteration,
+        textBlocks: textBlocks.length,
+        toolCalls: toolUseBlocks.map((t) => ({ name: t.name, inputPreview: JSON.stringify(t.input).slice(0, 200) })),
+        inputTokens: response.usage.input_tokens,
+        outputTokens: response.usage.output_tokens,
+        stopReason: response.stop_reason,
+      }, "Agent iteration result")
 
       // Yield text deltas from text blocks
       for (const block of textBlocks) {
@@ -260,7 +249,7 @@ export const aiService = {
         }
 
         // Execute
-        const { result, durationMs, callCount, error } = await handleToolCall(
+        const { result, durationMs, error } = await handleToolCall(
           toolUse.name,
           toolUse.input,
           trpcCaller,
@@ -277,7 +266,7 @@ export const aiService = {
           })
 
           if (toolUse.name === "execute_code") {
-            yield { type: "code_result" as const, result: null, durationMs, callCount: callCount ?? 0, error }
+            yield { type: "code_result" as const, result: null, durationMs, error }
           } else {
             yield { type: "tool_result" as const, toolName: toolUse.name, result: { error }, durationMs }
           }
@@ -290,15 +279,42 @@ export const aiService = {
           })
 
           if (toolUse.name === "execute_code") {
-            yield { type: "code_result" as const, result, durationMs, callCount: callCount ?? 0 }
+            yield { type: "code_result" as const, result, durationMs }
           } else {
             yield { type: "tool_result" as const, toolName: toolUse.name, result, durationMs }
           }
         }
+
+        circleDetector.record(toolUse.name, toolUse.input, error ?? null)
+      }
+
+      // Check for circling before continuing
+      circleDetector.endIteration()
+      const circleReason = circleDetector.detect()
+      if (circleReason) {
+        log.warn({ conversationId: conversation.id, iteration, reason: circleReason }, "Circle detected — stopping agent loop")
+        finalContent = "I'm running into a repeated issue and don't want to waste your time retrying. " +
+          "The error I keep hitting: " + (allToolResults.filter(r => r.error).pop()?.error ?? "unknown") +
+          ". Please try rephrasing your question or contact support if this persists."
+        yield { type: "text_delta" as const, content: finalContent }
+        break
       }
 
       // Append tool results
       anthropicMessages.push({ role: "user", content: toolResultBlocks })
+
+      // On the penultimate iteration, nudge the model to wrap up
+      if (iteration === MAX_TOOL_ITERATIONS - 2) {
+        anthropicMessages.push({
+          role: "user",
+          content: "[System: This is your last tool round. Respond with your best answer using the data you have. Do not call any more tools.]",
+        })
+      }
+    }
+
+    // If loop exhausted without a final text response, synthesize one
+    if (!finalContent && allToolResults.length > 0) {
+      finalContent = "I wasn't able to fully resolve your question within the tool limit. Here's what I found so far — please try rephrasing or narrowing your question."
     }
 
     // 7. Save assistant response
@@ -387,7 +403,7 @@ export const aiService = {
 
     // 4. Build context + caller
     const ctx: AgentContext = { tenantId, userId, workosUserId, userPermissions, pageContext: input.pageContext }
-    const trpcCaller = buildTrpcCaller(ctx, req)
+    const trpcCaller = await buildTrpcCaller(ctx, req)
 
     // 5. Agent loop
     const allToolCalls: ToolCallRecord[] = []
@@ -395,6 +411,8 @@ export const aiService = {
     let totalInputTokens = 0
     let totalOutputTokens = 0
     let finalContent = ""
+    const systemPrompt = await buildSystemPrompt(input.pageContext)
+    const circleDetector = new CircleDetector()
 
     for (let iteration = 0; iteration < MAX_TOOL_ITERATIONS; iteration++) {
       log.info({ conversationId: conversation.id, iteration }, "Agent iteration")
@@ -402,7 +420,7 @@ export const aiService = {
       const response = await getClient().messages.create({
         model: DEFAULT_MODEL,
         max_tokens: MAX_TOKENS,
-        system: buildSystemPrompt(input.pageContext),
+        system: systemPrompt,
         messages: anthropicMessages,
         tools: agentTools,
       })
@@ -433,9 +451,32 @@ export const aiService = {
           allToolResults.push({ toolCallId: toolUse.id, output: result })
           toolResultBlocks.push({ type: "tool_result", tool_use_id: toolUse.id, content: JSON.stringify(result, null, 2) })
         }
+
+        circleDetector.record(toolUse.name, toolUse.input, error ?? null)
+      }
+
+      circleDetector.endIteration()
+      const circleReason = circleDetector.detect()
+      if (circleReason) {
+        log.warn({ conversationId: conversation.id, iteration, reason: circleReason }, "Circle detected — stopping agent loop")
+        finalContent = "I'm running into a repeated issue and don't want to waste your time retrying. " +
+          "The error I keep hitting: " + (allToolResults.filter(r => r.error).pop()?.error ?? "unknown") +
+          ". Please try rephrasing your question or contact support if this persists."
+        break
       }
 
       anthropicMessages.push({ role: "user", content: toolResultBlocks })
+
+      if (iteration === MAX_TOOL_ITERATIONS - 2) {
+        anthropicMessages.push({
+          role: "user",
+          content: "[System: This is your last tool round. Respond with your best answer using the data you have. Do not call any more tools.]",
+        })
+      }
+    }
+
+    if (!finalContent && allToolResults.length > 0) {
+      finalContent = "I wasn't able to fully resolve your question within the tool limit. Here's what I found so far — please try rephrasing or narrowing your question."
     }
 
     // 6. Save + update

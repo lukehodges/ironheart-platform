@@ -39,12 +39,14 @@ let cachedIndex: string | null = null
  * This is far simpler than walking the nested `record` tree — we just iterate
  * the flattened map and group by the first path segment (module name).
  */
-function getRouter() {
-  // Lazy import to avoid circular dependency:
+async function getRouter() {
+  // Dynamic import to avoid circular dependency:
   // ai.service.ts -> @/server/root -> @/modules/ai -> ai.service.ts
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { appRouter } = require("@/server/root") as { appRouter: { _def: { procedures: Record<string, unknown> } } }
-  return appRouter
+  const { appRouter } = await import("@/server/root")
+  if (!appRouter) {
+    throw new Error("appRouter is undefined — circular dependency may not be resolved yet")
+  }
+  return appRouter as { _def: { procedures: Record<string, unknown> } }
 }
 
 function extractInputSchema(procedure: unknown): Record<string, unknown> | null {
@@ -73,11 +75,11 @@ function extractInputSchema(procedure: unknown): Record<string, unknown> | null 
  * Build the module metadata map from appRouter._def.procedures.
  * Called once, cached thereafter.
  */
-export function getModuleMap(): Map<string, ModuleMetadata> {
+export async function getModuleMap(): Promise<Map<string, ModuleMetadata>> {
   if (cachedModules) return cachedModules
 
-  const appRouter = getRouter()
-  const procedures = (appRouter._def as { procedures: Record<string, unknown> }).procedures
+  const appRouter = await getRouter()
+  const procedures = appRouter._def.procedures
   const moduleMap = new Map<string, ModuleMetadata>()
 
   for (const [path, procedure] of Object.entries(procedures)) {
@@ -112,22 +114,37 @@ export function getModuleMap(): Map<string, ModuleMetadata> {
 }
 
 /**
- * Get the compact module index for the system prompt.
- * Lists only query procedure names grouped by module.
+ * Summarise a JSON Schema input into a compact one-liner like "{ limit?, offset?, status? }".
+ * Returns empty string if no meaningful properties.
  */
-export function getModuleIndex(): string {
+function summariseInput(schema: Record<string, unknown> | null): string {
+  if (!schema) return "()"
+  const props = schema.properties as Record<string, unknown> | undefined
+  if (!props || Object.keys(props).length === 0) return "()"
+
+  const required = new Set((schema.required as string[]) ?? [])
+  const parts = Object.keys(props).map((k) => (required.has(k) ? k : `${k}?`))
+  return `({ ${parts.join(", ")} })`
+}
+
+/**
+ * Get the compact module index for the system prompt.
+ * Shows query procedures with compact input signatures so the model
+ * can often call execute_code directly without describe_module.
+ */
+export async function getModuleIndex(): Promise<string> {
   if (cachedIndex) return cachedIndex
 
-  const moduleMap = getModuleMap()
-  const lines: string[] = ["Available modules (use describe_module to see input schemas):"]
+  const moduleMap = await getModuleMap()
+  const lines: string[] = ["Available query procedures (use describe_module for full input schemas if needed):"]
 
   for (const [moduleName, meta] of moduleMap) {
-    const queryProcs = meta.procedures
-      .filter((p) => p.type === "query")
-      .map((p) => p.name)
+    const queryProcs = meta.procedures.filter((p) => p.type === "query")
+    if (queryProcs.length === 0) continue
 
-    if (queryProcs.length > 0) {
-      lines.push(`  ${moduleName}: ${queryProcs.join(", ")}`)
+    lines.push(`\n  ${moduleName}:`)
+    for (const proc of queryProcs) {
+      lines.push(`    .${proc.name}${summariseInput(proc.inputSchema)}`)
     }
   }
 
@@ -139,8 +156,8 @@ export function getModuleIndex(): string {
  * Get full procedure metadata for a specific module.
  * Returns null if module not found.
  */
-export function getModuleMetadata(moduleName: string): ModuleMetadata | null {
-  const moduleMap = getModuleMap()
+export async function getModuleMetadata(moduleName: string): Promise<ModuleMetadata | null> {
+  const moduleMap = await getModuleMap()
   return moduleMap.get(moduleName) ?? null
 }
 

@@ -286,7 +286,7 @@ describe("AI Code Execution Engine", () => {
       const { getModuleMap, resetIntrospectionCache } = await import("../ai.introspection")
       resetIntrospectionCache()
 
-      const moduleMap = getModuleMap()
+      const moduleMap = await getModuleMap()
 
       expect(moduleMap.has("booking")).toBe(true)
       expect(moduleMap.has("customer")).toBe(true)
@@ -302,7 +302,7 @@ describe("AI Code Execution Engine", () => {
       const { getModuleMap, resetIntrospectionCache } = await import("../ai.introspection")
       resetIntrospectionCache()
 
-      const moduleMap = getModuleMap()
+      const moduleMap = await getModuleMap()
       const booking = moduleMap.get("booking")!
 
       const queries = booking.procedures.filter((p) => p.type === "query")
@@ -316,7 +316,7 @@ describe("AI Code Execution Engine", () => {
       const { getModuleIndex, resetIntrospectionCache } = await import("../ai.introspection")
       resetIntrospectionCache()
 
-      const index = getModuleIndex()
+      const index = await getModuleIndex()
 
       expect(index).toContain("booking:")
       expect(index).toContain("list")
@@ -329,7 +329,7 @@ describe("AI Code Execution Engine", () => {
       const { getModuleMetadata, resetIntrospectionCache } = await import("../ai.introspection")
       resetIntrospectionCache()
 
-      const result = getModuleMetadata("nonexistent")
+      const result = await getModuleMetadata("nonexistent")
       expect(result).toBeNull()
     })
   })
@@ -340,7 +340,7 @@ describe("AI Code Execution Engine", () => {
       const { resetIntrospectionCache } = await import("../ai.introspection")
       resetIntrospectionCache()
 
-      const { result, durationMs } = handleDescribeModule({ module: "booking" })
+      const { result, durationMs } = await handleDescribeModule({ module: "booking" })
 
       expect(durationMs).toBeGreaterThanOrEqual(0)
       const meta = result as { module: string; procedures: unknown[] }
@@ -353,7 +353,7 @@ describe("AI Code Execution Engine", () => {
       const { resetIntrospectionCache } = await import("../ai.introspection")
       resetIntrospectionCache()
 
-      const { result } = handleDescribeModule({ module: "nonexistent" })
+      const { result } = await handleDescribeModule({ module: "nonexistent" })
 
       const err = result as { error: string }
       expect(err.error).toContain("not found")

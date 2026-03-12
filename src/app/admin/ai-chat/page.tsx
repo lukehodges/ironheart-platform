@@ -16,6 +16,7 @@ import {
   Code2,
   ChevronDown,
   ChevronRight,
+  Square,
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -74,7 +75,7 @@ type StreamEvent =
   | { type: "text_delta"; content: string }
   | { type: "error"; message: string; recoverable: boolean }
   | { type: "code_executing"; code: string }
-  | { type: "code_result"; result: unknown; durationMs: number; callCount: number; error?: string }
+  | { type: "code_result"; result: unknown; durationMs: number; error?: string }
   | { type: "done"; content: string; tokenUsage: TokenUsage; toolCallCount: number; conversationId?: string }
 
 // ---------------------------------------------------------------------------
@@ -263,14 +264,12 @@ function CodeExecutionBlock({
   code,
   result,
   durationMs,
-  callCount,
   error,
   isStreaming,
 }: {
   code: string
   result?: unknown
   durationMs?: number
-  callCount?: number
   error?: string
   isStreaming?: boolean
 }) {
@@ -300,7 +299,7 @@ function CodeExecutionBlock({
           {isDone
             ? error
               ? "Code execution failed"
-              : `Executed ${callCount ?? 0} tRPC call${callCount === 1 ? "" : "s"} in ${durationMs}ms`
+              : `Code executed in ${durationMs}ms`
             : "Executing code..."}
         </span>
         <div className="ml-auto shrink-0">
@@ -413,7 +412,6 @@ function MessageBubble({ message }: { message: Message }) {
                               code={codeInput.code}
                               result={result?.output}
                               durationMs={undefined}
-                              callCount={undefined}
                               error={result?.error}
                             />
                           )
@@ -475,7 +473,6 @@ interface StreamingCodeState {
   code: string
   result?: unknown
   durationMs?: number
-  callCount?: number
   error?: string
 }
 
@@ -539,7 +536,6 @@ function StreamingBubble({
                     code={cb.code}
                     result={cb.result}
                     durationMs={cb.durationMs}
-                    callCount={cb.callCount}
                     error={cb.error}
                     isStreaming={cb.result === undefined && cb.error === undefined}
                   />
@@ -767,6 +763,41 @@ export default function AIChatPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages, isStreaming, streamingContent, streamingToolCalls, streamingCodeBlocks])
 
+  const addAssistantMessage = useCallback((
+    content: string,
+    collectedToolCalls: StreamingToolState[],
+    tokenUsage: TokenUsage | null,
+  ) => {
+    if (!content && collectedToolCalls.length === 0) return
+
+    const toolCalls: ToolCallRecord[] = collectedToolCalls.map((tc, i) => ({
+      id: `tc-${i}`,
+      name: tc.toolName,
+      input: tc.input,
+    }))
+
+    const toolResults: ToolResultRecord[] = collectedToolCalls
+      .filter((tc) => tc.result !== undefined || tc.error !== undefined)
+      .map((tc, i) => ({
+        toolCallId: `tc-${i}`,
+        output: tc.result,
+        error: tc.error,
+      }))
+
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: `msg-${Date.now()}`,
+        role: "assistant" as const,
+        content,
+        toolCalls: toolCalls.length > 0 ? toolCalls : null,
+        toolResults: toolResults.length > 0 ? toolResults : null,
+        tokenUsage,
+        createdAt: new Date(),
+      },
+    ])
+  }, [])
+
   const handleSend = useCallback(async () => {
     const text = inputValue.trim()
     if (!text || isStreaming) return
@@ -796,6 +827,12 @@ export default function AIChatPage() {
     const controller = new AbortController()
     abortControllerRef.current = controller
 
+    let finalContent = ""
+    let finalTokenUsage: TokenUsage | null = null
+    let finalConversationId: string | undefined
+    const collectedToolCalls: StreamingToolState[] = []
+    const collectedCodeBlocks: StreamingCodeState[] = []
+
     try {
       const response = await fetch("/api/ai/stream", {
         method: "POST",
@@ -814,12 +851,6 @@ export default function AIChatPage() {
           (errorBody as { error?: string }).error ?? `HTTP ${response.status}`
         )
       }
-
-      let finalContent = ""
-      let finalTokenUsage: TokenUsage | null = null
-      let finalConversationId: string | undefined
-      const collectedToolCalls: StreamingToolState[] = []
-      const collectedCodeBlocks: StreamingCodeState[] = []
 
       for await (const event of readSSEStream(response)) {
         if (controller.signal.aborted) break
@@ -867,7 +898,6 @@ export default function AIChatPage() {
             if (lastBlock) {
               lastBlock.result = event.result
               lastBlock.durationMs = event.durationMs
-              lastBlock.callCount = event.callCount
               if (event.error) lastBlock.error = event.error
               setStreamingCodeBlocks([...collectedCodeBlocks])
             }
@@ -893,32 +923,7 @@ export default function AIChatPage() {
       }
 
       // Build the final assistant message from collected data
-      const toolCalls: ToolCallRecord[] = collectedToolCalls.map((tc, i) => ({
-        id: `tc-${i}`,
-        name: tc.toolName,
-        input: tc.input,
-      }))
-
-      const toolResults: ToolResultRecord[] = collectedToolCalls
-        .filter((tc) => tc.result !== undefined || tc.error !== undefined)
-        .map((tc, i) => ({
-          toolCallId: `tc-${i}`,
-          output: tc.result,
-          error: tc.error,
-        }))
-
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: `msg-${Date.now()}`,
-          role: "assistant" as const,
-          content: finalContent,
-          toolCalls: toolCalls.length > 0 ? toolCalls : null,
-          toolResults: toolResults.length > 0 ? toolResults : null,
-          tokenUsage: finalTokenUsage,
-          createdAt: new Date(),
-        },
-      ])
+      addAssistantMessage(finalContent, collectedToolCalls, finalTokenUsage)
 
       // Update conversation ID if this was a new conversation
       if (finalConversationId && !activeConversationId) {
@@ -927,7 +932,13 @@ export default function AIChatPage() {
 
       conversationsQuery.refetch()
     } catch (err) {
-      if ((err as Error).name !== "AbortError") {
+      if ((err as Error).name === "AbortError") {
+        // User clicked stop — preserve partial content as a message
+        const stoppedContent = finalContent
+          ? finalContent + "\n\n*(Stopped by user)*"
+          : "*(Stopped by user)*"
+        addAssistantMessage(stoppedContent, collectedToolCalls, null)
+      } else {
         setStreamError((err as Error).message ?? "Failed to send message")
       }
     } finally {
@@ -939,6 +950,10 @@ export default function AIChatPage() {
       abortControllerRef.current = null
     }
   }, [inputValue, activeConversationId, isStreaming, conversationsQuery])
+
+  const handleStop = useCallback(() => {
+    abortControllerRef.current?.abort()
+  }, [])
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -1063,18 +1078,26 @@ export default function AIChatPage() {
                 rows={1}
                 disabled={isStreaming}
               />
-              <Button
-                onClick={handleSend}
-                disabled={!inputValue.trim() || isStreaming}
-                size="sm"
-                className="h-[42px] w-[42px] p-0 rounded-xl shrink-0"
-              >
-                {isStreaming ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
+              {isStreaming ? (
+                <Button
+                  onClick={handleStop}
+                  size="sm"
+                  variant="destructive"
+                  className="h-[42px] w-[42px] p-0 rounded-xl shrink-0"
+                  title="Stop generating"
+                >
+                  <Square className="h-4 w-4" />
+                </Button>
+              ) : (
+                <Button
+                  onClick={handleSend}
+                  disabled={!inputValue.trim()}
+                  size="sm"
+                  className="h-[42px] w-[42px] p-0 rounded-xl shrink-0"
+                >
                   <Send className="h-4 w-4" />
-                )}
-              </Button>
+                </Button>
+              )}
             </div>
           </div>
         </CardContent>

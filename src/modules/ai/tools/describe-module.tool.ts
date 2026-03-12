@@ -6,8 +6,9 @@ import { getModuleMetadata } from "../ai.introspection"
 export const describeModuleTool: Anthropic.Tool = {
   name: "describe_module",
   description:
-    "Returns procedure names, types (query/mutation), and input schemas for a given module. " +
-    "Call this before writing execute_code to learn available procedures and their expected inputs.",
+    "Returns full input schemas for a module's procedures. " +
+    "Only call this if the procedure index in the system prompt doesn't give you enough information to write your code. " +
+    "Do NOT call this for the same module twice.",
   input_schema: {
     type: "object" as const,
     properties: {
@@ -20,12 +21,12 @@ export const describeModuleTool: Anthropic.Tool = {
   },
 }
 
-export function handleDescribeModule(input: { module: string }): {
+export async function handleDescribeModule(input: { module: string }): Promise<{
   result: unknown
   durationMs: number
-} {
+}> {
   const start = Date.now()
-  const metadata = getModuleMetadata(input.module)
+  const metadata = await getModuleMetadata(input.module)
 
   if (!metadata) {
     return {

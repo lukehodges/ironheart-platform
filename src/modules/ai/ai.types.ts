@@ -174,4 +174,4 @@ export type AgentStreamEvent =
   | { type: "approval_required"; actionId: string; toolName: string; description: string; input: unknown }
   | { type: "approval_resolved"; actionId: string; approved: boolean }
   | { type: "code_executing"; code: string }
-  | { type: "code_result"; result: unknown; durationMs: number; callCount: number; error?: string }
+  | { type: "code_result"; result: unknown; durationMs: number; error?: string }
