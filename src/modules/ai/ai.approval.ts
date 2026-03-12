@@ -4,6 +4,7 @@ import { redis } from "@/shared/redis"
 import { logger } from "@/shared/logger"
 import { agentActionsRepository } from "./ai.actions.repository"
 import { aiConfigRepository } from "./ai.config.repository"
+import { correctionsRepository } from "./memory/corrections"
 
 const log = logger.child({ module: "ai.approval" })
 
@@ -49,6 +50,20 @@ export async function waitForApproval(
       await agentActionsRepository.updateStatus(actionId, { status: "rejected" })
       await redis.del(redisKey)
       await aiConfigRepository.recordApprovalDecision(tenantId, procedurePath, false)
+
+      // Record correction for learning from rejections
+      const action = await agentActionsRepository.getById(actionId)
+      if (action) {
+        await correctionsRepository.recordRejection({
+          tenantId,
+          toolName: action.toolName,
+          attemptedInput: action.toolInput,
+          rejectionReason: "User rejected action",
+        }).catch((err) => {
+          log.warn({ actionId, err }, "Failed to record correction on rejection")
+        })
+      }
+
       log.info({ actionId }, "Action rejected")
       return false
     }
