@@ -146,6 +146,43 @@ export const aiCorrections = pgTable("ai_corrections", {
 // AI Knowledge Chunks — tenant knowledge base for RAG
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// AI MCP Connections — external MCP server configurations
+// ---------------------------------------------------------------------------
+
+export const aiMcpConnections = pgTable("ai_mcp_connections", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: uuid("tenant_id").notNull().references(() => tenants.id),
+  name: text("name").notNull(),
+  description: text("description"),
+  /** The MCP server URL (e.g., https://api.example.com/mcp) */
+  serverUrl: text("server_url").notNull(),
+  /** Authentication type: 'bearer', 'api_key', 'none' */
+  authType: text("auth_type").notNull().default("none"),
+  /** Encrypted credentials (bearer token or API key) */
+  authCredential: text("auth_credential"),
+  /** Cached tool definitions from the server (refreshed periodically) */
+  cachedTools: jsonb("cached_tools"),
+  /** When tools were last refreshed */
+  toolsRefreshedAt: timestamp("tools_refreshed_at", { withTimezone: true }),
+  /** Default guardrail tier for tools from this connection */
+  defaultGuardrailTier: text("default_guardrail_tier").notNull().default("CONFIRM"),
+  /** Per-tool guardrail overrides: { "toolName": "AUTO" | "CONFIRM" | "RESTRICT" } */
+  toolGuardrailOverrides: jsonb("tool_guardrail_overrides").default("{}"),
+  /** Connection health: 'healthy', 'degraded', 'unreachable' */
+  healthStatus: text("health_status").notNull().default("healthy"),
+  lastHealthCheck: timestamp("last_health_check", { withTimezone: true }),
+  isEnabled: integer("is_enabled").notNull().default(1),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index("idx_ai_mcp_connections_tenant").on(t.tenantId),
+])
+
+// ---------------------------------------------------------------------------
+// AI Knowledge Chunks — tenant knowledge base for RAG
+// ---------------------------------------------------------------------------
+
 export const aiKnowledgeChunks = pgTable("ai_knowledge_chunks", {
   id: uuid("id").primaryKey().defaultRandom(),
   tenantId: uuid("tenant_id").notNull().references(() => tenants.id),
