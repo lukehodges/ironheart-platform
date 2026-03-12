@@ -97,3 +97,24 @@ export const aiTenantConfig = pgTable("ai_tenant_config", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 })
+
+// ---------------------------------------------------------------------------
+// AI Workflow Suggestions — proactive automation suggestions
+// ---------------------------------------------------------------------------
+
+export const aiWorkflowSuggestions = pgTable("ai_workflow_suggestions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: uuid("tenant_id").notNull().references(() => tenants.id),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  suggestedNodes: jsonb("suggested_nodes"),
+  suggestedEdges: jsonb("suggested_edges"),
+  detectedPattern: text("detected_pattern").notNull(),
+  confidence: integer("confidence").notNull().default(50),
+  status: text("status").notNull().default("pending"),
+  acceptedAt: timestamp("accepted_at", { withTimezone: true }),
+  dismissedAt: timestamp("dismissed_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index("idx_ai_workflow_suggestions_tenant_status").on(t.tenantId, t.status),
+])
