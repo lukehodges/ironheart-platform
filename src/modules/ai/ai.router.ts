@@ -12,7 +12,14 @@ import {
   generateWorkflowSchema, listWorkflowSuggestionsSchema, resolveSuggestionSchema,
   ingestDocumentSchema, deleteDocumentSchema, listKnowledgeSourcesSchema,
   setVerticalProfileSchema, listVerticalProfilesSchema,
+  updateKillerFeaturesConfigSchema, pasteToPipelineExtractSchema, pasteToPipelineCommitSchema,
+  generateBriefingSchema,
 } from "./ai.schemas"
+import { extractEntities } from "./features/paste-to-pipeline"
+import { commitEntities } from "./features/paste-to-pipeline.commit"
+import { gatherBriefingData } from "./features/morning-briefing.data"
+import { generateBriefing } from "./features/morning-briefing.generator"
+import type { AgentContext, GhostOperatorRule } from "./ai.types"
 import { resolveApprovalFromUI } from "./ai.approval"
 import { explainAction, undoAction } from "./ai.explainer"
 import { analyzeTrustMetrics } from "./ai.trust"
@@ -163,6 +170,54 @@ export const aiRouter = router({
   listVerticalProfiles: moduleProcedure
     .input(listVerticalProfilesSchema)
     .query(() => ({ profiles: listVerticalProfiles() })),
+
+  // ---------------------------------------------------------------------------
+  // Phase F — Killer Features
+  // ---------------------------------------------------------------------------
+
+  updateKillerFeaturesConfig: moduleProcedure
+    .input(updateKillerFeaturesConfigSchema)
+    .mutation(async ({ ctx, input }) => {
+      const updates: Record<string, unknown> = {}
+      if (input.morningBriefingEnabled !== undefined) updates.morningBriefingEnabled = input.morningBriefingEnabled ? 1 : 0
+      if (input.morningBriefingTime) updates.morningBriefingTime = input.morningBriefingTime
+      if (input.morningBriefingTimezone) updates.morningBriefingTimezone = input.morningBriefingTimezone
+      if (input.morningBriefingDelivery) updates.morningBriefingDelivery = input.morningBriefingDelivery
+      if (input.morningBriefingRecipientIds) updates.morningBriefingRecipientIds = input.morningBriefingRecipientIds
+      if (input.ghostOperatorEnabled !== undefined) updates.ghostOperatorEnabled = input.ghostOperatorEnabled ? 1 : 0
+      if (input.ghostOperatorStartHour !== undefined) updates.ghostOperatorStartHour = input.ghostOperatorStartHour
+      if (input.ghostOperatorEndHour !== undefined) updates.ghostOperatorEndHour = input.ghostOperatorEndHour
+      if (input.ghostOperatorTimezone) updates.ghostOperatorTimezone = input.ghostOperatorTimezone
+      if (input.ghostOperatorRules) updates.ghostOperatorRules = input.ghostOperatorRules
+      if (input.pasteToPipelineEnabled !== undefined) updates.pasteToPipelineEnabled = input.pasteToPipelineEnabled ? 1 : 0
+      await aiConfigRepository.update(ctx.tenantId, updates as Parameters<typeof aiConfigRepository.update>[1])
+      return { success: true }
+    }),
+
+  pasteToPipelineExtract: moduleProcedure
+    .input(pasteToPipelineExtractSchema)
+    .mutation(async ({ ctx, input }) => {
+      return extractEntities(ctx.tenantId, input.rawInput)
+    }),
+
+  pasteToPipelineCommit: moduleProcedure
+    .input(pasteToPipelineCommitSchema)
+    .mutation(async ({ ctx, input }) => {
+      const agentCtx: AgentContext = {
+        tenantId: ctx.tenantId,
+        userId: ctx.user!.id,
+        workosUserId: ctx.session!.user.id,
+        userPermissions: getUserPermissions(ctx.user as UserWithRoles),
+      }
+      return commitEntities(agentCtx, input.entities, input.confirmed)
+    }),
+
+  generateBriefingNow: moduleProcedure
+    .input(generateBriefingSchema)
+    .mutation(async ({ ctx }) => {
+      const data = await gatherBriefingData(ctx.tenantId)
+      return generateBriefing(ctx.tenantId, data)
+    }),
 })
 
 export type AIRouter = typeof aiRouter

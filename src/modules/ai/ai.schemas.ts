@@ -84,3 +84,71 @@ export const setVerticalProfileSchema = z.object({
 })
 
 export const listVerticalProfilesSchema = z.object({})
+
+// ---------------------------------------------------------------------------
+// Phase F — Killer Features
+// ---------------------------------------------------------------------------
+
+export const updateKillerFeaturesConfigSchema = z.object({
+  morningBriefingEnabled: z.boolean().optional(),
+  morningBriefingTime: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+  morningBriefingTimezone: z.string().optional(),
+  morningBriefingDelivery: z.enum(["in_app", "email", "both"]).optional(),
+  morningBriefingRecipientIds: z.array(z.string()).optional(),
+  ghostOperatorEnabled: z.boolean().optional(),
+  ghostOperatorStartHour: z.number().int().min(0).max(23).optional(),
+  ghostOperatorEndHour: z.number().int().min(0).max(23).optional(),
+  ghostOperatorTimezone: z.string().optional(),
+  ghostOperatorRules: z.array(z.object({
+    id: z.string(),
+    name: z.string(),
+    enabled: z.boolean(),
+    trigger: z.enum(["pending_booking", "overdue_invoice", "review_followup", "workflow_retry"]),
+    conditions: z.record(z.string(), z.unknown()),
+    action: z.object({
+      toolName: z.string(),
+      inputTemplate: z.record(z.string(), z.unknown()),
+    }),
+    requireAutoTier: z.boolean(),
+  })).optional(),
+  pasteToPipelineEnabled: z.boolean().optional(),
+})
+
+export const pasteToPipelineExtractSchema = z.object({
+  rawInput: z.string().min(1).max(50000),
+})
+
+export const pasteToPipelineCommitSchema = z.object({
+  entities: z.object({
+    customer: z.object({
+      name: z.string().nullable(),
+      email: z.string().nullable(),
+      phone: z.string().nullable(),
+      company: z.string().nullable(),
+      notes: z.string().nullable(),
+    }).nullable(),
+    booking: z.object({
+      service: z.string().nullable(),
+      date: z.string().nullable(),
+      time: z.string().nullable(),
+      duration: z.string().nullable(),
+      notes: z.string().nullable(),
+    }).nullable(),
+    tasks: z.array(z.object({
+      title: z.string(),
+      priority: z.enum(["LOW", "MEDIUM", "HIGH", "URGENT"]),
+      dueDate: z.string().nullable(),
+      assignee: z.string().nullable(),
+    })),
+    notes: z.array(z.string()),
+    confidence: z.number(),
+    rawInput: z.string(),
+  }),
+  confirmed: z.object({
+    createCustomer: z.boolean(),
+    createBooking: z.boolean(),
+    createTasks: z.boolean(),
+  }),
+})
+
+export const generateBriefingSchema = z.object({})
