@@ -4,6 +4,7 @@ import { getModuleIndex } from "./ai.introspection"
 import { getVerticalProfile } from "./verticals"
 import { correctionsRepository } from "./memory/corrections"
 import { retrieveContext, formatRAGContext } from "./knowledge/rag"
+import { getExternalToolsForTenant } from "./mcp/adapter"
 import { logger } from "@/shared/logger"
 import type { PageContext } from "./ai.types"
 
@@ -166,6 +167,25 @@ export async function assembleSystemPrompt(params: {
     }
   } catch (err) {
     log.warn({ tenantId, err }, "Failed to retrieve RAG context")
+  }
+
+  // 6. External MCP tools
+  try {
+    const externalTools = await getExternalToolsForTenant(tenantId)
+    if (externalTools.length > 0) {
+      const toolLines = externalTools.map((t) => {
+        const schemaStr = JSON.stringify(t.inputSchema)
+        return `  - \`${t.name}\` — ${t.description} [${t.guardrailTier}]\n    Input: ${schemaStr}`
+      })
+      parts.push(
+        `## External Tools (MCP)\n` +
+        `These tools come from external MCP servers. Call them using \`await ctx.external("toolName", args)\` in your execute_code blocks.\n` +
+        `CONFIRM tools require user approval. RESTRICT tools are blocked.\n\n` +
+        toolLines.join("\n")
+      )
+    }
+  } catch (err) {
+    log.warn({ tenantId, err }, "Failed to load external tools")
   }
 
   return parts.join("\n\n")
