@@ -76,6 +76,8 @@ type StreamEvent =
   | { type: "error"; message: string; recoverable: boolean }
   | { type: "code_executing"; code: string }
   | { type: "code_result"; result: unknown; durationMs: number; error?: string }
+  | { type: "approval_required"; actionId: string; toolName: string; description: string; input: unknown }
+  | { type: "approval_resolved"; actionId: string; approved: boolean }
   | { type: "done"; content: string; tokenUsage: TokenUsage; toolCallCount: number; conversationId?: string }
 
 // ---------------------------------------------------------------------------
@@ -334,6 +336,71 @@ function CodeExecutionBlock({
 }
 
 // ---------------------------------------------------------------------------
+// Approval Card
+// ---------------------------------------------------------------------------
+
+interface StreamingApprovalState {
+  actionId: string
+  procedurePath: string
+  input: unknown
+  description: string
+  status: "pending" | "approved" | "rejected"
+}
+
+function ApprovalCard({
+  actionId,
+  procedurePath,
+  input,
+  status,
+  onResolve,
+}: {
+  actionId: string
+  procedurePath: string
+  input: unknown
+  status: "pending" | "approved" | "rejected"
+  onResolve: (actionId: string, approved: boolean) => void
+}) {
+  return (
+    <div className="my-2 border border-amber-200 dark:border-amber-800 rounded-lg p-3 bg-amber-50 dark:bg-amber-950/20">
+      <div className="flex items-start gap-2">
+        <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+        <div className="flex-1">
+          <p className="text-sm font-medium text-amber-900 dark:text-amber-100">
+            Approval Required
+          </p>
+          <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
+            <code className="font-mono">{procedurePath}</code>
+          </p>
+          <pre className="text-xs text-amber-600 dark:text-amber-400 mt-1 overflow-x-auto">
+            {JSON.stringify(input, null, 2)}
+          </pre>
+          {status === "pending" && (
+            <div className="flex gap-2 mt-2">
+              <Button size="sm" variant="default" onClick={() => onResolve(actionId, true)}>
+                Approve
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => onResolve(actionId, false)}>
+                Reject
+              </Button>
+            </div>
+          )}
+          {status === "approved" && (
+            <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-2 flex items-center gap-1">
+              <CheckCircle2 className="h-3 w-3" /> Approved
+            </p>
+          )}
+          {status === "rejected" && (
+            <p className="text-xs text-red-600 dark:text-red-400 mt-2 flex items-center gap-1">
+              <AlertCircle className="h-3 w-3" /> Rejected
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Message Bubble
 // ---------------------------------------------------------------------------
 
@@ -480,12 +547,16 @@ function StreamingBubble({
   content,
   toolCalls,
   codeBlocks,
+  approvals,
   statusMessage,
+  onResolveApproval,
 }: {
   content: string
   toolCalls: StreamingToolState[]
   codeBlocks: StreamingCodeState[]
+  approvals: StreamingApprovalState[]
   statusMessage: string | null
+  onResolveApproval: (actionId: string, approved: boolean) => void
 }) {
   return (
     <div className="px-4 py-4">
@@ -538,6 +609,21 @@ function StreamingBubble({
                     durationMs={cb.durationMs}
                     error={cb.error}
                     isStreaming={cb.result === undefined && cb.error === undefined}
+                  />
+                ))}
+                {content && !approvals.length && <Separator className="my-3" />}
+              </>
+            )}
+            {approvals.length > 0 && (
+              <>
+                {approvals.map((approval) => (
+                  <ApprovalCard
+                    key={approval.actionId}
+                    actionId={approval.actionId}
+                    procedurePath={approval.procedurePath}
+                    input={approval.input}
+                    status={approval.status}
+                    onResolve={onResolveApproval}
                   />
                 ))}
                 {content && <Separator className="my-3" />}
@@ -718,6 +804,7 @@ export default function AIChatPage() {
   const [streamingToolCalls, setStreamingToolCalls] = useState<StreamingToolState[]>([])
   const [streamingStatus, setStreamingStatus] = useState<string | null>(null)
   const [streamingCodeBlocks, setStreamingCodeBlocks] = useState<StreamingCodeState[]>([])
+  const [streamingApprovals, setStreamingApprovals] = useState<StreamingApprovalState[]>([])
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
@@ -746,6 +833,20 @@ export default function AIChatPage() {
     },
   })
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const resolveApprovalMutation = (api.ai as any).resolveApproval.useMutation()
+
+  const handleResolveApproval = useCallback((actionId: string, approved: boolean) => {
+    resolveApprovalMutation.mutate({ actionId, approved })
+    setStreamingApprovals((prev) =>
+      prev.map((a) =>
+        a.actionId === actionId
+          ? { ...a, status: approved ? "approved" as const : "rejected" as const }
+          : a
+      )
+    )
+  }, [resolveApprovalMutation])
+
   // Load messages when conversation changes
   useEffect(() => {
     if (conversationQuery.data?.messages) {
@@ -761,7 +862,7 @@ export default function AIChatPage() {
   // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }, [messages, isStreaming, streamingContent, streamingToolCalls, streamingCodeBlocks])
+  }, [messages, isStreaming, streamingContent, streamingToolCalls, streamingCodeBlocks, streamingApprovals])
 
   const addAssistantMessage = useCallback((
     content: string,
@@ -822,6 +923,7 @@ export default function AIChatPage() {
     setStreamingContent("")
     setStreamingToolCalls([])
     setStreamingCodeBlocks([])
+    setStreamingApprovals([])
     setStreamingStatus("Thinking...")
 
     const controller = new AbortController()
@@ -832,6 +934,7 @@ export default function AIChatPage() {
     let finalConversationId: string | undefined
     const collectedToolCalls: StreamingToolState[] = []
     const collectedCodeBlocks: StreamingCodeState[] = []
+    const collectedApprovals: StreamingApprovalState[] = []
 
     try {
       const response = await fetch("/api/ai/stream", {
@@ -904,6 +1007,31 @@ export default function AIChatPage() {
             break
           }
 
+          case "approval_required": {
+            const approval: StreamingApprovalState = {
+              actionId: event.actionId,
+              procedurePath: event.toolName,
+              input: event.input,
+              description: event.description,
+              status: "pending" as const,
+            }
+            collectedApprovals.push(approval)
+            setStreamingApprovals([...collectedApprovals])
+            break
+          }
+
+          case "approval_resolved": {
+            const approvalIdx = collectedApprovals.findIndex(a => a.actionId === event.actionId)
+            if (approvalIdx !== -1) {
+              collectedApprovals[approvalIdx] = {
+                ...collectedApprovals[approvalIdx],
+                status: event.approved ? "approved" : "rejected",
+              }
+              setStreamingApprovals([...collectedApprovals])
+            }
+            break
+          }
+
           case "text_delta":
             finalContent += event.content
             setStreamingContent(finalContent)
@@ -946,6 +1074,7 @@ export default function AIChatPage() {
       setStreamingContent("")
       setStreamingToolCalls([])
       setStreamingCodeBlocks([])
+      setStreamingApprovals([])
       setStreamingStatus(null)
       abortControllerRef.current = null
     }
@@ -1021,7 +1150,7 @@ export default function AIChatPage() {
             </div>
             <Badge variant="outline" className="gap-1.5 text-xs">
               <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-              Read-only mode
+              AI Assistant
             </Badge>
           </div>
         </CardHeader>
@@ -1051,7 +1180,9 @@ export default function AIChatPage() {
                   content={streamingContent}
                   toolCalls={streamingToolCalls}
                   codeBlocks={streamingCodeBlocks}
+                  approvals={streamingApprovals}
                   statusMessage={streamingStatus}
+                  onResolveApproval={handleResolveApproval}
                 />
               )}
               {streamError && (
