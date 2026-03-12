@@ -410,6 +410,25 @@ describe("MCP Client", () => {
 // Tests: MCP Server
 // ---------------------------------------------------------------------------
 
+// Mock the server module's dependencies to avoid importing @/server/root
+vi.mock("@/server/root", () => ({
+  appRouter: {
+    _def: { procedures: {} },
+  },
+}))
+
+vi.mock("@/shared/trpc", () => ({
+  createCallerFactory: vi.fn(() => vi.fn()),
+  router: vi.fn(),
+  tenantProcedure: { use: vi.fn() },
+  permissionProcedure: vi.fn(),
+  createModuleMiddleware: vi.fn(),
+}))
+
+vi.mock("../ai.introspection", () => ({
+  getModuleMap: vi.fn().mockResolvedValue(new Map()),
+}))
+
 describe("MCP Server", () => {
   describe("mcpServerHandler", () => {
     it("should reject invalid API keys", async () => {

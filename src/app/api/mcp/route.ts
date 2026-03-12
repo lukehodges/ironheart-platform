@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const response = await mcpServerHandler(body, apiKey)
+    const response = await mcpServerHandler(body, apiKey, req)
     return NextResponse.json(response)
   } catch (err) {
     log.error({ err }, "MCP server error")

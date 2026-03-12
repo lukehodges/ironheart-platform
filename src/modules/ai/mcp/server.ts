@@ -29,7 +29,8 @@ const SERVER_INFO = {
  */
 export async function mcpServerHandler(
   request: JsonRpcRequest,
-  apiKey: string
+  apiKey: string,
+  req?: Request
 ): Promise<JsonRpcResponse> {
   const { id, method, params } = request
 
@@ -62,7 +63,7 @@ export async function mcpServerHandler(
       return handleToolsList(id, keyContext)
 
     case "tools/call":
-      return handleToolsCall(id, params as { name: string; arguments?: Record<string, unknown> }, keyContext)
+      return handleToolsCall(id, params as { name: string; arguments?: Record<string, unknown> }, keyContext, req)
 
     default:
       return { jsonrpc: "2.0", id, error: { code: -32601, message: `Unknown method: ${method}` } }
@@ -106,7 +107,8 @@ async function handleToolsList(id: string | number, ctx: ApiKeyContext): Promise
 async function handleToolsCall(
   id: string | number,
   params: { name: string; arguments?: Record<string, unknown> },
-  ctx: ApiKeyContext
+  ctx: ApiKeyContext,
+  req?: Request
 ): Promise<JsonRpcResponse> {
   if (!params?.name) {
     return { jsonrpc: "2.0", id, error: { code: -32602, message: "Missing tool name" } }
@@ -136,6 +138,7 @@ async function handleToolsCall(
     tenantSlug: ctx.tenantSlug,
     user: ctx.userWithRoles as any,
     requestId: crypto.randomUUID(),
+    req: req ?? new Request("https://localhost/api/mcp"),
   })
 
   try {
