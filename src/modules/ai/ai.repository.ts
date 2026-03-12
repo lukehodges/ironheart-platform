@@ -21,6 +21,8 @@ function mapConversation(row: typeof aiConversations.$inferSelect): Conversation
     status: row.status as "active" | "archived",
     tokenCount: row.tokenCount,
     costCents: row.costCents,
+    summary: row.summary ?? null,
+    summaryUpdatedAt: row.summaryUpdatedAt ?? null,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   }
@@ -65,6 +67,15 @@ export const aiRepository = {
     return row ? mapConversation(row) : null
   },
 
+  async getConversationById(conversationId: string): Promise<ConversationRecord | null> {
+    const [row] = await db
+      .select()
+      .from(aiConversations)
+      .where(eq(aiConversations.id, conversationId))
+      .limit(1)
+    return row ? mapConversation(row) : null
+  },
+
   async listConversations(tenantId: string, userId: string, limit: number, cursor?: string) {
     const conditions = [
       eq(aiConversations.tenantId, tenantId),
@@ -87,7 +98,7 @@ export const aiRepository = {
 
   async updateConversation(
     conversationId: string,
-    updates: { title?: string; status?: string; tokenCount?: number; costCents?: number }
+    updates: { title?: string; status?: string; tokenCount?: number; costCents?: number; summary?: string; summaryUpdatedAt?: Date }
   ) {
     await db
       .update(aiConversations)
