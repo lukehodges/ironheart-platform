@@ -17,14 +17,12 @@ const log = logger.child({ module: 'workflow.ai-nodes' })
 // Lazy-init Anthropic client
 // ---------------------------------------------------------------------------
 
-type AnthropicClient = import('@anthropic-ai/sdk').default
+import Anthropic from '@anthropic-ai/sdk'
 
-let client: AnthropicClient | null = null
+let client: Anthropic | null = null
 
-function getClient(): AnthropicClient {
+function getClient(): Anthropic {
   if (!client) {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const Anthropic = require('@anthropic-ai/sdk').default as typeof import('@anthropic-ai/sdk').default
     client = new Anthropic()
   }
   return client
