@@ -175,6 +175,9 @@ type IronheartEvents = {
   "ai/workflow.suggested": {
     data: { suggestionId: string; tenantId: string; title: string };
   };
+  "ai/briefing.generated": {
+    data: { tenantId: string; briefingId: string };
+  };
 };
 
 /**
