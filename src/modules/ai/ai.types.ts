@@ -158,6 +158,20 @@ export interface TenantAIConfig {
   defaultModel: string
   guardrailOverrides: Record<string, GuardrailTier>
   trustMetrics: Record<string, { approved: number; rejected: number }>
+  /** Morning Briefing */
+  morningBriefingEnabled: boolean
+  morningBriefingTime: string
+  morningBriefingTimezone: string
+  morningBriefingDelivery: "in_app" | "email" | "both"
+  morningBriefingRecipientIds: string[]
+  /** Ghost Operator */
+  ghostOperatorEnabled: boolean
+  ghostOperatorStartHour: number
+  ghostOperatorEndHour: number
+  ghostOperatorTimezone: string
+  ghostOperatorRules: GhostOperatorRule[]
+  /** Paste-to-Pipeline */
+  pasteToPipelineEnabled: boolean
   createdAt: Date
   updatedAt: Date
 }
