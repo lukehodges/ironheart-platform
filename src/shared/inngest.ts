@@ -178,6 +178,9 @@ type IronheartEvents = {
   "ai/briefing.generated": {
     data: { tenantId: string; briefingId: string };
   };
+  "ai/ghost-operator.completed": {
+    data: { tenantId: string; actionsExecuted: number; actionsQueued: number };
+  };
 };
 
 /**

@@ -3,6 +3,7 @@
 import { inngest } from "@/shared/inngest"
 import { gatherBriefingData } from "./features/morning-briefing.data"
 import { generateBriefing } from "./features/morning-briefing.generator"
+import { processGhostOperator } from "./features/ghost-operator.processor"
 
 const weeklyWorkflowSuggestions = inngest.createFunction(
   { id: "ai/weekly-workflow-suggestions", name: "Weekly Workflow Suggestions" },
@@ -61,4 +62,46 @@ const morningBriefingJob = inngest.createFunction(
   }
 )
 
-export const aiFunctions = [weeklyWorkflowSuggestions, morningBriefingJob]
+const ghostOperatorJob = inngest.createFunction(
+  { id: "ai/ghost-operator", name: "Ghost Operator" },
+  { cron: "0 * * * *" }, // Run every hour — filter by tenant's configured window
+  async ({ step }) => {
+    await step.run("process-ghost-operations", async () => {
+      const { db } = await import("@/shared/db")
+      const { aiTenantConfig } = await import("@/shared/db/schema")
+      const { eq } = await import("drizzle-orm")
+
+      const configs = await db
+        .select()
+        .from(aiTenantConfig)
+        .where(eq(aiTenantConfig.ghostOperatorEnabled, 1))
+
+      const currentHour = new Date().getUTCHours()
+      let totalActions = 0
+
+      for (const config of configs) {
+        // Check if current hour is within the ghost operator window
+        const startHour = config.ghostOperatorStartHour ?? 18
+        const endHour = config.ghostOperatorEndHour ?? 8
+
+        const isInWindow = startHour > endHour
+          ? (currentHour >= startHour || currentHour < endHour) // Overnight window (e.g., 18-08)
+          : (currentHour >= startHour && currentHour < endHour) // Same-day window
+
+        if (!isInWindow) continue
+
+        try {
+          const results = await processGhostOperator(config.tenantId)
+          totalActions += results.reduce((sum, r) => sum + r.actionsExecuted, 0)
+        } catch (err) {
+          const { logger: log } = await import("@/shared/logger")
+          log.error({ err, tenantId: config.tenantId }, "Ghost operator failed for tenant")
+        }
+      }
+
+      return { tenantsProcessed: configs.length, totalActions }
+    })
+  }
+)
+
+export const aiFunctions = [weeklyWorkflowSuggestions, morningBriefingJob, ghostOperatorJob]
