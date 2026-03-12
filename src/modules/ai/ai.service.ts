@@ -199,6 +199,7 @@ export const aiService = {
       content: finalContent,
       tokenUsage,
       toolCallCount: allToolCalls.length,
+      conversationId: conversation.id,
     }
   },
 

@@ -63,8 +63,67 @@ interface Conversation {
   updatedAt: Date
 }
 
+// Stream event types matching AgentStreamEvent from ai.types.ts
+type StreamEvent =
+  | { type: "status"; message: string }
+  | { type: "tool_call"; toolName: string; input: unknown }
+  | { type: "tool_result"; toolName: string; result: unknown; durationMs: number }
+  | { type: "text_delta"; content: string }
+  | { type: "error"; message: string; recoverable: boolean }
+  | { type: "done"; content: string; tokenUsage: TokenUsage; toolCallCount: number; conversationId?: string }
+
 // ---------------------------------------------------------------------------
-// Tool Call Visualization
+// Streaming Tool Call Visualization
+// ---------------------------------------------------------------------------
+
+function StreamingToolCall({
+  toolName,
+  input,
+  result,
+  durationMs,
+  error,
+}: {
+  toolName: string
+  input: unknown
+  result?: unknown
+  durationMs?: number
+  error?: string
+}) {
+  const isDone = result !== undefined || error !== undefined
+
+  return (
+    <div>
+      <div className="flex items-start gap-2 text-xs">
+        <div className="mt-0.5 shrink-0">
+          {isDone ? (
+            error ? (
+              <AlertCircle className="h-3.5 w-3.5 text-amber-500" />
+            ) : (
+              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+            )
+          ) : (
+            <Loader2 className="h-3.5 w-3.5 animate-spin text-primary/60" />
+          )}
+        </div>
+        <span className="font-mono text-foreground">
+          {toolName}({formatInput(input)})
+        </span>
+        {isDone && durationMs !== undefined && (
+          <span className="text-muted-foreground">{durationMs}ms</span>
+        )}
+      </div>
+      {error && (
+        <div className="flex items-start gap-2 text-xs ml-0 mt-0.5">
+          <div className="mt-0.5 shrink-0 w-3.5" />
+          <span className="text-amber-700 dark:text-amber-400">Error: {error}</span>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Tool Call Visualization (for loaded messages)
 // ---------------------------------------------------------------------------
 
 function ToolCallDisplay({
@@ -220,10 +279,26 @@ function formatTime(date: Date): string {
 }
 
 // ---------------------------------------------------------------------------
-// Loading Indicator
+// Streaming Assistant Bubble
 // ---------------------------------------------------------------------------
 
-function LoadingBubble() {
+interface StreamingToolState {
+  toolName: string
+  input: unknown
+  result?: unknown
+  durationMs?: number
+  error?: string
+}
+
+function StreamingBubble({
+  content,
+  toolCalls,
+  statusMessage,
+}: {
+  content: string
+  toolCalls: StreamingToolState[]
+  statusMessage: string | null
+}) {
   return (
     <div className="px-4 py-4">
       <div className="flex gap-3">
@@ -239,10 +314,38 @@ function LoadingBubble() {
             </span>
           </div>
           <div className="rounded-2xl rounded-tl-sm bg-card border border-border px-4 py-3">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Thinking...
-            </div>
+            {statusMessage && toolCalls.length === 0 && !content && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                {statusMessage}
+              </div>
+            )}
+            {toolCalls.length > 0 && (
+              <>
+                <p className="text-xs text-muted-foreground italic mb-2">
+                  Reasoning across modules...
+                </p>
+                <div className="space-y-1.5 my-2">
+                  {toolCalls.map((tc, i) => (
+                    <StreamingToolCall
+                      key={`${tc.toolName}-${i}`}
+                      toolName={tc.toolName}
+                      input={tc.input}
+                      result={tc.result}
+                      durationMs={tc.durationMs}
+                      error={tc.error}
+                    />
+                  ))}
+                </div>
+                {content && <Separator className="my-3" />}
+              </>
+            )}
+            {content && (
+              <p className="text-sm text-foreground whitespace-pre-wrap">
+                {content}
+                <span className="inline-block w-1.5 h-4 bg-primary/60 animate-pulse ml-0.5 align-text-bottom" />
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -344,6 +447,59 @@ function ConversationSidebar({
 }
 
 // ---------------------------------------------------------------------------
+// SSE Stream Reader
+// ---------------------------------------------------------------------------
+
+async function* readSSEStream(
+  response: Response
+): AsyncGenerator<StreamEvent> {
+  const reader = response.body?.getReader()
+  if (!reader) return
+
+  const decoder = new TextDecoder()
+  let buffer = ""
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+
+      buffer += decoder.decode(value, { stream: true })
+
+      const lines = buffer.split("\n")
+      // Keep the last potentially incomplete line in the buffer
+      buffer = lines.pop() ?? ""
+
+      for (const line of lines) {
+        const trimmed = line.trim()
+        if (!trimmed.startsWith("data: ")) continue
+        const json = trimmed.slice(6)
+        if (!json) continue
+        try {
+          yield JSON.parse(json) as StreamEvent
+        } catch {
+          // Skip malformed events
+        }
+      }
+    }
+
+    // Process any remaining data in buffer
+    if (buffer.trim().startsWith("data: ")) {
+      const json = buffer.trim().slice(6)
+      if (json) {
+        try {
+          yield JSON.parse(json) as StreamEvent
+        } catch {
+          // Skip malformed
+        }
+      }
+    }
+  } finally {
+    reader.releaseLock()
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Main Page
 // ---------------------------------------------------------------------------
 
@@ -351,7 +507,16 @@ export default function AIChatPage() {
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null)
   const [inputValue, setInputValue] = useState("")
   const [messages, setMessages] = useState<Message[]>([])
+  const [isStreaming, setIsStreaming] = useState(false)
+  const [streamError, setStreamError] = useState<string | null>(null)
+
+  // Streaming state
+  const [streamingContent, setStreamingContent] = useState("")
+  const [streamingToolCalls, setStreamingToolCalls] = useState<StreamingToolState[]>([])
+  const [streamingStatus, setStreamingStatus] = useState<string | null>(null)
+
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const abortControllerRef = useRef<AbortController | null>(null)
 
   // tRPC queries
   const conversationsQuery = api.ai.listConversations.useQuery(
@@ -377,29 +542,6 @@ export default function AIChatPage() {
     },
   })
 
-  const sendMutation = api.ai.sendMessage.useMutation({
-    onSuccess: (data) => {
-      // Add assistant response to messages
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: data.messageId,
-          role: "assistant" as const,
-          content: data.content,
-          toolCalls: data.toolCalls,
-          toolResults: data.toolResults,
-          tokenUsage: data.tokenUsage,
-          createdAt: new Date(),
-        },
-      ])
-      // Set conversation ID if new
-      if (!activeConversationId) {
-        setActiveConversationId(data.conversationId)
-      }
-      conversationsQuery.refetch()
-    },
-  })
-
   // Load messages when conversation changes
   useEffect(() => {
     if (conversationQuery.data?.messages) {
@@ -415,11 +557,11 @@ export default function AIChatPage() {
   // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }, [messages, sendMutation.isPending])
+  }, [messages, isStreaming, streamingContent, streamingToolCalls])
 
-  const handleSend = useCallback(() => {
+  const handleSend = useCallback(async () => {
     const text = inputValue.trim()
-    if (!text || sendMutation.isPending) return
+    if (!text || isStreaming) return
 
     // Optimistically add user message
     setMessages((prev) => [
@@ -436,15 +578,136 @@ export default function AIChatPage() {
     ])
 
     setInputValue("")
+    setIsStreaming(true)
+    setStreamError(null)
+    setStreamingContent("")
+    setStreamingToolCalls([])
+    setStreamingStatus("Thinking...")
 
-    sendMutation.mutate({
-      conversationId: activeConversationId ?? undefined,
-      message: text,
-      pageContext: {
-        route: "/admin/ai-chat",
-      },
-    })
-  }, [inputValue, activeConversationId, sendMutation])
+    const controller = new AbortController()
+    abortControllerRef.current = controller
+
+    try {
+      const response = await fetch("/api/ai/stream", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          conversationId: activeConversationId ?? undefined,
+          message: text,
+          pageContext: { route: "/admin/ai-chat" },
+        }),
+        signal: controller.signal,
+      })
+
+      if (!response.ok) {
+        const errorBody = await response.json().catch(() => ({}))
+        throw new Error(
+          (errorBody as { error?: string }).error ?? `HTTP ${response.status}`
+        )
+      }
+
+      let finalContent = ""
+      let finalTokenUsage: TokenUsage | null = null
+      let finalConversationId: string | undefined
+      const collectedToolCalls: StreamingToolState[] = []
+
+      for await (const event of readSSEStream(response)) {
+        if (controller.signal.aborted) break
+
+        switch (event.type) {
+          case "status":
+            setStreamingStatus(event.message)
+            break
+
+          case "tool_call":
+            collectedToolCalls.push({
+              toolName: event.toolName,
+              input: event.input,
+            })
+            setStreamingToolCalls([...collectedToolCalls])
+            setStreamingStatus(null)
+            break
+
+          case "tool_result": {
+            // Find the matching pending tool call and update it
+            const idx = collectedToolCalls.findIndex(
+              (tc) => tc.toolName === event.toolName && tc.result === undefined && tc.error === undefined
+            )
+            if (idx !== -1) {
+              collectedToolCalls[idx] = {
+                ...collectedToolCalls[idx],
+                result: event.result,
+                durationMs: event.durationMs,
+              }
+              setStreamingToolCalls([...collectedToolCalls])
+            }
+            break
+          }
+
+          case "text_delta":
+            finalContent += event.content
+            setStreamingContent(finalContent)
+            setStreamingStatus(null)
+            break
+
+          case "error":
+            setStreamError(event.message)
+            break
+
+          case "done":
+            finalContent = event.content
+            finalTokenUsage = event.tokenUsage
+            finalConversationId = event.conversationId
+            break
+        }
+      }
+
+      // Build the final assistant message from collected data
+      const toolCalls: ToolCallRecord[] = collectedToolCalls.map((tc, i) => ({
+        id: `tc-${i}`,
+        name: tc.toolName,
+        input: tc.input,
+      }))
+
+      const toolResults: ToolResultRecord[] = collectedToolCalls
+        .filter((tc) => tc.result !== undefined || tc.error !== undefined)
+        .map((tc, i) => ({
+          toolCallId: `tc-${i}`,
+          output: tc.result,
+          error: tc.error,
+        }))
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `msg-${Date.now()}`,
+          role: "assistant" as const,
+          content: finalContent,
+          toolCalls: toolCalls.length > 0 ? toolCalls : null,
+          toolResults: toolResults.length > 0 ? toolResults : null,
+          tokenUsage: finalTokenUsage,
+          createdAt: new Date(),
+        },
+      ])
+
+      // Update conversation ID if this was a new conversation
+      if (finalConversationId && !activeConversationId) {
+        setActiveConversationId(finalConversationId)
+      }
+
+      conversationsQuery.refetch()
+    } catch (err) {
+      if ((err as Error).name !== "AbortError") {
+        setStreamError((err as Error).message ?? "Failed to send message")
+      }
+    } finally {
+      setIsStreaming(false)
+      setStreamingContent("")
+      setStreamingToolCalls([])
+      setStreamingStatus(null)
+      abortControllerRef.current = null
+    }
+  }, [inputValue, activeConversationId, isStreaming, conversationsQuery])
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -454,14 +717,22 @@ export default function AIChatPage() {
   }
 
   const handleNewConversation = () => {
+    if (isStreaming) {
+      abortControllerRef.current?.abort()
+    }
     setActiveConversationId(null)
     setMessages([])
     setInputValue("")
+    setStreamError(null)
   }
 
   const handleSelectConversation = (id: string) => {
+    if (isStreaming) {
+      abortControllerRef.current?.abort()
+    }
     setActiveConversationId(id)
     setMessages([])
+    setStreamError(null)
   }
 
   const handleArchive = (id: string) => {
@@ -513,7 +784,7 @@ export default function AIChatPage() {
           {/* Messages */}
           <ScrollArea className="flex-1">
             <div className="divide-y divide-border/50">
-              {messages.length === 0 && !sendMutation.isPending ? (
+              {messages.length === 0 && !isStreaming ? (
                 <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
                   <Bot className="h-10 w-10 mb-3 text-primary/40" />
                   <p className="text-sm font-medium">
@@ -529,12 +800,18 @@ export default function AIChatPage() {
                   <MessageBubble key={msg.id} message={msg} />
                 ))
               )}
-              {sendMutation.isPending && <LoadingBubble />}
-              {sendMutation.isError && (
+              {isStreaming && (
+                <StreamingBubble
+                  content={streamingContent}
+                  toolCalls={streamingToolCalls}
+                  statusMessage={streamingStatus}
+                />
+              )}
+              {streamError && (
                 <div className="px-4 py-3">
                   <div className="flex items-center gap-2 text-sm text-destructive">
                     <AlertCircle className="h-4 w-4" />
-                    {sendMutation.error?.message ?? "Failed to send message"}
+                    {streamError}
                   </div>
                 </div>
               )}
@@ -552,15 +829,15 @@ export default function AIChatPage() {
                 placeholder="Ask anything about your portfolio, sites, deals, or compliance..."
                 className="flex-1 resize-none rounded-xl border border-border bg-muted/30 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 min-h-[42px] max-h-[120px]"
                 rows={1}
-                disabled={sendMutation.isPending}
+                disabled={isStreaming}
               />
               <Button
                 onClick={handleSend}
-                disabled={!inputValue.trim() || sendMutation.isPending}
+                disabled={!inputValue.trim() || isStreaming}
                 size="sm"
                 className="h-[42px] w-[42px] p-0 rounded-xl shrink-0"
               >
-                {sendMutation.isPending ? (
+                {isStreaming ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   <Send className="h-4 w-4" />

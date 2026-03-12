@@ -109,4 +109,4 @@ export type AgentStreamEvent =
   | { type: "tool_result"; toolName: string; result: unknown; durationMs: number }
   | { type: "text_delta"; content: string }
   | { type: "error"; message: string; recoverable: boolean }
-  | { type: "done"; content: string; tokenUsage: TokenUsage; toolCallCount: number }
+  | { type: "done"; content: string; tokenUsage: TokenUsage; toolCallCount: number; conversationId: string }
