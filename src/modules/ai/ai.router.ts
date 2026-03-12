@@ -9,12 +9,15 @@ import {
   sendMessageSchema, listConversationsSchema, getConversationSchema, archiveConversationSchema,
   resolveApprovalSchema, explainActionSchema, undoActionSchema, listActionsSchema,
   getTrustSuggestionsSchema, getConfigSchema, updateConfigSchema,
+  generateWorkflowSchema, listWorkflowSuggestionsSchema, resolveSuggestionSchema,
 } from "./ai.schemas"
 import { resolveApprovalFromUI } from "./ai.approval"
 import { explainAction, undoAction } from "./ai.explainer"
 import { analyzeTrustMetrics } from "./ai.trust"
 import { agentActionsRepository } from "./ai.actions.repository"
 import { aiConfigRepository } from "./ai.config.repository"
+import { generateWorkflowFromDescription } from "./ai.workflow-generator"
+import { suggestionsRepository } from "./ai.suggestions.repository"
 
 const moduleGate = createModuleMiddleware("ai")
 const moduleProcedure = tenantProcedure.use(moduleGate)
@@ -99,6 +102,30 @@ export const aiRouter = router({
       if (input.guardrailOverrides) {
         await aiConfigRepository.update(ctx.tenantId, { guardrailOverrides: input.guardrailOverrides })
       }
+      return { success: true }
+    }),
+
+  generateWorkflow: moduleProcedure
+    .input(generateWorkflowSchema)
+    .mutation(async ({ ctx, input }) => {
+      return generateWorkflowFromDescription(input.description, {
+        availableEvents: [
+          "booking/created", "booking/confirmed", "booking/cancelled", "booking/completed",
+          "forms/submitted", "review/submitted", "team/created",
+        ],
+      })
+    }),
+
+  listWorkflowSuggestions: moduleProcedure
+    .input(listWorkflowSuggestionsSchema)
+    .query(({ ctx, input }) =>
+      suggestionsRepository.listByTenant(ctx.tenantId, input.status, input.limit)
+    ),
+
+  resolveSuggestion: moduleProcedure
+    .input(resolveSuggestionSchema)
+    .mutation(async ({ input }) => {
+      await suggestionsRepository.updateStatus(input.suggestionId, input.action)
       return { success: true }
     }),
 })
