@@ -8,6 +8,7 @@
 
 **Design Doc:** `docs/plans/2026-03-08-ai-native-agentic-platform-design.md` (Section 7: Data, Context & Memory, Section 5: Industry Agnosticism, Section 10: Phase D)
 **Phase C Plan (prerequisite — must be complete):** `docs/plans/2026-03-12-ai-agent-phase-c-implementation.md`
+**Code Execution Engine Design:** `docs/plans/2026-03-12-ai-code-execution-engine-design.md` — The agent uses 2 tools (`execute_code` + `describe_module`) with a tRPC caller, not individual tool files.
 
 ---
 
@@ -81,7 +82,7 @@ import { redis } from "@/shared/redis"
 export const aiCorrections = pgTable("ai_corrections", {
   id: uuid("id").primaryKey().defaultRandom(),
   tenantId: uuid("tenant_id").notNull().references(() => tenants.id),
-  toolName: text("tool_name").notNull(),
+  toolName: text("tool_name").notNull(), // Stores tRPC procedure path, e.g., "booking.updateStatus"
   /** What the agent tried to do */
   attemptedInput: jsonb("attempted_input").notNull(),
   /** Why the user rejected it (extracted from context or explicit feedback) */
@@ -197,8 +198,9 @@ export interface VerticalProfile {
   terminology: Record<string, string>
   /** Additional system prompt context for this vertical */
   systemPromptAddendum: string
-  /** Tool description overrides: toolName → custom description */
-  toolDescriptionOverrides: Record<string, string>
+  // Note: No toolDescriptionOverrides — the module index is auto-generated from
+  // router introspection (see ai.introspection.ts). Vertical-specific terminology
+  // is handled via the terminology map and systemPromptAddendum.
 }
 
 // ---------------------------------------------------------------------------
@@ -420,7 +422,7 @@ function mapCorrection(row: typeof aiCorrections.$inferSelect): CorrectionRecord
 export const correctionsRepository = {
   async recordRejection(data: {
     tenantId: string
-    toolName: string
+    toolName: string // tRPC procedure path, e.g., "booking.updateStatus"
     attemptedInput: unknown
     rejectionReason?: string
     contextSummary?: string
@@ -772,10 +774,6 @@ export const VERTICAL_PROFILES: Record<string, VerticalProfile> = {
 - Compliance includes NE registration, HMMP plans, and S106 agreements.
 - Catchments constrain which sites serve which developers.
 When users say "booking", they mean "site assessment". "Customer" means "landowner" or "developer".`,
-    toolDescriptionOverrides: {
-      "booking.list": "List site assessments/ecological surveys with optional filters.",
-      "customer.list": "List landowners and developers with optional filters.",
-    },
   },
   dental_practice: {
     slug: "dental_practice",
@@ -788,7 +786,6 @@ When users say "booking", they mean "site assessment". "Customer" means "landown
       service: "dental procedure",
     },
     systemPromptAddendum: `You are assisting a dental practice. Bookings are "appointments", customers are "patients", staff are "dentists" or "hygienists". Be mindful of patient confidentiality.`,
-    toolDescriptionOverrides: {},
   },
   fitness_studio: {
     slug: "fitness_studio",
@@ -801,7 +798,6 @@ When users say "booking", they mean "site assessment". "Customer" means "landown
       service: "class or session",
     },
     systemPromptAddendum: `You are assisting a fitness studio. Bookings are "class bookings", customers are "members", staff are "trainers" or "instructors".`,
-    toolDescriptionOverrides: {},
   },
   consulting_firm: {
     slug: "consulting_firm",
@@ -814,7 +810,6 @@ When users say "booking", they mean "site assessment". "Customer" means "landown
       service: "advisory session",
     },
     systemPromptAddendum: `You are assisting a consulting firm. Bookings are "engagement sessions", customers are "clients", staff are "consultants".`,
-    toolDescriptionOverrides: {},
   },
   beauty_salon: {
     slug: "beauty_salon",
@@ -827,7 +822,6 @@ When users say "booking", they mean "site assessment". "Customer" means "landown
       service: "treatment",
     },
     systemPromptAddendum: `You are assisting a beauty salon. Bookings are "appointments", customers are "clients", staff are "stylists" or "therapists".`,
-    toolDescriptionOverrides: {},
   },
   generic: {
     slug: "generic",
@@ -835,7 +829,6 @@ When users say "booking", they mean "site assessment". "Customer" means "landown
     description: "General multi-tenant business platform",
     terminology: {},
     systemPromptAddendum: "",
-    toolDescriptionOverrides: {},
   },
 }
 ```
@@ -905,7 +898,9 @@ export async function assembleSystemPrompt(params: {
   pageContext?: PageContext
   userMessage: string
   conversationSummary?: string | null
-  toolNames: string[]
+  // Note: No toolNames parameter — the module index is auto-generated from router
+  // introspection and baked into the base prompt. Corrections are keyed by procedure
+  // path (e.g., "booking.updateStatus"), not individual tool names.
 }): Promise<string> {
   const parts: string[] = [BASE_PROMPT]
 
@@ -925,11 +920,11 @@ export async function assembleSystemPrompt(params: {
     parts.push(`\nCONVERSATION SUMMARY (earlier messages):\n${params.conversationSummary}`)
   }
 
-  // 4. Recent corrections
+  // 4. Recent corrections (keyed by tRPC procedure path, e.g., "booking.updateStatus")
   const corrections = await correctionsRepository.getAllRecentCorrections(params.tenantId, 5)
   if (corrections.length > 0) {
     const correctionText = corrections
-      .map((c) => `- Tool "${c.toolName}": Previously rejected. ${c.rejectionReason ?? "No reason given."}`)
+      .map((c) => `- Procedure "${c.toolName}": Previously rejected. ${c.rejectionReason ?? "No reason given."}`)
       .join("\n")
     parts.push(`\nLEARNED CORRECTIONS (avoid these mistakes):\n${correctionText}`)
   }
@@ -955,10 +950,10 @@ export async function assembleSystemPrompt(params: {
 - Modify: `src/modules/ai/ai.service.ts`
 
 Update `sendMessage` to:
-1. Call `assembleSystemPrompt()` instead of `buildSystemPrompt()`
+1. Call `assembleSystemPrompt()` instead of `buildSystemPrompt()` — the new assembler includes memory, corrections, RAG, and vertical context. The module index (from router introspection) is already baked into the base prompt.
 2. Use `getEffectiveHistory()` instead of `getMessages()` directly (summary + recent)
 3. After each response, call `maybeSummarize()` to trigger rolling summarization
-4. Update hot memory with recent tool calls after each turn
+4. Update hot memory with recent code execution results after each turn
 
 Read the current service code before modifying.
 

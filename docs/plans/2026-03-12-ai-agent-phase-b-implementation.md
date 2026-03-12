@@ -1,710 +1,463 @@
-# AI Agent Phase B Implementation Plan
+# AI Agent Phase B Implementation Plan (Updated for Code Execution Model)
 
 > **For Claude:** This is a self-contained implementation plan. Follow it task-by-task. Each task specifies exact files, exact code, and exact patterns. Do NOT deviate from established codebase patterns documented below.
 
-**Goal:** Add mutation tools, a guardrail/approval system, explainability ("Why" button), and a trust ratchet. The agent can now take actions (create bookings, update statuses, send notifications) with user approval. Every action is auditable and explainable.
+**Goal:** Add mutation support to the code execution engine, a guardrail/approval system at the tRPC procedure level, explainability ("Why" button), and a trust ratchet. The agent can now take actions (create bookings, update statuses, send notifications) via `execute_code` calling tRPC mutation procedures, with user approval where required. Every mutation is auditable and explainable.
 
-**Timeline:** 8 working days
+**Timeline:** 6 working days
 
 **Design Doc:** `docs/plans/2026-03-08-ai-native-agentic-platform-design.md` (Section 2: Guardrails, Section 10: Phase B)
-**Phase A+ Plan (prerequisite — must be complete):** `docs/plans/2026-03-12-ai-agent-phase-a-plus-implementation.md`
+**Code Execution Engine Design:** `docs/plans/2026-03-12-ai-code-execution-engine-design.md`
 
 ---
 
 ## Key Architecture Decisions (DO NOT CHANGE)
 
-1. **Three-tier guardrail classification.** Every mutating tool is classified: `AUTO` (execute immediately), `CONFIRM` (show approval card, wait for user), `RESTRICT` (blocked — admin must enable). Classification is per-tool, overridable per-tenant via `ai_tenant_config`.
-2. **Approval flow uses Redis pub/sub + polling.** When the agent hits a CONFIRM tool, it pauses execution, saves a pending approval to `agent_actions`, emits an approval event to the chat UI, and polls Redis for the user's decision. No Inngest wait tokens — keep it in-process with a 5-minute timeout.
-3. **`agent_actions` table tracks every mutation.** Every tool call that mutates data gets a row. Fields: action type, input, output, status (pending/approved/rejected/executed/failed/rolled_back), approval metadata.
-4. **Compensation/undo stack.** Each mutating tool defines an optional `compensate` function. If the user requests undo within the conversation, the compensation runs. Not all actions are reversible — non-reversible actions say so.
-5. **"Why" button uses Haiku.** When the user clicks "Why did you do X?", send the agent's reasoning trace (tool calls + results for that turn) to Claude Haiku for a concise explanation. Cheap and fast.
-6. **Trust ratchet is passive in Phase B.** Track acceptance/rejection rates per tool per tenant in `ai_tenant_config`. Display stats in admin. Auto-promote/demote suggestions come later.
-7. **Stay on Inngest.** The approval flow does NOT use Inngest. It's a synchronous in-process wait with Redis signaling.
+1. **No individual mutation tool files.** The agent writes TypeScript code via `execute_code` that calls tRPC procedures directly (e.g., `await trpc.booking.updateStatus({...})`). Mutations flow through the same tRPC middleware stack as queries.
+2. **Three-tier guardrail classification at the procedure level.** Every tRPC mutation procedure is classified: `AUTO` (execute immediately), `CONFIRM` (pause for user approval), `RESTRICT` (blocked). Classification is per-procedure-path, overridable per-tenant via `ai_tenant_config.guardrailOverrides`.
+3. **Guarded tRPC caller proxy.** A wrapper around the tRPC caller intercepts mutation calls. It checks the procedure's guardrail tier. For CONFIRM, it pauses execution and emits an `approval_required` stream event. For RESTRICT, it throws. For AUTO, it logs and executes.
+4. **Code execution pauses on CONFIRM.** When code calls a CONFIRM mutation, the guarded proxy throws a special `ApprovalRequiredError` with the action details. The service catches this, emits the approval event, polls Redis for the user's decision, then re-executes the code if approved.
+5. **`agent_actions` table tracks every mutation.** Already exists. Records procedure path, input, output, status, approval metadata.
+6. **"Why" button uses Haiku.** Already implemented in `ai.explainer.ts`. Works with procedure names.
+7. **Trust ratchet is passive in Phase B.** Already implemented in `ai.trust.ts`. Tracks acceptance/rejection rates per procedure per tenant.
+8. **Approval flow uses Redis polling.** Already implemented in `ai.approval.ts`. Needs minor updates to work with procedure names instead of `MutatingAgentTool`.
+
+---
+
+## What Already Exists (from previous Phase B partial implementation)
+
+These files exist and are mostly correct — they just need updates for the code execution model:
+
+- `src/shared/db/schemas/ai.schema.ts` — `agentActions` + `aiTenantConfig` tables ✓
+- `src/modules/ai/ai.actions.repository.ts` — CRUD for agent actions ✓
+- `src/modules/ai/ai.config.repository.ts` — tenant config with guardrail overrides ✓
+- `src/modules/ai/ai.approval.ts` — approval flow engine (needs MutatingAgentTool removal)
+- `src/modules/ai/ai.explainer.ts` — "Why" button ✓ (works as-is)
+- `src/modules/ai/ai.trust.ts` — trust ratchet ✓ (works as-is)
+- `src/modules/ai/ai.types.ts` — has `GuardrailTier`, `AgentActionRecord`, `MutatingAgentTool`, etc.
 
 ---
 
 ## Progress Tracking
 
 ```
-[ ] Task 1: Database schema — agent_actions + ai_tenant_config tables
-[ ] Task 2: Guardrail types and classification
-[ ] Task 3: Agent actions repository
-[ ] Task 4: Tenant guardrail config repository
-[ ] Task 5: Mutation tools — booking, customer, notification (6 tools)
-[ ] Task 6: Approval flow engine
-[ ] Task 7: Update AI service for mutations + approvals
-[ ] Task 8: Explainability service ("Why" button)
-[ ] Task 9: Trust ratchet tracking
-[ ] Task 10: Chat UI — approval cards + "Why" button
-[ ] Task 11: Inngest events + wiring updates
-[ ] Task 12: Tests
-[ ] Task 13: Verification — tsc + build + tests
+[ ] Task 1: Guardrail registry — default procedure classifications
+[ ] Task 2: Update ai.introspection.ts — include mutations in module index
+[ ] Task 3: Update ai.prompts.ts — allow mutations, add guardrail context
+[ ] Task 4: Guarded tRPC caller proxy
+[ ] Task 5: Update ai.approval.ts — remove MutatingAgentTool dependency
+[ ] Task 6: Update ai.service.ts — integrate guarded caller + approval flow
+[ ] Task 7: New Zod schemas + router procedures
+[ ] Task 8: Update chat UI — approval cards + approval_resolved events
+[ ] Task 9: Tests
+[ ] Task 10: Verification — tsc + build + tests
 ```
 
 ---
 
 ## Codebase Patterns Reference
 
-All patterns from Phase A+ apply. See `docs/plans/2026-03-12-ai-agent-phase-a-plus-implementation.md` for:
-- Module file structure, import patterns, Drizzle ORM patterns, router patterns, error handling
-- Zod v4: `z.uuid()` not `z.string().uuid()`
-- Pino: object FIRST, message SECOND
-- NEVER throw TRPCError in repo/service
-- Lazy-init for external clients
-
-### Additional Phase B patterns:
+All patterns from Phase A apply. Key reminders:
 
 ```typescript
-// Approval card in chat — AgentStreamEvent additions:
-| { type: "approval_required"; actionId: string; toolName: string; description: string; input: unknown }
-| { type: "approval_resolved"; actionId: string; approved: boolean }
+// Module structure
+src/modules/{module}/
+  {module}.types.ts, {module}.schemas.ts, {module}.repository.ts,
+  {module}.service.ts, {module}.router.ts, {module}.events.ts, index.ts
 
-// Redis approval channel:
-// Key: `ai:approval:${actionId}` — value: "approved" | "rejected"
-// TTL: 300 seconds (5 min timeout)
+// Pino logging: object FIRST, message SECOND
+log.info({ field }, "message")
+
+// Zod v4: z.uuid() not z.string().uuid()
+// NEVER throw TRPCError in repo/service
+// Lazy-init for external clients (Anthropic, etc.)
+
+// Current tool model (2 tools only):
+// execute_code — runs TypeScript against tRPC caller
+// describe_module — returns procedure schemas for a module
+
+// tRPC caller is built per-request in ai.service.ts:
+// createCallerFactory(appRouter)({ db, session, tenantId, ... })
 ```
 
 ---
 
-## Task 1: Database Schema — agent_actions + ai_tenant_config
+## Task 1: Guardrail Registry — Default Procedure Classifications
 
 **Files:**
-- Modify: `src/shared/db/schemas/ai.schema.ts`
+- Create: `src/modules/ai/ai.guardrails.ts`
 
-**Step 1: Add the agent_actions table**
-
-```typescript
-// Add below the existing aiMessages table in ai.schema.ts
-
-// ---------------------------------------------------------------------------
-// Agent Actions — audit trail of every agent mutation
-// ---------------------------------------------------------------------------
-
-export const agentActions = pgTable("agent_actions", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  conversationId: uuid("conversation_id").notNull().references(() => aiConversations.id),
-  messageId: uuid("message_id").references(() => aiMessages.id),
-  tenantId: uuid("tenant_id").notNull().references(() => tenants.id),
-  userId: uuid("user_id").notNull().references(() => users.id),
-  toolName: text("tool_name").notNull(),
-  toolInput: jsonb("tool_input").notNull(),
-  toolOutput: jsonb("tool_output"),
-  status: text("status").notNull().default("pending"),
-  // 'pending' | 'approved' | 'rejected' | 'executed' | 'failed' | 'rolled_back' | 'auto_executed'
-  guardrailTier: text("guardrail_tier").notNull(), // 'AUTO' | 'CONFIRM' | 'RESTRICT'
-  approvedAt: timestamp("approved_at", { withTimezone: true }),
-  approvedBy: uuid("approved_by").references(() => users.id),
-  executedAt: timestamp("executed_at", { withTimezone: true }),
-  error: text("error"),
-  compensationData: jsonb("compensation_data"), // Data needed to undo this action
-  isReversible: integer("is_reversible").notNull().default(1), // 1 = yes, 0 = no
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-}, (t) => [
-  index("idx_agent_actions_conversation").on(t.conversationId),
-  index("idx_agent_actions_tenant_created").on(t.tenantId, t.createdAt),
-  index("idx_agent_actions_status").on(t.tenantId, t.status),
-])
-
-// ---------------------------------------------------------------------------
-// AI Tenant Config — per-tenant AI settings + guardrail overrides
-// ---------------------------------------------------------------------------
-
-export const aiTenantConfig = pgTable("ai_tenant_config", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  tenantId: uuid("tenant_id").notNull().references(() => tenants.id).unique(),
-  isEnabled: integer("is_enabled").notNull().default(1),
-  maxTokenBudget: integer("max_token_budget").notNull().default(50000),
-  maxMessagesPerMinute: integer("max_messages_per_minute").notNull().default(20),
-  defaultModel: text("default_model").notNull().default("claude-sonnet-4-20250514"),
-  /** JSON object: { "toolName": "AUTO" | "CONFIRM" | "RESTRICT" } */
-  guardrailOverrides: jsonb("guardrail_overrides").default("{}"),
-  /** Track acceptance rates per tool: { "toolName": { approved: number, rejected: number } } */
-  trustMetrics: jsonb("trust_metrics").default("{}"),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-})
-```
-
-**Commit:** `feat(ai): add agent_actions and ai_tenant_config database tables`
-
----
-
-## Task 2: Guardrail Types and Classification
-
-**Files:**
-- Modify: `src/modules/ai/ai.types.ts`
-
-**Step 1: Add guardrail types to ai.types.ts**
+This file defines the default guardrail tier for every mutation procedure. When not listed, mutations default to CONFIRM.
 
 ```typescript
-// Add to ai.types.ts after existing types
+// src/modules/ai/ai.guardrails.ts
 
-// ---------------------------------------------------------------------------
-// Guardrails — Three-tier tool classification
-// ---------------------------------------------------------------------------
+import { aiConfigRepository } from "./ai.config.repository"
+import type { GuardrailTier } from "./ai.types"
 
-export type GuardrailTier = "AUTO" | "CONFIRM" | "RESTRICT"
+/**
+ * Default guardrail tiers for mutation procedures.
+ * Key = full tRPC procedure path (e.g., "booking.updateStatus").
+ * Procedures not listed default to CONFIRM.
+ */
+const DEFAULT_GUARDRAIL_TIERS: Record<string, GuardrailTier> = {
+  // --- AUTO: Low-risk, append-only operations ---
+  "booking.addNote": "AUTO",
+  "customer.addNote": "AUTO",
+  "customer.updateTags": "AUTO",
 
-export interface MutatingAgentTool extends AgentTool {
-  /** Guardrail tier — controls approval flow */
-  guardrailTier: GuardrailTier
-  /** Human-readable description of what this mutation does */
-  mutationDescription: string
-  /** Optional: function to undo this action. Receives the compensation data saved in agent_actions. */
-  compensate?: (compensationData: unknown, ctx: AgentContext) => Promise<void>
-  /** Whether this action can be reversed */
-  isReversible: boolean
+  // --- CONFIRM: Significant state changes ---
+  "booking.updateStatus": "CONFIRM",
+  "booking.create": "CONFIRM",
+  "booking.cancel": "CONFIRM",
+  "customer.create": "CONFIRM",
+  "customer.update": "CONFIRM",
+  "customer.merge": "CONFIRM",
+  "scheduling.createSlot": "CONFIRM",
+  "scheduling.deleteSlot": "CONFIRM",
+  "review.respond": "CONFIRM",
+  "workflow.create": "CONFIRM",
+  "workflow.update": "CONFIRM",
+  "workflow.execute": "CONFIRM",
+  "team.updateAvailability": "CONFIRM",
+  "team.updateCapacity": "CONFIRM",
+
+  // --- RESTRICT: Dangerous / irreversible ---
+  "customer.delete": "RESTRICT",
+  "tenant.updateSettings": "RESTRICT",
+  "platform.createTenant": "RESTRICT",
+  "platform.deleteTenant": "RESTRICT",
 }
 
-// ---------------------------------------------------------------------------
-// Agent Actions — audit trail records
-// ---------------------------------------------------------------------------
+/**
+ * Resolve the effective guardrail tier for a procedure.
+ * Priority: tenant override > default registry > CONFIRM fallback.
+ */
+export async function resolveGuardrailTier(
+  tenantId: string,
+  procedurePath: string
+): Promise<GuardrailTier> {
+  const config = await aiConfigRepository.getOrCreate(tenantId)
+  return (
+    config.guardrailOverrides[procedurePath] ??
+    DEFAULT_GUARDRAIL_TIERS[procedurePath] ??
+    "CONFIRM"
+  )
+}
 
-export type ActionStatus = "pending" | "approved" | "rejected" | "executed" | "failed" | "rolled_back" | "auto_executed"
+/**
+ * Get the default tier (without tenant overrides) for a procedure.
+ * Used for display/documentation purposes.
+ */
+export function getDefaultGuardrailTier(procedurePath: string): GuardrailTier {
+  return DEFAULT_GUARDRAIL_TIERS[procedurePath] ?? "CONFIRM"
+}
 
-export interface AgentActionRecord {
-  id: string
-  conversationId: string
-  messageId: string | null
+/**
+ * List all procedures with explicit guardrail classifications.
+ * Used by admin UI and trust ratchet.
+ */
+export function listGuardrailDefaults(): Record<string, GuardrailTier> {
+  return { ...DEFAULT_GUARDRAIL_TIERS }
+}
+```
+
+**Commit:** `feat(ai): add guardrail registry with default procedure classifications`
+
+---
+
+## Task 2: Update ai.introspection.ts — Include Mutations in Module Index
+
+**Files:**
+- Modify: `src/modules/ai/ai.introspection.ts`
+
+Currently `getModuleIndex()` only shows query procedures. Update it to also show mutation procedures, annotated with their guardrail tier.
+
+**Changes:**
+
+1. Import `getDefaultGuardrailTier` from `./ai.guardrails`
+2. Update `getModuleIndex()` to include a second section for mutation procedures
+3. Each mutation line shows the guardrail tier: `.updateStatus({ id, status }) [CONFIRM]`
+
+The updated `getModuleIndex()` should produce output like:
+
+```
+Available query procedures (use describe_module for full input schemas if needed):
+
+  booking:
+    .list({ status?, limit?, cursor?, customerId? })
+    .getById({ id })
+
+Available mutation procedures (guardrail tier shown):
+
+  booking:
+    .updateStatus({ id, status }) [CONFIRM]
+    .addNote({ bookingId, content }) [AUTO]
+  customer:
+    .addNote({ customerId, content }) [AUTO]
+    .updateTags({ customerId, tags }) [AUTO]
+```
+
+Read `src/modules/ai/ai.introspection.ts` before modifying. Update `getModuleIndex()` — add a second loop over mutation procedures with guardrail annotations. The `cachedIndex` field should be invalidated if guardrail defaults change (but in practice they're static).
+
+**Commit:** `feat(ai): include mutation procedures with guardrail tiers in module index`
+
+---
+
+## Task 3: Update ai.prompts.ts — Allow Mutations
+
+**Files:**
+- Modify: `src/modules/ai/ai.prompts.ts`
+
+**Changes:**
+
+1. Remove "Read-only. Never attempt mutations." constraint
+2. Add mutation rules explaining the guardrail system
+3. Add explanation of what happens for each tier
+
+Update the `SYSTEM_PROMPT_TEMPLATE` to include:
+
+```
+## Mutations
+
+You can now call mutation procedures (marked in the procedure index below).
+Each mutation has a guardrail tier:
+- **AUTO**: Executes immediately. Low-risk operations like adding notes.
+- **CONFIRM**: Requires user approval before executing. The UI will show an approval card.
+- **RESTRICT**: Blocked. You cannot call these procedures.
+
+When you call a CONFIRM mutation, the system will pause and ask the user to approve.
+If approved, your code re-runs and the mutation executes. If rejected, you'll get an error.
+
+RULES FOR MUTATIONS:
+- Always explain what you're about to do BEFORE writing mutation code.
+- For CONFIRM mutations, write the code — the system handles the approval flow.
+- Never call RESTRICT mutations — they will throw an error.
+- If a mutation fails, explain the error to the user.
+```
+
+Also remove the "Read-only mode" badge text reference if it exists in the prompt. The chat UI badge will be updated separately.
+
+**Commit:** `feat(ai): update system prompt to allow mutations with guardrail rules`
+
+---
+
+## Task 4: Guarded tRPC Caller Proxy
+
+**Files:**
+- Create: `src/modules/ai/ai.guarded-caller.ts`
+
+This is the core innovation. It wraps the tRPC caller with a Proxy that intercepts mutation procedure calls. Before executing a mutation, it checks the guardrail tier and either executes (AUTO), throws for approval (CONFIRM), or blocks (RESTRICT).
+
+```typescript
+// src/modules/ai/ai.guarded-caller.ts
+
+import { logger } from "@/shared/logger"
+import { resolveGuardrailTier } from "./ai.guardrails"
+import { agentActionsRepository } from "./ai.actions.repository"
+import { aiConfigRepository } from "./ai.config.repository"
+import { getModuleMap } from "./ai.introspection"
+import type { GuardrailTier } from "./ai.types"
+
+const log = logger.child({ module: "ai.guarded-caller" })
+
+/**
+ * Error thrown when a mutation requires user approval.
+ * The service layer catches this, emits the approval event,
+ * and waits for the user's decision.
+ */
+export class ApprovalRequiredError extends Error {
+  constructor(
+    public readonly actionId: string,
+    public readonly procedurePath: string,
+    public readonly procedureInput: unknown,
+    public readonly description: string
+  ) {
+    super(`Approval required for ${procedurePath}`)
+    this.name = "ApprovalRequiredError"
+  }
+}
+
+/**
+ * Error thrown when a RESTRICT mutation is attempted.
+ */
+export class RestrictedProcedureError extends Error {
+  constructor(public readonly procedurePath: string) {
+    super(`Procedure "${procedurePath}" is restricted and cannot be called by the AI agent.`)
+    this.name = "RestrictedProcedureError"
+  }
+}
+
+interface GuardedCallerOptions {
   tenantId: string
   userId: string
-  toolName: string
-  toolInput: unknown
-  toolOutput: unknown | null
-  status: ActionStatus
-  guardrailTier: GuardrailTier
-  approvedAt: Date | null
-  approvedBy: string | null
-  executedAt: Date | null
-  error: string | null
-  compensationData: unknown | null
-  isReversible: boolean
-  createdAt: Date
+  conversationId: string
+  /** Set of procedure paths that have been approved in this execution */
+  approvedProcedures?: Set<string>
 }
 
-// ---------------------------------------------------------------------------
-// Tenant AI Config
-// ---------------------------------------------------------------------------
+/**
+ * Wrap a tRPC caller with guardrail enforcement.
+ *
+ * For query procedures: pass through unchanged.
+ * For mutation procedures:
+ *   - AUTO: Log to agent_actions, execute
+ *   - CONFIRM: Create pending agent_action, throw ApprovalRequiredError
+ *   - RESTRICT: Throw RestrictedProcedureError
+ *
+ * Uses ES Proxy to intercept property access on the caller.
+ * The tRPC caller is shaped like: caller.module.procedure(input)
+ * So we need a two-level proxy: first for module access, then for procedure call.
+ */
+export async function createGuardedCaller(
+  caller: unknown,
+  options: GuardedCallerOptions
+): Promise<unknown> {
+  const moduleMap = await getModuleMap()
 
-export interface TenantAIConfig {
-  id: string
-  tenantId: string
-  isEnabled: boolean
-  maxTokenBudget: number
-  maxMessagesPerMinute: number
-  defaultModel: string
-  guardrailOverrides: Record<string, GuardrailTier>
-  trustMetrics: Record<string, { approved: number; rejected: number }>
-  createdAt: Date
-  updatedAt: Date
-}
+  return new Proxy(caller as Record<string, unknown>, {
+    get(target, moduleName: string) {
+      const moduleValue = target[moduleName]
+      if (typeof moduleValue !== "object" || moduleValue === null) {
+        return moduleValue
+      }
 
-// ---------------------------------------------------------------------------
-// Streaming event additions for approval flow
-// ---------------------------------------------------------------------------
+      // Check if this module has any procedures we know about
+      const moduleMeta = moduleMap.get(moduleName)
+      if (!moduleMeta) {
+        return moduleValue // Unknown module, pass through
+      }
 
-// Update AgentStreamEvent to add:
-// | { type: "approval_required"; actionId: string; toolName: string; description: string; input: unknown }
-// | { type: "approval_resolved"; actionId: string; approved: boolean }
-```
+      // Proxy the module object to intercept procedure calls
+      return new Proxy(moduleValue as Record<string, unknown>, {
+        get(moduleTarget, procedureName: string) {
+          const procedureValue = moduleTarget[procedureName]
+          if (typeof procedureValue !== "function") {
+            return procedureValue
+          }
 
-Also update the `AgentStreamEvent` union type to include the two new event types:
-```typescript
-export type AgentStreamEvent =
-  | { type: "status"; message: string }
-  | { type: "tool_call"; toolName: string; input: unknown }
-  | { type: "tool_result"; toolName: string; result: unknown; durationMs: number }
-  | { type: "text_delta"; content: string }
-  | { type: "error"; message: string; recoverable: boolean }
-  | { type: "done"; content: string; tokenUsage: TokenUsage; toolCallCount: number }
-  | { type: "approval_required"; actionId: string; toolName: string; description: string; input: unknown }
-  | { type: "approval_resolved"; actionId: string; approved: boolean }
-```
+          const procedurePath = `${moduleName}.${procedureName}`
+          const procMeta = moduleMeta.procedures.find((p) => p.name === procedureName)
 
-**Commit:** `feat(ai): add guardrail types, mutation tool interface, and action records`
+          // If it's a query or unknown type, pass through
+          if (!procMeta || procMeta.type === "query") {
+            return procedureValue
+          }
 
----
+          // It's a mutation — wrap with guardrail check
+          return async (input: unknown) => {
+            const tier = await resolveGuardrailTier(options.tenantId, procedurePath)
 
-## Task 3: Agent Actions Repository
+            if (tier === "RESTRICT") {
+              throw new RestrictedProcedureError(procedurePath)
+            }
 
-**Files:**
-- Create: `src/modules/ai/ai.actions.repository.ts`
+            if (tier === "AUTO") {
+              // Log and execute
+              const action = await agentActionsRepository.create({
+                conversationId: options.conversationId,
+                tenantId: options.tenantId,
+                userId: options.userId,
+                toolName: procedurePath,
+                toolInput: input,
+                guardrailTier: "AUTO",
+                isReversible: false,
+              })
 
-```typescript
-// src/modules/ai/ai.actions.repository.ts
+              try {
+                const result = await (procedureValue as (input: unknown) => Promise<unknown>)(input)
+                await agentActionsRepository.updateStatus(action.id, {
+                  status: "auto_executed",
+                  toolOutput: result,
+                })
+                log.info({ procedurePath, actionId: action.id }, "AUTO mutation executed")
+                return result
+              } catch (err) {
+                const errorMsg = err instanceof Error ? err.message : "Execution failed"
+                await agentActionsRepository.updateStatus(action.id, {
+                  status: "failed",
+                  error: errorMsg,
+                })
+                throw err
+              }
+            }
 
-import { db } from "@/shared/db"
-import { agentActions } from "@/shared/db/schema"
-import { eq, and, desc } from "drizzle-orm"
-import { logger } from "@/shared/logger"
-import { NotFoundError } from "@/shared/errors"
-import type { AgentActionRecord, ActionStatus, GuardrailTier } from "./ai.types"
+            // CONFIRM tier
+            // Check if already approved in this execution cycle
+            if (options.approvedProcedures?.has(procedurePath)) {
+              // Already approved — execute
+              const action = await agentActionsRepository.create({
+                conversationId: options.conversationId,
+                tenantId: options.tenantId,
+                userId: options.userId,
+                toolName: procedurePath,
+                toolInput: input,
+                guardrailTier: "CONFIRM",
+                isReversible: false,
+              })
 
-const log = logger.child({ module: "ai.actions.repository" })
+              try {
+                const result = await (procedureValue as (input: unknown) => Promise<unknown>)(input)
+                await agentActionsRepository.updateStatus(action.id, {
+                  status: "executed",
+                  toolOutput: result,
+                  approvedBy: options.userId,
+                })
+                await aiConfigRepository.recordApprovalDecision(options.tenantId, procedurePath, true)
+                return result
+              } catch (err) {
+                const errorMsg = err instanceof Error ? err.message : "Execution failed"
+                await agentActionsRepository.updateStatus(action.id, {
+                  status: "failed",
+                  error: errorMsg,
+                })
+                throw err
+              }
+            }
 
-function mapAction(row: typeof agentActions.$inferSelect): AgentActionRecord {
-  return {
-    id: row.id,
-    conversationId: row.conversationId,
-    messageId: row.messageId,
-    tenantId: row.tenantId,
-    userId: row.userId,
-    toolName: row.toolName,
-    toolInput: row.toolInput,
-    toolOutput: row.toolOutput,
-    status: row.status as ActionStatus,
-    guardrailTier: row.guardrailTier as GuardrailTier,
-    approvedAt: row.approvedAt,
-    approvedBy: row.approvedBy,
-    executedAt: row.executedAt,
-    error: row.error,
-    compensationData: row.compensationData,
-    isReversible: row.isReversible === 1,
-    createdAt: row.createdAt,
-  }
-}
+            // Create pending action and throw for approval
+            const action = await agentActionsRepository.create({
+              conversationId: options.conversationId,
+              tenantId: options.tenantId,
+              userId: options.userId,
+              toolName: procedurePath,
+              toolInput: input,
+              guardrailTier: "CONFIRM",
+              isReversible: false,
+            })
 
-export const agentActionsRepository = {
-  async create(data: {
-    conversationId: string
-    messageId?: string
-    tenantId: string
-    userId: string
-    toolName: string
-    toolInput: unknown
-    guardrailTier: GuardrailTier
-    isReversible: boolean
-  }): Promise<AgentActionRecord> {
-    const [row] = await db
-      .insert(agentActions)
-      .values({
-        conversationId: data.conversationId,
-        messageId: data.messageId ?? null,
-        tenantId: data.tenantId,
-        userId: data.userId,
-        toolName: data.toolName,
-        toolInput: data.toolInput,
-        guardrailTier: data.guardrailTier,
-        isReversible: data.isReversible ? 1 : 0,
-      })
-      .returning()
-    log.info({ actionId: row!.id, toolName: data.toolName }, "Agent action created")
-    return mapAction(row!)
-  },
-
-  async updateStatus(
-    actionId: string,
-    updates: {
-      status: ActionStatus
-      toolOutput?: unknown
-      approvedBy?: string
-      error?: string
-      compensationData?: unknown
-    }
-  ): Promise<void> {
-    const setValues: Record<string, unknown> = { status: updates.status }
-    if (updates.toolOutput !== undefined) setValues.toolOutput = updates.toolOutput
-    if (updates.approvedBy) {
-      setValues.approvedBy = updates.approvedBy
-      setValues.approvedAt = new Date()
-    }
-    if (updates.status === "executed" || updates.status === "auto_executed") {
-      setValues.executedAt = new Date()
-    }
-    if (updates.error) setValues.error = updates.error
-    if (updates.compensationData !== undefined) setValues.compensationData = updates.compensationData
-    await db.update(agentActions).set(setValues).where(eq(agentActions.id, actionId))
-  },
-
-  async getById(actionId: string): Promise<AgentActionRecord | null> {
-    const [row] = await db
-      .select()
-      .from(agentActions)
-      .where(eq(agentActions.id, actionId))
-      .limit(1)
-    return row ? mapAction(row) : null
-  },
-
-  async listByConversation(conversationId: string, limit = 50): Promise<AgentActionRecord[]> {
-    const rows = await db
-      .select()
-      .from(agentActions)
-      .where(eq(agentActions.conversationId, conversationId))
-      .orderBy(desc(agentActions.createdAt))
-      .limit(limit)
-    return rows.map(mapAction)
-  },
-
-  async listByTenant(tenantId: string, limit = 50, status?: ActionStatus): Promise<{ rows: AgentActionRecord[]; hasMore: boolean }> {
-    const conditions = [eq(agentActions.tenantId, tenantId)]
-    if (status) conditions.push(eq(agentActions.status, status))
-
-    const rows = await db
-      .select()
-      .from(agentActions)
-      .where(and(...conditions))
-      .orderBy(desc(agentActions.createdAt))
-      .limit(limit + 1)
-
-    const hasMore = rows.length > limit
-    return {
-      rows: (hasMore ? rows.slice(0, limit) : rows).map(mapAction),
-      hasMore,
-    }
-  },
-
-  async getPendingByConversation(conversationId: string): Promise<AgentActionRecord[]> {
-    const rows = await db
-      .select()
-      .from(agentActions)
-      .where(and(eq(agentActions.conversationId, conversationId), eq(agentActions.status, "pending")))
-      .orderBy(agentActions.createdAt)
-    return rows.map(mapAction)
-  },
-}
-```
-
-**Commit:** `feat(ai): add agent actions repository for mutation audit trail`
-
----
-
-## Task 4: Tenant Guardrail Config Repository
-
-**Files:**
-- Create: `src/modules/ai/ai.config.repository.ts`
-
-```typescript
-// src/modules/ai/ai.config.repository.ts
-
-import { db } from "@/shared/db"
-import { aiTenantConfig } from "@/shared/db/schema"
-import { eq } from "drizzle-orm"
-import { logger } from "@/shared/logger"
-import type { TenantAIConfig, GuardrailTier } from "./ai.types"
-
-const log = logger.child({ module: "ai.config.repository" })
-
-function mapConfig(row: typeof aiTenantConfig.$inferSelect): TenantAIConfig {
-  return {
-    id: row.id,
-    tenantId: row.tenantId,
-    isEnabled: row.isEnabled === 1,
-    maxTokenBudget: row.maxTokenBudget,
-    maxMessagesPerMinute: row.maxMessagesPerMinute,
-    defaultModel: row.defaultModel,
-    guardrailOverrides: (row.guardrailOverrides as Record<string, GuardrailTier>) ?? {},
-    trustMetrics: (row.trustMetrics as Record<string, { approved: number; rejected: number }>) ?? {},
-    createdAt: row.createdAt,
-    updatedAt: row.updatedAt,
-  }
-}
-
-export const aiConfigRepository = {
-  async getOrCreate(tenantId: string): Promise<TenantAIConfig> {
-    const [existing] = await db
-      .select()
-      .from(aiTenantConfig)
-      .where(eq(aiTenantConfig.tenantId, tenantId))
-      .limit(1)
-
-    if (existing) return mapConfig(existing)
-
-    const [created] = await db
-      .insert(aiTenantConfig)
-      .values({ tenantId })
-      .returning()
-    log.info({ tenantId }, "Created default AI tenant config")
-    return mapConfig(created!)
-  },
-
-  async update(tenantId: string, updates: {
-    isEnabled?: number
-    maxTokenBudget?: number
-    maxMessagesPerMinute?: number
-    defaultModel?: string
-    guardrailOverrides?: Record<string, GuardrailTier>
-    trustMetrics?: Record<string, { approved: number; rejected: number }>
-  }): Promise<void> {
-    await db
-      .update(aiTenantConfig)
-      .set({ ...updates, updatedAt: new Date() })
-      .where(eq(aiTenantConfig.tenantId, tenantId))
-  },
-
-  async getGuardrailTier(tenantId: string, toolName: string, defaultTier: GuardrailTier): Promise<GuardrailTier> {
-    const config = await this.getOrCreate(tenantId)
-    return config.guardrailOverrides[toolName] ?? defaultTier
-  },
-
-  async recordApprovalDecision(tenantId: string, toolName: string, approved: boolean): Promise<void> {
-    const config = await this.getOrCreate(tenantId)
-    const metrics = { ...config.trustMetrics }
-    if (!metrics[toolName]) metrics[toolName] = { approved: 0, rejected: 0 }
-    if (approved) {
-      metrics[toolName].approved += 1
-    } else {
-      metrics[toolName].rejected += 1
-    }
-    await this.update(tenantId, { trustMetrics: metrics })
-  },
-}
-```
-
-**Commit:** `feat(ai): add tenant AI config repository with guardrail overrides`
-
----
-
-## Task 5: Mutation Tools — Booking, Customer, Notification (6 tools)
-
-**Files:**
-- Create: `src/modules/ai/tools/booking.mutation-tools.ts`
-- Create: `src/modules/ai/tools/customer.mutation-tools.ts`
-- Create: `src/modules/ai/tools/notification.mutation-tools.ts`
-- Modify: `src/modules/ai/tools/index.ts`
-
-### Critical rules for mutation tools:
-- Every mutation tool implements `MutatingAgentTool` (extends `AgentTool` with `guardrailTier`, `mutationDescription`, `compensate?`, `isReversible`)
-- The `execute` function performs the actual mutation via repository calls
-- The approval flow is handled by the service layer, NOT in the tool itself
-- Tools still call repositories directly
-
-### booking.mutation-tools.ts
-
-```typescript
-// src/modules/ai/tools/booking.mutation-tools.ts
-
-import type { MutatingAgentTool } from "../ai.types"
-import { bookingRepository } from "@/modules/booking/booking.repository"
-
-export const bookingMutationTools: MutatingAgentTool[] = [
-  {
-    name: "booking.updateStatus",
-    description: "Update a booking's status. Can confirm, cancel, mark as completed, or mark as no-show. Requires the booking ID and new status.",
-    module: "booking",
-    permission: "bookings:write",
-    guardrailTier: "CONFIRM",
-    mutationDescription: "Changes a booking's status",
-    isReversible: true,
-    inputSchema: {
-      type: "object",
-      properties: {
-        id: { type: "string", description: "The booking ID" },
-        status: {
-          type: "string",
-          enum: ["CONFIRMED", "CANCELLED", "COMPLETED", "NO_SHOW"],
-          description: "The new booking status",
-        },
-        reason: { type: "string", description: "Reason for the status change (optional)" },
-      },
-      required: ["id", "status"],
-    },
-    execute: async (input: unknown, ctx) => {
-      const { id, status, reason } = input as { id: string; status: string; reason?: string }
-      // First get the current booking to save compensation data
-      const current = await bookingRepository.findById(ctx.tenantId, id)
-      const result = await bookingRepository.updateStatus(ctx.tenantId, id, status, reason)
-      return { ...result, _compensationData: { previousStatus: current?.status } }
-    },
-    compensate: async (compensationData: unknown, ctx) => {
-      const data = compensationData as { bookingId: string; previousStatus: string }
-      await bookingRepository.updateStatus(ctx.tenantId, data.bookingId, data.previousStatus)
-    },
-  },
-  {
-    name: "booking.addNote",
-    description: "Add a note to a booking. Use this to record observations, follow-ups, or context about a booking.",
-    module: "booking",
-    permission: "bookings:write",
-    guardrailTier: "AUTO",
-    mutationDescription: "Adds a note to a booking",
-    isReversible: false,
-    inputSchema: {
-      type: "object",
-      properties: {
-        bookingId: { type: "string", description: "The booking ID" },
-        content: { type: "string", description: "The note content" },
-      },
-      required: ["bookingId", "content"],
-    },
-    execute: async (input: unknown, ctx) => {
-      const { bookingId, content } = input as { bookingId: string; content: string }
-      return bookingRepository.addNote(ctx.tenantId, bookingId, { content, userId: ctx.userId })
-    },
-  },
-]
-```
-
-### customer.mutation-tools.ts
-
-```typescript
-// src/modules/ai/tools/customer.mutation-tools.ts
-
-import type { MutatingAgentTool } from "../ai.types"
-import { customerRepository } from "@/modules/customer/customer.repository"
-
-export const customerMutationTools: MutatingAgentTool[] = [
-  {
-    name: "customer.addNote",
-    description: "Add a note to a customer record. Use to record observations, follow-ups, or context.",
-    module: "customer",
-    permission: "customers:write",
-    guardrailTier: "AUTO",
-    mutationDescription: "Adds a note to a customer",
-    isReversible: false,
-    inputSchema: {
-      type: "object",
-      properties: {
-        customerId: { type: "string", description: "The customer ID" },
-        content: { type: "string", description: "The note content" },
-      },
-      required: ["customerId", "content"],
-    },
-    execute: async (input: unknown, ctx) => {
-      const { customerId, content } = input as { customerId: string; content: string }
-      return customerRepository.addNote(ctx.tenantId, customerId, { content, userId: ctx.userId })
-    },
-  },
-  {
-    name: "customer.updateTags",
-    description: "Update tags on a customer record. Tags are used for categorization and filtering.",
-    module: "customer",
-    permission: "customers:write",
-    guardrailTier: "AUTO",
-    mutationDescription: "Updates a customer's tags",
-    isReversible: true,
-    inputSchema: {
-      type: "object",
-      properties: {
-        customerId: { type: "string", description: "The customer ID" },
-        tags: { type: "array", items: { type: "string" }, description: "New tag list (replaces existing)" },
-      },
-      required: ["customerId", "tags"],
-    },
-    execute: async (input: unknown, ctx) => {
-      const { customerId, tags } = input as { customerId: string; tags: string[] }
-      const current = await customerRepository.findById(ctx.tenantId, customerId)
-      const result = await customerRepository.updateTags(ctx.tenantId, customerId, tags)
-      return { ...result, _compensationData: { previousTags: current?.tags } }
-    },
-    compensate: async (compensationData: unknown, ctx) => {
-      const data = compensationData as { customerId: string; previousTags: string[] }
-      await customerRepository.updateTags(ctx.tenantId, data.customerId, data.previousTags)
-    },
-  },
-]
-```
-
-### notification.mutation-tools.ts
-
-```typescript
-// src/modules/ai/tools/notification.mutation-tools.ts
-
-import type { MutatingAgentTool } from "../ai.types"
-import { inngest } from "@/shared/inngest"
-
-export const notificationMutationTools: MutatingAgentTool[] = [
-  {
-    name: "notification.sendEmail",
-    description: "Send an email notification. Requires a recipient email address, subject, and body. Use for follow-ups, confirmations, or custom communications.",
-    module: "notification",
-    permission: "notifications:write",
-    guardrailTier: "CONFIRM",
-    mutationDescription: "Sends an email to a recipient",
-    isReversible: false,
-    inputSchema: {
-      type: "object",
-      properties: {
-        to: { type: "string", description: "Recipient email address" },
-        subject: { type: "string", description: "Email subject line" },
-        body: { type: "string", description: "Email body (plain text)" },
-      },
-      required: ["to", "subject", "body"],
-    },
-    execute: async (input: unknown, ctx) => {
-      const { to, subject, body } = input as { to: string; subject: string; body: string }
-      await inngest.send({
-        name: "notification/send.email",
-        data: {
-          to,
-          subject,
-          html: `<p>${body.replace(/\n/g, "</p><p>")}</p>`,
-          text: body,
-          tenantId: ctx.tenantId,
-          trigger: "ai-agent",
+            throw new ApprovalRequiredError(
+              action.id,
+              procedurePath,
+              input,
+              `Execute ${procedurePath}`
+            )
+          }
         },
       })
-      return { sent: true, to, subject }
     },
-  },
-  {
-    name: "notification.sendSms",
-    description: "Send an SMS notification. Requires a phone number and message body.",
-    module: "notification",
-    permission: "notifications:write",
-    guardrailTier: "CONFIRM",
-    mutationDescription: "Sends an SMS to a phone number",
-    isReversible: false,
-    inputSchema: {
-      type: "object",
-      properties: {
-        to: { type: "string", description: "Recipient phone number (E.164 format)" },
-        body: { type: "string", description: "SMS message body (max 160 chars recommended)" },
-      },
-      required: ["to", "body"],
-    },
-    execute: async (input: unknown, ctx) => {
-      const { to, body } = input as { to: string; body: string }
-      await inngest.send({
-        name: "notification/send.sms",
-        data: {
-          to,
-          body,
-          tenantId: ctx.tenantId,
-          trigger: "ai-agent",
-        },
-      })
-      return { sent: true, to }
-    },
-  },
-]
-```
-
-### Update tools/index.ts
-
-Add the mutation tools to the barrel file. Update `getToolsForUser` to also return mutation tools. Add a helper `isMutatingTool` to check if a tool is a mutation tool.
-
-```typescript
-// Add to src/modules/ai/tools/index.ts:
-
-import { bookingMutationTools } from "./booking.mutation-tools"
-import { customerMutationTools } from "./customer.mutation-tools"
-import { notificationMutationTools } from "./notification.mutation-tools"
-import type { MutatingAgentTool } from "../ai.types"
-
-export const allMutationTools: MutatingAgentTool[] = [
-  ...bookingMutationTools,
-  ...customerMutationTools,
-  ...notificationMutationTools,
-]
-
-// Update allTools to include mutation tools
-// allTools should now be: [...readOnlyTools, ...allMutationTools]
-
-export function isMutatingTool(tool: AgentTool): tool is MutatingAgentTool {
-  return "guardrailTier" in tool
+  })
 }
 ```
 
-**Important:** Before writing each mutation tool file, READ the corresponding module's repository to verify available methods and their signatures. The repository methods above are educated guesses — adjust to match actual signatures.
-
-**Commit:** `feat(ai): add 6 mutation tools for booking, customer, and notification`
+**Commit:** `feat(ai): add guarded tRPC caller proxy with guardrail enforcement`
 
 ---
 
-## Task 6: Approval Flow Engine
+## Task 5: Update ai.approval.ts — Remove MutatingAgentTool Dependency
 
 **Files:**
-- Create: `src/modules/ai/ai.approval.ts`
+- Modify: `src/modules/ai/ai.approval.ts`
+
+**Changes:**
+
+1. Remove import of `MutatingAgentTool`
+2. Update `resolveGuardrailTier` to use the guardrail registry directly (or remove — it's now in `ai.guardrails.ts`)
+3. Keep `resolveApprovalFromUI` — it's used by the router
+4. Remove `requestApproval` and `executeAutoAction` — these are now handled by the guarded caller proxy
+5. Keep the file lean — just the UI-facing approval resolution
+
+Updated file:
 
 ```typescript
 // src/modules/ai/ai.approval.ts
@@ -713,124 +466,11 @@ import { redis } from "@/shared/redis"
 import { logger } from "@/shared/logger"
 import { agentActionsRepository } from "./ai.actions.repository"
 import { aiConfigRepository } from "./ai.config.repository"
-import type { AgentContext, GuardrailTier, MutatingAgentTool, AgentActionRecord } from "./ai.types"
 
 const log = logger.child({ module: "ai.approval" })
 
 const APPROVAL_TIMEOUT_MS = 300_000 // 5 minutes
 const APPROVAL_POLL_INTERVAL_MS = 1000 // 1 second
-
-/**
- * Resolve the effective guardrail tier for a tool in a tenant context.
- * Checks tenant overrides first, then falls back to tool default.
- */
-export async function resolveGuardrailTier(
-  tenantId: string,
-  tool: MutatingAgentTool
-): Promise<GuardrailTier> {
-  return aiConfigRepository.getGuardrailTier(tenantId, tool.name, tool.guardrailTier)
-}
-
-/**
- * Create a pending action and wait for user approval via Redis.
- * Returns the action record after approval/rejection/timeout.
- */
-export async function requestApproval(
-  conversationId: string,
-  tool: MutatingAgentTool,
-  toolInput: unknown,
-  ctx: AgentContext
-): Promise<{ approved: boolean; action: AgentActionRecord }> {
-  // 1. Create pending action record
-  const action = await agentActionsRepository.create({
-    conversationId,
-    tenantId: ctx.tenantId,
-    userId: ctx.userId,
-    toolName: tool.name,
-    toolInput,
-    guardrailTier: "CONFIRM",
-    isReversible: tool.isReversible,
-  })
-
-  log.info({ actionId: action.id, toolName: tool.name }, "Approval requested")
-
-  // 2. Set Redis key for approval channel
-  const redisKey = `ai:approval:${action.id}`
-  // Don't set a value yet — just create the key space. The UI will SET this.
-
-  // 3. Poll Redis for decision (timeout after 5 minutes)
-  const startTime = Date.now()
-  while (Date.now() - startTime < APPROVAL_TIMEOUT_MS) {
-    const decision = await redis.get(redisKey)
-    if (decision === "approved") {
-      await agentActionsRepository.updateStatus(action.id, {
-        status: "approved",
-        approvedBy: ctx.userId,
-      })
-      await redis.del(redisKey)
-      await aiConfigRepository.recordApprovalDecision(ctx.tenantId, tool.name, true)
-      log.info({ actionId: action.id }, "Action approved")
-      const updated = await agentActionsRepository.getById(action.id)
-      return { approved: true, action: updated! }
-    }
-    if (decision === "rejected") {
-      await agentActionsRepository.updateStatus(action.id, { status: "rejected" })
-      await redis.del(redisKey)
-      await aiConfigRepository.recordApprovalDecision(ctx.tenantId, tool.name, false)
-      log.info({ actionId: action.id }, "Action rejected")
-      const updated = await agentActionsRepository.getById(action.id)
-      return { approved: false, action: updated! }
-    }
-    // Wait before next poll
-    await new Promise((resolve) => setTimeout(resolve, APPROVAL_POLL_INTERVAL_MS))
-  }
-
-  // 4. Timeout — reject automatically
-  await agentActionsRepository.updateStatus(action.id, { status: "rejected", error: "Approval timed out" })
-  log.warn({ actionId: action.id }, "Approval timed out after 5 minutes")
-  const updated = await agentActionsRepository.getById(action.id)
-  return { approved: false, action: updated! }
-}
-
-/**
- * Execute a mutation tool with AUTO guardrail (no approval needed).
- */
-export async function executeAutoAction(
-  conversationId: string,
-  tool: MutatingAgentTool,
-  toolInput: unknown,
-  ctx: AgentContext
-): Promise<{ action: AgentActionRecord; result: unknown }> {
-  const action = await agentActionsRepository.create({
-    conversationId,
-    tenantId: ctx.tenantId,
-    userId: ctx.userId,
-    toolName: tool.name,
-    toolInput,
-    guardrailTier: "AUTO",
-    isReversible: tool.isReversible,
-  })
-
-  try {
-    const result = await tool.execute(toolInput, ctx)
-    // Extract compensation data if tool returns it
-    const compensationData = (result as Record<string, unknown>)?._compensationData
-    await agentActionsRepository.updateStatus(action.id, {
-      status: "auto_executed",
-      toolOutput: result,
-      compensationData,
-    })
-    const updated = await agentActionsRepository.getById(action.id)
-    return { action: updated!, result }
-  } catch (err) {
-    const errorMsg = err instanceof Error ? err.message : "Execution failed"
-    await agentActionsRepository.updateStatus(action.id, {
-      status: "failed",
-      error: errorMsg,
-    })
-    throw err
-  }
-}
 
 /**
  * Resolve an approval from the chat UI (called by the router).
@@ -840,257 +480,100 @@ export async function resolveApprovalFromUI(actionId: string, approved: boolean)
   await redis.set(redisKey, approved ? "approved" : "rejected", { ex: 60 })
   log.info({ actionId, approved }, "Approval resolved from UI")
 }
+
+/**
+ * Wait for a user's approval decision via Redis polling.
+ * Called by the service when an ApprovalRequiredError is caught.
+ * Returns true if approved, false if rejected or timed out.
+ */
+export async function waitForApproval(
+  actionId: string,
+  tenantId: string,
+  procedurePath: string,
+  userId: string
+): Promise<boolean> {
+  const redisKey = `ai:approval:${actionId}`
+  const startTime = Date.now()
+
+  while (Date.now() - startTime < APPROVAL_TIMEOUT_MS) {
+    const decision = await redis.get(redisKey)
+    if (decision === "approved") {
+      await agentActionsRepository.updateStatus(actionId, {
+        status: "approved",
+        approvedBy: userId,
+      })
+      await redis.del(redisKey)
+      await aiConfigRepository.recordApprovalDecision(tenantId, procedurePath, true)
+      log.info({ actionId }, "Action approved")
+      return true
+    }
+    if (decision === "rejected") {
+      await agentActionsRepository.updateStatus(actionId, { status: "rejected" })
+      await redis.del(redisKey)
+      await aiConfigRepository.recordApprovalDecision(tenantId, procedurePath, false)
+      log.info({ actionId }, "Action rejected")
+      return false
+    }
+    await new Promise((resolve) => setTimeout(resolve, APPROVAL_POLL_INTERVAL_MS))
+  }
+
+  // Timeout
+  await agentActionsRepository.updateStatus(actionId, { status: "rejected", error: "Approval timed out" })
+  log.warn({ actionId }, "Approval timed out after 5 minutes")
+  return false
+}
 ```
 
-**Commit:** `feat(ai): add approval flow engine with Redis polling and timeout`
+**Commit:** `refactor(ai): simplify approval.ts for code execution model`
 
 ---
 
-## Task 7: Update AI Service for Mutations + Approvals
+## Task 6: Update ai.service.ts — Integrate Guarded Caller + Approval Flow
 
 **Files:**
 - Modify: `src/modules/ai/ai.service.ts`
 
-Update the agent loop in `sendMessage` to handle mutation tools:
+**Changes:**
 
-1. When the agent calls a tool, check if it's a `MutatingAgentTool` using `isMutatingTool()`
-2. If it IS mutating:
-   - Resolve the effective guardrail tier via `resolveGuardrailTier()`
-   - If `RESTRICT`: return an error message to Claude saying this tool is restricted
-   - If `AUTO`: execute immediately via `executeAutoAction()`, return result to Claude
-   - If `CONFIRM`: call `requestApproval()` which blocks until user responds. If approved, execute the tool and return result. If rejected, return rejection message to Claude.
-3. If it's NOT mutating: execute as before (read-only, no approval)
+1. Import `createGuardedCaller`, `ApprovalRequiredError`, `RestrictedProcedureError` from `./ai.guarded-caller`
+2. Import `waitForApproval` from `./ai.approval`
+3. In `handleToolCall`, when executing `execute_code`:
+   - Pass the guarded caller instead of the raw caller
+   - Catch `ApprovalRequiredError`: emit `approval_required` event, call `waitForApproval()`, if approved, re-execute with the procedure pre-approved
+   - Catch `RestrictedProcedureError`: return error message
+4. In `sendMessageStreaming`: handle the approval flow within the tool execution loop
 
-The key change is in the tool execution section of the agent loop. Read the current `ai.service.ts` before modifying.
+The key flow change:
 
-Also add a new method `explainAction` (see Task 8) and `undoAction` to the service.
-
-**Commit:** `feat(ai): integrate mutation approval flow into agent loop`
-
----
-
-## Task 8: Explainability Service ("Why" Button)
-
-**Files:**
-- Create: `src/modules/ai/ai.explainer.ts`
-
-```typescript
-// src/modules/ai/ai.explainer.ts
-
-import Anthropic from "@anthropic-ai/sdk"
-import { logger } from "@/shared/logger"
-import { aiRepository } from "./ai.repository"
-import { agentActionsRepository } from "./ai.actions.repository"
-
-const log = logger.child({ module: "ai.explainer" })
-
-let client: Anthropic | null = null
-function getClient(): Anthropic {
-  if (!client) client = new Anthropic()
-  return client
-}
-
-const HAIKU_MODEL = "claude-haiku-4-5-20251001"
-
-/**
- * Explain why the agent took a specific action.
- * Uses Haiku for fast, cheap explanations.
- */
-export async function explainAction(actionId: string, tenantId: string): Promise<string> {
-  const action = await agentActionsRepository.getById(actionId)
-  if (!action) return "Action not found."
-
-  // Get the conversation context around this action
-  const messages = await aiRepository.getMessages(action.conversationId, 50)
-
-  // Build a summary of the conversation flow leading to this action
-  const contextSummary = messages
-    .map((m) => {
-      if (m.role === "user") return `User: ${m.content.slice(0, 200)}`
-      if (m.role === "assistant") {
-        const toolInfo = m.toolCalls?.map((tc) => `Called ${tc.name}`).join(", ") ?? ""
-        return `Assistant: ${m.content.slice(0, 200)}${toolInfo ? ` [${toolInfo}]` : ""}`
-      }
-      return null
-    })
-    .filter(Boolean)
-    .join("\n")
-
-  const prompt = `You are explaining why an AI assistant took a specific action. Be concise (2-3 sentences max).
-
-The assistant was asked to help with a task. Here is the conversation context:
-${contextSummary}
-
-The specific action taken was:
-- Tool: ${action.toolName}
-- Input: ${JSON.stringify(action.toolInput, null, 2)}
-- Status: ${action.status}
-
-Explain WHY the assistant chose this action, based on the conversation context. Focus on the user's intent and how this action fulfills it.`
-
-  const response = await getClient().messages.create({
-    model: HAIKU_MODEL,
-    max_tokens: 256,
-    messages: [{ role: "user", content: prompt }],
-  })
-
-  const explanation = response.content
-    .filter((b) => b.type === "text")
-    .map((b) => b.text)
-    .join("\n")
-
-  log.info({ actionId, tokens: response.usage.output_tokens }, "Action explained")
-  return explanation
-}
-
-/**
- * Undo a previously executed action using its compensation function.
- */
-export async function undoAction(actionId: string, tenantId: string, userId: string): Promise<{ success: boolean; message: string }> {
-  const action = await agentActionsRepository.getById(actionId)
-  if (!action) return { success: false, message: "Action not found" }
-  if (!action.isReversible) return { success: false, message: "This action is not reversible" }
-  if (action.status !== "executed" && action.status !== "auto_executed") {
-    return { success: false, message: `Cannot undo action with status: ${action.status}` }
-  }
-
-  // The compensation logic is handled by the tool's compensate function.
-  // We need to find the tool and call it.
-  // For now, mark as rolled_back — the actual compensation is wired in the service layer.
-  await agentActionsRepository.updateStatus(actionId, { status: "rolled_back" })
-  return { success: true, message: "Action has been rolled back" }
-}
+```
+User message → Claude writes code → execute_code with guarded caller
+  → If code calls a CONFIRM mutation:
+    1. Guarded proxy throws ApprovalRequiredError
+    2. Service catches it, yields approval_required event
+    3. Service calls waitForApproval() (polls Redis)
+    4. If approved: re-execute code with procedure pre-approved
+    5. If rejected: return error to Claude
+  → If code calls an AUTO mutation:
+    1. Guarded proxy logs action, executes, returns result
+  → If code calls a RESTRICT mutation:
+    1. Guarded proxy throws RestrictedProcedureError
+    2. Error returned to Claude
 ```
 
-**Commit:** `feat(ai): add explainability service with Haiku-powered "Why" explanations`
+Read the current `ai.service.ts` carefully before modifying. The main changes are in `handleToolCall` and the caller setup.
+
+**Commit:** `feat(ai): integrate guarded tRPC caller and approval flow into agent service`
 
 ---
 
-## Task 9: Trust Ratchet Tracking
+## Task 7: New Zod Schemas + Router Procedures
 
 **Files:**
-- Create: `src/modules/ai/ai.trust.ts`
-
-```typescript
-// src/modules/ai/ai.trust.ts
-
-import { aiConfigRepository } from "./ai.config.repository"
-import { logger } from "@/shared/logger"
-import type { GuardrailTier } from "./ai.types"
-
-const log = logger.child({ module: "ai.trust" })
-
-const PROMOTION_THRESHOLD = 0.95 // 95% approval rate
-const PROMOTION_MIN_DECISIONS = 50
-const DEMOTION_REJECTION_SPIKE = 0.20 // 20% rejection in recent window
-const DEMOTION_WINDOW = 20 // last 20 decisions
-
-/**
- * Analyze trust metrics and suggest guardrail promotions/demotions.
- * Returns suggestions — does NOT auto-apply in Phase B.
- */
-export async function analyzeTrustMetrics(tenantId: string): Promise<TrustSuggestion[]> {
-  const config = await aiConfigRepository.getOrCreate(tenantId)
-  const suggestions: TrustSuggestion[] = []
-
-  for (const [toolName, metrics] of Object.entries(config.trustMetrics)) {
-    const total = metrics.approved + metrics.rejected
-    if (total === 0) continue
-
-    const approvalRate = metrics.approved / total
-
-    // Suggest promotion: CONFIRM → AUTO
-    if (
-      approvalRate >= PROMOTION_THRESHOLD &&
-      total >= PROMOTION_MIN_DECISIONS &&
-      (config.guardrailOverrides[toolName] ?? "CONFIRM") === "CONFIRM"
-    ) {
-      suggestions.push({
-        toolName,
-        currentTier: "CONFIRM",
-        suggestedTier: "AUTO",
-        reason: `${(approvalRate * 100).toFixed(1)}% approval rate over ${total} decisions`,
-        approvalRate,
-        totalDecisions: total,
-      })
-    }
-
-    // Suggest demotion: AUTO → CONFIRM (if recently getting rejections)
-    if (
-      metrics.rejected > 0 &&
-      total >= DEMOTION_WINDOW &&
-      (config.guardrailOverrides[toolName] ?? "CONFIRM") === "AUTO"
-    ) {
-      // Check recent rejection spike (simplified — uses overall rate)
-      const rejectionRate = metrics.rejected / total
-      if (rejectionRate >= DEMOTION_REJECTION_SPIKE) {
-        suggestions.push({
-          toolName,
-          currentTier: "AUTO",
-          suggestedTier: "CONFIRM",
-          reason: `${(rejectionRate * 100).toFixed(1)}% rejection rate — consider reverting to CONFIRM`,
-          approvalRate,
-          totalDecisions: total,
-        })
-      }
-    }
-  }
-
-  log.info({ tenantId, suggestions: suggestions.length }, "Trust analysis complete")
-  return suggestions
-}
-
-export interface TrustSuggestion {
-  toolName: string
-  currentTier: GuardrailTier
-  suggestedTier: GuardrailTier
-  reason: string
-  approvalRate: number
-  totalDecisions: number
-}
-```
-
-**Commit:** `feat(ai): add trust ratchet analysis for guardrail promotion/demotion suggestions`
-
----
-
-## Task 10: Chat UI — Approval Cards + "Why" Button
-
-**Files:**
-- Modify: `src/app/admin/ai-chat/page.tsx` (or wherever the chat UI lives from Phase A+)
-
-Update the chat UI to:
-
-1. **Render approval cards** when an `approval_required` stream event arrives:
-   - Show the tool name, mutation description, and input preview
-   - Two buttons: "Approve" and "Reject"
-   - On click, call a new tRPC mutation `ai.resolveApproval({ actionId, approved: boolean })`
-   - Show status feedback (approved/rejected/timed out)
-
-2. **Add "Why" button** on agent messages that involved tool calls:
-   - Small "Why did the assistant do this?" link
-   - On click, call `ai.explainAction({ actionId })` query
-   - Display the Haiku explanation inline below the message
-
-3. **Show action status badges** on messages that triggered mutations:
-   - "Auto-executed", "Approved", "Rejected", "Rolled back" badges with appropriate colors
-
-Read the current chat UI code before modifying. Reference the mockup approval cards at `src/app/admin/brokerage-mockups/ai-assistant/_components/approval-card.tsx` for design patterns.
-
-**Commit:** `feat(ai): add approval cards and "Why" button to chat UI`
-
----
-
-## Task 11: Router Updates + New Procedures
-
-**Files:**
-- Modify: `src/modules/ai/ai.router.ts`
 - Modify: `src/modules/ai/ai.schemas.ts`
-- Modify: `src/modules/ai/ai.events.ts`
+- Modify: `src/modules/ai/ai.router.ts`
 - Modify: `src/modules/ai/index.ts`
-- Modify: `src/shared/inngest.ts`
 
-### New Zod schemas (add to ai.schemas.ts):
+### New schemas in ai.schemas.ts:
 
 ```typescript
 export const resolveApprovalSchema = z.object({
@@ -1107,20 +590,20 @@ export const undoActionSchema = z.object({
 })
 
 export const listActionsSchema = z.object({
-  conversationId: z.string().optional(),
-  limit: z.number().int().min(1).max(50).default(20),
+  limit: z.number().int().min(1).max(100).default(50),
   status: z.string().optional(),
 })
 
 export const getTrustSuggestionsSchema = z.object({})
 
-export const updateGuardrailSchema = z.object({
-  toolName: z.string(),
-  tier: z.enum(["AUTO", "CONFIRM", "RESTRICT"]),
+export const getConfigSchema = z.object({})
+
+export const updateConfigSchema = z.object({
+  guardrailOverrides: z.record(z.string(), z.enum(["AUTO", "CONFIRM", "RESTRICT"])).optional(),
 })
 ```
 
-### New router procedures (add to ai.router.ts):
+### New router procedures in ai.router.ts:
 
 ```typescript
 resolveApproval: moduleProcedure
@@ -1132,8 +615,9 @@ resolveApproval: moduleProcedure
 
 explainAction: moduleProcedure
   .input(explainActionSchema)
-  .query(async ({ ctx, input }) => {
-    return { explanation: await explainAction(input.actionId, ctx.tenantId) }
+  .mutation(async ({ ctx, input }) => {
+    const explanation = await explainAction(input.actionId, ctx.tenantId)
+    return { explanation }
   }),
 
 undoAction: moduleProcedure
@@ -1144,101 +628,208 @@ undoAction: moduleProcedure
 
 listActions: moduleProcedure
   .input(listActionsSchema)
-  .query(async ({ ctx, input }) => {
-    if (input.conversationId) {
-      return { rows: await agentActionsRepository.listByConversation(input.conversationId, input.limit), hasMore: false }
-    }
-    return agentActionsRepository.listByTenant(ctx.tenantId, input.limit, input.status as any)
-  }),
+  .query(({ ctx, input }) =>
+    agentActionsRepository.listByTenant(ctx.tenantId, input.limit, input.status as any)
+  ),
 
-trustSuggestions: modulePermission("ai:write")
+getTrustSuggestions: moduleProcedure
   .input(getTrustSuggestionsSchema)
   .query(async ({ ctx }) => {
-    return { suggestions: await analyzeTrustMetrics(ctx.tenantId) }
+    const suggestions = await analyzeTrustMetrics(ctx.tenantId)
+    return { suggestions }
   }),
 
-updateGuardrail: modulePermission("ai:write")
-  .input(updateGuardrailSchema)
+getConfig: moduleProcedure
+  .input(getConfigSchema)
+  .query(({ ctx }) => aiConfigRepository.getOrCreate(ctx.tenantId)),
+
+updateConfig: moduleProcedure
+  .input(updateConfigSchema)
   .mutation(async ({ ctx, input }) => {
-    const config = await aiConfigRepository.getOrCreate(ctx.tenantId)
-    const overrides = { ...config.guardrailOverrides, [input.toolName]: input.tier }
-    await aiConfigRepository.update(ctx.tenantId, { guardrailOverrides: overrides })
+    if (input.guardrailOverrides) {
+      await aiConfigRepository.update(ctx.tenantId, { guardrailOverrides: input.guardrailOverrides })
+    }
     return { success: true }
   }),
 ```
 
-### Inngest events (add to src/shared/inngest.ts):
+Import the needed functions: `resolveApprovalFromUI` from `./ai.approval`, `explainAction`, `undoAction` from `./ai.explainer`, `analyzeTrustMetrics` from `./ai.trust`, `agentActionsRepository` from `./ai.actions.repository`, `aiConfigRepository` from `./ai.config.repository`.
+
+### Update barrel exports in index.ts:
 
 ```typescript
-"ai/action.executed": {
-  data: { actionId: string; conversationId: string; tenantId: string; toolName: string; status: string }
-}
-"ai/action.approved": {
-  data: { actionId: string; conversationId: string; tenantId: string; toolName: string }
-}
-"ai/action.rejected": {
-  data: { actionId: string; conversationId: string; tenantId: string; toolName: string }
-}
-```
-
-### Update barrel export (index.ts):
-
-Add exports for new files:
-```typescript
+export { aiRouter } from "./ai.router"
+export { aiFunctions } from "./ai.events"
+export { aiService } from "./ai.service"
 export { agentActionsRepository } from "./ai.actions.repository"
 export { aiConfigRepository } from "./ai.config.repository"
-export { explainAction, undoAction } from "./ai.explainer"
-export { analyzeTrustMetrics } from "./ai.trust"
+export type { AgentTool, AgentContext, ConversationRecord, MessageRecord, AgentResponse, GuardrailTier, TenantAIConfig } from "./ai.types"
 ```
 
-**Commit:** `feat(ai): add approval, explainability, and trust management router procedures`
+**Commit:** `feat(ai): add approval, explainability, trust, and config router procedures`
 
 ---
 
-## Task 12: Tests
+## Task 8: Update Chat UI — Approval Cards
+
+**Files:**
+- Modify: `src/app/admin/ai-chat/page.tsx`
+
+**Changes:**
+
+1. Add `approval_required` and `approval_resolved` to the `StreamEvent` type
+2. Create an `ApprovalCard` component:
+   - Shows procedure name, input summary, "Approve" and "Reject" buttons
+   - Calls `api.ai.resolveApproval.useMutation()` on button click
+   - Shows status: pending (buttons), approved (green check), rejected (red x), timed out
+3. Track pending approvals in streaming state
+4. Update the `StreamingBubble` to render approval cards
+5. Change the "Read-only mode" badge to show "AI Assistant" or similar (mutations are now supported)
+
+### ApprovalCard component:
+
+```tsx
+function ApprovalCard({
+  actionId,
+  procedurePath,
+  input,
+  status,
+  onResolve,
+}: {
+  actionId: string
+  procedurePath: string
+  input: unknown
+  status: "pending" | "approved" | "rejected"
+  onResolve: (actionId: string, approved: boolean) => void
+}) {
+  return (
+    <div className="my-2 border border-amber-200 dark:border-amber-800 rounded-lg p-3 bg-amber-50 dark:bg-amber-950/20">
+      <div className="flex items-start gap-2">
+        <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+        <div className="flex-1">
+          <p className="text-sm font-medium text-amber-900 dark:text-amber-100">
+            Approval Required
+          </p>
+          <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
+            <code className="font-mono">{procedurePath}</code>
+          </p>
+          <pre className="text-xs text-amber-600 dark:text-amber-400 mt-1 overflow-x-auto">
+            {JSON.stringify(input, null, 2)}
+          </pre>
+          {status === "pending" && (
+            <div className="flex gap-2 mt-2">
+              <Button size="sm" variant="default" onClick={() => onResolve(actionId, true)}>
+                Approve
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => onResolve(actionId, false)}>
+                Reject
+              </Button>
+            </div>
+          )}
+          {status === "approved" && (
+            <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-2 flex items-center gap-1">
+              <CheckCircle2 className="h-3 w-3" /> Approved
+            </p>
+          )}
+          {status === "rejected" && (
+            <p className="text-xs text-red-600 dark:text-red-400 mt-2 flex items-center gap-1">
+              <AlertCircle className="h-3 w-3" /> Rejected
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+```
+
+### Stream event handling:
+
+In the SSE stream reader switch statement, add:
+
+```typescript
+case "approval_required": {
+  // Add a pending approval to streaming state
+  const approval = {
+    actionId: event.actionId,
+    procedurePath: event.toolName,
+    input: event.input,
+    description: event.description,
+    status: "pending" as const,
+  }
+  collectedApprovals.push(approval)
+  setStreamingApprovals([...collectedApprovals])
+  break
+}
+
+case "approval_resolved": {
+  // Update the approval status
+  const idx = collectedApprovals.findIndex(a => a.actionId === event.actionId)
+  if (idx !== -1) {
+    collectedApprovals[idx] = {
+      ...collectedApprovals[idx],
+      status: event.approved ? "approved" : "rejected",
+    }
+    setStreamingApprovals([...collectedApprovals])
+  }
+  break
+}
+```
+
+**Commit:** `feat(ai): add approval card UI component and stream event handling`
+
+---
+
+## Task 9: Tests
 
 **Files:**
 - Create: `src/modules/ai/__tests__/ai-phase-b.test.ts`
 
 Test:
-1. **Agent actions repository**: create, update status, list by conversation, list by tenant
-2. **AI config repository**: getOrCreate, update guardrail overrides, record approval decision
-3. **Approval flow**: Mock Redis. Test AUTO execution (no approval needed), CONFIRM flow (mock Redis returning "approved"), CONFIRM rejection, timeout
-4. **Guardrail tier resolution**: Default tier, tenant override
-5. **Explainability**: Mock Anthropic SDK (Haiku), verify it returns a concise explanation
-6. **Trust ratchet**: Test promotion suggestion at 95%+ over 50 decisions, demotion suggestion at 20%+ rejection
-7. **Mutation tools**: Mock repositories, verify each mutation tool executes correctly
+1. **Guardrail registry**: Default tiers resolve correctly, CONFIRM fallback for unknown procedures
+2. **Guarded caller proxy**: AUTO executes + logs, CONFIRM throws ApprovalRequiredError, RESTRICT throws RestrictedProcedureError, pre-approved procedures execute
+3. **Approval flow**: waitForApproval returns true on "approved", false on "rejected", false on timeout
+4. **Trust ratchet**: Promotion suggestions at 95%+ approval, demotion suggestions at 20%+ rejection
+5. **Explainer**: Mock Anthropic, verify explanation generation
+6. **Router procedures**: resolveApproval, listActions, getConfig, updateConfig
 
-Use `vi.mock()` for Redis and Anthropic SDK. Follow existing test patterns from Phase A+.
+Mock:
+- `db` and all Drizzle queries
+- `redis` for approval flow
+- `Anthropic` for explainer
+- tRPC caller proxy tests can use a mock caller object
 
-**Commit:** `test(ai): add Phase B tests for approvals, guardrails, trust ratchet, and mutation tools`
+**Commit:** `test(ai): add Phase B tests for guardrails, approval flow, trust ratchet`
 
 ---
 
-## Task 13: Verification — tsc + build + tests
+## Task 10: Verification — tsc + build + tests
 
 Run:
 1. `npx tsc --noEmit` — fix any type errors
 2. `npm run build` — fix any build errors
 3. `npm run test` — all tests must pass
 
-Fix any issues found. If fixes are needed, commit with: `fix(ai): resolve Phase B verification issues`
+Fix any issues. Commit with: `fix(ai): resolve Phase B verification issues`
 
 ---
 
 ## Post-Implementation Checklist
 
 ```
-[ ] agent_actions table added to schema + barrel exported
-[ ] ai_tenant_config table added to schema + barrel exported
-[ ] 6 mutation tools created (2 booking, 2 customer, 2 notification)
-[ ] Approval flow works: CONFIRM tools pause and wait for user response
-[ ] AUTO tools execute immediately with audit trail
-[ ] RESTRICT tools are blocked with explanation
-[ ] "Why" button calls Haiku and returns explanation
-[ ] Trust metrics tracked per tool per tenant
-[ ] New router procedures: resolveApproval, explainAction, undoAction, listActions, trustSuggestions, updateGuardrail
-[ ] Chat UI shows approval cards and "Why" button
+[ ] Guardrail registry maps procedure paths to AUTO/CONFIRM/RESTRICT
+[ ] Module index shows mutation procedures with guardrail tier annotations
+[ ] System prompt allows mutations and explains the guardrail system
+[ ] Guarded tRPC caller proxy intercepts mutations and enforces tiers
+[ ] CONFIRM mutations pause execution and wait for user approval
+[ ] RESTRICT mutations throw immediately
+[ ] AUTO mutations log to agent_actions and execute
+[ ] Approval cards render in chat UI with Approve/Reject buttons
+[ ] Redis-based approval polling works (approve, reject, timeout)
+[ ] Trust ratchet tracks per-procedure acceptance/rejection rates
+[ ] "Why" button explains actions via Haiku
+[ ] New router procedures: resolveApproval, explainAction, listActions, getConfig, updateConfig
+[ ] "Read-only mode" badge removed from chat header
 [ ] All tests pass
 [ ] tsc + build pass
 ```

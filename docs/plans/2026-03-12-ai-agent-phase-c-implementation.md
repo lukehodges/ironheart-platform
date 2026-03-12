@@ -8,6 +8,7 @@
 
 **Design Doc:** `docs/plans/2026-03-08-ai-native-agentic-platform-design.md` (Section 4: Workflow Intelligence, Section 10: Phase C)
 **Phase B Plan (prerequisite — must be complete):** `docs/plans/2026-03-12-ai-agent-phase-b-implementation.md`
+**Code Execution Engine Design:** `docs/plans/2026-03-12-ai-code-execution-engine-design.md` — Phase B uses the code execution model (2 tools: `execute_code` + `describe_module`). Phase C workflow nodes are independent of the agent tool system.
 
 ---
 

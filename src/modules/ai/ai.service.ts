@@ -11,6 +11,8 @@ import { agentTools, handleDescribeModule } from "./tools"
 import { executeCode } from "./ai.executor"
 import { buildSystemPrompt } from "./ai.prompts"
 import { CircleDetector } from "./ai.circle-detector"
+import { createGuardedCaller, ApprovalRequiredError, RestrictedProcedureError } from "./ai.guarded-caller"
+import { waitForApproval } from "./ai.approval"
 import type {
   AgentContext,
   AgentResponse,
@@ -84,15 +86,24 @@ async function buildTrpcCaller(ctx: AgentContext, req: Request) {
   })
 }
 
+interface ToolCallResult {
+  result: unknown
+  durationMs: number
+  error?: string
+  approvalRequired?: ApprovalRequiredError
+}
+
 /**
  * Handle a tool call from Claude — either describe_module or execute_code.
+ * When execute_code hits a CONFIRM mutation, an ApprovalRequiredError is
+ * propagated back so the streaming loop can yield the approval event.
  */
 async function handleToolCall(
   toolName: string,
   toolInput: unknown,
-  trpcCaller: Awaited<ReturnType<typeof buildTrpcCaller>>,
+  guardedCaller: unknown,
   ctx: AgentContext
-): Promise<{ result: unknown; durationMs: number; error?: string }> {
+): Promise<ToolCallResult> {
   if (toolName === "describe_module") {
     const input = toolInput as { module: string }
     return await handleDescribeModule(input)
@@ -103,7 +114,7 @@ async function handleToolCall(
     try {
       const { result, durationMs } = await executeCode(
         input.code,
-        trpcCaller,
+        guardedCaller,
         {
           tenantId: ctx.tenantId,
           userId: ctx.userId,
@@ -113,6 +124,12 @@ async function handleToolCall(
       )
       return { result, durationMs }
     } catch (err) {
+      if (err instanceof ApprovalRequiredError) {
+        return { result: null, durationMs: 0, approvalRequired: err }
+      }
+      if (err instanceof RestrictedProcedureError) {
+        return { result: null, durationMs: 0, error: err.message }
+      }
       const errorMsg = err instanceof Error ? err.message : "Code execution failed"
       log.error({ err, code: input.code.slice(0, 200) }, "Code execution error")
       return { result: null, durationMs: 0, error: errorMsg }
@@ -171,9 +188,16 @@ export const aiService = {
     // 4. Build Anthropic messages array from history
     const anthropicMessages: Anthropic.MessageParam[] = rebuildAnthropicMessages(history)
 
-    // 5. Build agent context and tRPC caller
+    // 5. Build agent context and guarded tRPC caller
     const ctx: AgentContext = { tenantId, userId, workosUserId, userPermissions, pageContext: input.pageContext }
     const trpcCaller = await buildTrpcCaller(ctx, req)
+    const approvedProcedures = new Set<string>()
+    const guardedCaller = await createGuardedCaller(trpcCaller, {
+      tenantId,
+      userId,
+      conversationId: conversation.id,
+      approvedProcedures,
+    })
 
     // 6. Agent loop with streaming
     const allToolCalls: ToolCallRecord[] = []
@@ -249,12 +273,48 @@ export const aiService = {
         }
 
         // Execute
-        const { result, durationMs, error } = await handleToolCall(
+        let { result, durationMs, error, approvalRequired } = await handleToolCall(
           toolUse.name,
           toolUse.input,
-          trpcCaller,
+          guardedCaller,
           ctx
         )
+
+        // Handle approval flow for CONFIRM mutations
+        if (approvalRequired) {
+          yield {
+            type: "approval_required" as const,
+            actionId: approvalRequired.actionId,
+            toolName: approvalRequired.procedurePath,
+            description: approvalRequired.description,
+            input: approvalRequired.procedureInput,
+          }
+
+          const approved = await waitForApproval(
+            approvalRequired.actionId,
+            tenantId,
+            approvalRequired.procedurePath,
+            userId
+          )
+
+          yield {
+            type: "approval_resolved" as const,
+            actionId: approvalRequired.actionId,
+            approved,
+          }
+
+          if (approved) {
+            // Re-execute with procedure pre-approved
+            approvedProcedures.add(approvalRequired.procedurePath)
+            const retry = await handleToolCall(toolUse.name, toolUse.input, guardedCaller, ctx)
+            result = retry.result
+            durationMs = retry.durationMs
+            error = retry.error
+            approvalRequired = retry.approvalRequired
+          } else {
+            error = `User rejected execution of ${approvalRequired.procedurePath}`
+          }
+        }
 
         if (error) {
           allToolResults.push({ toolCallId: toolUse.id, output: null, error })
@@ -401,9 +461,16 @@ export const aiService = {
     const history = await aiRepository.getMessages(conversation.id, 20)
     const anthropicMessages: Anthropic.MessageParam[] = rebuildAnthropicMessages(history)
 
-    // 4. Build context + caller
+    // 4. Build context + guarded caller
     const ctx: AgentContext = { tenantId, userId, workosUserId, userPermissions, pageContext: input.pageContext }
     const trpcCaller = await buildTrpcCaller(ctx, req)
+    const approvedProcedures = new Set<string>()
+    const guardedCaller = await createGuardedCaller(trpcCaller, {
+      tenantId,
+      userId,
+      conversationId: conversation.id,
+      approvedProcedures,
+    })
 
     // 5. Agent loop
     const allToolCalls: ToolCallRecord[] = []
@@ -442,7 +509,7 @@ export const aiService = {
       for (const toolUse of toolUseBlocks) {
         allToolCalls.push({ id: toolUse.id, name: toolUse.name, input: toolUse.input })
 
-        const { result, error } = await handleToolCall(toolUse.name, toolUse.input, trpcCaller, ctx)
+        const { result, error } = await handleToolCall(toolUse.name, toolUse.input, guardedCaller, ctx)
 
         if (error) {
           allToolResults.push({ toolCallId: toolUse.id, output: null, error })

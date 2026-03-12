@@ -8,6 +8,7 @@
 
 **Design Doc:** `docs/plans/2026-03-08-ai-native-agentic-platform-design.md` (Section 6: Integration Strategy, Section 10: Phase E)
 **Phase D Plan (prerequisite — must be complete):** `docs/plans/2026-03-12-ai-agent-phase-d-implementation.md`
+**Code Execution Engine Design:** `docs/plans/2026-03-12-ai-code-execution-engine-design.md` — The agent uses 2 tools (`execute_code` + `describe_module`) with a tRPC caller, not individual tool files. The MCP server should expose tRPC procedures via router introspection.
 
 ---
 
@@ -413,11 +414,14 @@ export async function POST(req: NextRequest) {
 // src/modules/ai/mcp/server.ts
 
 import { logger } from "@/shared/logger"
-import { allTools, getToolsForUser } from "../tools"
-import type { AgentContext } from "../ai.types"
-import type { JsonRpcRequest, JsonRpcResponse, MCPToolDefinition, MCPToolCallResult, RPC_METHOD_NOT_FOUND, RPC_INVALID_PARAMS, RPC_INTERNAL_ERROR } from "./types"
+import { getModuleMap } from "../ai.introspection"
+import { createCallerFactory } from "@/shared/trpc"
+import { appRouter } from "@/server/root"
+import type { JsonRpcRequest, JsonRpcResponse, MCPToolDefinition, MCPToolCallResult } from "./types"
 
 const log = logger.child({ module: "ai.mcp.server" })
+
+const createCaller = createCallerFactory(appRouter)
 
 const SERVER_INFO = {
   name: "ironheart",
@@ -465,23 +469,40 @@ export async function mcpServerHandler(
   }
 }
 
-function handleToolsList(id: string | number, ctx: ApiKeyContext): JsonRpcResponse {
-  const availableTools = getToolsForUser(allTools, ctx.permissions)
+/**
+ * List available tools using router introspection (getModuleMap).
+ * Each tRPC procedure is exposed as an MCP tool with its JSON Schema input.
+ * Filtered by the API key's allowed modules and permissions.
+ */
+async function handleToolsList(id: string | number, ctx: ApiKeyContext): Promise<JsonRpcResponse> {
+  const moduleMap = await getModuleMap()
 
-  // Filter by allowed modules if scoped
-  const filteredTools = ctx.allowedModules.length > 0
-    ? availableTools.filter((t) => ctx.allowedModules.includes(t.module))
-    : availableTools
+  const mcpTools: MCPToolDefinition[] = []
+  for (const [moduleName, moduleMeta] of moduleMap) {
+    // Filter by allowed modules if scoped
+    if (ctx.allowedModules.length > 0 && !ctx.allowedModules.includes(moduleName)) continue
 
-  const mcpTools: MCPToolDefinition[] = filteredTools.map((t) => ({
-    name: t.name,
-    description: t.description,
-    inputSchema: t.inputSchema as MCPToolDefinition["inputSchema"],
-  }))
+    for (const proc of moduleMeta.procedures) {
+      // Filter by permission if the procedure requires one
+      if (proc.permission && !ctx.permissions.includes(proc.permission)) continue
+
+      mcpTools.push({
+        name: `${moduleName}.${proc.name}`,
+        description: proc.description ?? `${proc.type} procedure: ${moduleName}.${proc.name}`,
+        inputSchema: proc.inputSchema as MCPToolDefinition["inputSchema"],
+      })
+    }
+  }
 
   return { jsonrpc: "2.0", id, result: { tools: mcpTools } }
 }
 
+/**
+ * Execute a tool call using a tRPC caller.
+ * The tool name is a procedure path (e.g., "booking.list").
+ * A tRPC caller is built with the API key's tenant/user context,
+ * so all auth, RBAC, and tenant isolation is enforced.
+ */
 async function handleToolsCall(
   id: string | number,
   params: { name: string; arguments?: Record<string, unknown> },
@@ -491,28 +512,41 @@ async function handleToolsCall(
     return { jsonrpc: "2.0", id, error: { code: -32602, message: "Missing tool name" } }
   }
 
-  const availableTools = getToolsForUser(allTools, ctx.permissions)
-  const tool = availableTools.find((t) => t.name === params.name)
-
-  if (!tool) {
-    return { jsonrpc: "2.0", id, error: { code: -32602, message: `Tool not found: ${params.name}` } }
+  // Parse procedure path: "module.procedure"
+  const dotIndex = params.name.indexOf(".")
+  if (dotIndex === -1) {
+    return { jsonrpc: "2.0", id, error: { code: -32602, message: `Invalid tool name format: ${params.name}. Expected "module.procedure".` } }
   }
+
+  const moduleName = params.name.slice(0, dotIndex)
+  const procedureName = params.name.slice(dotIndex + 1)
 
   // Check module scoping
-  if (ctx.allowedModules.length > 0 && !ctx.allowedModules.includes(tool.module)) {
-    return { jsonrpc: "2.0", id, error: { code: -32602, message: `Tool not in allowed modules: ${params.name}` } }
+  if (ctx.allowedModules.length > 0 && !ctx.allowedModules.includes(moduleName)) {
+    return { jsonrpc: "2.0", id, error: { code: -32602, message: `Module not in allowed scope: ${moduleName}` } }
   }
 
-  const agentCtx: AgentContext = {
+  // Build a tRPC caller with the API key's context
+  const { db } = await import("@/shared/db")
+  const trpc = createCaller({
+    db,
+    session: { user: { id: ctx.userId } } as any,
     tenantId: ctx.tenantId,
-    userId: ctx.userId,
-    userPermissions: ctx.permissions,
-  }
+    tenantSlug: ctx.tenantSlug,
+    user: ctx.userWithRoles as any,
+    requestId: crypto.randomUUID(),
+  })
 
   try {
-    const result = await tool.execute(params.arguments ?? {}, agentCtx)
+    // Call the tRPC procedure via the caller
+    const moduleObj = (trpc as any)[moduleName]
+    if (!moduleObj || typeof moduleObj[procedureName] !== "function") {
+      return { jsonrpc: "2.0", id, error: { code: -32602, message: `Procedure not found: ${params.name}` } }
+    }
+
+    const result = await moduleObj[procedureName](params.arguments ?? {})
     const text = JSON.stringify(result, null, 2)
-    log.info({ tool: params.name, tenantId: ctx.tenantId }, "MCP tool call executed")
+    log.info({ procedure: params.name, tenantId: ctx.tenantId }, "MCP tool call executed")
 
     return {
       jsonrpc: "2.0",
@@ -521,7 +555,7 @@ async function handleToolsCall(
     }
   } catch (err) {
     const message = err instanceof Error ? err.message : "Tool execution failed"
-    log.error({ err, tool: params.name }, "MCP tool call failed")
+    log.error({ err, procedure: params.name }, "MCP tool call failed")
 
     return {
       jsonrpc: "2.0",
@@ -537,7 +571,9 @@ async function handleToolsCall(
 
 interface ApiKeyContext {
   tenantId: string
+  tenantSlug: string
   userId: string
+  userWithRoles: unknown // User object with roles for tRPC context
   permissions: string[]
   allowedModules: string[]
   rateLimit: number
@@ -743,19 +779,37 @@ export async function checkConnectionHealth(connection: MCPConnectionRecord): Pr
 import { logger } from "@/shared/logger"
 import { mcpConnectionRepository } from "./repository"
 import { callExternalTool, discoverTools } from "./client"
-import type { MutatingAgentTool, AgentTool } from "../ai.types"
 import type { MCPConnectionRecord, MCPToolDefinition } from "./types"
 
 const log = logger.child({ module: "ai.mcp.adapter" })
 
 /**
- * Convert external MCP tools into AgentTool format for the agent to use.
- * All external tools get CONFIRM guardrail by default (overridable per connection).
+ * External tool description for injection into the system prompt module index.
+ * External tools are NOT individual AgentTool/MutatingAgentTool instances —
+ * they are described in the system prompt and routed through a special
+ * `call_external_tool` path in the executor when Claude writes code that
+ * calls them via `ctx.external("connection:tool", args)`.
+ */
+export interface ExternalToolEntry {
+  /** Namespaced name: "ext:connectionName:toolName" */
+  name: string
+  description: string
+  connectionId: string
+  connectionName: string
+  originalToolName: string
+  inputSchema: Record<string, unknown>
+  guardrailTier: "AUTO" | "CONFIRM" | "RESTRICT"
+}
+
+/**
+ * Convert external MCP tools into ExternalToolEntry descriptions.
+ * These are injected into the system prompt module index so Claude knows
+ * about them, and routed through the executor when called.
  */
 export function adaptExternalTools(
   connection: MCPConnectionRecord,
   tools: MCPToolDefinition[]
-): MutatingAgentTool[] {
+): ExternalToolEntry[] {
   return tools.map((mcpTool) => {
     const guardrailTier = connection.toolGuardrailOverrides[mcpTool.name]
       ?? connection.defaultGuardrailTier
@@ -764,26 +818,23 @@ export function adaptExternalTools(
     return {
       name: `ext:${connection.name}:${mcpTool.name}`,
       description: `[External: ${connection.name}] ${mcpTool.description}`,
-      module: `ext:${connection.name}`,
-      permission: null, // External tools don't use internal RBAC
+      connectionId: connection.id,
+      connectionName: connection.name,
+      originalToolName: mcpTool.name,
       inputSchema: mcpTool.inputSchema as Record<string, unknown>,
       guardrailTier: guardrailTier as "AUTO" | "CONFIRM" | "RESTRICT",
-      mutationDescription: `External tool call to ${connection.name}: ${mcpTool.name}`,
-      isReversible: false, // External tools are not reversible
-      execute: async (input: unknown, ctx) => {
-        return callExternalTool(connection, mcpTool.name, input as Record<string, unknown>)
-      },
     }
   })
 }
 
 /**
- * Get all external tools available to a tenant.
+ * Get all external tool descriptions available to a tenant.
  * Uses cached tool definitions, falling back to discovery if stale.
+ * Returns entries for system prompt injection + executor routing.
  */
-export async function getExternalToolsForTenant(tenantId: string): Promise<MutatingAgentTool[]> {
+export async function getExternalToolsForTenant(tenantId: string): Promise<ExternalToolEntry[]> {
   const connections = await mcpConnectionRepository.listEnabled(tenantId)
-  const allExternalTools: MutatingAgentTool[] = []
+  const allExternalTools: ExternalToolEntry[] = []
 
   for (const connection of connections) {
     let tools = connection.cachedTools
@@ -809,17 +860,20 @@ export async function getExternalToolsForTenant(tenantId: string): Promise<Mutat
 
 **Files:**
 - Modify: `src/modules/ai/ai.service.ts`
+- Modify: `src/modules/ai/ai.prompts.ts`
+- Modify: `src/modules/ai/ai.executor.ts`
 
-Update the agent loop in `sendMessage` to include external tools:
+Integrate external MCP tools into the code execution model:
 
-1. After loading internal tools with `getToolsForUser()`, call `getExternalToolsForTenant(tenantId)` to get external tools
-2. Merge both tool sets: `[...internalTools, ...externalTools]`
-3. External tools go through the same mutation approval flow from Phase B (they implement `MutatingAgentTool`)
-4. The `ext:` prefix on tool names makes it clear to the agent which tools are external
+1. **System prompt injection** (`ai.prompts.ts`): In `assembleSystemPrompt()` (or `buildSystemPrompt()`), call `getExternalToolsForTenant(tenantId)` to get external tool descriptions. Append an "External tools" section to the module index in the system prompt, listing each external tool with its name, description, input schema, and guardrail tier.
 
-Read the current service code before modifying. The change is small — just merge the tool arrays.
+2. **Executor routing** (`ai.executor.ts`): Inject a `ctx.external(name, args)` function into the code execution context alongside `trpc`. When Claude writes `await ctx.external("ext:connectionName:toolName", { ... })`, the executor resolves the connection, calls `callExternalTool()` from the MCP client, and applies guardrail enforcement (CONFIRM external tools pause for approval via the same `ApprovalRequiredError` flow from Phase B).
 
-**Commit:** `feat(ai): integrate external MCP tools into agent tool set`
+3. **Service wiring** (`ai.service.ts`): Pass the external tool entries to the executor so it can resolve connections. The `ext:` prefix on tool names makes it clear to both Claude and the executor which calls are external.
+
+Read the current service and executor code before modifying.
+
+**Commit:** `feat(ai): integrate external MCP tools into agent via system prompt and executor routing`
 
 ---
 
@@ -998,11 +1052,11 @@ refreshMcpTools: modulePermission("ai:write")
 
 Test:
 1. **MCP connection repository**: CRUD operations, list enabled, update cached tools, update health
-2. **MCP server handler**: Initialize, tools/list, tools/call, unknown method, missing API key
+2. **MCP server handler**: Initialize, tools/list (uses router introspection), tools/call (uses tRPC caller), unknown method, missing API key
 3. **MCP client**: Mock fetch. Test tool discovery, tool call, timeout handling, health check
-4. **External tool adapter**: Convert MCP tools to agent tools, guardrail tier resolution
+4. **External tool adapter**: Convert MCP tools to ExternalToolEntry descriptions, guardrail tier resolution
 5. **Rate limiting**: Redis-based rate limit for MCP server
-6. **Tool integration**: Verify external tools merge into agent tool set
+6. **Tool integration**: Verify external tool descriptions injected into system prompt, verify `ctx.external()` routing in executor
 
 **Commit:** `test(ai): add Phase E tests for MCP server, client, and external tool integration`
 
@@ -1024,12 +1078,15 @@ Fix any issues. Commit with: `fix(ai): resolve Phase E verification issues`
 ```
 [ ] ai_mcp_connections table created with tenant index
 [ ] MCP server at /api/mcp handles initialize, tools/list, tools/call
+[ ] MCP server uses router introspection (getModuleMap) for tools/list
+[ ] MCP server uses tRPC caller for tools/call execution
 [ ] MCP server authenticates via API key (integration with developer module)
 [ ] MCP server rate-limited per API key
 [ ] MCP client discovers tools from external servers
 [ ] MCP client calls external tools with timeout and error handling
-[ ] External tools adapted to agent tool format with CONFIRM guardrail default
-[ ] External tools integrated into agent loop
+[ ] External tools described as ExternalToolEntry (not MutatingAgentTool)
+[ ] External tool descriptions injected into system prompt module index
+[ ] External tools routed through ctx.external() in executor with guardrail enforcement
 [ ] Inngest jobs: daily tool refresh, 6-hourly health check
 [ ] MCP connection CRUD router procedures working
 [ ] All tests pass
