@@ -5,6 +5,8 @@ import { schedulingTools } from "./scheduling.tools"
 import { reviewTools } from "./review.tools"
 import { paymentTools } from "./payment.tools"
 import { analyticsTools } from "./analytics.tools"
+import { workflowTools } from "./workflow.tools"
+import { teamTools } from "./team.tools"
 
 export const allTools: AgentTool[] = [
   ...bookingTools,
@@ -13,6 +15,8 @@ export const allTools: AgentTool[] = [
   ...reviewTools,
   ...paymentTools,
   ...analyticsTools,
+  ...workflowTools,
+  ...teamTools,
 ]
 
 export function getToolsForUser(tools: AgentTool[], userPermissions: string[]): AgentTool[] {
