@@ -84,3 +84,30 @@ export const setVerticalProfileSchema = z.object({
 })
 
 export const listVerticalProfilesSchema = z.object({})
+
+// ---------------------------------------------------------------------------
+// MCP Connection schemas
+// ---------------------------------------------------------------------------
+
+export const createMcpConnectionSchema = z.object({
+  name: z.string().min(1).max(100),
+  description: z.string().max(500).optional(),
+  serverUrl: z.string().url(),
+  authType: z.enum(["bearer", "api_key", "none"]),
+  authCredential: z.string().optional(),
+})
+
+export const updateMcpConnectionSchema = z.object({
+  id: z.string(),
+  name: z.string().min(1).max(100).optional(),
+  description: z.string().max(500).optional(),
+  serverUrl: z.string().url().optional(),
+  authType: z.enum(["bearer", "api_key", "none"]).optional(),
+  authCredential: z.string().optional(),
+  isEnabled: z.boolean().optional(),
+  defaultGuardrailTier: z.enum(["AUTO", "CONFIRM", "RESTRICT"]).optional(),
+})
+
+export const deleteMcpConnectionSchema = z.object({ id: z.string() })
+export const refreshMcpToolsSchema = z.object({ id: z.string() })
+export const listMcpConnectionsSchema = z.object({})

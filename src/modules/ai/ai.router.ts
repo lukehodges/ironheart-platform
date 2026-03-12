@@ -1,6 +1,6 @@
 // src/modules/ai/ai.router.ts
 
-import { router, tenantProcedure, createModuleMiddleware } from "@/shared/trpc"
+import { router, tenantProcedure, permissionProcedure, createModuleMiddleware } from "@/shared/trpc"
 import { getUserPermissions } from "@/modules/auth/rbac"
 import type { UserWithRoles } from "@/modules/auth/rbac"
 import { aiService } from "./ai.service"
@@ -12,6 +12,8 @@ import {
   generateWorkflowSchema, listWorkflowSuggestionsSchema, resolveSuggestionSchema,
   ingestDocumentSchema, deleteDocumentSchema, listKnowledgeSourcesSchema,
   setVerticalProfileSchema, listVerticalProfilesSchema,
+  createMcpConnectionSchema, updateMcpConnectionSchema, deleteMcpConnectionSchema,
+  refreshMcpToolsSchema, listMcpConnectionsSchema,
 } from "./ai.schemas"
 import { resolveApprovalFromUI } from "./ai.approval"
 import { explainAction, undoAction } from "./ai.explainer"
@@ -22,9 +24,12 @@ import { generateWorkflowFromDescription } from "./ai.workflow-generator"
 import { suggestionsRepository } from "./ai.suggestions.repository"
 import { knowledgeRepository } from "./knowledge/repository"
 import { listVerticalProfiles } from "./verticals"
+import { mcpConnectionRepository } from "./mcp/repository"
+import { discoverTools } from "./mcp/client"
 
 const moduleGate = createModuleMiddleware("ai")
 const moduleProcedure = tenantProcedure.use(moduleGate)
+const modulePermission = (perm: string) => permissionProcedure(perm).use(moduleGate)
 
 export const aiRouter = router({
   sendMessage: moduleProcedure
@@ -163,6 +168,50 @@ export const aiRouter = router({
   listVerticalProfiles: moduleProcedure
     .input(listVerticalProfilesSchema)
     .query(() => ({ profiles: listVerticalProfiles() })),
+
+  // ---------------------------------------------------------------------------
+  // MCP Connections
+  // ---------------------------------------------------------------------------
+
+  createMcpConnection: modulePermission("ai:write")
+    .input(createMcpConnectionSchema)
+    .mutation(async ({ ctx, input }) => {
+      const connection = await mcpConnectionRepository.create({ tenantId: ctx.tenantId, ...input })
+      // Auto-discover tools on creation
+      await discoverTools(connection)
+      return connection
+    }),
+
+  updateMcpConnection: modulePermission("ai:write")
+    .input(updateMcpConnectionSchema)
+    .mutation(async ({ ctx, input }) => {
+      const { id, isEnabled, ...data } = input
+      await mcpConnectionRepository.update(id, ctx.tenantId, {
+        ...data,
+        isEnabled: isEnabled !== undefined ? (isEnabled ? 1 : 0) : undefined,
+      })
+      return { success: true }
+    }),
+
+  deleteMcpConnection: modulePermission("ai:write")
+    .input(deleteMcpConnectionSchema)
+    .mutation(async ({ ctx, input }) => {
+      await mcpConnectionRepository.delete(input.id, ctx.tenantId)
+      return { success: true }
+    }),
+
+  listMcpConnections: moduleProcedure
+    .input(listMcpConnectionsSchema)
+    .query(({ ctx }) => mcpConnectionRepository.listByTenant(ctx.tenantId)),
+
+  refreshMcpTools: modulePermission("ai:write")
+    .input(refreshMcpToolsSchema)
+    .mutation(async ({ ctx, input }) => {
+      const connection = await mcpConnectionRepository.getById(ctx.tenantId, input.id)
+      if (!connection) return { tools: [] }
+      const tools = await discoverTools(connection)
+      return { tools }
+    }),
 })
 
 export type AIRouter = typeof aiRouter
