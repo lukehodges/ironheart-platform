@@ -20,7 +20,9 @@ export const allTools: AgentTool[] = [
 ]
 
 export function getToolsForUser(tools: AgentTool[], userPermissions: string[]): AgentTool[] {
+  // OWNER/ADMIN users get "*:*" which grants access to all tools
+  const hasWildcard = userPermissions.includes("*:*")
   return tools.filter(
-    (tool) => tool.permission === null || userPermissions.includes(tool.permission)
+    (tool) => tool.permission === null || hasWildcard || userPermissions.includes(tool.permission)
   )
 }

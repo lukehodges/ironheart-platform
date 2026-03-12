@@ -1,6 +1,8 @@
 // src/modules/ai/ai.router.ts
 
 import { router, tenantProcedure, createModuleMiddleware } from "@/shared/trpc"
+import { getUserPermissions } from "@/modules/auth/rbac"
+import type { UserWithRoles } from "@/modules/auth/rbac"
 import { aiService } from "./ai.service"
 import { aiRepository } from "./ai.repository"
 import { sendMessageSchema, listConversationsSchema, getConversationSchema, archiveConversationSchema } from "./ai.schemas"
@@ -12,10 +14,8 @@ export const aiRouter = router({
   sendMessage: moduleProcedure
     .input(sendMessageSchema)
     .mutation(async ({ ctx, input }) => {
-      // Extract user permissions as "resource:action" strings from the UserWithRoles tree
-      const userPermissions = ctx.user?.roles?.flatMap((r) =>
-        r.role.permissions.map((rp) => `${rp.permission.resource}:${rp.permission.action}`)
-      ) ?? []
+      // Use getUserPermissions which handles OWNER/ADMIN wildcard ("*:*")
+      const userPermissions = getUserPermissions(ctx.user as UserWithRoles)
 
       return aiService.sendMessage(ctx.tenantId, ctx.user!.id, userPermissions, {
         conversationId: input.conversationId,
