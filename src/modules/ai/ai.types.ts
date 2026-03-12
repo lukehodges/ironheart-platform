@@ -28,6 +28,7 @@ export interface AgentTool {
 export interface AgentContext {
   tenantId: string
   userId: string
+  workosUserId: string
   userPermissions: string[]
   pageContext?: PageContext
 }
@@ -172,3 +173,5 @@ export type AgentStreamEvent =
   | { type: "done"; content: string; tokenUsage: TokenUsage; toolCallCount: number; conversationId: string }
   | { type: "approval_required"; actionId: string; toolName: string; description: string; input: unknown }
   | { type: "approval_resolved"; actionId: string; approved: boolean }
+  | { type: "code_executing"; code: string }
+  | { type: "code_result"; result: unknown; durationMs: number; callCount: number; error?: string }
