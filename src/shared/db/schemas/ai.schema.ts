@@ -24,6 +24,8 @@ export const aiConversations = pgTable("ai_conversations", {
   status: text("status").notNull().default("active"), // 'active' | 'archived'
   tokenCount: integer("token_count").notNull().default(0),
   costCents: integer("cost_cents").notNull().default(0),
+  summary: text("summary"),
+  summaryUpdatedAt: timestamp("summary_updated_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
@@ -94,6 +96,8 @@ export const aiTenantConfig = pgTable("ai_tenant_config", {
   guardrailOverrides: jsonb("guardrail_overrides").default("{}"),
   /** Track acceptance rates per tool: { "toolName": { approved: number, rejected: number } } */
   trustMetrics: jsonb("trust_metrics").default("{}"),
+  verticalProfile: text("vertical_profile"),
+  verticalCustomTerms: jsonb("vertical_custom_terms").default("{}"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 })
@@ -117,4 +121,42 @@ export const aiWorkflowSuggestions = pgTable("ai_workflow_suggestions", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
   index("idx_ai_workflow_suggestions_tenant_status").on(t.tenantId, t.status),
+])
+
+// ---------------------------------------------------------------------------
+// AI Corrections — learn from rejection patterns
+// ---------------------------------------------------------------------------
+
+export const aiCorrections = pgTable("ai_corrections", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: uuid("tenant_id").notNull().references(() => tenants.id),
+  toolName: text("tool_name").notNull(),
+  attemptedInput: jsonb("attempted_input").notNull(),
+  rejectionReason: text("rejection_reason"),
+  correctAction: text("correct_action"),
+  contextSummary: text("context_summary"),
+  occurrenceCount: integer("occurrence_count").notNull().default(1),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index("idx_ai_corrections_tenant_tool").on(t.tenantId, t.toolName),
+])
+
+// ---------------------------------------------------------------------------
+// AI Knowledge Chunks — tenant knowledge base for RAG
+// ---------------------------------------------------------------------------
+
+export const aiKnowledgeChunks = pgTable("ai_knowledge_chunks", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  tenantId: uuid("tenant_id").notNull().references(() => tenants.id),
+  sourceId: text("source_id").notNull(),
+  sourceName: text("source_name").notNull(),
+  content: text("content").notNull(),
+  chunkIndex: integer("chunk_index").notNull().default(0),
+  embedding: text("embedding"),
+  metadata: jsonb("metadata").default("{}"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  index("idx_ai_knowledge_chunks_tenant").on(t.tenantId),
+  index("idx_ai_knowledge_chunks_source").on(t.tenantId, t.sourceId),
 ])

@@ -53,6 +53,8 @@ export interface ConversationRecord {
   status: "active" | "archived"
   tokenCount: number
   costCents: number
+  summary: string | null
+  summaryUpdatedAt: Date | null
   createdAt: Date
   updatedAt: Date
 }
@@ -175,3 +177,60 @@ export type AgentStreamEvent =
   | { type: "approval_resolved"; actionId: string; approved: boolean }
   | { type: "code_executing"; code: string }
   | { type: "code_result"; result: unknown; durationMs: number; error?: string }
+
+// ---------------------------------------------------------------------------
+// Memory System
+// ---------------------------------------------------------------------------
+
+export interface ConversationSummary {
+  summary: string
+  messageCount: number
+  lastSummarizedAt: Date
+}
+
+export interface CorrectionRecord {
+  id: string
+  tenantId: string
+  toolName: string
+  attemptedInput: unknown
+  rejectionReason: string | null
+  correctAction: string | null
+  contextSummary: string | null
+  occurrenceCount: number
+  createdAt: Date
+  updatedAt: Date
+}
+
+export interface KnowledgeChunkRecord {
+  id: string
+  tenantId: string
+  sourceId: string
+  sourceName: string
+  content: string
+  chunkIndex: number
+  metadata: Record<string, unknown>
+  createdAt: Date
+}
+
+// ---------------------------------------------------------------------------
+// Vertical Profiles
+// ---------------------------------------------------------------------------
+
+export interface VerticalProfile {
+  slug: string
+  name: string
+  description: string
+  terminology: Record<string, string>
+  systemPromptAddendum: string
+}
+
+// ---------------------------------------------------------------------------
+// RAG Context
+// ---------------------------------------------------------------------------
+
+export interface RAGResult {
+  chunkId: string
+  content: string
+  sourceName: string
+  similarity: number
+}
