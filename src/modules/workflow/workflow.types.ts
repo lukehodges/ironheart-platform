@@ -32,6 +32,9 @@ export type WorkflowNodeType =
   | 'TRANSFORM'
   // Sub-workflow
   | 'EXECUTE_WORKFLOW'
+  // AI nodes (Phase C)
+  | 'AI_DECISION'
+  | 'AI_GENERATE'
 
 /** Subset of node types that correspond to the original 7 action types (linear engine). */
 export type WorkflowActionType =
@@ -188,6 +191,30 @@ export interface ExecuteWorkflowNodeConfig {
 }
 
 // ---------------------------------------------------------------------------
+// AI Node Configs (Phase C)
+// ---------------------------------------------------------------------------
+
+export interface AIDecisionNodeConfig {
+  prompt: string
+  outcomes: Array<{
+    handle: string
+    label: string
+    description: string
+  }>
+  defaultHandle: string
+  model?: string
+  maxTokens?: number
+}
+
+export interface AIGenerateNodeConfig {
+  prompt: string
+  outputField: string
+  outputSchema?: Record<string, unknown>
+  model?: string
+  maxTokens?: number
+}
+
+// ---------------------------------------------------------------------------
 // Action Node Configs (original 7)
 // ---------------------------------------------------------------------------
 
@@ -264,6 +291,8 @@ export type NodeConfig =
   | UpdateBookingStatusActionConfig
   | CreateTaskActionConfig
   | SendNotificationActionConfig
+  | AIDecisionNodeConfig
+  | AIGenerateNodeConfig
   | Record<string, unknown>
 
 // ---------------------------------------------------------------------------
@@ -276,7 +305,7 @@ export interface WorkflowNode {
   label?: string
   position: { x: number; y: number }
   config: NodeConfig
-  errorHandling?: 'stop' | 'continue' | 'branch'
+  errorHandling?: 'stop' | 'continue' | 'branch' | 'ai_recover'
 }
 
 export interface WorkflowEdge {
