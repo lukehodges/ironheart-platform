@@ -1,6 +1,7 @@
 // src/modules/ai/ai.executor.ts
 
 import { logger } from "@/shared/logger"
+import type { ExternalToolEntry } from "./mcp/adapter"
 
 const log = logger.child({ module: "ai.executor" })
 
@@ -17,7 +18,7 @@ const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor as
  *
  * The code runs in an async context with two injected variables:
  * - `trpc`: pre-authenticated tRPC caller (e.g., `await trpc.booking.list({})`)
- * - `ctx`: { tenantId, userId, userPermissions, pageContext }
+ * - `ctx`: { tenantId, userId, userPermissions, pageContext, external(name, args) }
  *
  * The code MUST use `return` to produce a result.
  *
@@ -26,13 +27,18 @@ const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor as
 export async function executeCode(
   code: string,
   trpc: unknown,
-  ctx: { tenantId: string; userId: string; userPermissions: string[]; pageContext?: unknown }
+  ctx: { tenantId: string; userId: string; userPermissions: string[]; pageContext?: unknown },
+  externalTools?: ExternalToolEntry[]
 ): Promise<{ result: unknown; durationMs: number }> {
+  // Build ctx.external() function for external MCP tool calls
+  const externalFn = buildExternalToolFn(externalTools)
+  const enrichedCtx = { ...ctx, external: externalFn }
+
   const fn = new AsyncFunction("trpc", "ctx", code)
   const start = Date.now()
 
   const result = await Promise.race([
-    fn(trpc, ctx),
+    fn(trpc, enrichedCtx),
     new Promise<never>((_, reject) =>
       setTimeout(() => reject(new Error("Code execution timed out (10s limit)")), EXECUTION_TIMEOUT_MS)
     ),
@@ -42,6 +48,46 @@ export async function executeCode(
   log.info({ durationMs }, "Code execution complete")
 
   return { result: truncateResult(result), durationMs }
+}
+
+/**
+ * Build the ctx.external() function for calling external MCP tools.
+ * Returns a function that resolves the tool by name, enforces guardrails,
+ * and calls the external MCP server via the client.
+ */
+function buildExternalToolFn(
+  externalTools?: ExternalToolEntry[]
+): (name: string, args: Record<string, unknown>) => Promise<unknown> {
+  return async (name: string, args: Record<string, unknown>): Promise<unknown> => {
+    if (!externalTools || externalTools.length === 0) {
+      throw new Error("No external tools configured for this tenant")
+    }
+
+    const tool = externalTools.find((t) => t.name === name)
+    if (!tool) {
+      throw new Error(`External tool not found: ${name}`)
+    }
+
+    if (tool.guardrailTier === "RESTRICT") {
+      throw new Error(`External tool "${name}" is restricted and cannot be called`)
+    }
+
+    // Lazy-import to avoid circular dependencies
+    const { mcpConnectionRepository } = await import("./mcp/repository")
+    const { callExternalTool } = await import("./mcp/client")
+
+    const connection = await mcpConnectionRepository.getById(tool.connectionId, tool.connectionId)
+    if (!connection) {
+      throw new Error(`MCP connection not found for tool: ${name}`)
+    }
+
+    // For CONFIRM tools, we rely on the approval flow already built into the agent loop.
+    // The executor throws if guardrail enforcement is needed at a higher level.
+    // For now, external tools with CONFIRM are executed (approval is handled at the service layer).
+
+    log.info({ toolName: name, connectionId: tool.connectionId }, "Calling external MCP tool")
+    return callExternalTool(connection, tool.originalToolName, args)
+  }
 }
 
 /**

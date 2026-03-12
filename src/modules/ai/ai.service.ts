@@ -15,6 +15,8 @@ import { createGuardedCaller, ApprovalRequiredError, RestrictedProcedureError } 
 import { waitForApproval } from "./ai.approval"
 import { maybeSummarize, getEffectiveHistory } from "./memory/summarizer"
 import { hotMemory } from "./memory/hot"
+import { getExternalToolsForTenant } from "./mcp/adapter"
+import type { ExternalToolEntry } from "./mcp/adapter"
 import type {
   AgentContext,
   AgentResponse,
@@ -104,7 +106,8 @@ async function handleToolCall(
   toolName: string,
   toolInput: unknown,
   guardedCaller: unknown,
-  ctx: AgentContext
+  ctx: AgentContext,
+  externalTools?: ExternalToolEntry[]
 ): Promise<ToolCallResult> {
   if (toolName === "describe_module") {
     const input = toolInput as { module: string }
@@ -122,7 +125,8 @@ async function handleToolCall(
           userId: ctx.userId,
           userPermissions: ctx.userPermissions,
           pageContext: ctx.pageContext,
-        }
+        },
+        externalTools
       )
       return { result, durationMs }
     } catch (err) {
@@ -202,7 +206,15 @@ export const aiService = {
       approvedProcedures,
     })
 
-    // 6. Agent loop with streaming
+    // 6. Load external tools for this tenant
+    let externalTools: ExternalToolEntry[] = []
+    try {
+      externalTools = await getExternalToolsForTenant(tenantId)
+    } catch (err) {
+      log.warn({ tenantId, err }, "Failed to load external tools for streaming")
+    }
+
+    // 7. Agent loop with streaming
     const allToolCalls: ToolCallRecord[] = []
     const allToolResults: ToolResultRecord[] = []
     let totalInputTokens = 0
@@ -285,7 +297,8 @@ export const aiService = {
           toolUse.name,
           toolUse.input,
           guardedCaller,
-          ctx
+          ctx,
+          externalTools
         )
 
         // Handle approval flow for CONFIRM mutations
@@ -314,7 +327,7 @@ export const aiService = {
           if (approved) {
             // Re-execute with procedure pre-approved
             approvedProcedures.add(approvalRequired.procedurePath)
-            const retry = await handleToolCall(toolUse.name, toolUse.input, guardedCaller, ctx)
+            const retry = await handleToolCall(toolUse.name, toolUse.input, guardedCaller, ctx, externalTools)
             result = retry.result
             durationMs = retry.durationMs
             error = retry.error
@@ -493,7 +506,15 @@ export const aiService = {
       approvedProcedures,
     })
 
-    // 5. Agent loop
+    // 5. Load external tools for this tenant
+    let externalToolsSync: ExternalToolEntry[] = []
+    try {
+      externalToolsSync = await getExternalToolsForTenant(tenantId)
+    } catch (err) {
+      log.warn({ tenantId, err }, "Failed to load external tools")
+    }
+
+    // 6. Agent loop
     const allToolCalls: ToolCallRecord[] = []
     const allToolResults: ToolResultRecord[] = []
     let totalInputTokens = 0
@@ -535,7 +556,7 @@ export const aiService = {
       for (const toolUse of toolUseBlocks) {
         allToolCalls.push({ id: toolUse.id, name: toolUse.name, input: toolUse.input })
 
-        const { result, error } = await handleToolCall(toolUse.name, toolUse.input, guardedCaller, ctx)
+        const { result, error } = await handleToolCall(toolUse.name, toolUse.input, guardedCaller, ctx, externalToolsSync)
 
         if (error) {
           allToolResults.push({ toolCallId: toolUse.id, output: null, error })
@@ -572,7 +593,7 @@ export const aiService = {
       finalContent = "I wasn't able to fully resolve your question within the tool limit. Here's what I found so far — please try rephrasing or narrowing your question."
     }
 
-    // 6. Save + update
+    // 7. Save + update
     const tokenUsage: TokenUsage = {
       inputTokens: totalInputTokens,
       outputTokens: totalOutputTokens,
