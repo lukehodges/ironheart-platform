@@ -1,0 +1,18 @@
+=== Attempt 1 at 2026-03-12 03:19:58 (exit: 0) ===
+Task 10 complete. Here's what was done:
+
+1. **Enhanced system prompt** (`ai.prompts.ts`) — Added BNG domain context covering sites, deals, compliance, catchments, assessments, habitat units, contacts, and brokers. Added terminology mapping (bookings → site assessments, customers → landowners/developers, staff → ecologists/brokers, workflows → deal processes).
+
+2. **Created `workflow.tools.ts`** — 3 tools:
+   - `workflow.list` — list workflows with trigger/active filters
+   - `workflow.getById` — get workflow details by ID
+   - `workflow.listExecutions` — list recent workflow executions (the 5th tool, useful for checking deal process status)
+
+3. **Created `team.tools.ts`** — 2 tools:
+   - `team.list` — list team members with search/status/department filters
+   - `team.getById` — get team member details by user ID
+
+4. **Updated `tools/index.ts`** — Added workflow and team tool imports to the barrel file.
+
+Total: 5 new tools (15 total), no new tsc errors in our files.
+

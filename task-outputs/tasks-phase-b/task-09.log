@@ -1,0 +1,9 @@
+=== Attempt 1 at 2026-03-12 17:27:24 (exit: 0) ===
+Done. Created `src/modules/ai/ai.trust.ts` with `analyzeTrustMetrics` that:
+
+- **Promotes** CONFIRM → AUTO when approval rate ≥ 95% over 50+ decisions
+- **Demotes** AUTO → CONFIRM when rejection rate ≥ 20% over 20+ decisions
+- Returns `TrustSuggestion[]` (suggestions only, no auto-apply in Phase B)
+
+Committed as `fc580e9`.
+

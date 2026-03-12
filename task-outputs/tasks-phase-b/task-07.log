@@ -1,0 +1,9 @@
+=== Attempt 1 at 2026-03-12 17:15:16 (exit: 0) ===
+Done. The agent loop in both `sendMessageStreaming` and `sendMessage` now handles mutation tools:
+
+- **`isMutatingTool()`** check distinguishes read-only from mutating tools
+- **RESTRICT** — returns an error to Claude saying the tool is blocked by guardrail policy
+- **AUTO** — executes immediately via `executeAutoAction()` (records audit trail, no approval needed)
+- **CONFIRM** — calls `requestApproval()` which polls Redis for user decision (5-min timeout); yields `approval_required`/`approval_resolved` stream events; executes on approval, returns rejection message on deny
+- **Read-only tools** — unchanged, execute directly as before
+

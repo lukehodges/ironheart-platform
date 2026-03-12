@@ -1,0 +1,28 @@
+# AI Agent Phase D — Sequential Tasks
+# Memory, Knowledge & Vertical Intelligence
+
+Read the implementation plan at docs/plans/2026-03-12-ai-agent-phase-d-implementation.md. Execute ONLY Task 1 (Database Schema). Add ai_corrections and ai_knowledge_chunks tables to src/shared/db/schemas/ai.schema.ts. Add verticalProfile and verticalCustomTerms to aiTenantConfig. Add summary and summaryUpdatedAt to aiConversations. Follow the plan exactly. Then commit with message: feat(ai): add ai_corrections, ai_knowledge_chunks tables and vertical profile fields
+
+Read the implementation plan at docs/plans/2026-03-12-ai-agent-phase-d-implementation.md. Execute ONLY Task 2 (Memory Types). Add ConversationSummary, CorrectionRecord, KnowledgeChunkRecord, VerticalProfile, RAGResult, AssembledContext interfaces to src/modules/ai/ai.types.ts. Then commit with message: feat(ai): add memory system, vertical profile, and RAG type definitions
+
+Read the implementation plan at docs/plans/2026-03-12-ai-agent-phase-d-implementation.md. Execute ONLY Task 3 (Redis Hot Memory). Create src/modules/ai/memory/hot.ts following the plan — setSessionContext, getSessionContext, clearSession, trackPageVisit. Read src/shared/redis.ts first. Then commit with message: feat(ai): add Redis hot memory layer for active session context
+
+Read the implementation plan at docs/plans/2026-03-12-ai-agent-phase-d-implementation.md. Execute ONLY Task 4 (Summarizer). Create src/modules/ai/memory/summarizer.ts following the plan — maybeSummarize (threshold 10 messages), getEffectiveHistory. Read current ai.repository.ts first to understand available methods. Then commit with message: feat(ai): add conversation summarizer with rolling summary generation
+
+Read the implementation plan at docs/plans/2026-03-12-ai-agent-phase-d-implementation.md. Execute ONLY Task 5 (Corrections). Create src/modules/ai/memory/corrections.ts following the plan. Wire auto-capture into the Phase B approval rejection flow in ai.approval.ts (when action is rejected, call correctionsRepository.recordRejection). Then commit with message: feat(ai): add correction memory repository with auto-capture on rejection
+
+Read the implementation plan at docs/plans/2026-03-12-ai-agent-phase-d-implementation.md. Execute ONLY Task 6 (Knowledge Base). Create src/modules/ai/knowledge/chunker.ts, src/modules/ai/knowledge/embedder.ts, src/modules/ai/knowledge/repository.ts following the plan. The embedder is a placeholder (returns null) until an embedding provider is configured. Then commit with message: feat(ai): add knowledge base with document chunking, embedding pipeline, and repository
+
+Read the implementation plan at docs/plans/2026-03-12-ai-agent-phase-d-implementation.md. Execute ONLY Task 7 (RAG). Create src/modules/ai/knowledge/rag.ts following the plan — retrieveContext (keyword fallback), formatRAGContext. Then commit with message: feat(ai): add RAG retrieval service with keyword search fallback
+
+Read the implementation plan at docs/plans/2026-03-12-ai-agent-phase-d-implementation.md. Execute ONLY Task 8 (Vertical Profiles). Create src/modules/ai/verticals/profiles.ts and src/modules/ai/verticals/index.ts following the plan — 6 profiles (bng_brokerage, dental_practice, fitness_studio, consulting_firm, beauty_salon, generic). Then commit with message: feat(ai): add 6 vertical industry profiles with terminology mapping
+
+Read the implementation plan at docs/plans/2026-03-12-ai-agent-phase-d-implementation.md. Execute ONLY Task 9 (Dynamic Prompt). Read current src/modules/ai/ai.prompts.ts first. Replace the static system prompt with assembleSystemPrompt() that combines: base prompt, vertical context, page context, conversation summary, corrections, RAG context. Then commit with message: feat(ai): add dynamic system prompt assembly with memory, RAG, and vertical context
+
+Read the implementation plan at docs/plans/2026-03-12-ai-agent-phase-d-implementation.md. Execute ONLY Task 10 (Update Service). Read current src/modules/ai/ai.service.ts first. Update sendMessage to: use assembleSystemPrompt(), use getEffectiveHistory(), call maybeSummarize() after response, update hot memory. Then commit with message: feat(ai): integrate memory layers, RAG, and summarization into agent service
+
+Read the implementation plan at docs/plans/2026-03-12-ai-agent-phase-d-implementation.md. Execute ONLY Task 11 (Router + Schemas). Read current ai.router.ts and ai.schemas.ts first. Add schemas and procedures for: ingestDocument, deleteDocument, listKnowledgeSources, setVerticalProfile, listVerticalProfiles. Update index.ts barrel exports. Then commit with message: feat(ai): add knowledge base and vertical profile management router procedures
+
+Read the implementation plan at docs/plans/2026-03-12-ai-agent-phase-d-implementation.md. Execute ONLY Task 12 (Tests). Create src/modules/ai/__tests__/ai-phase-d.test.ts. Test document chunking, knowledge repository, corrections repository, hot memory, summarizer (mock Anthropic), vertical profiles, system prompt assembly, RAG retrieval. Then commit with message: test(ai): add Phase D tests for memory, knowledge base, RAG, and vertical profiles
+
+Read the implementation plan at docs/plans/2026-03-12-ai-agent-phase-d-implementation.md. Execute Task 13 (Verification). Run npx tsc --noEmit, npm run build, and npm run test. Fix any issues found. If fixes are needed, commit with message: fix(ai): resolve Phase D verification issues

@@ -1,0 +1,28 @@
+# AI Agent Phase F — Sequential Tasks
+# Killer Features (Morning Briefing, Ghost Operator, Paste-to-Pipeline)
+
+Read the implementation plan at docs/plans/2026-03-12-ai-agent-phase-f-implementation.md. Execute ONLY Task 1 (Extend Config). Read current src/shared/db/schemas/ai.schema.ts first. Add morning briefing, ghost operator, and paste-to-pipeline columns to aiTenantConfig. Update TenantAIConfig type in ai.types.ts. Then commit with message: feat(ai): extend tenant config with morning briefing, ghost operator, and paste-to-pipeline settings
+
+Read the implementation plan at docs/plans/2026-03-12-ai-agent-phase-f-implementation.md. Execute ONLY Task 2 (Types). Add MorningBriefing, BriefingSection, BriefingMetrics, GhostOperatorRule, GhostOperatorResult, ExtractedEntities interfaces to src/modules/ai/ai.types.ts. Then commit with message: feat(ai): add morning briefing, ghost operator, and paste-to-pipeline types
+
+Read the implementation plan at docs/plans/2026-03-12-ai-agent-phase-f-implementation.md. Execute ONLY Task 3 (Briefing Data). Create src/modules/ai/features/morning-briefing.data.ts following the plan — gatherBriefingData uses existing read-only tools with a system context. Then commit with message: feat(ai): add morning briefing data gathering service
+
+Read the implementation plan at docs/plans/2026-03-12-ai-agent-phase-f-implementation.md. Execute ONLY Task 4 (Briefing Generator). Create src/modules/ai/features/morning-briefing.generator.ts following the plan — generateBriefing uses Sonnet with vertical profile context. Then commit with message: feat(ai): add morning briefing narrative generator
+
+Read the implementation plan at docs/plans/2026-03-12-ai-agent-phase-f-implementation.md. Execute ONLY Task 5 (Briefing Inngest). Read current ai.events.ts and src/shared/inngest.ts first. Add ai/briefing.generated event. Add morningBriefingJob that runs hourly and filters by tenant configured time. Update aiFunctions array. Then commit with message: feat(ai): add morning briefing Inngest scheduled job
+
+Read the implementation plan at docs/plans/2026-03-12-ai-agent-phase-f-implementation.md. Execute ONLY Task 6 (Ghost Rules). Create src/modules/ai/features/ghost-operator.rules.ts following the plan — DEFAULT_GHOST_RULES, resolveGhostRules merges defaults with tenant overrides. Then commit with message: feat(ai): add ghost operator rule engine with default rules
+
+Read the implementation plan at docs/plans/2026-03-12-ai-agent-phase-f-implementation.md. Execute ONLY Task 7 (Ghost Processor). Create src/modules/ai/features/ghost-operator.processor.ts following the plan — processGhostOperator, processRule respects guardrail tiers. Read existing tools and repositories to wire entity queries. Then commit with message: feat(ai): add ghost operator action processor
+
+Read the implementation plan at docs/plans/2026-03-12-ai-agent-phase-f-implementation.md. Execute ONLY Task 8 (Ghost Inngest). Read current ai.events.ts first. Add ai/ghost-operator.completed event. Add ghostOperatorJob that runs hourly within tenant's after-hours window. Update aiFunctions array. Then commit with message: feat(ai): add ghost operator Inngest scheduled job
+
+Read the implementation plan at docs/plans/2026-03-12-ai-agent-phase-f-implementation.md. Execute ONLY Task 9 (Paste Extractor). Create src/modules/ai/features/paste-to-pipeline.ts following the plan — extractEntities uses Sonnet with vertical profile context. Then commit with message: feat(ai): add paste-to-pipeline entity extractor
+
+Read the implementation plan at docs/plans/2026-03-12-ai-agent-phase-f-implementation.md. Execute ONLY Task 10 (Paste Commit). Create src/modules/ai/features/paste-to-pipeline.commit.ts following the plan — commitEntities creates records via module repositories after user review. Then commit with message: feat(ai): add paste-to-pipeline entity commit flow
+
+Read the implementation plan at docs/plans/2026-03-12-ai-agent-phase-f-implementation.md. Execute ONLY Task 11 (Router + Schemas). Read current ai.router.ts and ai.schemas.ts first. Add schemas and procedures for: updateKillerFeaturesConfig, pasteToPipelineExtract, pasteToPipelineCommit, generateBriefingNow. Update index.ts barrel exports. Then commit with message: feat(ai): add killer features router procedures and schemas
+
+Read the implementation plan at docs/plans/2026-03-12-ai-agent-phase-f-implementation.md. Execute ONLY Task 12 (Tests). Create src/modules/ai/__tests__/ai-phase-f.test.ts. Test morning briefing data gathering and narrative generation, ghost operator rules and processor, paste-to-pipeline extraction and commit, tenant config toggles, Inngest job window filtering. Then commit with message: test(ai): add Phase F tests for morning briefing, ghost operator, and paste-to-pipeline
+
+Read the implementation plan at docs/plans/2026-03-12-ai-agent-phase-f-implementation.md. Execute Task 13 (Verification). Run npx tsc --noEmit, npm run build, and npm run test. Fix any issues found. If fixes are needed, commit with message: fix(ai): resolve Phase F verification issues

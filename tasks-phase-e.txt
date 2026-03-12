@@ -1,0 +1,28 @@
+# AI Agent Phase E — Sequential Tasks
+# Integrations (MCP Server + Client)
+
+Read the implementation plan at docs/plans/2026-03-12-ai-agent-phase-e-implementation.md. Execute ONLY Task 1 (Database Schema). Add ai_mcp_connections table to src/shared/db/schemas/ai.schema.ts following the exact code from the plan. Then commit with message: feat(ai): add ai_mcp_connections database table
+
+Read the implementation plan at docs/plans/2026-03-12-ai-agent-phase-e-implementation.md. Execute ONLY Task 2 (MCP Types). Create src/modules/ai/mcp/types.ts following the plan — JSON-RPC types, MCPToolDefinition, MCPToolCallResult, MCPServerInfo, MCPConnectionRecord, MCPApiKeyScope. Then commit with message: feat(ai): add MCP protocol type definitions
+
+Read the implementation plan at docs/plans/2026-03-12-ai-agent-phase-e-implementation.md. Execute ONLY Task 3 (MCP Repository). Create src/modules/ai/mcp/repository.ts following the plan — CRUD for MCP connections, updateCachedTools, updateHealth. Read the schema first to verify column names. Then commit with message: feat(ai): add MCP connection repository
+
+Read the implementation plan at docs/plans/2026-03-12-ai-agent-phase-e-implementation.md. Execute ONLY Task 4 (MCP Server Route). Create src/app/api/mcp/route.ts as Next.js POST handler. Parse JSON-RPC, extract Bearer token, call mcpServerHandler. Then commit with message: feat(ai): add MCP server API route handler
+
+Read the implementation plan at docs/plans/2026-03-12-ai-agent-phase-e-implementation.md. Execute ONLY Task 5 (MCP Server Logic). Create src/modules/ai/mcp/server.ts following the plan — handle initialize, tools/list, tools/call. Use existing allTools + getToolsForUser for tool listing. Include resolveApiKey stub. Then commit with message: feat(ai): add MCP server with tool listing and execution
+
+Read the implementation plan at docs/plans/2026-03-12-ai-agent-phase-e-implementation.md. Execute ONLY Task 6 (MCP Rate Limiting). Read src/shared/redis.ts first. Add Redis rate limiting to the MCP server handler in src/modules/ai/mcp/server.ts. Then commit with message: feat(ai): add rate limiting to MCP server
+
+Read the implementation plan at docs/plans/2026-03-12-ai-agent-phase-e-implementation.md. Execute ONLY Task 7 (MCP Client). Create src/modules/ai/mcp/client.ts following the plan — sendMcpRequest with fetch, discoverTools, callExternalTool, checkConnectionHealth. 10s timeout. Then commit with message: feat(ai): add MCP client for external tool discovery and execution
+
+Read the implementation plan at docs/plans/2026-03-12-ai-agent-phase-e-implementation.md. Execute ONLY Task 8 (External Tool Adapter). Create src/modules/ai/mcp/adapter.ts following the plan — adaptExternalTools converts MCP tools to MutatingAgentTool format, getExternalToolsForTenant loads all external tools. Then commit with message: feat(ai): add external tool adapter converting MCP tools to agent tools
+
+Read the implementation plan at docs/plans/2026-03-12-ai-agent-phase-e-implementation.md. Execute ONLY Task 9 (Integrate Into Agent). Read current src/modules/ai/ai.service.ts first. After loading internal tools, call getExternalToolsForTenant() and merge both tool sets. External tools go through Phase B approval flow. Then commit with message: feat(ai): integrate external MCP tools into agent tool set
+
+Read the implementation plan at docs/plans/2026-03-12-ai-agent-phase-e-implementation.md. Execute ONLY Task 10 (Inngest Jobs). Read current ai.events.ts and src/shared/inngest.ts first. Add MCP events, daily tool refresh job, 6-hourly health check job. Update aiFunctions array. Then commit with message: feat(ai): add Inngest jobs for MCP tool refresh and connection health checks
+
+Read the implementation plan at docs/plans/2026-03-12-ai-agent-phase-e-implementation.md. Execute ONLY Task 11 (Router + Schemas). Read current ai.router.ts and ai.schemas.ts first. Add schemas and procedures for: createMcpConnection, updateMcpConnection, deleteMcpConnection, listMcpConnections, refreshMcpTools. Update index.ts barrel exports. Then commit with message: feat(ai): add MCP connection management router procedures
+
+Read the implementation plan at docs/plans/2026-03-12-ai-agent-phase-e-implementation.md. Execute ONLY Task 12 (Tests). Create src/modules/ai/__tests__/ai-phase-e.test.ts. Test MCP connection repository CRUD, MCP server handler, MCP client (mock fetch), external tool adapter, rate limiting, tool integration. Then commit with message: test(ai): add Phase E tests for MCP server, client, and external tool integration
+
+Read the implementation plan at docs/plans/2026-03-12-ai-agent-phase-e-implementation.md. Execute Task 13 (Verification). Run npx tsc --noEmit, npm run build, and npm run test. Fix any issues found. If fixes are needed, commit with message: fix(ai): resolve Phase E verification issues

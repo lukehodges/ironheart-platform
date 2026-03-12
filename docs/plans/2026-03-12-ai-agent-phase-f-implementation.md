@@ -8,6 +8,7 @@
 
 **Design Doc:** `docs/plans/2026-03-08-ai-native-agentic-platform-design.md` (Section 8: Killer Features, Section 10: Phase F)
 **Phase E Plan (prerequisite — must be complete):** `docs/plans/2026-03-12-ai-agent-phase-e-implementation.md`
+**Code Execution Engine Design:** `docs/plans/2026-03-12-ai-code-execution-engine-design.md` — The agent uses 2 tools (`execute_code` + `describe_module`) with a tRPC caller. Features that need to call platform procedures should build a tRPC caller directly, not use individual tool objects.
 
 ---
 
@@ -17,8 +18,8 @@
 2. **Ghost Operator is an Inngest scheduled task.** Runs during tenant-configured "after hours" window. Processes a queue of pre-approved action patterns: auto-confirm bookings matching rules, send follow-up emails, process overdue invoices. Every action is logged to `agent_actions` with source "ghost_operator".
 3. **Paste-to-Pipeline uses Claude for entity extraction.** User pastes unstructured text (email, phone transcript, scribbled notes). Claude parses it into structured entities (customer, booking, notes, tasks). User reviews extracted entities before committing.
 4. **All features gate behind tenant config.** Each killer feature has an enable/disable toggle in `ai_tenant_config`. Default: disabled. Tenants opt in.
-5. **Morning Briefing uses existing read tools.** The briefing agent runs the same read-only tools from Phase A+ to gather data. No new data sources needed.
-6. **Ghost Operator respects Phase B guardrails.** Actions taken by Ghost Operator go through the same guardrail system. Only AUTO-tier actions execute unattended. CONFIRM actions are queued for morning review.
+5. **Morning Briefing uses a tRPC caller to gather data.** The briefing service builds a tRPC caller with system-level context and calls query procedures directly (e.g., `trpc.booking.list(...)`, `trpc.analytics.getSummary(...)`). No individual tool objects needed.
+6. **Ghost Operator respects Phase B guardrails.** Actions taken by Ghost Operator use `resolveGuardrailTier()` from `ai.guardrails.ts` to check procedure classifications. Only AUTO-tier procedures execute unattended. CONFIRM procedures are queued for morning review. The ghost operator builds a tRPC caller to execute procedures directly.
 
 ---
 
@@ -151,9 +152,9 @@ export interface GhostOperatorRule {
   trigger: "pending_booking" | "overdue_invoice" | "review_followup" | "workflow_retry"
   /** Conditions that must be met */
   conditions: Record<string, unknown>
-  /** Action to take */
+  /** Action to take — toolName is a tRPC procedure path (e.g., "booking.updateStatus") */
   action: {
-    toolName: string
+    toolName: string // tRPC procedure path, e.g., "booking.updateStatus"
     inputTemplate: Record<string, unknown>
   }
   /** Only execute if the tool's guardrail tier is AUTO */
@@ -219,14 +220,18 @@ export interface ExtractedEntities {
 // src/modules/ai/features/morning-briefing.data.ts
 
 import { logger } from "@/shared/logger"
-import { allTools, getToolsForUser } from "../tools"
-import type { AgentContext, BriefingMetrics } from "../ai.types"
+import { createCallerFactory } from "@/shared/trpc"
+import { appRouter } from "@/server/root"
+import { db } from "@/shared/db"
+import type { BriefingMetrics } from "../ai.types"
 
 const log = logger.child({ module: "ai.morning-briefing.data" })
 
+const createCaller = createCallerFactory(appRouter)
+
 /**
- * Gather data for the morning briefing using existing read-only tools.
- * This runs as the agent — same tools, same permissions.
+ * Gather data for the morning briefing using a tRPC caller.
+ * Builds a system-level caller that calls query procedures directly.
  */
 export async function gatherBriefingData(tenantId: string): Promise<{
   metrics: BriefingMetrics
@@ -235,25 +240,25 @@ export async function gatherBriefingData(tenantId: string): Promise<{
   failedWorkflows: unknown[]
   pendingActions: unknown[]
 }> {
-  // Create a superuser context for the briefing agent (internal service)
-  const ctx: AgentContext = {
+  // Build a tRPC caller with system-level context for the briefing service
+  const trpc = createCaller({
+    db,
+    session: { user: { id: "system" } } as any,
     tenantId,
-    userId: "system", // Internal system user
-    userPermissions: ["bookings:read", "customers:read", "reviews:read", "payments:read", "analytics:read", "workflows:read"],
-  }
+    tenantSlug: "", // Briefing runs internally — slug not needed
+    user: { id: "system", roles: [{ permissions: ["bookings:read", "customers:read", "reviews:read", "payments:read", "analytics:read", "workflows:read"] }] } as any,
+    requestId: crypto.randomUUID(),
+  })
 
-  const tools = getToolsForUser(allTools, ctx.userPermissions)
-  const findTool = (name: string) => tools.find((t) => t.name === name)
-
-  // Gather data in parallel where possible
+  // Gather data in parallel using tRPC procedure calls
   const [bookingsResult, reviewsResult, analyticsResult] = await Promise.allSettled([
-    findTool("booking.list")?.execute({ limit: 50, status: "PENDING" }, ctx),
-    findTool("review.list")?.execute({ limit: 20 }, ctx),
-    findTool("analytics.getDashboardSummary")?.execute({}, ctx),
+    trpc.booking.list({ limit: 50, status: "PENDING" }),
+    trpc.review.list({ limit: 20 }),
+    trpc.analytics.getSummary({}),
   ])
 
-  const recentBookings = bookingsResult.status === "fulfilled" ? (bookingsResult.value as unknown[]) : []
-  const recentReviews = reviewsResult.status === "fulfilled" ? (reviewsResult.value as unknown[]) : []
+  const recentBookings = bookingsResult.status === "fulfilled" ? (bookingsResult.value as any)?.rows ?? [] : []
+  const recentReviews = reviewsResult.status === "fulfilled" ? (reviewsResult.value as any)?.rows ?? [] : []
   const analytics = analyticsResult.status === "fulfilled" ? (analyticsResult.value as Record<string, unknown>) : {}
 
   const metrics: BriefingMetrics = {
@@ -578,18 +583,23 @@ export function resolveGhostRules(tenantRules: GhostOperatorRule[]): GhostOperat
 // src/modules/ai/features/ghost-operator.processor.ts
 
 import { logger } from "@/shared/logger"
-import { allTools } from "../tools"
-import { allMutationTools, isMutatingTool } from "../tools"
+import { createCallerFactory } from "@/shared/trpc"
+import { appRouter } from "@/server/root"
+import { db } from "@/shared/db"
+import { resolveGuardrailTier } from "../ai.guardrails"
 import { agentActionsRepository } from "../ai.actions.repository"
 import { aiConfigRepository } from "../ai.config.repository"
 import { resolveGhostRules } from "./ghost-operator.rules"
-import type { AgentContext, GhostOperatorResult, GhostOperatorRule } from "../ai.types"
+import type { GhostOperatorResult, GhostOperatorRule } from "../ai.types"
 
 const log = logger.child({ module: "ai.ghost-operator.processor" })
 
+const createCaller = createCallerFactory(appRouter)
+
 /**
  * Process ghost operator rules for a tenant.
- * Only executes AUTO-tier actions. CONFIRM-tier actions are queued for review.
+ * Only executes AUTO-tier procedures. CONFIRM-tier procedures are queued for review.
+ * Uses a tRPC caller to execute procedures directly (not individual tool objects).
  */
 export async function processGhostOperator(tenantId: string): Promise<GhostOperatorResult[]> {
   const config = await aiConfigRepository.getOrCreate(tenantId)
@@ -598,8 +608,18 @@ export async function processGhostOperator(tenantId: string): Promise<GhostOpera
 
   const results: GhostOperatorResult[] = []
 
+  // Build a tRPC caller with ghost-operator context
+  const trpc = createCaller({
+    db,
+    session: { user: { id: "ghost-operator" } } as any,
+    tenantId,
+    tenantSlug: "",
+    user: { id: "ghost-operator", roles: [{ permissions: ["bookings:read", "bookings:write", "customers:read", "customers:write", "notifications:write"] }] } as any,
+    requestId: crypto.randomUUID(),
+  })
+
   for (const rule of activeRules) {
-    const result = await processRule(tenantId, rule, config)
+    const result = await processRule(tenantId, rule, trpc)
     results.push(result)
   }
 
@@ -614,7 +634,7 @@ export async function processGhostOperator(tenantId: string): Promise<GhostOpera
 async function processRule(
   tenantId: string,
   rule: GhostOperatorRule,
-  config: Awaited<ReturnType<typeof aiConfigRepository.getOrCreate>>
+  trpc: ReturnType<ReturnType<typeof createCallerFactory>>
 ): Promise<GhostOperatorResult> {
   const result: GhostOperatorResult = {
     ruleId: rule.id,
@@ -625,47 +645,52 @@ async function processRule(
     errors: [],
   }
 
-  // Find the tool
-  const allAvailableTools = [...allTools, ...allMutationTools]
-  const tool = allAvailableTools.find((t) => t.name === rule.action.toolName)
-  if (!tool) {
-    result.errors.push(`Tool not found: ${rule.action.toolName}`)
-    return result
-  }
+  // rule.action.toolName is a tRPC procedure path, e.g., "booking.updateStatus"
+  const procedurePath = rule.action.toolName
 
-  // Check guardrail tier
-  if (rule.requireAutoTier && isMutatingTool(tool)) {
-    const effectiveTier = config.guardrailOverrides[tool.name] ?? tool.guardrailTier
-    if (effectiveTier !== "AUTO") {
-      log.info({ tenantId, rule: rule.id, tier: effectiveTier }, "Ghost operator rule skipped — tool requires approval")
+  // Check guardrail tier using resolveGuardrailTier from ai.guardrails.ts
+  if (rule.requireAutoTier) {
+    const tier = await resolveGuardrailTier(tenantId, procedurePath)
+    if (tier !== "AUTO") {
+      log.info({ tenantId, rule: rule.id, tier, procedurePath }, "Ghost operator rule skipped — procedure requires approval")
       return result
     }
+  }
+
+  // Parse procedure path to module + procedure name
+  const dotIndex = procedurePath.indexOf(".")
+  if (dotIndex === -1) {
+    result.errors.push(`Invalid procedure path: ${procedurePath}`)
+    return result
+  }
+  const moduleName = procedurePath.slice(0, dotIndex)
+  const procedureName = procedurePath.slice(dotIndex + 1)
+
+  // Verify the procedure exists on the tRPC caller
+  const moduleObj = (trpc as any)[moduleName]
+  if (!moduleObj || typeof moduleObj[procedureName] !== "function") {
+    result.errors.push(`Procedure not found: ${procedurePath}`)
+    return result
   }
 
   // Get entities matching the rule trigger
   const entities = await getMatchingEntities(tenantId, rule)
   result.actionsAttempted = entities.length
 
-  const ctx: AgentContext = {
-    tenantId,
-    userId: "ghost-operator",
-    userPermissions: ["bookings:read", "bookings:write", "customers:read", "customers:write", "notifications:write"],
-  }
-
   for (const entity of entities) {
     try {
-      // Build tool input from template + entity
+      // Build procedure input from template + entity
       const input = { ...rule.action.inputTemplate, ...entity }
 
-      // Execute the tool
-      const toolResult = await tool.execute(input, ctx)
+      // Execute via tRPC caller
+      await moduleObj[procedureName](input)
 
       // Log the action
       await agentActionsRepository.create({
         conversationId: "ghost-operator", // Special conversation ID
         tenantId,
         userId: "ghost-operator",
-        toolName: rule.action.toolName,
+        toolName: procedurePath,
         toolInput: input,
         guardrailTier: "AUTO",
         isReversible: false,
@@ -674,7 +699,7 @@ async function processRule(
       result.actionsExecuted++
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Unknown error"
-      result.errors.push(`${rule.action.toolName}: ${msg}`)
+      result.errors.push(`${procedurePath}: ${msg}`)
     }
   }
 
@@ -1110,9 +1135,9 @@ export { processGhostOperator } from "./features/ghost-operator.processor"
 - Create: `src/modules/ai/__tests__/ai-phase-f.test.ts`
 
 Test:
-1. **Morning Briefing**: Mock tools, verify data gathering. Mock Anthropic, verify narrative generation.
+1. **Morning Briefing**: Mock tRPC caller, verify data gathering via procedure calls. Mock Anthropic, verify narrative generation.
 2. **Ghost Operator rules**: Default rules, tenant overrides, rule merging, window calculation
-3. **Ghost Operator processor**: Mock repositories and tools, verify only AUTO-tier executes
+3. **Ghost Operator processor**: Mock tRPC caller and resolveGuardrailTier, verify only AUTO-tier procedures execute
 4. **Paste-to-Pipeline extraction**: Mock Anthropic, verify entity extraction from sample texts
 5. **Paste-to-Pipeline commit**: Mock repositories, verify customer/task creation
 6. **Tenant config**: Verify killer feature toggles save/load correctly
@@ -1137,11 +1162,11 @@ Fix any issues. Commit with: `fix(ai): resolve Phase F verification issues`
 
 ```
 [ ] ai_tenant_config extended with morning briefing, ghost operator, paste-to-pipeline fields
-[ ] Morning briefing gathers data from existing read tools
+[ ] Morning briefing gathers data via tRPC caller (not individual tool objects)
 [ ] Morning briefing generates narrative with vertical-specific terminology
 [ ] Morning briefing Inngest job runs at tenant-configured time
 [ ] Ghost operator rule engine with default rules + tenant customization
-[ ] Ghost operator respects guardrail tiers (only AUTO executes unattended)
+[ ] Ghost operator uses resolveGuardrailTier() and tRPC caller (only AUTO executes unattended)
 [ ] Ghost operator runs within tenant-configured after-hours window
 [ ] Paste-to-pipeline extracts entities from unstructured text
 [ ] Paste-to-pipeline commit flow creates records after user review

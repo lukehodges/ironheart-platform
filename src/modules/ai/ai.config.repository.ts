@@ -4,7 +4,7 @@ import { db } from "@/shared/db"
 import { aiTenantConfig } from "@/shared/db/schema"
 import { eq } from "drizzle-orm"
 import { logger } from "@/shared/logger"
-import type { TenantAIConfig, GuardrailTier } from "./ai.types"
+import type { TenantAIConfig, GuardrailTier, GhostOperatorRule } from "./ai.types"
 
 const log = logger.child({ module: "ai.config.repository" })
 
@@ -18,6 +18,17 @@ function mapConfig(row: typeof aiTenantConfig.$inferSelect): TenantAIConfig {
     defaultModel: row.defaultModel,
     guardrailOverrides: (row.guardrailOverrides as Record<string, GuardrailTier>) ?? {},
     trustMetrics: (row.trustMetrics as Record<string, { approved: number; rejected: number }>) ?? {},
+    morningBriefingEnabled: row.morningBriefingEnabled === 1,
+    morningBriefingTime: (row.morningBriefingTime as string) ?? "08:00",
+    morningBriefingTimezone: (row.morningBriefingTimezone as string) ?? "Europe/London",
+    morningBriefingDelivery: (row.morningBriefingDelivery as "in_app" | "email" | "both") ?? "in_app",
+    morningBriefingRecipientIds: (row.morningBriefingRecipientIds as string[]) ?? [],
+    ghostOperatorEnabled: row.ghostOperatorEnabled === 1,
+    ghostOperatorStartHour: row.ghostOperatorStartHour ?? 18,
+    ghostOperatorEndHour: row.ghostOperatorEndHour ?? 8,
+    ghostOperatorTimezone: (row.ghostOperatorTimezone as string) ?? "Europe/London",
+    ghostOperatorRules: (row.ghostOperatorRules as GhostOperatorRule[]) ?? [],
+    pasteToPipelineEnabled: row.pasteToPipelineEnabled === 1,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   }
@@ -49,6 +60,17 @@ export const aiConfigRepository = {
     guardrailOverrides?: Record<string, GuardrailTier>
     trustMetrics?: Record<string, { approved: number; rejected: number }>
     verticalProfile?: string
+    morningBriefingEnabled?: number
+    morningBriefingTime?: string
+    morningBriefingTimezone?: string
+    morningBriefingDelivery?: string
+    morningBriefingRecipientIds?: string[]
+    ghostOperatorEnabled?: number
+    ghostOperatorStartHour?: number
+    ghostOperatorEndHour?: number
+    ghostOperatorTimezone?: string
+    ghostOperatorRules?: GhostOperatorRule[]
+    pasteToPipelineEnabled?: number
   }): Promise<void> {
     await db
       .update(aiTenantConfig)

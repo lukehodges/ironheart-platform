@@ -1,0 +1,8 @@
+=== Attempt 1 at 2026-03-12 17:08:34 (exit: 0) ===
+Done. Created `src/modules/ai/ai.approval.ts` with:
+
+- **`resolveGuardrailTier`** — resolves effective tier via tenant overrides → tool default
+- **`requestApproval`** — creates pending action record, polls Redis `ai:approval:{actionId}` every 1s with 5-min timeout
+- **`executeAutoAction`** — creates action record, executes immediately, captures compensation data
+- **`resolveApprovalFromUI`** — sets Redis key from chat UI (approve/reject with 60s TTL)
+

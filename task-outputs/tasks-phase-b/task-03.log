@@ -1,0 +1,12 @@
+=== Attempt 1 at 2026-03-12 16:38:52 (exit: 0) ===
+Done. Created `src/modules/ai/ai.actions.repository.ts` with CRUD operations for the `agent_actions` audit trail table:
+
+- **`create`** — inserts a new action record with guardrail tier and reversibility flag
+- **`updateStatus`** — updates status, output, approval metadata, execution timestamp, errors, and compensation data
+- **`getById`** — single action lookup
+- **`listByConversation`** — all actions for a conversation, newest first
+- **`listByTenant`** — paginated tenant-wide list with optional status filter (uses `limit + 1` pattern)
+- **`getPendingByConversation`** — pending approvals for a conversation
+
+Committed as `e143eb4`.
+

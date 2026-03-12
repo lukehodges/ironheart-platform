@@ -1,0 +1,7 @@
+=== Attempt 1 at 2026-03-12 02:04:44 (exit: 0) ===
+Task 1 complete. Committed `fd4f5bc`:
+
+- Installed `@anthropic-ai/sdk@^0.78.0`
+- Added `ANTHROPIC_API_KEY=` to `.env.example`
+- Added `!.env.example` exception to `.gitignore` so the example file is tracked
+

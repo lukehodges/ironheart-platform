@@ -1,0 +1,15 @@
+=== Attempt 1 at 2026-03-12 03:35:58 (exit: 0) ===
+Done. Here's what was changed:
+
+**`src/app/admin/ai-chat/page.tsx`** - Replaced the tRPC mutation-based approach with SSE streaming:
+- Added `readSSEStream()` async generator to parse SSE events from `POST /api/ai/stream`
+- Added `StreamingBubble` component that renders tool calls and text progressively as events arrive
+- Added `StreamingToolCall` component with spinner/check/error states for each tool
+- Text deltas render with a blinking cursor indicator during streaming
+- `done` event finalizes the assistant message with full content, token usage, and tool call history
+- AbortController support for cancelling streams when switching conversations
+
+**`src/modules/ai/ai.types.ts`** - Added `conversationId` to the `done` stream event type
+
+**`src/modules/ai/ai.service.ts`** - Included `conversationId` in the yielded `done` event so the UI can track new conversations
+

@@ -18,7 +18,7 @@ vi.mock("@/shared/db", () => {
   const mockGroupBy = vi.fn()
 
   // Allow chaining: where -> groupBy
-  mockWhere.mockReturnValue({ orderBy: mockOrderBy, limit: mockLimit, groupBy: mockGroupBy })
+  mockWhere.mockReturnValue({ orderBy: mockOrderBy, limit: mockLimit, groupBy: mockGroupBy } as any)
 
   return {
     db: {

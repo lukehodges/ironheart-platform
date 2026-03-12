@@ -1,0 +1,9 @@
+=== Attempt 1 at 2026-03-12 16:35:48 (exit: 0) ===
+Task 2 complete. Added to `ai.types.ts`:
+- **`GuardrailTier`** type (`AUTO` | `CONFIRM` | `RESTRICT`)
+- **`MutatingAgentTool`** interface extending `AgentTool` with guardrail tier, mutation description, compensate function, and reversibility flag
+- **`ActionStatus`** type (7 statuses)
+- **`AgentActionRecord`** interface for audit trail
+- **`TenantAIConfig`** interface with guardrail overrides and trust metrics
+- **`AgentStreamEvent`** updated with `approval_required` and `approval_resolved` events
+

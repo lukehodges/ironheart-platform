@@ -1,0 +1,28 @@
+# AI Agent Phase B — Sequential Tasks
+# Mutations, Approvals & Trust
+
+Read the implementation plan at docs/plans/2026-03-12-ai-agent-phase-b-implementation.md. Execute ONLY Task 1 (Database Schema). Add agent_actions and ai_tenant_config tables to src/shared/db/schemas/ai.schema.ts following the exact code from the plan. Then commit with message: feat(ai): add agent_actions and ai_tenant_config database tables
+
+Read the implementation plan at docs/plans/2026-03-12-ai-agent-phase-b-implementation.md. Execute ONLY Task 2 (Guardrail Types). Add GuardrailTier, MutatingAgentTool, AgentActionRecord, TenantAIConfig, and ActionStatus types to src/modules/ai/ai.types.ts. Update AgentStreamEvent to include approval_required and approval_resolved events. Follow the plan exactly. Then commit with message: feat(ai): add guardrail types, mutation tool interface, and action records
+
+Read the implementation plan at docs/plans/2026-03-12-ai-agent-phase-b-implementation.md. Execute ONLY Task 3 (Agent Actions Repository). Create src/modules/ai/ai.actions.repository.ts with the exact code from the plan. Read src/shared/db/schemas/ai.schema.ts first to verify the table columns match. Then commit with message: feat(ai): add agent actions repository for mutation audit trail
+
+Read the implementation plan at docs/plans/2026-03-12-ai-agent-phase-b-implementation.md. Execute ONLY Task 4 (Tenant Guardrail Config Repository). Create src/modules/ai/ai.config.repository.ts with the exact code from the plan. Then commit with message: feat(ai): add tenant AI config repository with guardrail overrides
+
+Read the implementation plan at docs/plans/2026-03-12-ai-agent-phase-b-implementation.md. Execute ONLY Task 5 (Mutation Tools). IMPORTANT: Before writing each mutation tool file, READ the corresponding module's repository file to understand available methods and signatures. Create booking.mutation-tools.ts, customer.mutation-tools.ts, notification.mutation-tools.ts. Update tools/index.ts to include mutation tools. Adjust repository calls to match actual signatures. Then commit with message: feat(ai): add 6 mutation tools for booking, customer, and notification
+
+Read the implementation plan at docs/plans/2026-03-12-ai-agent-phase-b-implementation.md. Execute ONLY Task 6 (Approval Flow Engine). Read src/shared/redis.ts first. Create src/modules/ai/ai.approval.ts following the plan — requestApproval with Redis polling, executeAutoAction, resolveApprovalFromUI. Then commit with message: feat(ai): add approval flow engine with Redis polling and timeout
+
+Read the implementation plan at docs/plans/2026-03-12-ai-agent-phase-b-implementation.md. Execute ONLY Task 7 (Update AI Service). Read the current src/modules/ai/ai.service.ts first. Modify the agent loop to handle mutation tools: check isMutatingTool(), resolve guardrail tier, execute AUTO immediately, CONFIRM via requestApproval(), RESTRICT blocks with error. Then commit with message: feat(ai): integrate mutation approval flow into agent loop
+
+Read the implementation plan at docs/plans/2026-03-12-ai-agent-phase-b-implementation.md. Execute ONLY Task 8 (Explainability Service). Create src/modules/ai/ai.explainer.ts following the plan — uses Haiku for "Why" explanations and includes undoAction stub. Then commit with message: feat(ai): add explainability service with Haiku-powered Why explanations
+
+Read the implementation plan at docs/plans/2026-03-12-ai-agent-phase-b-implementation.md. Execute ONLY Task 9 (Trust Ratchet). Create src/modules/ai/ai.trust.ts following the plan — analyzeTrustMetrics with promotion/demotion thresholds. Then commit with message: feat(ai): add trust ratchet analysis for guardrail promotion/demotion suggestions
+
+Read the implementation plan at docs/plans/2026-03-12-ai-agent-phase-b-implementation.md. Execute ONLY Task 10 (Chat UI Updates). Read the current chat UI page first. Add approval cards (approve/reject buttons), "Why" button on agent messages, and action status badges. Reference mockup approval-card.tsx for design patterns. Wire to new tRPC procedures. Then commit with message: feat(ai): add approval cards and Why button to chat UI
+
+Read the implementation plan at docs/plans/2026-03-12-ai-agent-phase-b-implementation.md. Execute ONLY Task 11 (Router + Wiring). Read current ai.router.ts, ai.schemas.ts, ai.events.ts, index.ts, and src/shared/inngest.ts before modifying. Add new schemas, router procedures (resolveApproval, explainAction, undoAction, listActions, trustSuggestions, updateGuardrail), Inngest events, and barrel exports. Then commit with message: feat(ai): add approval, explainability, and trust management router procedures
+
+Read the implementation plan at docs/plans/2026-03-12-ai-agent-phase-b-implementation.md. Execute ONLY Task 12 (Tests). Create src/modules/ai/__tests__/ai-phase-b.test.ts. Test agent actions repository CRUD, AI config repository, approval flow (mock Redis), guardrail tier resolution, explainability (mock Anthropic), trust ratchet analysis, and mutation tools (mock repos). Then commit with message: test(ai): add Phase B tests for approvals, guardrails, trust ratchet, and mutation tools
+
+Read the implementation plan at docs/plans/2026-03-12-ai-agent-phase-b-implementation.md. Execute Task 13 (Verification). Run npx tsc --noEmit, npm run build, and npm run test. Fix any issues found. If fixes are needed, commit with message: fix(ai): resolve Phase B verification issues

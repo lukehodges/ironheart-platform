@@ -1,0 +1,11 @@
+=== Attempt 1 at 2026-03-12 16:48:45 (exit: 0) ===
+Done. Created 6 mutation tools with signatures adjusted to match actual repositories:
+
+- **booking.updateStatus** — uses `BookingStatus` type and `StatusMeta` for cancellation reasons
+- **booking.addNote** — appends to `adminNotes` via `bookingRepository.update()` (no `addNote` method exists)
+- **customer.addNote** — fixed to `addNote(tenantId, { customerId, content, userId })` (2 args, not 3)
+- **customer.updateTags** — uses `customerRepository.update(tenantId, customerId, { tags })` (no `updateTags` method)
+- **notification.sendEmail** / **notification.sendSms** — match Inngest event schemas exactly
+
+Updated `tools/index.ts` with `allMutationTools` array, merged into `allTools`, and added `isMutatingTool()` type guard.
+

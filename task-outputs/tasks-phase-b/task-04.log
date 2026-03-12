@@ -1,0 +1,8 @@
+=== Attempt 1 at 2026-03-12 16:42:28 (exit: 0) ===
+Done. Created `src/modules/ai/ai.config.repository.ts` with:
+- `mapConfig()` — maps DB row to `TenantAIConfig` type
+- `getOrCreate()` — fetches or creates default config for a tenant
+- `update()` — partial updates with auto-timestamp
+- `getGuardrailTier()` — resolves per-tool tier with fallback to default
+- `recordApprovalDecision()` — tracks approve/reject metrics per tool for trust ratchet
+

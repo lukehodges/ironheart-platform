@@ -98,6 +98,24 @@ export const aiTenantConfig = pgTable("ai_tenant_config", {
   trustMetrics: jsonb("trust_metrics").default("{}"),
   verticalProfile: text("vertical_profile"),
   verticalCustomTerms: jsonb("vertical_custom_terms").default("{}"),
+
+  /** Morning Briefing */
+  morningBriefingEnabled: integer("morning_briefing_enabled").notNull().default(0),
+  morningBriefingTime: text("morning_briefing_time").default("08:00"), // HH:MM in tenant timezone
+  morningBriefingTimezone: text("morning_briefing_timezone").default("Europe/London"),
+  morningBriefingDelivery: text("morning_briefing_delivery").default("in_app"), // 'in_app' | 'email' | 'both'
+  morningBriefingRecipientIds: jsonb("morning_briefing_recipient_ids").default("[]"), // User IDs to receive briefing
+
+  /** Ghost Operator */
+  ghostOperatorEnabled: integer("ghost_operator_enabled").notNull().default(0),
+  ghostOperatorStartHour: integer("ghost_operator_start_hour").default(18), // 6 PM
+  ghostOperatorEndHour: integer("ghost_operator_end_hour").default(8), // 8 AM
+  ghostOperatorTimezone: text("ghost_operator_timezone").default("Europe/London"),
+  ghostOperatorRules: jsonb("ghost_operator_rules").default("[]"), // Array of GhostOperatorRule
+
+  /** Paste-to-Pipeline */
+  pasteToPipelineEnabled: integer("paste_to_pipeline_enabled").notNull().default(0),
+
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 })

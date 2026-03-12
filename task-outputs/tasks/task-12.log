@@ -1,0 +1,17 @@
+=== Attempt 1 at 2026-03-12 03:30:08 (exit: 0) ===
+Done. Here's what was implemented:
+
+**`src/app/api/ai/stream/route.ts`** (new) — Next.js POST route handler that:
+- Authenticates via WorkOS `withAuth()` session cookie
+- Resolves tenant from request headers/cookie
+- Loads user with roles/permissions from DB
+- Parses `{ conversationId?, message, pageContext? }` from request body
+- Calls `aiService.sendMessageStreaming()` and writes each `AgentStreamEvent` as SSE `data:` lines
+- Returns `Content-Type: text/event-stream` response
+
+**`src/modules/ai/ai.service.ts`** (modified) — Added `sendMessageStreaming()` async generator that:
+- Uses `anthropic.messages.stream()` for streaming API calls
+- Yields `status`, `tool_call`, `tool_result`, `text_delta`, and `done` events
+- Follows the same agent loop pattern as `sendMessage()` (max 5 iterations, tool execution, conversation persistence)
+- Saves messages and updates conversation metadata on completion
+
