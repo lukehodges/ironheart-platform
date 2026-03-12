@@ -11,6 +11,7 @@ import { formsFunctions } from "@/modules/forms";
 import { handleStripeWebhook, overdueInvoiceCron } from "@/modules/payment/payment.events";
 import { computeMetricSnapshots } from "@/modules/analytics/analytics.events";
 import { dispatchWebhooks } from "@/modules/developer/developer.events";
+import { aiFunctions } from "@/modules/ai";
 
 /**
  * Inngest serve endpoint.
@@ -47,5 +48,7 @@ export const { GET, POST, PUT } = serve({
     overdueInvoiceCron,
     computeMetricSnapshots,
     dispatchWebhooks,
+    // AI module
+    ...aiFunctions,
   ],
 });

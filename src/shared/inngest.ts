@@ -169,6 +169,9 @@ type IronheartEvents = {
   "team/offboarding.completed": {
     data: { userId: string; tenantId: string; templateId: string };
   };
+  "ai/chat.completed": {
+    data: { conversationId: string; tenantId: string; tokensUsed: number };
+  };
 };
 
 /**

@@ -28,6 +28,7 @@ import { teamManifest } from '@/modules/team/team.manifest'
 // import { calendarSyncManifest } from '@/modules/calendar-sync/calendar-sync.manifest'
 // import { paymentManifest } from '@/modules/payment/payment.manifest'
 // import { developerManifest } from '@/modules/developer/developer.manifest'
+import { aiManifest } from '@/modules/ai/ai.manifest'
 
 export const moduleRegistry = new ModuleRegistry()
 
@@ -59,6 +60,7 @@ moduleRegistry.register(teamManifest)
 // moduleRegistry.register(calendarSyncManifest)
 // moduleRegistry.register(paymentManifest)
 // moduleRegistry.register(developerManifest)
+moduleRegistry.register(aiManifest)
 
 // Validate dependency graph at startup
 moduleRegistry.validate()
