@@ -90,6 +90,7 @@ function StreamingToolCall({
   error?: string
 }) {
   const isDone = result !== undefined || error !== undefined
+  const summary = isDone && !error ? summarizeResult(toolName, result) : null
 
   return (
     <div>
@@ -105,16 +106,24 @@ function StreamingToolCall({
             <Loader2 className="h-3.5 w-3.5 animate-spin text-primary/60" />
           )}
         </div>
-        <span className="font-mono text-foreground">
-          {toolName}({formatInput(input)})
-        </span>
-        {isDone && durationMs !== undefined && (
-          <span className="text-muted-foreground">{durationMs}ms</span>
-        )}
+        <div className="flex-1 min-w-0">
+          <span className="font-mono text-foreground">
+            {toolName}({formatInput(input)})
+          </span>
+          {isDone && durationMs !== undefined && (
+            <span className="text-muted-foreground ml-1.5">{durationMs}ms</span>
+          )}
+        </div>
       </div>
+      {summary && (
+        <div className="flex items-start gap-2 text-xs mt-0.5">
+          <div className="shrink-0 w-3.5" />
+          <span className="text-emerald-700 dark:text-emerald-400">{summary}</span>
+        </div>
+      )}
       {error && (
-        <div className="flex items-start gap-2 text-xs ml-0 mt-0.5">
-          <div className="mt-0.5 shrink-0 w-3.5" />
+        <div className="flex items-start gap-2 text-xs mt-0.5">
+          <div className="shrink-0 w-3.5" />
           <span className="text-amber-700 dark:text-amber-400">Error: {error}</span>
         </div>
       )}
@@ -144,34 +153,35 @@ function ToolCallDisplay({
       {toolCalls.map((tc) => {
         const result = resultMap.get(tc.id)
         const hasError = result?.error
+        const summary = result && !hasError ? summarizeResult(tc.name, result.output) : null
         return (
           <div key={tc.id}>
             <div className="flex items-start gap-2 text-xs">
               <div className="mt-0.5 shrink-0">
-                <div className="h-3.5 w-3.5 rounded-full border-2 border-primary/60 bg-primary/10" />
+                {result ? (
+                  hasError ? (
+                    <AlertCircle className="h-3.5 w-3.5 text-amber-500" />
+                  ) : (
+                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                  )
+                ) : (
+                  <div className="h-3.5 w-3.5 rounded-full border-2 border-primary/60 bg-primary/10" />
+                )}
               </div>
               <span className="font-mono text-foreground">
                 {tc.name}({formatInput(tc.input)})
               </span>
             </div>
-            {result && (
-              <div className="flex items-start gap-2 text-xs ml-0">
-                <div className="mt-0.5 shrink-0">
-                  {hasError ? (
-                    <AlertCircle className="h-3.5 w-3.5 text-amber-500" />
-                  ) : (
-                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
-                  )}
-                </div>
-                <span
-                  className={
-                    hasError
-                      ? "text-amber-700 dark:text-amber-400"
-                      : "text-emerald-700 dark:text-emerald-400"
-                  }
-                >
-                  {hasError ? `Error: ${result.error}` : "Done"}
-                </span>
+            {summary && (
+              <div className="flex items-start gap-2 text-xs mt-0.5">
+                <div className="shrink-0 w-3.5" />
+                <span className="text-emerald-700 dark:text-emerald-400">{summary}</span>
+              </div>
+            )}
+            {hasError && (
+              <div className="flex items-start gap-2 text-xs mt-0.5">
+                <div className="shrink-0 w-3.5" />
+                <span className="text-amber-700 dark:text-amber-400">Error: {result.error}</span>
               </div>
             )}
           </div>
@@ -181,13 +191,62 @@ function ToolCallDisplay({
   )
 }
 
+/** Format tool input as JS-like syntax: { key: value, key2: value2 } */
 function formatInput(input: unknown): string {
   if (input == null) return ""
+  if (typeof input !== "object") return String(input)
   try {
-    const s = JSON.stringify(input)
-    return s.length > 80 ? s.slice(0, 77) + "..." : s
+    const entries = Object.entries(input as Record<string, unknown>)
+    if (entries.length === 0) return ""
+    const parts = entries.map(([k, v]) => {
+      const val = typeof v === "string" ? `'${v}'` : JSON.stringify(v)
+      return `${k}: ${val}`
+    })
+    const inner = parts.join(", ")
+    if (inner.length > 80) return "{ " + inner.slice(0, 74) + "... }"
+    return "{ " + inner + " }"
   } catch {
     return "..."
+  }
+}
+
+/** Generate a human-readable summary line from a tool result */
+function summarizeResult(toolName: string, result: unknown): string {
+  if (result == null) return "✓ Done"
+  try {
+    const data = result as Record<string, unknown>
+
+    // List results with rows array
+    if (Array.isArray(data.rows)) {
+      const count = data.rows.length
+      const entity = toolName.split(".")[0] ?? "record"
+      const plural = count === 1 ? "" : "s"
+      const more = data.hasMore ? "+" : ""
+      return `✓ Found ${count}${more} ${entity}${plural}`
+    }
+
+    // Array result directly
+    if (Array.isArray(data)) {
+      const count = (data as unknown[]).length
+      const entity = toolName.split(".")[0] ?? "record"
+      return `✓ Found ${count} ${entity}${count === 1 ? "" : "s"}`
+    }
+
+    // Single entity with id or name
+    if (data.id || data.name) {
+      const name = (data.name as string) ?? (data.title as string) ?? (data.id as string)
+      return `✓ ${name}`
+    }
+
+    // Dashboard / summary objects
+    const keys = Object.keys(data)
+    if (keys.length > 0) {
+      return `✓ Returned ${keys.length} fields`
+    }
+
+    return "✓ Done"
+  } catch {
+    return "✓ Done"
   }
 }
 

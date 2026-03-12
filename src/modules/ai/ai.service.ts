@@ -91,13 +91,8 @@ export const aiService = {
     // 3. Load conversation history
     const history = await aiRepository.getMessages(conversation.id, 20)
 
-    // 4. Build Anthropic messages array
-    const anthropicMessages: Anthropic.MessageParam[] = history
-      .filter((m) => m.role !== "system")
-      .map((m) => ({
-        role: m.role as "user" | "assistant",
-        content: m.content,
-      }))
+    // 4. Build Anthropic messages array from history, preserving tool_use structure
+    const anthropicMessages: Anthropic.MessageParam[] = rebuildAnthropicMessages(history)
 
     // 5. Get tools available to this user
     const ctx: AgentContext = { tenantId, userId, userPermissions, pageContext: input.pageContext }
@@ -144,7 +139,7 @@ export const aiService = {
       }
 
       // If no tool calls, we're done
-      if (toolUseBlocks.length === 0 || response.stop_reason === "end_turn") {
+      if (toolUseBlocks.length === 0) {
         finalContent = textBlocks.map((b) => b.text).join("\n")
         break
       }
@@ -280,13 +275,8 @@ export const aiService = {
     // 3. Load conversation history (last 20 messages max for context window)
     const history = await aiRepository.getMessages(conversation.id, 20)
 
-    // 4. Build Anthropic messages array from history
-    const anthropicMessages: Anthropic.MessageParam[] = history
-      .filter((m) => m.role !== "system")
-      .map((m) => ({
-        role: m.role as "user" | "assistant",
-        content: m.content,
-      }))
+    // 4. Build Anthropic messages array from history, preserving tool_use structure
+    const anthropicMessages: Anthropic.MessageParam[] = rebuildAnthropicMessages(history)
 
     // 5. Get tools available to this user
     const ctx: AgentContext = { tenantId, userId, userPermissions, pageContext: input.pageContext }
@@ -325,7 +315,7 @@ export const aiService = {
       const toolUseBlocks = response.content.filter((b) => b.type === "tool_use")
 
       // If no tool calls, we're done
-      if (toolUseBlocks.length === 0 || response.stop_reason === "end_turn") {
+      if (toolUseBlocks.length === 0) {
         finalContent = textBlocks.map((b) => b.text).join("\n")
         break
       }
@@ -418,6 +408,65 @@ export const aiService = {
       tokenUsage,
     }
   },
+}
+
+/**
+ * Rebuild Anthropic-compatible messages from stored history.
+ *
+ * For assistant messages with tool calls, we reconstruct the tool_use content
+ * blocks so Claude recognises its prior tool invocations. The following user
+ * message then carries the corresponding tool_result blocks. Without this,
+ * Claude loses tool context on multi-turn conversations and falls back to
+ * faking tool calls as XML text.
+ */
+function rebuildAnthropicMessages(
+  history: { role: string; content: string; toolCalls?: ToolCallRecord[] | null; toolResults?: ToolResultRecord[] | null }[]
+): Anthropic.MessageParam[] {
+  const msgs: Anthropic.MessageParam[] = []
+
+  for (const m of history) {
+    if (m.role === "system") continue
+
+    if (m.role === "assistant" && m.toolCalls && m.toolCalls.length > 0) {
+      // Reconstruct assistant message with tool_use content blocks
+      const contentBlocks: Anthropic.ContentBlockParam[] = []
+
+      if (m.content) {
+        contentBlocks.push({ type: "text", text: m.content })
+      }
+
+      for (const tc of m.toolCalls) {
+        contentBlocks.push({
+          type: "tool_use",
+          id: tc.id,
+          name: tc.name,
+          input: tc.input as Record<string, unknown>,
+        })
+      }
+
+      msgs.push({ role: "assistant", content: contentBlocks })
+
+      // Inject a user message with tool_result blocks for each tool call
+      if (m.toolResults && m.toolResults.length > 0) {
+        const resultBlocks: Anthropic.ToolResultBlockParam[] = m.toolResults.map((tr) => ({
+          type: "tool_result" as const,
+          tool_use_id: tr.toolCallId,
+          content: tr.error
+            ? JSON.stringify({ error: tr.error })
+            : JSON.stringify(tr.output, null, 2),
+          ...(tr.error ? { is_error: true } : {}),
+        }))
+        msgs.push({ role: "user", content: resultBlocks })
+      }
+    } else {
+      msgs.push({
+        role: m.role as "user" | "assistant",
+        content: m.content,
+      })
+    }
+  }
+
+  return msgs
 }
 
 // Rough cost estimation (Sonnet 4 pricing — update if model changes)
