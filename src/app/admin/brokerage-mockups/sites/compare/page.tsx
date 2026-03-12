@@ -369,13 +369,13 @@ export default function SiteComparePage() {
       distances.forEach((d, ref) => {
         if (d < minD) {
           minD = d;
-          closest = selectedSites.find((s) => s.ref === ref)!;
+          closest = selectedSites.find((s) => s.ref === ref) ?? null;
           closestDist = d;
         }
       });
     }
 
-    return { bestOverall, cheapest, closest, closestDist };
+    return { bestOverall, cheapest, closest: closest as Site | null, closestDist: closestDist as number | null };
   }, [comparisons, selectedSites, distances]);
 
   // GeoJSON for distance lines

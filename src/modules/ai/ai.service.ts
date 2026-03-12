@@ -71,7 +71,7 @@ function buildTrpcCaller(ctx: AgentContext, req: Request) {
   const createCaller = getCreateCaller()
   return createCaller({
     db,
-    session: { user: { id: ctx.workosUserId } } as Parameters<typeof createCaller>[0]["session"],
+    session: { user: { id: ctx.workosUserId } } as any,
     tenantId: ctx.tenantId,
     tenantSlug: "",
     user: null, // Populated by tenantProcedure middleware from session
