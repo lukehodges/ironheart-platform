@@ -2,6 +2,8 @@
 
 import Anthropic from "@anthropic-ai/sdk"
 import { logger } from "@/shared/logger"
+import { redis } from "@/shared/redis"
+import { BadRequestError } from "@/shared/errors"
 import { aiRepository } from "./ai.repository"
 import { allTools, getToolsForUser } from "./tools"
 import { buildSystemPrompt } from "./ai.prompts"
@@ -21,6 +23,30 @@ function getClient(): Anthropic {
 const MAX_TOOL_ITERATIONS = 5
 const DEFAULT_MODEL = "claude-sonnet-4-20250514"
 const MAX_TOKENS = 4096
+const TOKEN_BUDGET = 50_000
+const RATE_LIMIT_PER_MINUTE = 20
+const TOOL_TIMEOUT_MS = 10_000
+
+async function checkRateLimit(tenantId: string, userId: string): Promise<boolean> {
+  const key = `ai:rate:${tenantId}:${userId}`
+  const current = await redis.incr(key)
+  if (current === 1) {
+    await redis.expire(key, 60)
+  }
+  return current <= RATE_LIMIT_PER_MINUTE
+}
+
+async function executeToolWithTimeout<T>(
+  fn: () => Promise<T>,
+  timeoutMs: number = TOOL_TIMEOUT_MS
+): Promise<T> {
+  return Promise.race([
+    fn(),
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("Tool execution timed out")), timeoutMs)
+    ),
+  ])
+}
 
 export const aiService = {
   async *sendMessageStreaming(
@@ -33,6 +59,12 @@ export const aiService = {
       pageContext?: PageContext
     }
   ): AsyncGenerator<AgentStreamEvent> {
+    // Rate limit check
+    const allowed = await checkRateLimit(tenantId, userId)
+    if (!allowed) {
+      throw new BadRequestError("Rate limit exceeded. Please wait a moment before sending another message.")
+    }
+
     // 1. Get or create conversation
     let conversation = input.conversationId
       ? await aiRepository.getConversation(tenantId, input.conversationId)
@@ -40,6 +72,11 @@ export const aiService = {
 
     if (!conversation) {
       conversation = await aiRepository.createConversation(tenantId, userId)
+    }
+
+    // Token budget check
+    if (conversation.tokenCount >= TOKEN_BUDGET) {
+      throw new BadRequestError("This conversation has exceeded the token budget. Please start a new conversation.")
     }
 
     yield { type: "status", message: "Processing your message..." }
@@ -139,7 +176,7 @@ export const aiService = {
 
         try {
           const startMs = Date.now()
-          const result = await tool.execute(toolUse.input, ctx)
+          const result = await executeToolWithTimeout(() => tool.execute(toolUse.input, ctx))
           const durationMs = Date.now() - startMs
 
           log.info({ tool: toolUse.name, durationMs }, "Tool executed (streaming)")
@@ -213,6 +250,12 @@ export const aiService = {
       pageContext?: PageContext
     }
   ): Promise<AgentResponse> {
+    // Rate limit check
+    const allowed = await checkRateLimit(tenantId, userId)
+    if (!allowed) {
+      throw new BadRequestError("Rate limit exceeded. Please wait a moment before sending another message.")
+    }
+
     // 1. Get or create conversation
     let conversation = input.conversationId
       ? await aiRepository.getConversation(tenantId, input.conversationId)
@@ -220,6 +263,11 @@ export const aiService = {
 
     if (!conversation) {
       conversation = await aiRepository.createConversation(tenantId, userId)
+    }
+
+    // Token budget check
+    if (conversation.tokenCount >= TOKEN_BUDGET) {
+      throw new BadRequestError("This conversation has exceeded the token budget. Please start a new conversation.")
     }
 
     // 2. Save user message
@@ -306,7 +354,7 @@ export const aiService = {
 
         try {
           const startMs = Date.now()
-          const result = await tool.execute(toolUse.input, ctx)
+          const result = await executeToolWithTimeout(() => tool.execute(toolUse.input, ctx))
           const durationMs = Date.now() - startMs
 
           const resultStr = JSON.stringify(result, null, 2)
