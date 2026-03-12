@@ -21,6 +21,15 @@ function getClient(): Anthropic {
   return anthropicClient
 }
 
+/** Anthropic tool names only allow [a-zA-Z0-9_-]. Our tools use dots/slashes. */
+function sanitizeToolName(name: string): string {
+  return name.replace(/[^a-zA-Z0-9_-]/g, "_")
+}
+
+function unsanitizeToolName(sanitized: string, tools: { name: string }[]): string {
+  return tools.find((t) => sanitizeToolName(t.name) === sanitized)?.name ?? sanitized
+}
+
 const MAX_TOOL_ITERATIONS = 5
 const DEFAULT_MODEL = "claude-sonnet-4-20250514"
 const MAX_TOKENS = 4096
@@ -100,7 +109,7 @@ export const aiService = {
     const availableTools = getToolsForUser(allTools, userPermissions)
 
     const anthropicTools: Anthropic.Tool[] = availableTools.map((t) => ({
-      name: t.name,
+      name: sanitizeToolName(t.name),
       description: t.description,
       input_schema: t.inputSchema as Anthropic.Tool["input_schema"],
     }))
@@ -152,21 +161,22 @@ export const aiService = {
       const toolResultBlocks: Anthropic.ToolResultBlockParam[] = []
 
       for (const toolUse of toolUseBlocks) {
-        const tool = availableTools.find((t) => t.name === toolUse.name)
+        const originalName = unsanitizeToolName(toolUse.name, availableTools)
+        const tool = availableTools.find((t) => t.name === originalName)
         const toolCallRecord: ToolCallRecord = {
           id: toolUse.id,
-          name: toolUse.name,
+          name: originalName,
           input: toolUse.input,
         }
         allToolCalls.push(toolCallRecord)
 
-        yield { type: "tool_call" as const, toolName: toolUse.name, input: toolUse.input }
+        yield { type: "tool_call" as const, toolName: originalName, input: toolUse.input }
 
         if (!tool) {
-          const errorResult = { toolCallId: toolUse.id, output: null, error: `Unknown tool: ${toolUse.name}` }
+          const errorResult = { toolCallId: toolUse.id, output: null, error: `Unknown tool: ${originalName}` }
           allToolResults.push(errorResult)
           toolResultBlocks.push({ type: "tool_result", tool_use_id: toolUse.id, content: JSON.stringify({ error: errorResult.error }) })
-          yield { type: "tool_result" as const, toolName: toolUse.name, result: { error: errorResult.error }, durationMs: 0 }
+          yield { type: "tool_result" as const, toolName: originalName, result: { error: errorResult.error }, durationMs: 0 }
           continue
         }
 
@@ -176,10 +186,10 @@ export const aiService = {
           const tier = await resolveGuardrailTier(ctx.tenantId, mutTool)
 
           if (tier === "RESTRICT") {
-            const errorMsg = `Tool "${toolUse.name}" is restricted by your organization's guardrail policy.`
+            const errorMsg = `Tool "${originalName}" is restricted by your organization's guardrail policy.`
             allToolResults.push({ toolCallId: toolUse.id, output: null, error: errorMsg })
             toolResultBlocks.push({ type: "tool_result", tool_use_id: toolUse.id, content: JSON.stringify({ error: errorMsg }), is_error: true })
-            yield { type: "tool_result" as const, toolName: toolUse.name, result: { error: errorMsg }, durationMs: 0 }
+            yield { type: "tool_result" as const, toolName: originalName, result: { error: errorMsg }, durationMs: 0 }
             continue
           }
 
@@ -188,22 +198,22 @@ export const aiService = {
               const startMs = Date.now()
               const { result } = await executeAutoAction(conversation.id, mutTool, toolUse.input, ctx)
               const durationMs = Date.now() - startMs
-              log.info({ tool: toolUse.name, durationMs, tier }, "Mutation tool auto-executed (streaming)")
+              log.info({ tool: originalName, durationMs, tier }, "Mutation tool auto-executed (streaming)")
               allToolResults.push({ toolCallId: toolUse.id, output: result })
               toolResultBlocks.push({ type: "tool_result", tool_use_id: toolUse.id, content: JSON.stringify(result, null, 2) })
-              yield { type: "tool_result" as const, toolName: toolUse.name, result, durationMs }
+              yield { type: "tool_result" as const, toolName: originalName, result, durationMs }
             } catch (err) {
               const errorMsg = err instanceof Error ? err.message : "Tool execution failed"
-              log.error({ err, tool: toolUse.name }, "Mutation tool auto-execution error (streaming)")
+              log.error({ err, tool: originalName }, "Mutation tool auto-execution error (streaming)")
               allToolResults.push({ toolCallId: toolUse.id, output: null, error: errorMsg })
               toolResultBlocks.push({ type: "tool_result", tool_use_id: toolUse.id, content: JSON.stringify({ error: errorMsg }), is_error: true })
-              yield { type: "tool_result" as const, toolName: toolUse.name, result: { error: errorMsg }, durationMs: 0 }
+              yield { type: "tool_result" as const, toolName: originalName, result: { error: errorMsg }, durationMs: 0 }
             }
             continue
           }
 
           // CONFIRM tier — request approval and wait
-          yield { type: "approval_required" as const, actionId: "", toolName: toolUse.name, description: mutTool.mutationDescription, input: toolUse.input }
+          yield { type: "approval_required" as const, actionId: "", toolName: originalName, description: mutTool.mutationDescription, input: toolUse.input }
           const startMs = Date.now()
           const { approved, action } = await requestApproval(conversation.id, mutTool, toolUse.input, ctx)
           yield { type: "approval_resolved" as const, actionId: action.id, approved }
@@ -212,22 +222,22 @@ export const aiService = {
             try {
               const result = await executeToolWithTimeout(() => mutTool.execute(toolUse.input, ctx))
               const durationMs = Date.now() - startMs
-              log.info({ tool: toolUse.name, durationMs, tier }, "Mutation tool executed after approval (streaming)")
+              log.info({ tool: originalName, durationMs, tier }, "Mutation tool executed after approval (streaming)")
               allToolResults.push({ toolCallId: toolUse.id, output: result })
               toolResultBlocks.push({ type: "tool_result", tool_use_id: toolUse.id, content: JSON.stringify(result, null, 2) })
-              yield { type: "tool_result" as const, toolName: toolUse.name, result, durationMs }
+              yield { type: "tool_result" as const, toolName: originalName, result, durationMs }
             } catch (err) {
               const errorMsg = err instanceof Error ? err.message : "Tool execution failed"
-              log.error({ err, tool: toolUse.name }, "Mutation tool execution error after approval (streaming)")
+              log.error({ err, tool: originalName }, "Mutation tool execution error after approval (streaming)")
               allToolResults.push({ toolCallId: toolUse.id, output: null, error: errorMsg })
               toolResultBlocks.push({ type: "tool_result", tool_use_id: toolUse.id, content: JSON.stringify({ error: errorMsg }), is_error: true })
-              yield { type: "tool_result" as const, toolName: toolUse.name, result: { error: errorMsg }, durationMs: 0 }
+              yield { type: "tool_result" as const, toolName: originalName, result: { error: errorMsg }, durationMs: 0 }
             }
           } else {
             const rejMsg = "Action was rejected by the user."
             allToolResults.push({ toolCallId: toolUse.id, output: null, error: rejMsg })
             toolResultBlocks.push({ type: "tool_result", tool_use_id: toolUse.id, content: JSON.stringify({ error: rejMsg }), is_error: true })
-            yield { type: "tool_result" as const, toolName: toolUse.name, result: { error: rejMsg }, durationMs: 0 }
+            yield { type: "tool_result" as const, toolName: originalName, result: { error: rejMsg }, durationMs: 0 }
           }
           continue
         }
@@ -238,18 +248,18 @@ export const aiService = {
           const result = await executeToolWithTimeout(() => tool.execute(toolUse.input, ctx))
           const durationMs = Date.now() - startMs
 
-          log.info({ tool: toolUse.name, durationMs }, "Tool executed (streaming)")
+          log.info({ tool: originalName, durationMs }, "Tool executed (streaming)")
 
           allToolResults.push({ toolCallId: toolUse.id, output: result })
           toolResultBlocks.push({ type: "tool_result", tool_use_id: toolUse.id, content: JSON.stringify(result, null, 2) })
-          yield { type: "tool_result" as const, toolName: toolUse.name, result, durationMs }
+          yield { type: "tool_result" as const, toolName: originalName, result, durationMs }
         } catch (err) {
           const errorMsg = err instanceof Error ? err.message : "Tool execution failed"
-          log.error({ err, tool: toolUse.name }, "Tool execution error (streaming)")
+          log.error({ err, tool: originalName }, "Tool execution error (streaming)")
 
           allToolResults.push({ toolCallId: toolUse.id, output: null, error: errorMsg })
           toolResultBlocks.push({ type: "tool_result", tool_use_id: toolUse.id, content: JSON.stringify({ error: errorMsg }), is_error: true })
-          yield { type: "tool_result" as const, toolName: toolUse.name, result: { error: errorMsg }, durationMs: 0 }
+          yield { type: "tool_result" as const, toolName: originalName, result: { error: errorMsg }, durationMs: 0 }
         }
       }
 
@@ -348,7 +358,7 @@ export const aiService = {
 
     // 6. Convert tools to Anthropic format
     const anthropicTools: Anthropic.Tool[] = availableTools.map((t) => ({
-      name: t.name,
+      name: sanitizeToolName(t.name),
       description: t.description,
       input_schema: t.inputSchema as Anthropic.Tool["input_schema"],
     }))
@@ -391,16 +401,17 @@ export const aiService = {
       const toolResultBlocks: Anthropic.ToolResultBlockParam[] = []
 
       for (const toolUse of toolUseBlocks) {
-        const tool = availableTools.find((t) => t.name === toolUse.name)
+        const originalName = unsanitizeToolName(toolUse.name, availableTools)
+        const tool = availableTools.find((t) => t.name === originalName)
         const toolCallRecord: ToolCallRecord = {
           id: toolUse.id,
-          name: toolUse.name,
+          name: originalName,
           input: toolUse.input,
         }
         allToolCalls.push(toolCallRecord)
 
         if (!tool) {
-          const errorResult = { toolCallId: toolUse.id, output: null, error: `Unknown tool: ${toolUse.name}` }
+          const errorResult = { toolCallId: toolUse.id, output: null, error: `Unknown tool: ${originalName}` }
           allToolResults.push(errorResult)
           toolResultBlocks.push({ type: "tool_result", tool_use_id: toolUse.id, content: JSON.stringify({ error: errorResult.error }) })
           continue
@@ -412,7 +423,7 @@ export const aiService = {
           const tier = await resolveGuardrailTier(ctx.tenantId, mutTool)
 
           if (tier === "RESTRICT") {
-            const errorMsg = `Tool "${toolUse.name}" is restricted by your organization's guardrail policy.`
+            const errorMsg = `Tool "${originalName}" is restricted by your organization's guardrail policy.`
             allToolResults.push({ toolCallId: toolUse.id, output: null, error: errorMsg })
             toolResultBlocks.push({ type: "tool_result", tool_use_id: toolUse.id, content: JSON.stringify({ error: errorMsg }), is_error: true })
             continue
@@ -423,12 +434,12 @@ export const aiService = {
               const startMs = Date.now()
               const { result } = await executeAutoAction(conversation.id, mutTool, toolUse.input, ctx)
               const durationMs = Date.now() - startMs
-              log.info({ tool: toolUse.name, durationMs, tier }, "Mutation tool auto-executed")
+              log.info({ tool: originalName, durationMs, tier }, "Mutation tool auto-executed")
               allToolResults.push({ toolCallId: toolUse.id, output: result })
               toolResultBlocks.push({ type: "tool_result", tool_use_id: toolUse.id, content: JSON.stringify(result, null, 2) })
             } catch (err) {
               const errorMsg = err instanceof Error ? err.message : "Tool execution failed"
-              log.error({ err, tool: toolUse.name }, "Mutation tool auto-execution error")
+              log.error({ err, tool: originalName }, "Mutation tool auto-execution error")
               allToolResults.push({ toolCallId: toolUse.id, output: null, error: errorMsg })
               toolResultBlocks.push({ type: "tool_result", tool_use_id: toolUse.id, content: JSON.stringify({ error: errorMsg }), is_error: true })
             }
@@ -442,12 +453,12 @@ export const aiService = {
               const startMs = Date.now()
               const result = await executeToolWithTimeout(() => mutTool.execute(toolUse.input, ctx))
               const durationMs = Date.now() - startMs
-              log.info({ tool: toolUse.name, durationMs, tier }, "Mutation tool executed after approval")
+              log.info({ tool: originalName, durationMs, tier }, "Mutation tool executed after approval")
               allToolResults.push({ toolCallId: toolUse.id, output: result })
               toolResultBlocks.push({ type: "tool_result", tool_use_id: toolUse.id, content: JSON.stringify(result, null, 2) })
             } catch (err) {
               const errorMsg = err instanceof Error ? err.message : "Tool execution failed"
-              log.error({ err, tool: toolUse.name }, "Mutation tool execution error after approval")
+              log.error({ err, tool: originalName }, "Mutation tool execution error after approval")
               allToolResults.push({ toolCallId: toolUse.id, output: null, error: errorMsg })
               toolResultBlocks.push({ type: "tool_result", tool_use_id: toolUse.id, content: JSON.stringify({ error: errorMsg }), is_error: true })
             }
@@ -465,13 +476,13 @@ export const aiService = {
           const result = await executeToolWithTimeout(() => tool.execute(toolUse.input, ctx))
           const durationMs = Date.now() - startMs
 
-          log.info({ tool: toolUse.name, durationMs }, "Tool executed")
+          log.info({ tool: originalName, durationMs }, "Tool executed")
 
           allToolResults.push({ toolCallId: toolUse.id, output: result })
           toolResultBlocks.push({ type: "tool_result", tool_use_id: toolUse.id, content: JSON.stringify(result, null, 2) })
         } catch (err) {
           const errorMsg = err instanceof Error ? err.message : "Tool execution failed"
-          log.error({ err, tool: toolUse.name }, "Tool execution error")
+          log.error({ err, tool: originalName }, "Tool execution error")
 
           allToolResults.push({ toolCallId: toolUse.id, output: null, error: errorMsg })
           toolResultBlocks.push({ type: "tool_result", tool_use_id: toolUse.id, content: JSON.stringify({ error: errorMsg }), is_error: true })
