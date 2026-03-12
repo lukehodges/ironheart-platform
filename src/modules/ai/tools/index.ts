@@ -1,4 +1,4 @@
-import type { AgentTool } from "../ai.types"
+import type { AgentTool, MutatingAgentTool } from "../ai.types"
 import { bookingTools } from "./booking.tools"
 import { customerTools } from "./customer.tools"
 import { schedulingTools } from "./scheduling.tools"
@@ -7,6 +7,15 @@ import { paymentTools } from "./payment.tools"
 import { analyticsTools } from "./analytics.tools"
 import { workflowTools } from "./workflow.tools"
 import { teamTools } from "./team.tools"
+import { bookingMutationTools } from "./booking.mutation-tools"
+import { customerMutationTools } from "./customer.mutation-tools"
+import { notificationMutationTools } from "./notification.mutation-tools"
+
+export const allMutationTools: MutatingAgentTool[] = [
+  ...bookingMutationTools,
+  ...customerMutationTools,
+  ...notificationMutationTools,
+]
 
 export const allTools: AgentTool[] = [
   ...bookingTools,
@@ -17,6 +26,7 @@ export const allTools: AgentTool[] = [
   ...analyticsTools,
   ...workflowTools,
   ...teamTools,
+  ...allMutationTools,
 ]
 
 export function getToolsForUser(tools: AgentTool[], userPermissions: string[]): AgentTool[] {
@@ -25,4 +35,8 @@ export function getToolsForUser(tools: AgentTool[], userPermissions: string[]): 
   return tools.filter(
     (tool) => tool.permission === null || hasWildcard || userPermissions.includes(tool.permission)
   )
+}
+
+export function isMutatingTool(tool: AgentTool): tool is MutatingAgentTool {
+  return "guardrailTier" in tool
 }
