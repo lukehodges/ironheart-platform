@@ -3,12 +3,22 @@
 import Anthropic from "@anthropic-ai/sdk"
 import { logger } from "@/shared/logger"
 import { redis } from "@/shared/redis"
+import { db } from "@/shared/db"
 import { BadRequestError } from "@/shared/errors"
+import { createCallerFactory } from "@/shared/trpc"
 import { aiRepository } from "./ai.repository"
-import { allTools, getToolsForUser, isMutatingTool } from "./tools"
-import { resolveGuardrailTier, executeAutoAction, requestApproval } from "./ai.approval"
+import { agentTools, handleDescribeModule } from "./tools"
+import { executeCode } from "./ai.executor"
 import { buildSystemPrompt } from "./ai.prompts"
-import type { AgentContext, AgentResponse, AgentStreamEvent, ToolCallRecord, ToolResultRecord, TokenUsage, PageContext, MutatingAgentTool } from "./ai.types"
+import type {
+  AgentContext,
+  AgentResponse,
+  AgentStreamEvent,
+  ToolCallRecord,
+  ToolResultRecord,
+  TokenUsage,
+  PageContext,
+} from "./ai.types"
 
 const log = logger.child({ module: "ai.service" })
 
@@ -16,18 +26,20 @@ const log = logger.child({ module: "ai.service" })
 let anthropicClient: Anthropic | null = null
 function getClient(): Anthropic {
   if (!anthropicClient) {
-    anthropicClient = new Anthropic()  // reads ANTHROPIC_API_KEY from env
+    anthropicClient = new Anthropic() // reads ANTHROPIC_API_KEY from env
   }
   return anthropicClient
 }
 
-/** Anthropic tool names only allow [a-zA-Z0-9_-]. Our tools use dots/slashes. */
-function sanitizeToolName(name: string): string {
-  return name.replace(/[^a-zA-Z0-9_-]/g, "_")
-}
-
-function unsanitizeToolName(sanitized: string, tools: { name: string }[]): string {
-  return tools.find((t) => sanitizeToolName(t.name) === sanitized)?.name ?? sanitized
+// Lazy-init to avoid circular import (ai.service -> root -> ai module -> ai.service)
+let cachedCreateCaller: ReturnType<typeof createCallerFactory> | null = null
+function getCreateCaller() {
+  if (!cachedCreateCaller) {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { appRouter } = require("@/server/root") as { appRouter: Parameters<typeof createCallerFactory>[0] }
+    cachedCreateCaller = createCallerFactory(appRouter)
+  }
+  return cachedCreateCaller
 }
 
 const MAX_TOOL_ITERATIONS = 5
@@ -35,7 +47,6 @@ const DEFAULT_MODEL = "claude-sonnet-4-20250514"
 const MAX_TOKENS = 4096
 const TOKEN_BUDGET = 50_000
 const RATE_LIMIT_PER_MINUTE = 20
-const TOOL_TIMEOUT_MS = 10_000
 
 async function checkRateLimit(tenantId: string, userId: string): Promise<boolean> {
   const key = `ai:rate:${tenantId}:${userId}`
@@ -46,23 +57,102 @@ async function checkRateLimit(tenantId: string, userId: string): Promise<boolean
   return current <= RATE_LIMIT_PER_MINUTE
 }
 
-async function executeToolWithTimeout<T>(
-  fn: () => Promise<T>,
-  timeoutMs: number = TOOL_TIMEOUT_MS
-): Promise<T> {
-  return Promise.race([
-    fn(),
-    new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error("Tool execution timed out")), timeoutMs)
-    ),
-  ])
+/**
+ * Build a pre-authenticated tRPC caller for the AI agent.
+ * Every call goes through the full middleware stack: auth, tenant isolation, RBAC, rate limiting.
+ *
+ * IMPORTANT: `session.user.id` must be the WorkOS user ID (not internal DB ID),
+ * because `tenantProcedure` middleware uses it to look up the DB user via
+ * `eq(users.workosUserId, workosUserId)`.
+ *
+ * The original `Request` is threaded through for correct IP-based rate limiting.
+ */
+function buildTrpcCaller(ctx: AgentContext, req: Request) {
+  const createCaller = getCreateCaller()
+  return createCaller({
+    db,
+    session: { user: { id: ctx.workosUserId } } as Parameters<typeof createCaller>[0]["session"],
+    tenantId: ctx.tenantId,
+    tenantSlug: "",
+    user: null, // Populated by tenantProcedure middleware from session
+    requestId: crypto.randomUUID(),
+    req,
+  })
+}
+
+/**
+ * Handle a tool call from Claude — either describe_module or execute_code.
+ */
+async function handleToolCall(
+  toolName: string,
+  toolInput: unknown,
+  trpcCaller: ReturnType<typeof buildTrpcCaller>,
+  ctx: AgentContext
+): Promise<{ result: unknown; durationMs: number; callCount?: number; error?: string }> {
+  if (toolName === "describe_module") {
+    const input = toolInput as { module: string }
+    return handleDescribeModule(input)
+  }
+
+  if (toolName === "execute_code") {
+    const input = toolInput as { code: string }
+    try {
+      // Count tRPC calls by wrapping the caller with a proxy
+      let callCount = 0
+      const countingCaller = createCountingProxy(trpcCaller, () => { callCount++ })
+
+      const { result, durationMs } = await executeCode(
+        input.code,
+        countingCaller,
+        {
+          tenantId: ctx.tenantId,
+          userId: ctx.userId,
+          userPermissions: ctx.userPermissions,
+          pageContext: ctx.pageContext,
+        }
+      )
+      return { result, durationMs, callCount }
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : "Code execution failed"
+      log.error({ err, code: input.code.slice(0, 200) }, "Code execution error")
+      return { result: null, durationMs: 0, error: errorMsg }
+    }
+  }
+
+  return { result: null, durationMs: 0, error: `Unknown tool: ${toolName}` }
+}
+
+/**
+ * Create a proxy that counts procedure calls on the tRPC caller.
+ * Works by intercepting property access at the procedure level.
+ */
+function createCountingProxy(caller: unknown, onCall: () => void): unknown {
+  return new Proxy(caller as object, {
+    get(target, prop, receiver) {
+      const value = Reflect.get(target, prop, receiver)
+      if (typeof value === "function") {
+        // This is a procedure call (e.g., trpc.booking.list)
+        return (...args: unknown[]) => {
+          onCall()
+          return (value as (...a: unknown[]) => unknown).apply(target, args)
+        }
+      }
+      if (typeof value === "object" && value !== null) {
+        // This is a namespace (e.g., trpc.booking) — recurse
+        return createCountingProxy(value, onCall)
+      }
+      return value
+    },
+  })
 }
 
 export const aiService = {
   async *sendMessageStreaming(
     tenantId: string,
     userId: string,
+    workosUserId: string,
     userPermissions: string[],
+    req: Request,
     input: {
       conversationId?: string
       message: string
@@ -101,18 +191,12 @@ export const aiService = {
     // 3. Load conversation history
     const history = await aiRepository.getMessages(conversation.id, 20)
 
-    // 4. Build Anthropic messages array from history, preserving tool_use structure
+    // 4. Build Anthropic messages array from history
     const anthropicMessages: Anthropic.MessageParam[] = rebuildAnthropicMessages(history)
 
-    // 5. Get tools available to this user
-    const ctx: AgentContext = { tenantId, userId, userPermissions, pageContext: input.pageContext }
-    const availableTools = getToolsForUser(allTools, userPermissions)
-
-    const anthropicTools: Anthropic.Tool[] = availableTools.map((t) => ({
-      name: sanitizeToolName(t.name),
-      description: t.description,
-      input_schema: t.inputSchema as Anthropic.Tool["input_schema"],
-    }))
+    // 5. Build agent context and tRPC caller
+    const ctx: AgentContext = { tenantId, userId, workosUserId, userPermissions, pageContext: input.pageContext }
+    const trpcCaller = buildTrpcCaller(ctx, req)
 
     // 6. Agent loop with streaming
     const allToolCalls: ToolCallRecord[] = []
@@ -129,10 +213,9 @@ export const aiService = {
         max_tokens: MAX_TOKENS,
         system: buildSystemPrompt(input.pageContext),
         messages: anthropicMessages,
-        tools: anthropicTools,
+        tools: agentTools,
       })
 
-      // Collect the full response via streaming
       const response = await stream.finalMessage()
 
       totalInputTokens += response.usage.input_tokens
@@ -161,105 +244,56 @@ export const aiService = {
       const toolResultBlocks: Anthropic.ToolResultBlockParam[] = []
 
       for (const toolUse of toolUseBlocks) {
-        const originalName = unsanitizeToolName(toolUse.name, availableTools)
-        const tool = availableTools.find((t) => t.name === originalName)
         const toolCallRecord: ToolCallRecord = {
           id: toolUse.id,
-          name: originalName,
+          name: toolUse.name,
           input: toolUse.input,
         }
         allToolCalls.push(toolCallRecord)
 
-        yield { type: "tool_call" as const, toolName: originalName, input: toolUse.input }
-
-        if (!tool) {
-          const errorResult = { toolCallId: toolUse.id, output: null, error: `Unknown tool: ${originalName}` }
-          allToolResults.push(errorResult)
-          toolResultBlocks.push({ type: "tool_result", tool_use_id: toolUse.id, content: JSON.stringify({ error: errorResult.error }) })
-          yield { type: "tool_result" as const, toolName: originalName, result: { error: errorResult.error }, durationMs: 0 }
-          continue
+        // Emit appropriate stream event
+        if (toolUse.name === "execute_code") {
+          const codeInput = toolUse.input as { code: string }
+          yield { type: "code_executing" as const, code: codeInput.code }
+        } else {
+          yield { type: "tool_call" as const, toolName: toolUse.name, input: toolUse.input }
         }
 
-        // Handle mutation tools with guardrail tiers
-        if (isMutatingTool(tool)) {
-          const mutTool = tool as MutatingAgentTool
-          const tier = await resolveGuardrailTier(ctx.tenantId, mutTool)
+        // Execute
+        const { result, durationMs, callCount, error } = await handleToolCall(
+          toolUse.name,
+          toolUse.input,
+          trpcCaller,
+          ctx
+        )
 
-          if (tier === "RESTRICT") {
-            const errorMsg = `Tool "${originalName}" is restricted by your organization's guardrail policy.`
-            allToolResults.push({ toolCallId: toolUse.id, output: null, error: errorMsg })
-            toolResultBlocks.push({ type: "tool_result", tool_use_id: toolUse.id, content: JSON.stringify({ error: errorMsg }), is_error: true })
-            yield { type: "tool_result" as const, toolName: originalName, result: { error: errorMsg }, durationMs: 0 }
-            continue
-          }
+        if (error) {
+          allToolResults.push({ toolCallId: toolUse.id, output: null, error })
+          toolResultBlocks.push({
+            type: "tool_result",
+            tool_use_id: toolUse.id,
+            content: JSON.stringify({ error }),
+            is_error: true,
+          })
 
-          if (tier === "AUTO") {
-            try {
-              const startMs = Date.now()
-              const { result } = await executeAutoAction(conversation.id, mutTool, toolUse.input, ctx)
-              const durationMs = Date.now() - startMs
-              log.info({ tool: originalName, durationMs, tier }, "Mutation tool auto-executed (streaming)")
-              allToolResults.push({ toolCallId: toolUse.id, output: result })
-              toolResultBlocks.push({ type: "tool_result", tool_use_id: toolUse.id, content: JSON.stringify(result, null, 2) })
-              yield { type: "tool_result" as const, toolName: originalName, result, durationMs }
-            } catch (err) {
-              const errorMsg = err instanceof Error ? err.message : "Tool execution failed"
-              log.error({ err, tool: originalName }, "Mutation tool auto-execution error (streaming)")
-              allToolResults.push({ toolCallId: toolUse.id, output: null, error: errorMsg })
-              toolResultBlocks.push({ type: "tool_result", tool_use_id: toolUse.id, content: JSON.stringify({ error: errorMsg }), is_error: true })
-              yield { type: "tool_result" as const, toolName: originalName, result: { error: errorMsg }, durationMs: 0 }
-            }
-            continue
-          }
-
-          // CONFIRM tier — request approval and wait
-          yield { type: "approval_required" as const, actionId: "", toolName: originalName, description: mutTool.mutationDescription, input: toolUse.input }
-          const startMs = Date.now()
-          const { approved, action } = await requestApproval(conversation.id, mutTool, toolUse.input, ctx)
-          yield { type: "approval_resolved" as const, actionId: action.id, approved }
-
-          if (approved) {
-            try {
-              const result = await executeToolWithTimeout(() => mutTool.execute(toolUse.input, ctx))
-              const durationMs = Date.now() - startMs
-              log.info({ tool: originalName, durationMs, tier }, "Mutation tool executed after approval (streaming)")
-              allToolResults.push({ toolCallId: toolUse.id, output: result })
-              toolResultBlocks.push({ type: "tool_result", tool_use_id: toolUse.id, content: JSON.stringify(result, null, 2) })
-              yield { type: "tool_result" as const, toolName: originalName, result, durationMs }
-            } catch (err) {
-              const errorMsg = err instanceof Error ? err.message : "Tool execution failed"
-              log.error({ err, tool: originalName }, "Mutation tool execution error after approval (streaming)")
-              allToolResults.push({ toolCallId: toolUse.id, output: null, error: errorMsg })
-              toolResultBlocks.push({ type: "tool_result", tool_use_id: toolUse.id, content: JSON.stringify({ error: errorMsg }), is_error: true })
-              yield { type: "tool_result" as const, toolName: originalName, result: { error: errorMsg }, durationMs: 0 }
-            }
+          if (toolUse.name === "execute_code") {
+            yield { type: "code_result" as const, result: null, durationMs, callCount: callCount ?? 0, error }
           } else {
-            const rejMsg = "Action was rejected by the user."
-            allToolResults.push({ toolCallId: toolUse.id, output: null, error: rejMsg })
-            toolResultBlocks.push({ type: "tool_result", tool_use_id: toolUse.id, content: JSON.stringify({ error: rejMsg }), is_error: true })
-            yield { type: "tool_result" as const, toolName: originalName, result: { error: rejMsg }, durationMs: 0 }
+            yield { type: "tool_result" as const, toolName: toolUse.name, result: { error }, durationMs }
           }
-          continue
-        }
-
-        // Non-mutating (read-only) tool — execute directly
-        try {
-          const startMs = Date.now()
-          const result = await executeToolWithTimeout(() => tool.execute(toolUse.input, ctx))
-          const durationMs = Date.now() - startMs
-
-          log.info({ tool: originalName, durationMs }, "Tool executed (streaming)")
-
+        } else {
           allToolResults.push({ toolCallId: toolUse.id, output: result })
-          toolResultBlocks.push({ type: "tool_result", tool_use_id: toolUse.id, content: JSON.stringify(result, null, 2) })
-          yield { type: "tool_result" as const, toolName: originalName, result, durationMs }
-        } catch (err) {
-          const errorMsg = err instanceof Error ? err.message : "Tool execution failed"
-          log.error({ err, tool: originalName }, "Tool execution error (streaming)")
+          toolResultBlocks.push({
+            type: "tool_result",
+            tool_use_id: toolUse.id,
+            content: JSON.stringify(result, null, 2),
+          })
 
-          allToolResults.push({ toolCallId: toolUse.id, output: null, error: errorMsg })
-          toolResultBlocks.push({ type: "tool_result", tool_use_id: toolUse.id, content: JSON.stringify({ error: errorMsg }), is_error: true })
-          yield { type: "tool_result" as const, toolName: originalName, result: { error: errorMsg }, durationMs: 0 }
+          if (toolUse.name === "execute_code") {
+            yield { type: "code_result" as const, result, durationMs, callCount: callCount ?? 0 }
+          } else {
+            yield { type: "tool_result" as const, toolName: toolUse.name, result, durationMs }
+          }
         }
       }
 
@@ -312,7 +346,9 @@ export const aiService = {
   async sendMessage(
     tenantId: string,
     userId: string,
+    workosUserId: string,
     userPermissions: string[],
+    req: Request,
     input: {
       conversationId?: string
       message: string
@@ -334,7 +370,6 @@ export const aiService = {
       conversation = await aiRepository.createConversation(tenantId, userId)
     }
 
-    // Token budget check
     if (conversation.tokenCount >= TOKEN_BUDGET) {
       throw new BadRequestError("This conversation has exceeded the token budget. Please start a new conversation.")
     }
@@ -346,24 +381,15 @@ export const aiService = {
       pageContext: input.pageContext,
     })
 
-    // 3. Load conversation history (last 20 messages max for context window)
+    // 3. Load history + build messages
     const history = await aiRepository.getMessages(conversation.id, 20)
-
-    // 4. Build Anthropic messages array from history, preserving tool_use structure
     const anthropicMessages: Anthropic.MessageParam[] = rebuildAnthropicMessages(history)
 
-    // 5. Get tools available to this user
-    const ctx: AgentContext = { tenantId, userId, userPermissions, pageContext: input.pageContext }
-    const availableTools = getToolsForUser(allTools, userPermissions)
+    // 4. Build context + caller
+    const ctx: AgentContext = { tenantId, userId, workosUserId, userPermissions, pageContext: input.pageContext }
+    const trpcCaller = buildTrpcCaller(ctx, req)
 
-    // 6. Convert tools to Anthropic format
-    const anthropicTools: Anthropic.Tool[] = availableTools.map((t) => ({
-      name: sanitizeToolName(t.name),
-      description: t.description,
-      input_schema: t.inputSchema as Anthropic.Tool["input_schema"],
-    }))
-
-    // 7. Agent loop — call Claude, execute tools, repeat
+    // 5. Agent loop
     const allToolCalls: ToolCallRecord[] = []
     const allToolResults: ToolResultRecord[] = []
     let totalInputTokens = 0
@@ -378,122 +404,41 @@ export const aiService = {
         max_tokens: MAX_TOKENS,
         system: buildSystemPrompt(input.pageContext),
         messages: anthropicMessages,
-        tools: anthropicTools,
+        tools: agentTools,
       })
 
       totalInputTokens += response.usage.input_tokens
       totalOutputTokens += response.usage.output_tokens
 
-      // Extract text blocks and tool_use blocks
       const textBlocks = response.content.filter((b) => b.type === "text")
       const toolUseBlocks = response.content.filter((b) => b.type === "tool_use")
 
-      // If no tool calls, we're done
       if (toolUseBlocks.length === 0) {
         finalContent = textBlocks.map((b) => b.text).join("\n")
         break
       }
 
-      // Append assistant message with tool_use content
       anthropicMessages.push({ role: "assistant", content: response.content })
-
-      // Execute each tool call
       const toolResultBlocks: Anthropic.ToolResultBlockParam[] = []
 
       for (const toolUse of toolUseBlocks) {
-        const originalName = unsanitizeToolName(toolUse.name, availableTools)
-        const tool = availableTools.find((t) => t.name === originalName)
-        const toolCallRecord: ToolCallRecord = {
-          id: toolUse.id,
-          name: originalName,
-          input: toolUse.input,
-        }
-        allToolCalls.push(toolCallRecord)
+        allToolCalls.push({ id: toolUse.id, name: toolUse.name, input: toolUse.input })
 
-        if (!tool) {
-          const errorResult = { toolCallId: toolUse.id, output: null, error: `Unknown tool: ${originalName}` }
-          allToolResults.push(errorResult)
-          toolResultBlocks.push({ type: "tool_result", tool_use_id: toolUse.id, content: JSON.stringify({ error: errorResult.error }) })
-          continue
-        }
+        const { result, error } = await handleToolCall(toolUse.name, toolUse.input, trpcCaller, ctx)
 
-        // Handle mutation tools with guardrail tiers
-        if (isMutatingTool(tool)) {
-          const mutTool = tool as MutatingAgentTool
-          const tier = await resolveGuardrailTier(ctx.tenantId, mutTool)
-
-          if (tier === "RESTRICT") {
-            const errorMsg = `Tool "${originalName}" is restricted by your organization's guardrail policy.`
-            allToolResults.push({ toolCallId: toolUse.id, output: null, error: errorMsg })
-            toolResultBlocks.push({ type: "tool_result", tool_use_id: toolUse.id, content: JSON.stringify({ error: errorMsg }), is_error: true })
-            continue
-          }
-
-          if (tier === "AUTO") {
-            try {
-              const startMs = Date.now()
-              const { result } = await executeAutoAction(conversation.id, mutTool, toolUse.input, ctx)
-              const durationMs = Date.now() - startMs
-              log.info({ tool: originalName, durationMs, tier }, "Mutation tool auto-executed")
-              allToolResults.push({ toolCallId: toolUse.id, output: result })
-              toolResultBlocks.push({ type: "tool_result", tool_use_id: toolUse.id, content: JSON.stringify(result, null, 2) })
-            } catch (err) {
-              const errorMsg = err instanceof Error ? err.message : "Tool execution failed"
-              log.error({ err, tool: originalName }, "Mutation tool auto-execution error")
-              allToolResults.push({ toolCallId: toolUse.id, output: null, error: errorMsg })
-              toolResultBlocks.push({ type: "tool_result", tool_use_id: toolUse.id, content: JSON.stringify({ error: errorMsg }), is_error: true })
-            }
-            continue
-          }
-
-          // CONFIRM tier — request approval and wait
-          const { approved } = await requestApproval(conversation.id, mutTool, toolUse.input, ctx)
-          if (approved) {
-            try {
-              const startMs = Date.now()
-              const result = await executeToolWithTimeout(() => mutTool.execute(toolUse.input, ctx))
-              const durationMs = Date.now() - startMs
-              log.info({ tool: originalName, durationMs, tier }, "Mutation tool executed after approval")
-              allToolResults.push({ toolCallId: toolUse.id, output: result })
-              toolResultBlocks.push({ type: "tool_result", tool_use_id: toolUse.id, content: JSON.stringify(result, null, 2) })
-            } catch (err) {
-              const errorMsg = err instanceof Error ? err.message : "Tool execution failed"
-              log.error({ err, tool: originalName }, "Mutation tool execution error after approval")
-              allToolResults.push({ toolCallId: toolUse.id, output: null, error: errorMsg })
-              toolResultBlocks.push({ type: "tool_result", tool_use_id: toolUse.id, content: JSON.stringify({ error: errorMsg }), is_error: true })
-            }
-          } else {
-            const rejMsg = "Action was rejected by the user."
-            allToolResults.push({ toolCallId: toolUse.id, output: null, error: rejMsg })
-            toolResultBlocks.push({ type: "tool_result", tool_use_id: toolUse.id, content: JSON.stringify({ error: rejMsg }), is_error: true })
-          }
-          continue
-        }
-
-        // Non-mutating (read-only) tool — execute directly
-        try {
-          const startMs = Date.now()
-          const result = await executeToolWithTimeout(() => tool.execute(toolUse.input, ctx))
-          const durationMs = Date.now() - startMs
-
-          log.info({ tool: originalName, durationMs }, "Tool executed")
-
+        if (error) {
+          allToolResults.push({ toolCallId: toolUse.id, output: null, error })
+          toolResultBlocks.push({ type: "tool_result", tool_use_id: toolUse.id, content: JSON.stringify({ error }), is_error: true })
+        } else {
           allToolResults.push({ toolCallId: toolUse.id, output: result })
           toolResultBlocks.push({ type: "tool_result", tool_use_id: toolUse.id, content: JSON.stringify(result, null, 2) })
-        } catch (err) {
-          const errorMsg = err instanceof Error ? err.message : "Tool execution failed"
-          log.error({ err, tool: originalName }, "Tool execution error")
-
-          allToolResults.push({ toolCallId: toolUse.id, output: null, error: errorMsg })
-          toolResultBlocks.push({ type: "tool_result", tool_use_id: toolUse.id, content: JSON.stringify({ error: errorMsg }), is_error: true })
         }
       }
 
-      // Append tool results
       anthropicMessages.push({ role: "user", content: toolResultBlocks })
     }
 
-    // 8. Save assistant response
+    // 6. Save + update
     const tokenUsage: TokenUsage = {
       inputTokens: totalInputTokens,
       outputTokens: totalOutputTokens,
@@ -508,7 +453,6 @@ export const aiService = {
       tokenUsage,
     })
 
-    // 9. Update conversation token count + generate title if first message
     const newTokenCount = conversation.tokenCount + totalInputTokens + totalOutputTokens
     const updates: Record<string, unknown> = {
       tokenCount: newTokenCount,
@@ -516,7 +460,6 @@ export const aiService = {
     }
 
     if (!conversation.title && history.length <= 2) {
-      // Auto-generate title from first user message (truncate)
       updates.title = input.message.slice(0, 100)
     }
 
@@ -540,12 +483,6 @@ export const aiService = {
 
 /**
  * Rebuild Anthropic-compatible messages from stored history.
- *
- * For assistant messages with tool calls, we reconstruct the tool_use content
- * blocks so Claude recognises its prior tool invocations. The following user
- * message then carries the corresponding tool_result blocks. Without this,
- * Claude loses tool context on multi-turn conversations and falls back to
- * faking tool calls as XML text.
  */
 function rebuildAnthropicMessages(
   history: { role: string; content: string; toolCalls?: ToolCallRecord[] | null; toolResults?: ToolResultRecord[] | null }[]
@@ -556,7 +493,6 @@ function rebuildAnthropicMessages(
     if (m.role === "system") continue
 
     if (m.role === "assistant" && m.toolCalls && m.toolCalls.length > 0) {
-      // Reconstruct assistant message with tool_use content blocks
       const contentBlocks: Anthropic.ContentBlockParam[] = []
 
       if (m.content) {
@@ -574,7 +510,6 @@ function rebuildAnthropicMessages(
 
       msgs.push({ role: "assistant", content: contentBlocks })
 
-      // Inject a user message with tool_result blocks for each tool call
       if (m.toolResults && m.toolResults.length > 0) {
         const resultBlocks: Anthropic.ToolResultBlockParam[] = m.toolResults.map((tr) => ({
           type: "tool_result" as const,
@@ -597,10 +532,9 @@ function rebuildAnthropicMessages(
   return msgs
 }
 
-// Rough cost estimation (Sonnet 4 pricing — update if model changes)
 function estimateCostCents(inputTokens: number, outputTokens: number): number {
-  const inputCostPer1M = 300  // $3.00 per 1M input tokens
-  const outputCostPer1M = 1500 // $15.00 per 1M output tokens
+  const inputCostPer1M = 300
+  const outputCostPer1M = 1500
   const cost = (inputTokens / 1_000_000) * inputCostPer1M + (outputTokens / 1_000_000) * outputCostPer1M
-  return Math.ceil(cost) // Round up to nearest cent
+  return Math.ceil(cost)
 }
