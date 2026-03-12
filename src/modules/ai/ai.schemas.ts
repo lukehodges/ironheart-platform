@@ -52,3 +52,17 @@ export const getConfigSchema = z.object({})
 export const updateConfigSchema = z.object({
   guardrailOverrides: z.record(z.string(), z.enum(["AUTO", "CONFIRM", "RESTRICT"])).optional(),
 })
+
+export const generateWorkflowSchema = z.object({
+  description: z.string().min(10).max(5000),
+})
+
+export const listWorkflowSuggestionsSchema = z.object({
+  status: z.string().optional(),
+  limit: z.number().int().min(1).max(50).default(20),
+})
+
+export const resolveSuggestionSchema = z.object({
+  suggestionId: z.string(),
+  action: z.enum(["accepted", "dismissed"]),
+})
