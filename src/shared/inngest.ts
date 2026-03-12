@@ -172,6 +172,9 @@ type IronheartEvents = {
   "ai/chat.completed": {
     data: { conversationId: string; tenantId: string; tokensUsed: number };
   };
+  "ai/workflow.suggested": {
+    data: { suggestionId: string; tenantId: string; title: string };
+  };
 };
 
 /**

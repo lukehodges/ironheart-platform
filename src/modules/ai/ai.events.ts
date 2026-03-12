@@ -1,6 +1,16 @@
 // src/modules/ai/ai.events.ts
 
-// Phase A: No Inngest functions — agent runs synchronously in service layer.
-// Phase B will add: approval handling, overnight processing, morning briefing.
+import { inngest } from "@/shared/inngest"
 
-export const aiFunctions = []
+const weeklyWorkflowSuggestions = inngest.createFunction(
+  { id: "ai/weekly-workflow-suggestions", name: "Weekly Workflow Suggestions" },
+  { cron: "0 9 * * 1" }, // Every Monday at 9 AM
+  async ({ step }) => {
+    await step.run("detect-patterns", async () => {
+      // TODO: Pattern detection logic will analyze workflow execution history
+      return { analyzed: true }
+    })
+  }
+)
+
+export const aiFunctions = [weeklyWorkflowSuggestions]
