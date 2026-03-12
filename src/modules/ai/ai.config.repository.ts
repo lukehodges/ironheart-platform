@@ -48,6 +48,7 @@ export const aiConfigRepository = {
     defaultModel?: string
     guardrailOverrides?: Record<string, GuardrailTier>
     trustMetrics?: Record<string, { approved: number; rejected: number }>
+    verticalProfile?: string
   }): Promise<void> {
     await db
       .update(aiTenantConfig)

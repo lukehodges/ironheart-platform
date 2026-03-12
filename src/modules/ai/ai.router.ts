@@ -10,6 +10,8 @@ import {
   resolveApprovalSchema, explainActionSchema, undoActionSchema, listActionsSchema,
   getTrustSuggestionsSchema, getConfigSchema, updateConfigSchema,
   generateWorkflowSchema, listWorkflowSuggestionsSchema, resolveSuggestionSchema,
+  ingestDocumentSchema, deleteDocumentSchema, listKnowledgeSourcesSchema,
+  setVerticalProfileSchema, listVerticalProfilesSchema,
 } from "./ai.schemas"
 import { resolveApprovalFromUI } from "./ai.approval"
 import { explainAction, undoAction } from "./ai.explainer"
@@ -18,6 +20,8 @@ import { agentActionsRepository } from "./ai.actions.repository"
 import { aiConfigRepository } from "./ai.config.repository"
 import { generateWorkflowFromDescription } from "./ai.workflow-generator"
 import { suggestionsRepository } from "./ai.suggestions.repository"
+import { knowledgeRepository } from "./knowledge/repository"
+import { listVerticalProfiles } from "./verticals"
 
 const moduleGate = createModuleMiddleware("ai")
 const moduleProcedure = tenantProcedure.use(moduleGate)
@@ -128,6 +132,37 @@ export const aiRouter = router({
       await suggestionsRepository.updateStatus(input.suggestionId, input.action)
       return { success: true }
     }),
+
+  ingestDocument: moduleProcedure
+    .input(ingestDocumentSchema)
+    .mutation(async ({ ctx, input }) => {
+      const chunks = await knowledgeRepository.ingestDocument(
+        ctx.tenantId, input.sourceId, input.sourceName, input.content
+      )
+      return { chunksCreated: chunks }
+    }),
+
+  deleteDocument: moduleProcedure
+    .input(deleteDocumentSchema)
+    .mutation(async ({ ctx, input }) => {
+      await knowledgeRepository.deleteSource(ctx.tenantId, input.sourceId)
+      return { success: true }
+    }),
+
+  listKnowledgeSources: moduleProcedure
+    .input(listKnowledgeSourcesSchema)
+    .query(({ ctx }) => knowledgeRepository.listSources(ctx.tenantId)),
+
+  setVerticalProfile: moduleProcedure
+    .input(setVerticalProfileSchema)
+    .mutation(async ({ ctx, input }) => {
+      await aiConfigRepository.update(ctx.tenantId, { verticalProfile: input.verticalSlug })
+      return { success: true }
+    }),
+
+  listVerticalProfiles: moduleProcedure
+    .input(listVerticalProfilesSchema)
+    .query(() => ({ profiles: listVerticalProfiles() })),
 })
 
 export type AIRouter = typeof aiRouter

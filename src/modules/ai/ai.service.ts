@@ -9,10 +9,12 @@ import { createCallerFactory } from "@/shared/trpc"
 import { aiRepository } from "./ai.repository"
 import { agentTools, handleDescribeModule } from "./tools"
 import { executeCode } from "./ai.executor"
-import { buildSystemPrompt } from "./ai.prompts"
+import { buildSystemPrompt, assembleSystemPrompt } from "./ai.prompts"
 import { CircleDetector } from "./ai.circle-detector"
 import { createGuardedCaller, ApprovalRequiredError, RestrictedProcedureError } from "./ai.guarded-caller"
 import { waitForApproval } from "./ai.approval"
+import { maybeSummarize, getEffectiveHistory } from "./memory/summarizer"
+import { hotMemory } from "./memory/hot"
 import type {
   AgentContext,
   AgentResponse,
@@ -182,8 +184,9 @@ export const aiService = {
       pageContext: input.pageContext,
     })
 
-    // 3. Load conversation history
-    const history = await aiRepository.getMessages(conversation.id, 20)
+    // 3. Load effective history (summary + recent messages)
+    const { summary: conversationSummary, recentMessages } = await getEffectiveHistory(conversation.id)
+    const history = recentMessages
 
     // 4. Build Anthropic messages array from history
     const anthropicMessages: Anthropic.MessageParam[] = rebuildAnthropicMessages(history)
@@ -205,7 +208,12 @@ export const aiService = {
     let totalInputTokens = 0
     let totalOutputTokens = 0
     let finalContent = ""
-    const systemPrompt = await buildSystemPrompt(input.pageContext)
+    const systemPrompt = await assembleSystemPrompt({
+      tenantId,
+      pageContext: input.pageContext,
+      userMessage: input.message,
+      conversationSummary,
+    })
     const circleDetector = new CircleDetector()
 
     for (let iteration = 0; iteration < MAX_TOOL_ITERATIONS; iteration++) {
@@ -410,6 +418,18 @@ export const aiService = {
       "Agent streaming response complete"
     )
 
+    // Trigger rolling summarization (fire-and-forget)
+    maybeSummarize(conversation.id).catch((err) =>
+      log.warn({ err, conversationId: conversation.id }, "Summarization failed")
+    )
+
+    // Update hot memory with recent tool calls
+    hotMemory.setSessionContext(conversation.id, {
+      recentToolCalls: allToolCalls.slice(-5).map((tc) => ({ name: tc.name, result: null })),
+      currentIntent: null,
+      pageHistory: input.pageContext?.route ? [input.pageContext.route] : [],
+    }).catch(() => {})
+
     yield {
       type: "done" as const,
       content: finalContent,
@@ -457,8 +477,9 @@ export const aiService = {
       pageContext: input.pageContext,
     })
 
-    // 3. Load history + build messages
-    const history = await aiRepository.getMessages(conversation.id, 20)
+    // 3. Load effective history + build messages
+    const { summary: conversationSummary, recentMessages } = await getEffectiveHistory(conversation.id)
+    const history = recentMessages
     const anthropicMessages: Anthropic.MessageParam[] = rebuildAnthropicMessages(history)
 
     // 4. Build context + guarded caller
@@ -478,7 +499,12 @@ export const aiService = {
     let totalInputTokens = 0
     let totalOutputTokens = 0
     let finalContent = ""
-    const systemPrompt = await buildSystemPrompt(input.pageContext)
+    const systemPrompt = await assembleSystemPrompt({
+      tenantId,
+      pageContext: input.pageContext,
+      userMessage: input.message,
+      conversationSummary,
+    })
     const circleDetector = new CircleDetector()
 
     for (let iteration = 0; iteration < MAX_TOOL_ITERATIONS; iteration++) {

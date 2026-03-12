@@ -66,3 +66,21 @@ export const resolveSuggestionSchema = z.object({
   suggestionId: z.string(),
   action: z.enum(["accepted", "dismissed"]),
 })
+
+export const ingestDocumentSchema = z.object({
+  sourceId: z.string().min(1),
+  sourceName: z.string().min(1),
+  content: z.string().min(1).max(500000),
+})
+
+export const deleteDocumentSchema = z.object({
+  sourceId: z.string(),
+})
+
+export const listKnowledgeSourcesSchema = z.object({})
+
+export const setVerticalProfileSchema = z.object({
+  verticalSlug: z.string(),
+})
+
+export const listVerticalProfilesSchema = z.object({})
