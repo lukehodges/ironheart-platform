@@ -26,3 +26,29 @@ export const getConversationSchema = z.object({
 export const archiveConversationSchema = z.object({
   conversationId: z.string(),
 })
+
+export const resolveApprovalSchema = z.object({
+  actionId: z.string(),
+  approved: z.boolean(),
+})
+
+export const explainActionSchema = z.object({
+  actionId: z.string(),
+})
+
+export const undoActionSchema = z.object({
+  actionId: z.string(),
+})
+
+export const listActionsSchema = z.object({
+  limit: z.number().int().min(1).max(100).default(50),
+  status: z.string().optional(),
+})
+
+export const getTrustSuggestionsSchema = z.object({})
+
+export const getConfigSchema = z.object({})
+
+export const updateConfigSchema = z.object({
+  guardrailOverrides: z.record(z.string(), z.enum(["AUTO", "CONFIRM", "RESTRICT"])).optional(),
+})

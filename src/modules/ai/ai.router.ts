@@ -5,7 +5,16 @@ import { getUserPermissions } from "@/modules/auth/rbac"
 import type { UserWithRoles } from "@/modules/auth/rbac"
 import { aiService } from "./ai.service"
 import { aiRepository } from "./ai.repository"
-import { sendMessageSchema, listConversationsSchema, getConversationSchema, archiveConversationSchema } from "./ai.schemas"
+import {
+  sendMessageSchema, listConversationsSchema, getConversationSchema, archiveConversationSchema,
+  resolveApprovalSchema, explainActionSchema, undoActionSchema, listActionsSchema,
+  getTrustSuggestionsSchema, getConfigSchema, updateConfigSchema,
+} from "./ai.schemas"
+import { resolveApprovalFromUI } from "./ai.approval"
+import { explainAction, undoAction } from "./ai.explainer"
+import { analyzeTrustMetrics } from "./ai.trust"
+import { agentActionsRepository } from "./ai.actions.repository"
+import { aiConfigRepository } from "./ai.config.repository"
 
 const moduleGate = createModuleMiddleware("ai")
 const moduleProcedure = tenantProcedure.use(moduleGate)
@@ -44,6 +53,52 @@ export const aiRouter = router({
     .input(archiveConversationSchema)
     .mutation(async ({ ctx, input }) => {
       await aiRepository.updateConversation(input.conversationId, { status: "archived" })
+      return { success: true }
+    }),
+
+  resolveApproval: moduleProcedure
+    .input(resolveApprovalSchema)
+    .mutation(async ({ input }) => {
+      await resolveApprovalFromUI(input.actionId, input.approved)
+      return { success: true }
+    }),
+
+  explainAction: moduleProcedure
+    .input(explainActionSchema)
+    .mutation(async ({ ctx, input }) => {
+      const explanation = await explainAction(input.actionId, ctx.tenantId)
+      return { explanation }
+    }),
+
+  undoAction: moduleProcedure
+    .input(undoActionSchema)
+    .mutation(async ({ ctx, input }) => {
+      return undoAction(input.actionId, ctx.tenantId, ctx.user!.id)
+    }),
+
+  listActions: moduleProcedure
+    .input(listActionsSchema)
+    .query(({ ctx, input }) =>
+      agentActionsRepository.listByTenant(ctx.tenantId, input.limit, input.status as any)
+    ),
+
+  getTrustSuggestions: moduleProcedure
+    .input(getTrustSuggestionsSchema)
+    .query(async ({ ctx }) => {
+      const suggestions = await analyzeTrustMetrics(ctx.tenantId)
+      return { suggestions }
+    }),
+
+  getConfig: moduleProcedure
+    .input(getConfigSchema)
+    .query(({ ctx }) => aiConfigRepository.getOrCreate(ctx.tenantId)),
+
+  updateConfig: moduleProcedure
+    .input(updateConfigSchema)
+    .mutation(async ({ ctx, input }) => {
+      if (input.guardrailOverrides) {
+        await aiConfigRepository.update(ctx.tenantId, { guardrailOverrides: input.guardrailOverrides })
+      }
       return { success: true }
     }),
 })
