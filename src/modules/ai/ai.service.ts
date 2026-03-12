@@ -5,9 +5,10 @@ import { logger } from "@/shared/logger"
 import { redis } from "@/shared/redis"
 import { BadRequestError } from "@/shared/errors"
 import { aiRepository } from "./ai.repository"
-import { allTools, getToolsForUser } from "./tools"
+import { allTools, getToolsForUser, isMutatingTool } from "./tools"
+import { resolveGuardrailTier, executeAutoAction, requestApproval } from "./ai.approval"
 import { buildSystemPrompt } from "./ai.prompts"
-import type { AgentContext, AgentResponse, AgentStreamEvent, ToolCallRecord, ToolResultRecord, TokenUsage, PageContext } from "./ai.types"
+import type { AgentContext, AgentResponse, AgentStreamEvent, ToolCallRecord, ToolResultRecord, TokenUsage, PageContext, MutatingAgentTool } from "./ai.types"
 
 const log = logger.child({ module: "ai.service" })
 
@@ -169,6 +170,69 @@ export const aiService = {
           continue
         }
 
+        // Handle mutation tools with guardrail tiers
+        if (isMutatingTool(tool)) {
+          const mutTool = tool as MutatingAgentTool
+          const tier = await resolveGuardrailTier(ctx.tenantId, mutTool)
+
+          if (tier === "RESTRICT") {
+            const errorMsg = `Tool "${toolUse.name}" is restricted by your organization's guardrail policy.`
+            allToolResults.push({ toolCallId: toolUse.id, output: null, error: errorMsg })
+            toolResultBlocks.push({ type: "tool_result", tool_use_id: toolUse.id, content: JSON.stringify({ error: errorMsg }), is_error: true })
+            yield { type: "tool_result" as const, toolName: toolUse.name, result: { error: errorMsg }, durationMs: 0 }
+            continue
+          }
+
+          if (tier === "AUTO") {
+            try {
+              const startMs = Date.now()
+              const { result } = await executeAutoAction(conversation.id, mutTool, toolUse.input, ctx)
+              const durationMs = Date.now() - startMs
+              log.info({ tool: toolUse.name, durationMs, tier }, "Mutation tool auto-executed (streaming)")
+              allToolResults.push({ toolCallId: toolUse.id, output: result })
+              toolResultBlocks.push({ type: "tool_result", tool_use_id: toolUse.id, content: JSON.stringify(result, null, 2) })
+              yield { type: "tool_result" as const, toolName: toolUse.name, result, durationMs }
+            } catch (err) {
+              const errorMsg = err instanceof Error ? err.message : "Tool execution failed"
+              log.error({ err, tool: toolUse.name }, "Mutation tool auto-execution error (streaming)")
+              allToolResults.push({ toolCallId: toolUse.id, output: null, error: errorMsg })
+              toolResultBlocks.push({ type: "tool_result", tool_use_id: toolUse.id, content: JSON.stringify({ error: errorMsg }), is_error: true })
+              yield { type: "tool_result" as const, toolName: toolUse.name, result: { error: errorMsg }, durationMs: 0 }
+            }
+            continue
+          }
+
+          // CONFIRM tier — request approval and wait
+          yield { type: "approval_required" as const, actionId: "", toolName: toolUse.name, description: mutTool.mutationDescription, input: toolUse.input }
+          const startMs = Date.now()
+          const { approved, action } = await requestApproval(conversation.id, mutTool, toolUse.input, ctx)
+          yield { type: "approval_resolved" as const, actionId: action.id, approved }
+
+          if (approved) {
+            try {
+              const result = await executeToolWithTimeout(() => mutTool.execute(toolUse.input, ctx))
+              const durationMs = Date.now() - startMs
+              log.info({ tool: toolUse.name, durationMs, tier }, "Mutation tool executed after approval (streaming)")
+              allToolResults.push({ toolCallId: toolUse.id, output: result })
+              toolResultBlocks.push({ type: "tool_result", tool_use_id: toolUse.id, content: JSON.stringify(result, null, 2) })
+              yield { type: "tool_result" as const, toolName: toolUse.name, result, durationMs }
+            } catch (err) {
+              const errorMsg = err instanceof Error ? err.message : "Tool execution failed"
+              log.error({ err, tool: toolUse.name }, "Mutation tool execution error after approval (streaming)")
+              allToolResults.push({ toolCallId: toolUse.id, output: null, error: errorMsg })
+              toolResultBlocks.push({ type: "tool_result", tool_use_id: toolUse.id, content: JSON.stringify({ error: errorMsg }), is_error: true })
+              yield { type: "tool_result" as const, toolName: toolUse.name, result: { error: errorMsg }, durationMs: 0 }
+            }
+          } else {
+            const rejMsg = "Action was rejected by the user."
+            allToolResults.push({ toolCallId: toolUse.id, output: null, error: rejMsg })
+            toolResultBlocks.push({ type: "tool_result", tool_use_id: toolUse.id, content: JSON.stringify({ error: rejMsg }), is_error: true })
+            yield { type: "tool_result" as const, toolName: toolUse.name, result: { error: rejMsg }, durationMs: 0 }
+          }
+          continue
+        }
+
+        // Non-mutating (read-only) tool — execute directly
         try {
           const startMs = Date.now()
           const result = await executeToolWithTimeout(() => tool.execute(toolUse.input, ctx))
@@ -342,16 +406,69 @@ export const aiService = {
           continue
         }
 
+        // Handle mutation tools with guardrail tiers
+        if (isMutatingTool(tool)) {
+          const mutTool = tool as MutatingAgentTool
+          const tier = await resolveGuardrailTier(ctx.tenantId, mutTool)
+
+          if (tier === "RESTRICT") {
+            const errorMsg = `Tool "${toolUse.name}" is restricted by your organization's guardrail policy.`
+            allToolResults.push({ toolCallId: toolUse.id, output: null, error: errorMsg })
+            toolResultBlocks.push({ type: "tool_result", tool_use_id: toolUse.id, content: JSON.stringify({ error: errorMsg }), is_error: true })
+            continue
+          }
+
+          if (tier === "AUTO") {
+            try {
+              const startMs = Date.now()
+              const { result } = await executeAutoAction(conversation.id, mutTool, toolUse.input, ctx)
+              const durationMs = Date.now() - startMs
+              log.info({ tool: toolUse.name, durationMs, tier }, "Mutation tool auto-executed")
+              allToolResults.push({ toolCallId: toolUse.id, output: result })
+              toolResultBlocks.push({ type: "tool_result", tool_use_id: toolUse.id, content: JSON.stringify(result, null, 2) })
+            } catch (err) {
+              const errorMsg = err instanceof Error ? err.message : "Tool execution failed"
+              log.error({ err, tool: toolUse.name }, "Mutation tool auto-execution error")
+              allToolResults.push({ toolCallId: toolUse.id, output: null, error: errorMsg })
+              toolResultBlocks.push({ type: "tool_result", tool_use_id: toolUse.id, content: JSON.stringify({ error: errorMsg }), is_error: true })
+            }
+            continue
+          }
+
+          // CONFIRM tier — request approval and wait
+          const { approved } = await requestApproval(conversation.id, mutTool, toolUse.input, ctx)
+          if (approved) {
+            try {
+              const startMs = Date.now()
+              const result = await executeToolWithTimeout(() => mutTool.execute(toolUse.input, ctx))
+              const durationMs = Date.now() - startMs
+              log.info({ tool: toolUse.name, durationMs, tier }, "Mutation tool executed after approval")
+              allToolResults.push({ toolCallId: toolUse.id, output: result })
+              toolResultBlocks.push({ type: "tool_result", tool_use_id: toolUse.id, content: JSON.stringify(result, null, 2) })
+            } catch (err) {
+              const errorMsg = err instanceof Error ? err.message : "Tool execution failed"
+              log.error({ err, tool: toolUse.name }, "Mutation tool execution error after approval")
+              allToolResults.push({ toolCallId: toolUse.id, output: null, error: errorMsg })
+              toolResultBlocks.push({ type: "tool_result", tool_use_id: toolUse.id, content: JSON.stringify({ error: errorMsg }), is_error: true })
+            }
+          } else {
+            const rejMsg = "Action was rejected by the user."
+            allToolResults.push({ toolCallId: toolUse.id, output: null, error: rejMsg })
+            toolResultBlocks.push({ type: "tool_result", tool_use_id: toolUse.id, content: JSON.stringify({ error: rejMsg }), is_error: true })
+          }
+          continue
+        }
+
+        // Non-mutating (read-only) tool — execute directly
         try {
           const startMs = Date.now()
           const result = await executeToolWithTimeout(() => tool.execute(toolUse.input, ctx))
           const durationMs = Date.now() - startMs
 
-          const resultStr = JSON.stringify(result, null, 2)
           log.info({ tool: toolUse.name, durationMs }, "Tool executed")
 
           allToolResults.push({ toolCallId: toolUse.id, output: result })
-          toolResultBlocks.push({ type: "tool_result", tool_use_id: toolUse.id, content: resultStr })
+          toolResultBlocks.push({ type: "tool_result", tool_use_id: toolUse.id, content: JSON.stringify(result, null, 2) })
         } catch (err) {
           const errorMsg = err instanceof Error ? err.message : "Tool execution failed"
           log.error({ err, tool: toolUse.name }, "Tool execution error")
