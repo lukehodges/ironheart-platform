@@ -29,6 +29,7 @@ import { applyTransform } from './transforms'
 import { substituteConfigVariables, executeAction } from './actions'
 import { pushLoopFrame, popLoopFrame } from './loop'
 import { migrateNodeConfig } from './migrations/node-config.migrations'
+import { executeAIDecision, executeAIGenerate, attemptAIRecovery } from './ai-nodes'
 
 const log = logger.child({ module: 'workflow.graph-engine' })
 
@@ -402,6 +403,28 @@ export class GraphEngine {
           break
         }
 
+        case 'AI_DECISION': {
+          const decisionResult = await step.run(`ai-decision-${nodeId}`, () =>
+            executeAIDecision(node$, context)
+          )
+          nextHandle = decisionResult.handle
+          output = decisionResult
+          break
+        }
+
+        case 'AI_GENERATE': {
+          const cfg = node$.config as import('../workflow.types').AIGenerateNodeConfig
+          const generateResult = await step.run(`ai-generate-${nodeId}`, () =>
+            executeAIGenerate(node$, context)
+          )
+          output = generateResult
+          updatedContext = {
+            ...context,
+            variables: { ...context.variables, [cfg.outputField]: generateResult.content }
+          }
+          break
+        }
+
         case 'STOP':
           return context  // terminal - do not follow edges
 
@@ -416,7 +439,27 @@ export class GraphEngine {
       const errMsg = err instanceof Error ? err.message : String(err)
       output = { error: errMsg }
 
-      if (node.errorHandling === 'branch') {
+      if (node.errorHandling === 'ai_recover') {
+        log.warn({ nodeId, err: errMsg }, 'Node failed - attempting AI recovery')
+        const recovery = await step.run(`ai-recover-${nodeId}`, () =>
+          attemptAIRecovery(node, err instanceof Error ? err : new Error(String(err)), context)
+        )
+
+        if (recovery.action === 'retry' && !(context as Record<string, unknown>).__aiRetried) {
+          log.info({ nodeId }, 'AI recovery: retrying node')
+          const retryContext = { ...context, __aiRetried: true } as WorkflowExecutionContext
+          return this.executeNode(nodeId, retryContext, step, new Set([...visitedNodes].filter(id => id !== nodeId)))
+        } else if (recovery.action === 'substitute') {
+          log.info({ nodeId, value: recovery.value }, 'AI recovery: substituting value')
+          output = { substituted: true, value: recovery.value, reasoning: recovery.reasoning }
+          nextHandle = 'output'
+        } else {
+          // 'skip' or retry already attempted
+          log.info({ nodeId, action: recovery.action }, 'AI recovery: skipping node')
+          output = { skipped: true, reasoning: recovery.reasoning }
+          nextHandle = 'output'
+        }
+      } else if (node.errorHandling === 'branch') {
         nextHandle = 'error'
         log.warn({ nodeId, err: errMsg }, 'Node failed - routing to error branch')
       } else if (node.errorHandling === 'continue') {
