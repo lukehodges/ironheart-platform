@@ -2,7 +2,7 @@
 // Graph validation - structural checks before saving a graph-mode workflow
 // ──────────────────────────────────────────────────────────────────────────────
 
-import type { WorkflowNode, WorkflowEdge } from '../workflow.types'
+import type { WorkflowNode, WorkflowEdge, AIDecisionNodeConfig, AIGenerateNodeConfig } from '../workflow.types'
 
 /**
  * Validate a workflow graph before saving.
@@ -17,6 +17,8 @@ import type { WorkflowNode, WorkflowEdge } from '../workflow.types'
  *   6. SWITCH nodes must have at least one case edge
  *   7. LOOP nodes must have an "item" edge (loop body)
  *   8. WAIT_FOR_EVENT nodes must have a "received" edge
+ *   9. AI_DECISION nodes must have prompt, ≥2 outcomes with matching edges, valid defaultHandle
+ *  10. AI_GENERATE nodes must have a non-empty prompt and outputField
  */
 export function validateWorkflowGraph(
   nodes: WorkflowNode[],
@@ -81,6 +83,39 @@ export function validateWorkflowGraph(
   for (const node of nodes.filter(n => n.type === 'WAIT_FOR_EVENT')) {
     if (!edges.some(e => e.source === node.id && e.sourceHandle === 'received')) {
       errors.push(`WAIT_FOR_EVENT node "${node.label ?? node.id}" missing "received" edge`)
+    }
+  }
+
+  // 9. AI_DECISION nodes must have a prompt, at least 2 outcomes, matching edges, and a valid defaultHandle
+  for (const node of nodes.filter(n => n.type === 'AI_DECISION')) {
+    const config = node.config as AIDecisionNodeConfig
+    if (!config.prompt || typeof config.prompt !== 'string' || config.prompt.trim() === '') {
+      errors.push(`AI_DECISION node "${node.label ?? node.id}" missing "prompt" in config`)
+    }
+    if (!Array.isArray(config.outcomes) || config.outcomes.length < 2) {
+      errors.push(`AI_DECISION node "${node.label ?? node.id}" must have at least 2 outcomes`)
+    } else {
+      const outgoingHandles = edges.filter(e => e.source === node.id).map(e => e.sourceHandle)
+      for (const outcome of config.outcomes) {
+        if (!outgoingHandles.includes(outcome.handle)) {
+          errors.push(`AI_DECISION node "${node.label ?? node.id}" missing edge for outcome handle "${outcome.handle}"`)
+        }
+      }
+      const outcomeHandles = config.outcomes.map(o => o.handle)
+      if (!config.defaultHandle || !outcomeHandles.includes(config.defaultHandle)) {
+        errors.push(`AI_DECISION node "${node.label ?? node.id}" has invalid or missing "defaultHandle"`)
+      }
+    }
+  }
+
+  // 10. AI_GENERATE nodes must have a non-empty prompt and outputField
+  for (const node of nodes.filter(n => n.type === 'AI_GENERATE')) {
+    const config = node.config as AIGenerateNodeConfig
+    if (!config.prompt || typeof config.prompt !== 'string' || config.prompt.trim() === '') {
+      errors.push(`AI_GENERATE node "${node.label ?? node.id}" missing "prompt" in config`)
+    }
+    if (!config.outputField || typeof config.outputField !== 'string' || config.outputField.trim() === '') {
+      errors.push(`AI_GENERATE node "${node.label ?? node.id}" missing "outputField" in config`)
     }
   }
 
