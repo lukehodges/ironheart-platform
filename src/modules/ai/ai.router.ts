@@ -17,7 +17,7 @@ export const aiRouter = router({
       // Use getUserPermissions which handles OWNER/ADMIN wildcard ("*:*")
       const userPermissions = getUserPermissions(ctx.user as UserWithRoles)
 
-      return aiService.sendMessage(ctx.tenantId, ctx.user!.id, userPermissions, {
+      return aiService.sendMessage(ctx.tenantId, ctx.user!.id, ctx.session!.user.id, userPermissions, ctx.req, {
         conversationId: input.conversationId,
         message: input.message,
         pageContext: input.pageContext,

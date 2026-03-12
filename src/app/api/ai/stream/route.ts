@@ -110,7 +110,9 @@ export async function POST(req: Request) {
         const eventStream = aiService.sendMessageStreaming(
           tenantId,
           dbUser.id,
+          authResult.user.id,  // WorkOS user ID
           userPermissions,
+          req,                  // Original request for IP-based rate limiting
           {
             conversationId: body.conversationId,
             message: body.message,
