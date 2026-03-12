@@ -405,7 +405,7 @@ export class GraphEngine {
 
         case 'AI_DECISION': {
           const decisionResult = await step.run(`ai-decision-${nodeId}`, () =>
-            executeAIDecision(node$, context)
+            executeAIDecision(node$ as WorkflowNode, context)
           )
           nextHandle = decisionResult.handle
           output = decisionResult
@@ -415,7 +415,7 @@ export class GraphEngine {
         case 'AI_GENERATE': {
           const cfg = node$.config as import('../workflow.types').AIGenerateNodeConfig
           const generateResult = await step.run(`ai-generate-${nodeId}`, () =>
-            executeAIGenerate(node$, context)
+            executeAIGenerate(node$ as WorkflowNode, context)
           )
           output = generateResult
           updatedContext = {
@@ -445,7 +445,7 @@ export class GraphEngine {
           attemptAIRecovery(node, err instanceof Error ? err : new Error(String(err)), context)
         )
 
-        if (recovery.action === 'retry' && !(context as Record<string, unknown>).__aiRetried) {
+        if (recovery.action === 'retry' && !(context as unknown as Record<string, unknown>).__aiRetried) {
           log.info({ nodeId }, 'AI recovery: retrying node')
           const retryContext = { ...context, __aiRetried: true } as WorkflowExecutionContext
           return this.executeNode(nodeId, retryContext, step, new Set([...visitedNodes].filter(id => id !== nodeId)))
