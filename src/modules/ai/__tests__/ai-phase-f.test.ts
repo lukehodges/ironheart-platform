@@ -4,6 +4,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 // Mocks — must be before imports
 // ---------------------------------------------------------------------------
 
+const mockCreate = vi.fn()
+
 vi.mock("@/shared/db", () => {
   const mockReturning = vi.fn()
   const mockValues = vi.fn(() => ({ returning: mockReturning }))
@@ -75,13 +77,10 @@ vi.mock("@/shared/logger", () => ({
 }))
 
 vi.mock("@anthropic-ai/sdk", () => {
-  return {
-    default: vi.fn().mockImplementation(() => ({
-      messages: {
-        create: vi.fn(),
-      },
-    })),
+  class MockAnthropic {
+    messages = { create: mockCreate }
   }
+  return { default: MockAnthropic }
 })
 
 vi.mock("../ai.config.repository", () => ({
@@ -153,11 +152,16 @@ vi.mock("../verticals", () => ({
 // ---------------------------------------------------------------------------
 
 import { resolveGhostRules, DEFAULT_GHOST_RULES } from "../features/ghost-operator.rules"
+import { processGhostOperator } from "../features/ghost-operator.processor"
+import { gatherBriefingData } from "../features/morning-briefing.data"
+import { generateBriefing } from "../features/morning-briefing.generator"
+import { extractEntities } from "../features/paste-to-pipeline"
+import { commitEntities } from "../features/paste-to-pipeline.commit"
+import { aiConfigRepository } from "../ai.config.repository"
 import type {
   GhostOperatorRule,
   BriefingMetrics,
   ExtractedEntities,
-  MorningBriefing,
 } from "../ai.types"
 
 // ---------------------------------------------------------------------------
@@ -188,7 +192,7 @@ describe("Phase F — Killer Features", () => {
         {
           id: "auto-confirm-bookings",
           name: "Auto-confirm (custom)",
-          enabled: false, // Tenant disables this
+          enabled: false,
           trigger: "pending_booking",
           conditions: {},
           action: { toolName: "booking.updateStatus", inputTemplate: {} },
@@ -226,7 +230,7 @@ describe("Phase F — Killer Features", () => {
       const tenantRules: GhostOperatorRule[] = [
         {
           ...DEFAULT_GHOST_RULES[2],
-          enabled: true, // Enable the retry-failed-workflows rule
+          enabled: true,
         },
       ]
 
@@ -245,19 +249,18 @@ describe("Phase F — Killer Features", () => {
       const startHour = 18
       const endHour = 8
 
-      // Test various hours
       const isInWindow = (hour: number) =>
         startHour > endHour
           ? hour >= startHour || hour < endHour
           : hour >= startHour && hour < endHour
 
-      expect(isInWindow(18)).toBe(true)   // Start hour — in window
-      expect(isInWindow(23)).toBe(true)   // Late night — in window
-      expect(isInWindow(3)).toBe(true)    // Early morning — in window
-      expect(isInWindow(7)).toBe(true)    // Before end — in window
-      expect(isInWindow(8)).toBe(false)   // End hour — out of window
-      expect(isInWindow(12)).toBe(false)  // Midday — out of window
-      expect(isInWindow(17)).toBe(false)  // Before start — out of window
+      expect(isInWindow(18)).toBe(true)
+      expect(isInWindow(23)).toBe(true)
+      expect(isInWindow(3)).toBe(true)
+      expect(isInWindow(7)).toBe(true)
+      expect(isInWindow(8)).toBe(false)
+      expect(isInWindow(12)).toBe(false)
+      expect(isInWindow(17)).toBe(false)
     })
 
     it("should correctly identify same-day window (09-17)", () => {
@@ -269,12 +272,12 @@ describe("Phase F — Killer Features", () => {
           ? hour >= startHour || hour < endHour
           : hour >= startHour && hour < endHour
 
-      expect(isInWindow(9)).toBe(true)    // Start hour — in window
-      expect(isInWindow(12)).toBe(true)   // Midday — in window
-      expect(isInWindow(16)).toBe(true)   // Afternoon — in window
-      expect(isInWindow(17)).toBe(false)  // End hour — out of window
-      expect(isInWindow(8)).toBe(false)   // Before start — out of window
-      expect(isInWindow(20)).toBe(false)  // Evening — out of window
+      expect(isInWindow(9)).toBe(true)
+      expect(isInWindow(12)).toBe(true)
+      expect(isInWindow(16)).toBe(true)
+      expect(isInWindow(17)).toBe(false)
+      expect(isInWindow(8)).toBe(false)
+      expect(isInWindow(20)).toBe(false)
     })
   })
 
@@ -284,7 +287,6 @@ describe("Phase F — Killer Features", () => {
 
   describe("Ghost Operator — Processor", () => {
     it("should process ghost operator for a tenant", async () => {
-      const { processGhostOperator } = await import("../features/ghost-operator.processor")
       const results = await processGhostOperator("tenant-1")
 
       // With empty getMatchingEntities, all rules should return 0 actions
@@ -296,7 +298,6 @@ describe("Phase F — Killer Features", () => {
     })
 
     it("should skip rules when guardrail tier is not AUTO", async () => {
-      const { aiConfigRepository } = await import("../ai.config.repository")
       vi.mocked(aiConfigRepository.getOrCreate).mockResolvedValueOnce({
         id: "config-1",
         tenantId: "tenant-1",
@@ -304,7 +305,7 @@ describe("Phase F — Killer Features", () => {
         maxTokenBudget: 50000,
         maxMessagesPerMinute: 20,
         defaultModel: "claude-sonnet-4-20250514",
-        guardrailOverrides: { "booking.updateStatus": "CONFIRM" },
+        guardrailOverrides: { "booking.updateStatus": "CONFIRM" as const },
         trustMetrics: {},
         morningBriefingEnabled: false,
         morningBriefingTime: "08:00",
@@ -321,10 +322,7 @@ describe("Phase F — Killer Features", () => {
         updatedAt: new Date(),
       })
 
-      const { processGhostOperator } = await import("../features/ghost-operator.processor")
       const results = await processGhostOperator("tenant-1")
-
-      // Rules requiring AUTO tier should be skipped when tier is CONFIRM
       expect(results).toHaveLength(2)
     })
   })
@@ -370,13 +368,27 @@ describe("Phase F — Killer Features", () => {
   })
 
   // -----------------------------------------------------------------------
+  // Morning Briefing — Data Gathering
+  // -----------------------------------------------------------------------
+
+  describe("Morning Briefing — Data Gathering", () => {
+    it("should gather briefing data without throwing", async () => {
+      const data = await gatherBriefingData("tenant-1")
+
+      expect(data.metrics).toBeDefined()
+      expect(data.metrics.newBookings24h).toBe(0)
+      expect(data.recentBookings).toEqual([])
+      expect(data.recentReviews).toEqual([])
+    })
+  })
+
+  // -----------------------------------------------------------------------
   // Morning Briefing — Generator
   // -----------------------------------------------------------------------
 
   describe("Morning Briefing — Generator", () => {
     it("should generate a briefing from data", async () => {
-      const Anthropic = (await import("@anthropic-ai/sdk")).default
-      const mockCreate = vi.fn().mockResolvedValue({
+      mockCreate.mockResolvedValueOnce({
         content: [{
           type: "text",
           text: JSON.stringify({
@@ -392,41 +404,6 @@ describe("Phase F — Killer Features", () => {
           }),
         }],
       })
-
-      // Set up the mock on the singleton
-      vi.mocked(Anthropic).mockImplementation(() => ({
-        messages: { create: mockCreate },
-      }) as unknown as InstanceType<typeof Anthropic>)
-
-      // Clear module cache to pick up new mock
-      vi.resetModules()
-      // Re-apply mocks before reimporting
-      vi.mock("@/shared/logger", () => ({
-        logger: {
-          child: () => ({
-            info: vi.fn(),
-            warn: vi.fn(),
-            error: vi.fn(),
-            debug: vi.fn(),
-          }),
-        },
-      }))
-      vi.mock("../verticals", () => ({
-        getVerticalProfile: vi.fn().mockResolvedValue({
-          slug: "generic",
-          name: "General Business",
-          description: "A generic business",
-          terminology: { booking: "appointment", customer: "client" },
-          systemPromptAddendum: "Be helpful and professional.",
-        }),
-      }))
-      vi.mock("@anthropic-ai/sdk", () => ({
-        default: vi.fn().mockImplementation(() => ({
-          messages: { create: mockCreate },
-        })),
-      }))
-
-      const { generateBriefing } = await import("../features/morning-briefing.generator")
 
       const briefing = await generateBriefing("tenant-1", {
         metrics: {
@@ -454,38 +431,9 @@ describe("Phase F — Killer Features", () => {
     })
 
     it("should handle unparseable JSON response gracefully", async () => {
-      vi.resetModules()
-
-      const mockCreate = vi.fn().mockResolvedValue({
+      mockCreate.mockResolvedValueOnce({
         content: [{ type: "text", text: "This is not JSON" }],
       })
-
-      vi.mock("@/shared/logger", () => ({
-        logger: {
-          child: () => ({
-            info: vi.fn(),
-            warn: vi.fn(),
-            error: vi.fn(),
-            debug: vi.fn(),
-          }),
-        },
-      }))
-      vi.mock("../verticals", () => ({
-        getVerticalProfile: vi.fn().mockResolvedValue({
-          slug: "generic",
-          name: "General Business",
-          description: "A generic business",
-          terminology: {},
-          systemPromptAddendum: "",
-        }),
-      }))
-      vi.mock("@anthropic-ai/sdk", () => ({
-        default: vi.fn().mockImplementation(() => ({
-          messages: { create: mockCreate },
-        })),
-      }))
-
-      const { generateBriefing } = await import("../features/morning-briefing.generator")
 
       const briefing = await generateBriefing("tenant-1", {
         metrics: {
@@ -505,7 +453,6 @@ describe("Phase F — Killer Features", () => {
         pendingActions: [],
       })
 
-      // Should fallback to raw text
       expect(briefing.narrative).toBe("This is not JSON")
       expect(briefing.sections).toHaveLength(0)
     })
@@ -517,9 +464,7 @@ describe("Phase F — Killer Features", () => {
 
   describe("Paste-to-Pipeline — Entity Extraction", () => {
     it("should extract entities from unstructured text", async () => {
-      vi.resetModules()
-
-      const mockCreate = vi.fn().mockResolvedValue({
+      mockCreate.mockResolvedValueOnce({
         content: [{
           type: "text",
           text: JSON.stringify({
@@ -546,33 +491,6 @@ describe("Phase F — Killer Features", () => {
         }],
       })
 
-      vi.mock("@/shared/logger", () => ({
-        logger: {
-          child: () => ({
-            info: vi.fn(),
-            warn: vi.fn(),
-            error: vi.fn(),
-            debug: vi.fn(),
-          }),
-        },
-      }))
-      vi.mock("../verticals", () => ({
-        getVerticalProfile: vi.fn().mockResolvedValue({
-          slug: "generic",
-          name: "General Business",
-          description: "A generic business",
-          terminology: { booking: "appointment", customer: "client" },
-          systemPromptAddendum: "",
-        }),
-      }))
-      vi.mock("@anthropic-ai/sdk", () => ({
-        default: vi.fn().mockImplementation(() => ({
-          messages: { create: mockCreate },
-        })),
-      }))
-
-      const { extractEntities } = await import("../features/paste-to-pipeline")
-
       const result = await extractEntities("tenant-1", "John Smith from Acme, john@example.com, wants a haircut on March 15th at 10am.")
 
       expect(result.customer).not.toBeNull()
@@ -586,38 +504,10 @@ describe("Phase F — Killer Features", () => {
     })
 
     it("should handle parse failures gracefully", async () => {
-      vi.resetModules()
-
-      const mockCreate = vi.fn().mockResolvedValue({
+      mockCreate.mockResolvedValueOnce({
         content: [{ type: "text", text: "Not valid JSON" }],
       })
 
-      vi.mock("@/shared/logger", () => ({
-        logger: {
-          child: () => ({
-            info: vi.fn(),
-            warn: vi.fn(),
-            error: vi.fn(),
-            debug: vi.fn(),
-          }),
-        },
-      }))
-      vi.mock("../verticals", () => ({
-        getVerticalProfile: vi.fn().mockResolvedValue({
-          slug: "generic",
-          name: "General Business",
-          description: "A generic business",
-          terminology: {},
-          systemPromptAddendum: "",
-        }),
-      }))
-      vi.mock("@anthropic-ai/sdk", () => ({
-        default: vi.fn().mockImplementation(() => ({
-          messages: { create: mockCreate },
-        })),
-      }))
-
-      const { extractEntities } = await import("../features/paste-to-pipeline")
       const result = await extractEntities("tenant-1", "Some random text")
 
       expect(result.customer).toBeNull()
@@ -634,21 +524,6 @@ describe("Phase F — Killer Features", () => {
 
   describe("Paste-to-Pipeline — Commit Flow", () => {
     it("should return empty results when nothing confirmed", async () => {
-      vi.resetModules()
-
-      vi.mock("@/shared/logger", () => ({
-        logger: {
-          child: () => ({
-            info: vi.fn(),
-            warn: vi.fn(),
-            error: vi.fn(),
-            debug: vi.fn(),
-          }),
-        },
-      }))
-
-      const { commitEntities } = await import("../features/paste-to-pipeline.commit")
-
       const entities: ExtractedEntities = {
         customer: { name: "John", email: null, phone: null, company: null, notes: null },
         booking: null,
@@ -676,7 +551,6 @@ describe("Phase F — Killer Features", () => {
 
   describe("Tenant Config — Killer Feature Toggles", () => {
     it("should have correct defaults for killer features", async () => {
-      const { aiConfigRepository } = await import("../ai.config.repository")
       const config = await aiConfigRepository.getOrCreate("tenant-1")
 
       expect(config.morningBriefingEnabled).toBe(true)
@@ -687,43 +561,6 @@ describe("Phase F — Killer Features", () => {
       expect(config.ghostOperatorStartHour).toBe(18)
       expect(config.ghostOperatorEndHour).toBe(8)
       expect(config.pasteToPipelineEnabled).toBe(true)
-    })
-  })
-
-  // -----------------------------------------------------------------------
-  // Morning Briefing — Data Gathering
-  // -----------------------------------------------------------------------
-
-  describe("Morning Briefing — Data Gathering", () => {
-    it("should gather briefing data without throwing", async () => {
-      vi.resetModules()
-
-      vi.mock("@/shared/logger", () => ({
-        logger: {
-          child: () => ({
-            info: vi.fn(),
-            warn: vi.fn(),
-            error: vi.fn(),
-            debug: vi.fn(),
-          }),
-        },
-      }))
-      vi.mock("@/shared/db", () => ({
-        db: {
-          execute: vi.fn().mockResolvedValue([]),
-        },
-      }))
-      vi.mock("drizzle-orm", () => ({
-        sql: vi.fn(),
-      }))
-
-      const { gatherBriefingData } = await import("../features/morning-briefing.data")
-      const data = await gatherBriefingData("tenant-1")
-
-      expect(data.metrics).toBeDefined()
-      expect(data.metrics.newBookings24h).toBe(0)
-      expect(data.recentBookings).toEqual([])
-      expect(data.recentReviews).toEqual([])
     })
   })
 })
