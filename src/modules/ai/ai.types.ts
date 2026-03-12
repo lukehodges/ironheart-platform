@@ -248,3 +248,104 @@ export interface RAGResult {
   sourceName: string
   similarity: number
 }
+
+// ---------------------------------------------------------------------------
+// Morning Briefing
+// ---------------------------------------------------------------------------
+
+export interface MorningBriefing {
+  tenantId: string
+  generatedAt: Date
+  /** Narrative summary */
+  narrative: string
+  /** Structured sections */
+  sections: BriefingSection[]
+  /** Key metrics snapshot */
+  metrics: BriefingMetrics
+}
+
+export interface BriefingSection {
+  title: string
+  priority: "high" | "medium" | "low"
+  content: string
+  /** Entity references for linking */
+  references: Array<{ type: string; id: string; label: string }>
+}
+
+export interface BriefingMetrics {
+  newBookings24h: number
+  completedBookings24h: number
+  cancelledBookings24h: number
+  newReviews24h: number
+  avgRating24h: number | null
+  overdueInvoices: number
+  pendingApprovals: number
+  workflowsTriggered24h: number
+  workflowsFailed24h: number
+}
+
+// ---------------------------------------------------------------------------
+// Ghost Operator
+// ---------------------------------------------------------------------------
+
+export interface GhostOperatorRule {
+  id: string
+  name: string
+  enabled: boolean
+  /** What triggers this rule */
+  trigger: "pending_booking" | "overdue_invoice" | "review_followup" | "workflow_retry"
+  /** Conditions that must be met */
+  conditions: Record<string, unknown>
+  /** Action to take */
+  action: {
+    toolName: string
+    inputTemplate: Record<string, unknown>
+  }
+  /** Only execute if the tool's guardrail tier is AUTO */
+  requireAutoTier: boolean
+}
+
+export interface GhostOperatorResult {
+  ruleId: string
+  ruleName: string
+  actionsAttempted: number
+  actionsExecuted: number
+  actionsQueued: number // CONFIRM-tier queued for morning review
+  errors: string[]
+}
+
+// ---------------------------------------------------------------------------
+// Paste-to-Pipeline
+// ---------------------------------------------------------------------------
+
+export interface ExtractedEntities {
+  /** Extracted customer info */
+  customer: {
+    name: string | null
+    email: string | null
+    phone: string | null
+    company: string | null
+    notes: string | null
+  } | null
+  /** Extracted booking/appointment info */
+  booking: {
+    service: string | null
+    date: string | null
+    time: string | null
+    duration: string | null
+    notes: string | null
+  } | null
+  /** Extracted tasks/action items */
+  tasks: Array<{
+    title: string
+    priority: "LOW" | "MEDIUM" | "HIGH" | "URGENT"
+    dueDate: string | null
+    assignee: string | null
+  }>
+  /** Extracted notes/observations */
+  notes: string[]
+  /** Confidence score (0-100) */
+  confidence: number
+  /** Raw input for reference */
+  rawInput: string
+}
