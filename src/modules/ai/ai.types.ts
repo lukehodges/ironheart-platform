@@ -100,6 +100,66 @@ export interface AgentResponse {
 }
 
 // ---------------------------------------------------------------------------
+// Guardrails — Three-tier tool classification
+// ---------------------------------------------------------------------------
+
+export type GuardrailTier = "AUTO" | "CONFIRM" | "RESTRICT"
+
+export interface MutatingAgentTool extends AgentTool {
+  /** Guardrail tier — controls approval flow */
+  guardrailTier: GuardrailTier
+  /** Human-readable description of what this mutation does */
+  mutationDescription: string
+  /** Optional: function to undo this action. Receives the compensation data saved in agent_actions. */
+  compensate?: (compensationData: unknown, ctx: AgentContext) => Promise<void>
+  /** Whether this action can be reversed */
+  isReversible: boolean
+}
+
+// ---------------------------------------------------------------------------
+// Agent Actions — audit trail records
+// ---------------------------------------------------------------------------
+
+export type ActionStatus = "pending" | "approved" | "rejected" | "executed" | "failed" | "rolled_back" | "auto_executed"
+
+export interface AgentActionRecord {
+  id: string
+  conversationId: string
+  messageId: string | null
+  tenantId: string
+  userId: string
+  toolName: string
+  toolInput: unknown
+  toolOutput: unknown | null
+  status: ActionStatus
+  guardrailTier: GuardrailTier
+  approvedAt: Date | null
+  approvedBy: string | null
+  executedAt: Date | null
+  error: string | null
+  compensationData: unknown | null
+  isReversible: boolean
+  createdAt: Date
+}
+
+// ---------------------------------------------------------------------------
+// Tenant AI Config
+// ---------------------------------------------------------------------------
+
+export interface TenantAIConfig {
+  id: string
+  tenantId: string
+  isEnabled: boolean
+  maxTokenBudget: number
+  maxMessagesPerMinute: number
+  defaultModel: string
+  guardrailOverrides: Record<string, GuardrailTier>
+  trustMetrics: Record<string, { approved: number; rejected: number }>
+  createdAt: Date
+  updatedAt: Date
+}
+
+// ---------------------------------------------------------------------------
 // Streaming Events — emitted via Redis pub/sub for SSE
 // ---------------------------------------------------------------------------
 
@@ -110,3 +170,5 @@ export type AgentStreamEvent =
   | { type: "text_delta"; content: string }
   | { type: "error"; message: string; recoverable: boolean }
   | { type: "done"; content: string; tokenUsage: TokenUsage; toolCallCount: number; conversationId: string }
+  | { type: "approval_required"; actionId: string; toolName: string; description: string; input: unknown }
+  | { type: "approval_resolved"; actionId: string; approved: boolean }
