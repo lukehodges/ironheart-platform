@@ -40,6 +40,7 @@ import {
   documents as sharedDocuments,
   contacts as sharedContacts,
 } from "../../_mock-data"
+import { InteractiveMap } from "../../_components/interactive-map"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -915,16 +916,15 @@ function LocationSection() {
       <CardContent className="space-y-4">
         <p className="text-sm text-foreground">{site.address}</p>
 
-        {/* Map placeholder */}
-        <div className="w-full h-48 bg-muted rounded-lg flex items-center justify-center border border-border">
-          <div className="text-center">
-            <MapPin className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-            <p className="text-xs text-muted-foreground">Map view</p>
-            <p className="text-[10px] text-muted-foreground/60 mt-0.5">
-              {site.lat}, {site.lng}
-            </p>
-          </div>
-        </div>
+        {/* Interactive satellite map */}
+        <InteractiveMap
+          sites={[sharedSites.find(s => s.ref === site.ref)!].filter(Boolean)}
+          className="w-full h-48 rounded-lg overflow-hidden border border-border"
+          initialCenter={[site.lng, site.lat]}
+          initialZoom={14}
+          showCatchments={false}
+          mode="satellite"
+        />
 
         <div className="grid grid-cols-3 gap-4 pt-1">
           <div>

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import {
   Card,
@@ -235,9 +235,58 @@ function CustomPieTooltip({ active, payload }: { active?: boolean; payload?: Arr
   )
 }
 
+// ─── Animated Value Component ─────────────────────────────────────────────
+
+function AnimatedValue({ value, prefix = "", suffix = "", duration = 1200 }: { value: number; prefix?: string; suffix?: string; duration?: number }) {
+  const [display, setDisplay] = useState(0)
+  const hasAnimated = useRef(false)
+
+  useEffect(() => {
+    if (hasAnimated.current) return
+    hasAnimated.current = true
+    const start = performance.now()
+    const animate = (now: number) => {
+      const elapsed = now - start
+      const progress = Math.min(elapsed / duration, 1)
+      // Ease out cubic
+      const eased = 1 - Math.pow(1 - progress, 3)
+      setDisplay(Math.round(value * eased))
+      if (progress < 1) requestAnimationFrame(animate)
+    }
+    requestAnimationFrame(animate)
+  }, [value, duration])
+
+  return <span>{prefix}{display.toLocaleString("en-GB")}{suffix}</span>
+}
+
+// ─── Simulated Live Activities ────────────────────────────────────────────
+
+const SIMULATED_ACTIVITIES = [
+  { time: "Just now", user: "Sarah Croft", initials: "SC", action: "completed assessment at", entity: "Test Valley Grassland", icon: "check" as const },
+  { time: "Just now", user: "System", initials: "SY", action: "Auto-scheduled monitoring for", entity: "Botley Meadows (15 Apr)", icon: "calendar" as const },
+  { time: "Just now", user: "James Harris", initials: "JH", action: "generated invoice for", entity: "D-0042 (\u00A387,500)", icon: "doc" as const },
+  { time: "Just now", user: "System", initials: "SY", action: "Compliance alert:", entity: "Whiteley Farm monitoring overdue", icon: "move" as const },
+  { time: "Just now", user: "Tom Jenkins", initials: "TJ", action: "uploaded assessment report for", entity: "Fareham Woodland", icon: "doc" as const },
+  { time: "Just now", user: "Sarah Croft", initials: "SC", action: "flagged risk on", entity: "D-0045 (site access issue)", icon: "move" as const },
+]
+
 // ─── V1: Clean Corporate ────────────────────────────────────────────────────
 
 function DashboardV1({ dateRange, setDateRange }: { dateRange: DateRange; setDateRange: (r: DateRange) => void }) {
+  const [liveActivities, setLiveActivities] = useState<typeof RECENT_ACTIVITY>([])
+  const simulatedIndex = useRef(0)
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const newItem = SIMULATED_ACTIVITIES[simulatedIndex.current % SIMULATED_ACTIVITIES.length]
+      simulatedIndex.current++
+      setLiveActivities((prev) => [newItem, ...prev].slice(0, 5))
+    }, 10000)
+    return () => clearInterval(interval)
+  }, [])
+
+  const allActivities = [...liveActivities, ...RECENT_ACTIVITY]
+
   return (
     <div className="max-w-screen-2xl mx-auto px-6 py-6 space-y-6">
       {/* Header */}
@@ -291,7 +340,7 @@ function DashboardV1({ dateRange, setDateRange }: { dateRange: DateRange; setDat
                   <ArrowUpRight className="h-3 w-3" /> +12%
                 </div>
               </div>
-              <p className="text-2xl font-bold tracking-tight">{pipelineDisplay}</p>
+              <p className="text-2xl font-bold tracking-tight"><AnimatedValue value={pipelineValue} prefix={"\u00A3"} /></p>
               <p className="text-xs text-muted-foreground mt-1">Active Pipeline &middot; {activeDealsCount} active deals</p>
             </CardContent>
           </Card>
@@ -308,7 +357,7 @@ function DashboardV1({ dateRange, setDateRange }: { dateRange: DateRange; setDat
                   <ArrowDownRight className="h-3 w-3" /> -8%
                 </div>
               </div>
-              <p className="text-2xl font-bold tracking-tight">{availableNitrogenCredits} <span className="text-sm font-medium text-muted-foreground">kg N/yr</span></p>
+              <p className="text-2xl font-bold tracking-tight"><AnimatedValue value={availableNitrogenCredits} /> <span className="text-sm font-medium text-muted-foreground">kg N/yr</span></p>
               <p className="text-xs text-muted-foreground mt-1">Credits Available &middot; across {sharedSites.filter(s => s.unitType === "Nitrogen" && s.available > 0).length} active sites</p>
             </CardContent>
           </Card>
@@ -325,7 +374,7 @@ function DashboardV1({ dateRange, setDateRange }: { dateRange: DateRange; setDat
                   <ArrowUpRight className="h-3 w-3" /> +24%
                 </div>
               </div>
-              <p className="text-2xl font-bold tracking-tight">{commissionDisplay}</p>
+              <p className="text-2xl font-bold tracking-tight"><AnimatedValue value={commissionYTD} prefix={"\u00A3"} /></p>
               <p className="text-xs text-muted-foreground mt-1">Commission YTD</p>
             </CardContent>
           </Card>
@@ -340,7 +389,7 @@ function DashboardV1({ dateRange, setDateRange }: { dateRange: DateRange; setDat
                 </div>
                 <Badge className="bg-red-500 text-white text-[10px] px-1.5 py-0 border-0">{overdueCount}</Badge>
               </div>
-              <p className="text-2xl font-bold tracking-tight">{overdueCount} <span className="text-sm font-medium text-muted-foreground">items</span></p>
+              <p className="text-2xl font-bold tracking-tight"><AnimatedValue value={overdueCount} /> <span className="text-sm font-medium text-muted-foreground">items</span></p>
               <p className="text-xs text-muted-foreground mt-1">Overdue Compliance</p>
             </CardContent>
           </Card>
@@ -541,12 +590,31 @@ function DashboardV1({ dateRange, setDateRange }: { dateRange: DateRange; setDat
       </div>
 
       {/* Activity Feed */}
+      <style>{`
+        @keyframes slideIn {
+          from { opacity: 0; transform: translateY(-8px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeHighlight {
+          from { background-color: hsl(var(--primary) / 0.05); }
+          to { background-color: transparent; }
+        }
+        .activity-new {
+          animation: slideIn 0.3s ease-out, fadeHighlight 2s ease-out;
+        }
+      `}</style>
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="text-sm font-semibold flex items-center gap-2">
               <Activity className="h-4 w-4 text-muted-foreground" />
               Recent Activity
+              {liveActivities.length > 0 && (
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary/60 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
+                </span>
+              )}
             </CardTitle>
             <Link href="/admin/brokerage-mockups/reports" className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
               View All <ArrowRight className="h-3 w-3" />
@@ -555,27 +623,30 @@ function DashboardV1({ dateRange, setDateRange }: { dateRange: DateRange; setDat
         </CardHeader>
         <CardContent>
           <div className="space-y-1">
-            {RECENT_ACTIVITY.map((item, i) => (
-              <div key={i} className="flex items-center gap-3 py-2.5 px-2 rounded-md hover:bg-accent/30 transition-colors">
-                <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center shrink-0">
-                  <ActivityIcon type={item.icon} />
+            {allActivities.map((item, i) => {
+              const isLive = i < liveActivities.length
+              return (
+                <div key={isLive ? `live-${i}` : `static-${i - liveActivities.length}`} className={`flex items-center gap-3 py-2.5 px-2 rounded-md hover:bg-accent/30 transition-colors ${isLive ? "activity-new" : ""}`}>
+                  <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center shrink-0">
+                    <ActivityIcon type={item.icon} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm">
+                      <span className="font-medium">{item.user}</span>
+                      {" "}<span className="text-muted-foreground">{item.action}</span>
+                      {" "}{/^D-\d{4}/.test(item.entity) || item.action.includes("D-00") ? (
+                        <Link href="/admin/brokerage-mockups/deals" className="font-medium text-primary hover:underline">{item.entity}</Link>
+                      ) : item.icon === "check" || item.icon === "calendar" || item.icon === "doc" ? (
+                        <Link href="/admin/brokerage-mockups/sites" className="font-medium text-primary hover:underline">{item.entity}</Link>
+                      ) : (
+                        <span className="font-medium text-primary">{item.entity}</span>
+                      )}
+                    </p>
+                  </div>
+                  <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0">{item.time}</span>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm">
-                    <span className="font-medium">{item.user}</span>
-                    {" "}<span className="text-muted-foreground">{item.action}</span>
-                    {" "}{/^D-\d{4}/.test(item.entity) || item.action.includes("D-00") ? (
-                      <Link href="/admin/brokerage-mockups/deals" className="font-medium text-primary hover:underline">{item.entity}</Link>
-                    ) : item.icon === "check" || item.icon === "calendar" || item.icon === "doc" ? (
-                      <Link href="/admin/brokerage-mockups/sites" className="font-medium text-primary hover:underline">{item.entity}</Link>
-                    ) : (
-                      <span className="font-medium text-primary">{item.entity}</span>
-                    )}
-                  </p>
-                </div>
-                <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0">{item.time}</span>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </CardContent>
       </Card>
@@ -645,7 +716,7 @@ function DashboardV2({ dateRange, setDateRange }: { dateRange: DateRange; setDat
                 <ArrowUpRight className="h-3 w-3" /> 12%
               </div>
             </div>
-            <p className="text-3xl font-bold tracking-tight">{pipelineDisplay}</p>
+            <p className="text-3xl font-bold tracking-tight"><AnimatedValue value={pipelineValue} prefix={"\u00A3"} /></p>
             <p className="text-xs text-slate-400 mt-1.5">Active Pipeline</p>
             <p className="text-[11px] text-slate-500 mt-0.5">{activeDealsCount} active deals</p>
           </div>
@@ -661,7 +732,7 @@ function DashboardV2({ dateRange, setDateRange }: { dateRange: DateRange; setDat
                 <ArrowDownRight className="h-3 w-3" /> 8%
               </div>
             </div>
-            <p className="text-3xl font-bold tracking-tight">{availableNitrogenCredits}</p>
+            <p className="text-3xl font-bold tracking-tight"><AnimatedValue value={availableNitrogenCredits} /></p>
             <p className="text-xs text-slate-400 mt-1.5">Credits Available (kg N/yr)</p>
             <p className="text-[11px] text-slate-500 mt-0.5">Across {sharedSites.filter(s => s.unitType === "Nitrogen" && s.available > 0).length} active sites</p>
           </div>
@@ -677,7 +748,7 @@ function DashboardV2({ dateRange, setDateRange }: { dateRange: DateRange; setDat
                 <ArrowUpRight className="h-3 w-3" /> 24%
               </div>
             </div>
-            <p className="text-3xl font-bold tracking-tight">{commissionDisplay}</p>
+            <p className="text-3xl font-bold tracking-tight"><AnimatedValue value={commissionYTD} prefix={"\u00A3"} /></p>
             <p className="text-xs text-slate-400 mt-1.5">Commission YTD</p>
           </div>
         </Link>
@@ -692,7 +763,7 @@ function DashboardV2({ dateRange, setDateRange }: { dateRange: DateRange; setDat
                 {overdueCount}
               </div>
             </div>
-            <p className="text-3xl font-bold tracking-tight">{overdueCount}</p>
+            <p className="text-3xl font-bold tracking-tight"><AnimatedValue value={overdueCount} /></p>
             <p className="text-xs text-slate-400 mt-1.5">Overdue Compliance</p>
           </div>
         </Link>
@@ -937,7 +1008,7 @@ function DashboardV3({ dateRange, setDateRange }: { dateRange: DateRange; setDat
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between">
-                <p className="text-2xl font-bold tracking-tight leading-none">{pipelineDisplay}</p>
+                <p className="text-2xl font-bold tracking-tight leading-none"><AnimatedValue value={pipelineValue} prefix={"\u00A3"} /></p>
                 <span className="text-[10px] font-semibold text-emerald-600 flex items-center gap-0.5">
                   <ArrowUpRight className="h-2.5 w-2.5" />12%
                 </span>
@@ -954,7 +1025,7 @@ function DashboardV3({ dateRange, setDateRange }: { dateRange: DateRange; setDat
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between">
-                <p className="text-2xl font-bold tracking-tight leading-none">{availableNitrogenCredits} <span className="text-[10px] font-normal text-muted-foreground">kg</span></p>
+                <p className="text-2xl font-bold tracking-tight leading-none"><AnimatedValue value={availableNitrogenCredits} /> <span className="text-[10px] font-normal text-muted-foreground">kg</span></p>
                 <span className="text-[10px] font-semibold text-amber-600 flex items-center gap-0.5">
                   <ArrowDownRight className="h-2.5 w-2.5" />8%
                 </span>
@@ -971,7 +1042,7 @@ function DashboardV3({ dateRange, setDateRange }: { dateRange: DateRange; setDat
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between">
-                <p className="text-2xl font-bold tracking-tight leading-none">{commissionDisplay}</p>
+                <p className="text-2xl font-bold tracking-tight leading-none"><AnimatedValue value={commissionYTD} prefix={"\u00A3"} /></p>
                 <span className="text-[10px] font-semibold text-emerald-600 flex items-center gap-0.5">
                   <ArrowUpRight className="h-2.5 w-2.5" />24%
                 </span>
@@ -988,7 +1059,7 @@ function DashboardV3({ dateRange, setDateRange }: { dateRange: DateRange; setDat
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between">
-                <p className="text-2xl font-bold tracking-tight leading-none text-red-600">{overdueCount}</p>
+                <p className="text-2xl font-bold tracking-tight leading-none text-red-600"><AnimatedValue value={overdueCount} /></p>
                 <span className="text-[10px] font-semibold bg-red-500 text-white px-1.5 py-0 rounded-full">!</span>
               </div>
               <p className="text-[10px] text-muted-foreground mt-0.5">Overdue Compliance</p>

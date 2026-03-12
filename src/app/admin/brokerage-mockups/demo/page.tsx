@@ -41,35 +41,35 @@ function DashboardPreview() {
   return (
     <div className="h-full flex flex-col gap-4 p-6">
       <div className="grid grid-cols-2 gap-3">
-        <Card className="border-blue-200 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-800">
+        <Card className="border-blue-200 bg-blue-100 dark:bg-blue-950/30 dark:border-blue-800">
           <CardContent className="p-4">
             <p className="text-xs text-blue-600 dark:text-blue-400 font-medium uppercase tracking-wide">Pipeline Value</p>
             <p className="text-2xl font-bold text-blue-700 dark:text-blue-300 mt-1">£8.4M</p>
             <div className="flex items-center gap-1 mt-1">
-              <TrendingUp className="h-3 w-3 text-blue-500" />
-              <p className="text-xs text-blue-500">+12% this month</p>
+              <TrendingUp className="h-3 w-3 text-blue-600" />
+              <p className="text-xs text-blue-600">+12% this month</p>
             </div>
           </CardContent>
         </Card>
-        <Card className="border-violet-200 bg-violet-50 dark:bg-violet-950/30 dark:border-violet-800">
+        <Card className="border-violet-200 bg-violet-100 dark:bg-violet-950/30 dark:border-violet-800">
           <CardContent className="p-4">
             <p className="text-xs text-violet-600 dark:text-violet-400 font-medium uppercase tracking-wide">Active Deals</p>
             <p className="text-2xl font-bold text-violet-700 dark:text-violet-300 mt-1">42</p>
-            <p className="text-xs text-violet-500 mt-1">across 5 catchments</p>
+            <p className="text-xs text-violet-600 mt-1">across 5 catchments</p>
           </CardContent>
         </Card>
-        <Card className="border-emerald-200 bg-emerald-50 dark:bg-emerald-950/30 dark:border-emerald-800">
+        <Card className="border-emerald-200 bg-emerald-100 dark:bg-emerald-950/30 dark:border-emerald-800">
           <CardContent className="p-4">
             <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium uppercase tracking-wide">Active Sites</p>
             <p className="text-2xl font-bold text-emerald-700 dark:text-emerald-300 mt-1">12</p>
-            <p className="text-xs text-emerald-500 mt-1">48.2–320 kg/yr each</p>
+            <p className="text-xs text-emerald-600 mt-1">48.2–320 kg/yr each</p>
           </CardContent>
         </Card>
-        <Card className="border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800">
+        <Card className="border-amber-200 bg-amber-100 dark:bg-amber-950/30 dark:border-amber-800">
           <CardContent className="p-4">
             <p className="text-xs text-amber-600 dark:text-amber-400 font-medium uppercase tracking-wide">Overdue Items</p>
             <p className="text-2xl font-bold text-amber-700 dark:text-amber-300 mt-1">7</p>
-            <p className="text-xs text-amber-500 mt-1">compliance deadlines</p>
+            <p className="text-xs text-amber-600 mt-1">compliance deadlines</p>
           </CardContent>
         </Card>
       </div>
@@ -119,7 +119,7 @@ function ContactPreview() {
         <CardContent className="space-y-3">
           <div>
             <p className="text-xs text-muted-foreground mb-1">Full name</p>
-            <div className="border rounded-md px-3 py-2 text-sm font-medium bg-muted/30">Robert Whiteley</div>
+            <div className="border rounded-md px-3 py-2 text-sm font-medium bg-slate-50">Robert Whiteley</div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -133,7 +133,7 @@ function ContactPreview() {
           </div>
           <div>
             <p className="text-xs text-muted-foreground mb-1">Catchment</p>
-            <div className="border rounded-md px-3 py-2 text-sm flex items-center justify-between bg-muted/30">
+            <div className="border rounded-md px-3 py-2 text-sm flex items-center justify-between bg-slate-50">
               <span>Solent</span>
               <div className="flex items-center gap-1 text-emerald-600">
                 <CheckCircle2 className="h-3.5 w-3.5" />
@@ -149,7 +149,7 @@ function ContactPreview() {
               ))}
             </div>
           </div>
-          <p className="text-xs text-muted-foreground bg-muted/50 rounded px-2.5 py-1.5 flex items-center gap-1.5">
+          <p className="text-xs text-muted-foreground bg-slate-100 rounded px-2.5 py-1.5 flex items-center gap-1.5">
             <MapPin className="h-3 w-3 shrink-0" />
             Catchment auto-detected from postcode SO30 2EJ
           </p>
@@ -294,14 +294,14 @@ function AssessmentResultsPreview() {
             <div
               key={row.label}
               className={`flex items-center justify-between py-1.5 border-b border-border/50 last:border-0 ${
-                row.highlight ? "bg-emerald-50 dark:bg-emerald-950/30 -mx-2 px-2 rounded" : ""
+                row.highlight ? "bg-emerald-100 dark:bg-emerald-950/30 -mx-2 px-2 rounded" : ""
               }`}
             >
               <span className="text-xs text-muted-foreground">{row.label}</span>
               <span className={`text-sm font-semibold ${row.highlight ? "text-emerald-600 dark:text-emerald-400" : ""}`}>{row.value}</span>
             </div>
           ))}
-          <div className="flex items-center gap-2 pt-1 bg-muted/40 rounded px-2.5 py-2">
+          <div className="flex items-center gap-2 pt-1 bg-slate-100 rounded px-2.5 py-2">
             <FileText className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
             <span className="text-xs text-muted-foreground truncate">NN-Baseline-WhiteleyFarm-2026.pdf</span>
             <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 ml-auto shrink-0" />
@@ -334,7 +334,7 @@ function CalculatorPreview() {
               ].map((row) => (
                 <div key={row.label} className="space-y-0.5">
                   <p className="text-xs text-muted-foreground">{row.label}</p>
-                  <div className="border rounded px-2.5 py-1.5 text-sm bg-muted/30">{row.value}</div>
+                  <div className="border rounded px-2.5 py-1.5 text-sm bg-slate-50">{row.value}</div>
                 </div>
               ))}
             </div>
@@ -347,7 +347,7 @@ function CalculatorPreview() {
 
             <div className="flex-1 space-y-2.5">
               <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wide">Output</p>
-              <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-lg p-3 space-y-2">
+              <div className="bg-emerald-100 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-lg p-3 space-y-2">
                 <div>
                   <p className="text-xs text-muted-foreground">Nitrogen load</p>
                   <p className="text-lg font-bold text-emerald-700 dark:text-emerald-300">48.2 kg/yr</p>
@@ -361,7 +361,7 @@ function CalculatorPreview() {
                 <div>
                   <p className="text-xs text-muted-foreground">Est. market value</p>
                   <p className="text-base font-bold text-emerald-700 dark:text-emerald-300">£120,500</p>
-                  <p className="text-xs text-emerald-600 dark:text-emerald-500">@ £2,500 / kg</p>
+                  <p className="text-xs text-emerald-700 dark:text-emerald-500">@ £2,500 / kg</p>
                 </div>
               </div>
             </div>
@@ -504,7 +504,7 @@ function DeveloperPreview() {
               <span className="text-sm font-medium">{row.value}</span>
             </div>
           ))}
-          <div className="flex items-start gap-2 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg px-3 py-2.5 mt-1">
+          <div className="flex items-start gap-2 bg-amber-100 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg px-3 py-2.5 mt-1">
             <AlertCircle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
             <p className="text-xs text-amber-700 dark:text-amber-300">Cannot break ground until BNG secured. 200-home scheme.</p>
           </div>
@@ -520,7 +520,7 @@ function MatchingPreview() {
   return (
     <div className="h-full flex items-center justify-center p-6">
       <div className="w-full max-w-md space-y-3">
-        <div className="text-xs text-muted-foreground bg-muted/50 rounded px-3 py-1.5 flex items-center gap-2">
+        <div className="text-xs text-muted-foreground bg-slate-100 rounded px-3 py-1.5 flex items-center gap-2">
           <CheckCircle2 className="h-3 w-3 text-emerald-500" />
           Solent catchment
           <CheckCircle2 className="h-3 w-3 text-emerald-500" />
@@ -577,7 +577,7 @@ function QuotePreview() {
   return (
     <div className="h-full flex items-center justify-center p-6">
       <Card className="w-full max-w-sm shadow-lg">
-        <div className="bg-muted/50 rounded-t-xl px-4 py-3 border-b">
+        <div className="bg-slate-100 rounded-t-xl px-4 py-3 border-b">
           <p className="text-xs text-muted-foreground">Quote — D-0038</p>
           <p className="text-sm font-semibold">Taylor Wimpey plc</p>
         </div>
@@ -601,7 +601,7 @@ function QuotePreview() {
             </div>
           </div>
 
-          <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-lg p-3 space-y-1.5">
+          <div className="bg-emerald-100 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-lg p-3 space-y-1.5">
             <div className="flex justify-between text-xs">
               <span className="text-emerald-700 dark:text-emerald-300 font-medium">Your commission (20%)</span>
               <span className="font-bold text-emerald-700 dark:text-emerald-300 text-base">£15,000</span>
@@ -693,7 +693,7 @@ function PaymentPreview() {
               direction: "in",
               status: "Received",
               statusColour: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 border-emerald-200",
-              bg: "bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800",
+              bg: "bg-blue-100 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800",
             },
             {
               label: "Ironheart",
@@ -701,7 +701,7 @@ function PaymentPreview() {
               direction: "commission",
               status: "Earned",
               statusColour: "bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300 border-violet-200",
-              bg: "bg-violet-50 dark:bg-violet-950/30 border-violet-200 dark:border-violet-800",
+              bg: "bg-violet-100 dark:bg-violet-950/30 border-violet-200 dark:border-violet-800",
             },
             {
               label: "Robert Whiteley",
@@ -709,7 +709,7 @@ function PaymentPreview() {
               direction: "out",
               status: "Disbursed",
               statusColour: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300 border-blue-200",
-              bg: "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800",
+              bg: "bg-emerald-100 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800",
             },
           ].map((party, i, arr) => (
             <div key={party.label} className="flex items-center gap-2 flex-1 min-w-0">
@@ -812,7 +812,7 @@ function CompliancePreview() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg px-3 py-2.5">
+          <div className="flex items-center gap-2 bg-blue-100 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg px-3 py-2.5">
             <Clock className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
             <p className="text-xs text-blue-700 dark:text-blue-300">Next: Annual survey due Dec 2026</p>
           </div>
@@ -843,7 +843,7 @@ function AIAssistantPreview() {
           </div>
         </CardHeader>
         <CardContent className="p-4 space-y-3">
-          <div className="bg-muted/50 rounded-xl rounded-tl-sm px-3 py-2.5 max-w-[90%]">
+          <div className="bg-slate-100 rounded-xl rounded-tl-sm px-3 py-2.5 max-w-[90%]">
             <p className="text-xs leading-relaxed">Good morning. I&apos;ve reviewed your portfolio overnight and found some items that need your attention.</p>
           </div>
 
@@ -851,7 +851,7 @@ function AIAssistantPreview() {
             { icon: "🔍", label: "Checking compliance deadlines...", done: true },
             { icon: "📋", label: "Scanning 42 active deals...", done: true },
           ].map((tool) => (
-            <div key={tool.label} className="flex items-center gap-2 text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/30 rounded px-2.5 py-1.5">
+            <div key={tool.label} className="flex items-center gap-2 text-xs text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-950/30 rounded px-2.5 py-1.5">
               <span>{tool.icon}</span>
               <span className="flex-1">{tool.label}</span>
               {tool.done ? (
@@ -862,7 +862,7 @@ function AIAssistantPreview() {
             </div>
           ))}
 
-          <div className="bg-muted/50 rounded-xl rounded-tl-sm px-3 py-2.5 max-w-[95%] space-y-1.5">
+          <div className="bg-slate-100 rounded-xl rounded-tl-sm px-3 py-2.5 max-w-[95%] space-y-1.5">
             <p className="text-xs leading-relaxed">
               <span className="font-semibold text-amber-600 dark:text-amber-400">7 overdue compliance items</span> need attention today.
             </p>
@@ -1144,10 +1144,10 @@ function ClosingScreen({ onRestart }: { onRestart: () => void }) {
 
         <div className="grid grid-cols-2 gap-4 max-w-lg mx-auto">
           {[
-            { label: "Active deals", value: "42", colour: "border-blue-200 bg-blue-50 dark:bg-blue-950/30 dark:border-blue-800" },
-            { label: "Pipeline value", value: "£8.4M", colour: "border-violet-200 bg-violet-50 dark:bg-violet-950/30 dark:border-violet-800" },
-            { label: "Sites managed", value: "12", colour: "border-emerald-200 bg-emerald-50 dark:bg-emerald-950/30 dark:border-emerald-800" },
-            { label: "Commission YTD", value: "£312k", colour: "border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800" },
+            { label: "Active deals", value: "42", colour: "border-blue-200 bg-blue-100 dark:bg-blue-950/30 dark:border-blue-800" },
+            { label: "Pipeline value", value: "£8.4M", colour: "border-violet-200 bg-violet-100 dark:bg-violet-950/30 dark:border-violet-800" },
+            { label: "Sites managed", value: "12", colour: "border-emerald-200 bg-emerald-100 dark:bg-emerald-950/30 dark:border-emerald-800" },
+            { label: "Commission YTD", value: "£312k", colour: "border-amber-200 bg-amber-100 dark:bg-amber-950/30 dark:border-amber-800" },
           ].map((m) => (
             <Card key={m.label} className={`border ${m.colour}`}>
               <CardContent className="p-5 text-center">
@@ -1307,7 +1307,7 @@ export default function DemoWalkthroughPage() {
       </div>
 
       {/* ── Right panel ────────────────────────────────────────────────────── */}
-      <div className="flex-1 bg-muted/20 overflow-y-auto relative transition-all duration-300">
+      <div className="flex-1 bg-slate-50 overflow-y-auto relative transition-all duration-300">
         {/* Subtle step label top-right */}
         <div className="absolute top-4 right-4 z-10">
           <Badge variant="outline" className="text-xs bg-background/80 backdrop-blur-sm">

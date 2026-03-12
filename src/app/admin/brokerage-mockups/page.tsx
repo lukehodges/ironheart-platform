@@ -15,6 +15,12 @@ import {
   Settings,
   Play,
   Brain,
+  Globe,
+  Receipt,
+  Calculator,
+  Target,
+  Scale,
+  CalendarClock,
 } from "lucide-react"
 
 const sections = [
@@ -59,6 +65,22 @@ const sections = [
     icon: ClipboardCheck,
   },
   {
+    href: "/admin/brokerage-mockups/assessments/aerial-tool",
+    title: "Aerial Assessment Tool",
+    description: "Draw boundaries on satellite imagery, auto-calculate area, generate preliminary BNG and nutrient assessments.",
+    stat: "Satellite + GIS",
+    color: "bg-sky-50 dark:bg-sky-950/30 border-sky-200 dark:border-sky-800 text-sky-700 dark:text-sky-300",
+    icon: Globe,
+  },
+  {
+    href: "/admin/brokerage-mockups/assessments/nutrient-modeller",
+    title: "Nutrient Budget Modeller",
+    description: "Interactive calculator for modelling land use change scenarios and nutrient credit yields.",
+    stat: "Scenario planner",
+    color: "bg-rose-50 dark:bg-rose-950/30 border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300",
+    icon: Calculator,
+  },
+  {
     href: "/admin/brokerage-mockups/inventory",
     title: "Inventory",
     description: "Credit availability by unit type and catchment area. Supply vs demand tracking with low-stock alerts.",
@@ -75,12 +97,28 @@ const sections = [
     icon: GitCompareArrows,
   },
   {
+    href: "/admin/brokerage-mockups/matching/demand-scanner",
+    title: "Catchment Demand Scanner",
+    description: "Drop a pin on the map, scan for planning applications and credit demand within radius. Identify supply gaps and create prospect deals.",
+    stat: "Market intel",
+    color: "bg-fuchsia-50 dark:bg-fuchsia-950/30 border-fuchsia-200 dark:border-fuchsia-800 text-fuchsia-700 dark:text-fuchsia-300",
+    icon: Target,
+  },
+  {
     href: "/admin/brokerage-mockups/documents",
     title: "Documents",
     description: "Templates, agreements, e-signatures, and version tracking. Full document lifecycle management.",
     stat: "12 active",
     color: "bg-orange-50 dark:bg-orange-950/30 border-orange-200 dark:border-orange-800 text-orange-700 dark:text-orange-300",
     icon: FileText,
+  },
+  {
+    href: "/admin/brokerage-mockups/documents/s106-generator",
+    title: "Legal Document Generator",
+    description: "Generate S106 agreements, conservation covenants, and heads of terms from deal data. Auto-populated with correct legal language.",
+    stat: "3 templates",
+    color: "bg-pink-50 dark:bg-pink-950/30 border-pink-200 dark:border-pink-800 text-pink-700 dark:text-pink-300",
+    icon: Scale,
   },
   {
     href: "/admin/brokerage-mockups/compliance",
@@ -91,12 +129,28 @@ const sections = [
     icon: ShieldCheck,
   },
   {
+    href: "/admin/brokerage-mockups/compliance/auto-scheduler",
+    title: "Compliance Auto-Scheduler",
+    description: "Auto-schedule 30-year monitoring visits. Checks assessor availability, survey seasons, and site access. AI-optimised multi-site routing.",
+    stat: "AI scheduling",
+    color: "bg-yellow-50 dark:bg-yellow-950/30 border-yellow-200 dark:border-yellow-800 text-yellow-700 dark:text-yellow-300",
+    icon: CalendarClock,
+  },
+  {
     href: "/admin/brokerage-mockups/financials",
     title: "Financials",
     description: "Commission tracking, invoice management, and payment ledger. Split breakdowns and broker performance.",
     stat: `£${Math.round(totalCommissionYTD / 1000)}K earned YTD`,
     color: "bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800 text-green-700 dark:text-green-300",
     icon: PoundSterling,
+  },
+  {
+    href: "/admin/brokerage-mockups/financials/invoice-generator",
+    title: "Invoice Generator",
+    description: "Auto-generate professional invoices and quotes from deal data with live PDF preview.",
+    stat: "PDF export",
+    color: "bg-lime-50 dark:bg-lime-950/30 border-lime-200 dark:border-lime-800 text-lime-700 dark:text-lime-300",
+    icon: Receipt,
   },
   {
     href: "/admin/brokerage-mockups/reports",
