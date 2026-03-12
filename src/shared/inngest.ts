@@ -175,6 +175,12 @@ type IronheartEvents = {
   "ai/workflow.suggested": {
     data: { suggestionId: string; tenantId: string; title: string };
   };
+  "ai/mcp.tools.refresh": {
+    data: { connectionId: string; tenantId: string };
+  };
+  "ai/mcp.health.check": {
+    data: { connectionId: string; tenantId: string };
+  };
 };
 
 /**
