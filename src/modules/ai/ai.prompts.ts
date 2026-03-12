@@ -1,7 +1,13 @@
 // src/modules/ai/ai.prompts.ts
 
 import { getModuleIndex } from "./ai.introspection"
+import { getVerticalProfile } from "./verticals"
+import { correctionsRepository } from "./memory/corrections"
+import { retrieveContext, formatRAGContext } from "./knowledge/rag"
+import { logger } from "@/shared/logger"
 import type { PageContext } from "./ai.types"
+
+const log = logger.child({ module: "ai.prompts" })
 
 const SYSTEM_PROMPT_TEMPLATE = `You are an AI data assistant for a BNG (Biodiversity Net Gain) credit brokerage platform. You answer questions by querying the platform's tRPC API.
 
@@ -97,4 +103,70 @@ export async function buildSystemPrompt(pageContext?: PageContext): Promise<stri
     .replace("{{pageContext}}", contextStr)
     .replace("{{moduleIndex}}", await getModuleIndex())
     .replace("{{maxIterations}}", "5")
+}
+
+// ---------------------------------------------------------------------------
+// Dynamic System Prompt Assembly
+// ---------------------------------------------------------------------------
+
+export async function assembleSystemPrompt(params: {
+  tenantId: string
+  pageContext?: PageContext
+  userMessage: string
+  conversationSummary?: string | null
+}): Promise<string> {
+  const { tenantId, pageContext, userMessage, conversationSummary } = params
+
+  // 1. Base prompt (existing builder with module index)
+  const parts: string[] = [await buildSystemPrompt(pageContext)]
+
+  // 2. Vertical profile context
+  try {
+    const profile = await getVerticalProfile(tenantId)
+    if (profile.systemPromptAddendum) {
+      parts.push(`## Vertical Context (${profile.name})\n${profile.systemPromptAddendum}`)
+    }
+    if (Object.keys(profile.terminology).length > 0) {
+      const termLines = Object.entries(profile.terminology)
+        .map(([key, value]) => `- ${key} → ${value}`)
+        .join("\n")
+      parts.push(`## Additional Terminology\n${termLines}`)
+    }
+  } catch (err) {
+    log.warn({ tenantId, err }, "Failed to load vertical profile")
+  }
+
+  // 3. Conversation summary (long-term memory)
+  if (conversationSummary) {
+    parts.push(`## Conversation History Summary\n${conversationSummary}`)
+  }
+
+  // 4. Recent corrections (learned mistakes)
+  try {
+    const corrections = await correctionsRepository.getAllRecentCorrections(tenantId)
+    if (corrections.length > 0) {
+      const correctionLines = corrections.map((c) => {
+        let line = `- Tool "${c.toolName}"`
+        if (c.rejectionReason) line += `: ${c.rejectionReason}`
+        if (c.correctAction) line += ` → Correct approach: ${c.correctAction}`
+        return line
+      })
+      parts.push(`## Learned Corrections\nAvoid repeating these past mistakes:\n${correctionLines.join("\n")}`)
+    }
+  } catch (err) {
+    log.warn({ tenantId, err }, "Failed to load corrections")
+  }
+
+  // 5. RAG context (knowledge base)
+  try {
+    const ragResults = await retrieveContext(tenantId, userMessage)
+    const ragSection = formatRAGContext(ragResults)
+    if (ragSection) {
+      parts.push(ragSection)
+    }
+  } catch (err) {
+    log.warn({ tenantId, err }, "Failed to retrieve RAG context")
+  }
+
+  return parts.join("\n\n")
 }
