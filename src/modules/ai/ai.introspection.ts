@@ -2,6 +2,7 @@
 
 import { z } from "zod"
 import { logger } from "@/shared/logger"
+import { getDefaultGuardrailTier } from "./ai.guardrails"
 
 const log = logger.child({ module: "ai.introspection" })
 
@@ -146,6 +147,25 @@ export async function getModuleIndex(): Promise<string> {
     for (const proc of queryProcs) {
       lines.push(`    .${proc.name}${summariseInput(proc.inputSchema)}`)
     }
+  }
+
+  // Mutation procedures with guardrail tier annotations
+  const mutationLines: string[] = []
+  for (const [moduleName, meta] of moduleMap) {
+    const mutationProcs = meta.procedures.filter((p) => p.type === "mutation")
+    if (mutationProcs.length === 0) continue
+
+    mutationLines.push(`\n  ${moduleName}:`)
+    for (const proc of mutationProcs) {
+      const tier = getDefaultGuardrailTier(`${moduleName}.${proc.name}`)
+      mutationLines.push(`    .${proc.name}${summariseInput(proc.inputSchema)} [${tier}]`)
+    }
+  }
+
+  if (mutationLines.length > 0) {
+    lines.push("")
+    lines.push("Available mutation procedures (guardrail tier shown — AUTO executes immediately, CONFIRM requires approval, RESTRICT is blocked):")
+    lines.push(...mutationLines)
   }
 
   cachedIndex = lines.join("\n")
