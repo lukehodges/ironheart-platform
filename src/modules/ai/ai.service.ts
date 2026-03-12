@@ -23,6 +23,185 @@ const DEFAULT_MODEL = "claude-sonnet-4-20250514"
 const MAX_TOKENS = 4096
 
 export const aiService = {
+  async *sendMessageStreaming(
+    tenantId: string,
+    userId: string,
+    userPermissions: string[],
+    input: {
+      conversationId?: string
+      message: string
+      pageContext?: PageContext
+    }
+  ): AsyncGenerator<AgentStreamEvent> {
+    // 1. Get or create conversation
+    let conversation = input.conversationId
+      ? await aiRepository.getConversation(tenantId, input.conversationId)
+      : null
+
+    if (!conversation) {
+      conversation = await aiRepository.createConversation(tenantId, userId)
+    }
+
+    yield { type: "status", message: "Processing your message..." }
+
+    // 2. Save user message
+    await aiRepository.addMessage(conversation.id, {
+      role: "user",
+      content: input.message,
+      pageContext: input.pageContext,
+    })
+
+    // 3. Load conversation history
+    const history = await aiRepository.getMessages(conversation.id, 20)
+
+    // 4. Build Anthropic messages array
+    const anthropicMessages: Anthropic.MessageParam[] = history
+      .filter((m) => m.role !== "system")
+      .map((m) => ({
+        role: m.role as "user" | "assistant",
+        content: m.content,
+      }))
+
+    // 5. Get tools available to this user
+    const ctx: AgentContext = { tenantId, userId, userPermissions, pageContext: input.pageContext }
+    const availableTools = getToolsForUser(allTools, userPermissions)
+
+    const anthropicTools: Anthropic.Tool[] = availableTools.map((t) => ({
+      name: t.name,
+      description: t.description,
+      input_schema: t.inputSchema as Anthropic.Tool["input_schema"],
+    }))
+
+    // 6. Agent loop with streaming
+    const allToolCalls: ToolCallRecord[] = []
+    const allToolResults: ToolResultRecord[] = []
+    let totalInputTokens = 0
+    let totalOutputTokens = 0
+    let finalContent = ""
+
+    for (let iteration = 0; iteration < MAX_TOOL_ITERATIONS; iteration++) {
+      log.info({ conversationId: conversation.id, iteration }, "Agent streaming iteration")
+
+      const stream = getClient().messages.stream({
+        model: DEFAULT_MODEL,
+        max_tokens: MAX_TOKENS,
+        system: buildSystemPrompt(input.pageContext),
+        messages: anthropicMessages,
+        tools: anthropicTools,
+      })
+
+      // Collect the full response via streaming
+      const response = await stream.finalMessage()
+
+      totalInputTokens += response.usage.input_tokens
+      totalOutputTokens += response.usage.output_tokens
+
+      const textBlocks = response.content.filter((b) => b.type === "text")
+      const toolUseBlocks = response.content.filter((b) => b.type === "tool_use")
+
+      // Yield text deltas from text blocks
+      for (const block of textBlocks) {
+        if (block.text) {
+          yield { type: "text_delta" as const, content: block.text }
+        }
+      }
+
+      // If no tool calls, we're done
+      if (toolUseBlocks.length === 0 || response.stop_reason === "end_turn") {
+        finalContent = textBlocks.map((b) => b.text).join("\n")
+        break
+      }
+
+      // Append assistant message with tool_use content
+      anthropicMessages.push({ role: "assistant", content: response.content })
+
+      // Execute each tool call
+      const toolResultBlocks: Anthropic.ToolResultBlockParam[] = []
+
+      for (const toolUse of toolUseBlocks) {
+        const tool = availableTools.find((t) => t.name === toolUse.name)
+        const toolCallRecord: ToolCallRecord = {
+          id: toolUse.id,
+          name: toolUse.name,
+          input: toolUse.input,
+        }
+        allToolCalls.push(toolCallRecord)
+
+        yield { type: "tool_call" as const, toolName: toolUse.name, input: toolUse.input }
+
+        if (!tool) {
+          const errorResult = { toolCallId: toolUse.id, output: null, error: `Unknown tool: ${toolUse.name}` }
+          allToolResults.push(errorResult)
+          toolResultBlocks.push({ type: "tool_result", tool_use_id: toolUse.id, content: JSON.stringify({ error: errorResult.error }) })
+          yield { type: "tool_result" as const, toolName: toolUse.name, result: { error: errorResult.error }, durationMs: 0 }
+          continue
+        }
+
+        try {
+          const startMs = Date.now()
+          const result = await tool.execute(toolUse.input, ctx)
+          const durationMs = Date.now() - startMs
+
+          log.info({ tool: toolUse.name, durationMs }, "Tool executed (streaming)")
+
+          allToolResults.push({ toolCallId: toolUse.id, output: result })
+          toolResultBlocks.push({ type: "tool_result", tool_use_id: toolUse.id, content: JSON.stringify(result, null, 2) })
+          yield { type: "tool_result" as const, toolName: toolUse.name, result, durationMs }
+        } catch (err) {
+          const errorMsg = err instanceof Error ? err.message : "Tool execution failed"
+          log.error({ err, tool: toolUse.name }, "Tool execution error (streaming)")
+
+          allToolResults.push({ toolCallId: toolUse.id, output: null, error: errorMsg })
+          toolResultBlocks.push({ type: "tool_result", tool_use_id: toolUse.id, content: JSON.stringify({ error: errorMsg }), is_error: true })
+          yield { type: "tool_result" as const, toolName: toolUse.name, result: { error: errorMsg }, durationMs: 0 }
+        }
+      }
+
+      // Append tool results
+      anthropicMessages.push({ role: "user", content: toolResultBlocks })
+    }
+
+    // 7. Save assistant response
+    const tokenUsage: TokenUsage = {
+      inputTokens: totalInputTokens,
+      outputTokens: totalOutputTokens,
+      model: DEFAULT_MODEL,
+    }
+
+    await aiRepository.addMessage(conversation.id, {
+      role: "assistant",
+      content: finalContent,
+      toolCalls: allToolCalls.length > 0 ? allToolCalls : undefined,
+      toolResults: allToolResults.length > 0 ? allToolResults : undefined,
+      tokenUsage,
+    })
+
+    // 8. Update conversation
+    const newTokenCount = conversation.tokenCount + totalInputTokens + totalOutputTokens
+    const updates: Record<string, unknown> = {
+      tokenCount: newTokenCount,
+      costCents: conversation.costCents + estimateCostCents(totalInputTokens, totalOutputTokens),
+    }
+
+    if (!conversation.title && history.length <= 2) {
+      updates.title = input.message.slice(0, 100)
+    }
+
+    await aiRepository.updateConversation(conversation.id, updates)
+
+    log.info(
+      { conversationId: conversation.id, toolCalls: allToolCalls.length, inputTokens: totalInputTokens, outputTokens: totalOutputTokens },
+      "Agent streaming response complete"
+    )
+
+    yield {
+      type: "done" as const,
+      content: finalContent,
+      tokenUsage,
+      toolCallCount: allToolCalls.length,
+    }
+  },
+
   async sendMessage(
     tenantId: string,
     userId: string,
