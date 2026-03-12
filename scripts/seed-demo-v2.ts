@@ -70,6 +70,7 @@ async function seedPlatform() {
     { slug: "payment", name: "Payments", category: "PREMIUM" as const, features: { stripe: true, invoices: true } },
     { slug: "workflow", name: "Workflows", category: "PREMIUM" as const, features: { builder: true, triggers: true } },
     { slug: "developer", name: "Developer Tools", category: "PREMIUM" as const, features: { webhooks: true, api: true } },
+    { slug: "ai", name: "AI Assistant", category: "PREMIUM" as const, features: { chat: true, tools: true } },
   ];
 
   const existingMods = await db.select({ slug: schema.modules.slug }).from(schema.modules);

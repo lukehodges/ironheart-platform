@@ -142,6 +142,7 @@ async function seedModules() {
     { slug: "payment",        name: "Payments",          category: "PREMIUM" as const, features: { stripe: true, gocardless: false, invoices: true } },
     { slug: "workflow",       name: "Workflows",         category: "PREMIUM" as const, features: { builder: true, triggers: true, actions: true } },
     { slug: "developer",      name: "Developer Tools",   category: "PREMIUM" as const, features: { webhooks: true, api: true } },
+    { slug: "ai",              name: "AI Assistant",      category: "PREMIUM" as const, features: { chat: true, tools: true } },
   ];
 
   const existingSlugs = (
@@ -362,7 +363,7 @@ async function seedTenantModules(tenantId: string) {
     "auth", "tenant", "platform", "analytics", "search",
     "customer", "booking", "team", "scheduling", "portal", "staff",
     "notification", "calendar-sync", "forms", "review", "payment",
-    "workflow", "developer",
+    "workflow", "developer", "ai",
   ]);
 
   const now = new Date();
