@@ -4,6 +4,7 @@ import { bookingFunctions } from "@/modules/booking/booking.events";
 import { schedulingFunctions } from "@/modules/scheduling";
 import { notificationFunctions } from "@/modules/notification";
 import { calendarSyncFunctions } from "@/modules/calendar-sync";
+import { customerFunctions } from "@/modules/customer";
 import { workflowFunctions } from "@/modules/workflow";
 import { reviewFunctions } from "@/modules/review";
 import { teamFunctions } from "@/modules/team";
@@ -39,6 +40,7 @@ export const { GET, POST, PUT } = serve({
     ...notificationFunctions,
     ...calendarSyncFunctions,
     // Phase 5 functions
+    ...customerFunctions,
     ...workflowFunctions,
     ...reviewFunctions,
     ...teamFunctions,
