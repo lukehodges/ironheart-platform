@@ -13,6 +13,7 @@ import {
   addNoteSchema,
   updatePipelineStageSchema,
   listByPipelineStageSchema,
+  getStageHistorySchema,
 } from "./customer.schemas";
 
 /**
@@ -80,6 +81,14 @@ export const customerRouter = router({
   deleteNote: modulePermission("customers:write")
     .input(z.object({ noteId: z.string() }))
     .mutation(async ({ ctx, input }) => customerService.deleteNote(ctx, input.noteId)),
+
+  // Pipeline Stage History
+  getStageHistory: moduleProcedure
+    .input(getStageHistorySchema)
+    .query(async ({ ctx, input }) => customerService.getStageHistory(ctx, input.customerId)),
+
+  getStageConversionMetrics: moduleProcedure
+    .query(async ({ ctx }) => customerService.getStageConversionMetrics(ctx)),
 
   // History
   getBookingHistory: moduleProcedure

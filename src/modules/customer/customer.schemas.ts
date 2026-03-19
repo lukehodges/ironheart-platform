@@ -75,3 +75,7 @@ export const listByPipelineStageSchema = z.object({
   stage: pipelineStageSchema.optional(),
   includeAll: z.boolean().optional(),
 })
+
+export const getStageHistorySchema = z.object({
+  customerId: z.string(),
+})

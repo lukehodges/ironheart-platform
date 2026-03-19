@@ -10,6 +10,7 @@ import {
   invoices,
   payments,
   completedForms,
+  pipelineStageHistory,
 } from "@/shared/db/schema";
 import {
   eq,
@@ -30,6 +31,8 @@ import type {
   UpdateCustomerInput,
   AddNoteInput,
   PipelineStage,
+  PipelineStageHistoryRecord,
+  StageConversionMetric,
 } from "./customer.types";
 
 const log = logger.child({ module: "customer.repository" });
@@ -532,6 +535,109 @@ export const customerRepository = {
       scheduledDate: r.scheduledDate,
       status: r.status,
       totalAmount: r.totalAmount != null ? Number(r.totalAmount) : null,
+    }));
+  },
+
+  // ---- PIPELINE STAGE HISTORY ----
+
+  async createStageHistoryEntry(entry: {
+    tenantId: string;
+    customerId: string;
+    fromStage: PipelineStage | null;
+    toStage: PipelineStage;
+    changedById?: string | null;
+    dealValue?: number | null;
+    lostReason?: string | null;
+    notes?: string | null;
+  }): Promise<PipelineStageHistoryRecord> {
+    const [row] = await db
+      .insert(pipelineStageHistory)
+      .values({
+        id: crypto.randomUUID(),
+        tenantId: entry.tenantId,
+        customerId: entry.customerId,
+        fromStage: entry.fromStage as typeof pipelineStageHistory.$inferInsert["fromStage"] ?? undefined,
+        toStage: entry.toStage as typeof pipelineStageHistory.$inferInsert["toStage"],
+        changedAt: new Date(),
+        changedById: entry.changedById ?? null,
+        dealValue: entry.dealValue != null ? String(entry.dealValue) : null,
+        lostReason: entry.lostReason ?? null,
+        notes: entry.notes ?? null,
+      })
+      .returning();
+
+    log.info(
+      { tenantId: entry.tenantId, customerId: entry.customerId, fromStage: entry.fromStage, toStage: entry.toStage },
+      "Pipeline stage history entry created",
+    );
+
+    return {
+      id: row!.id,
+      tenantId: row!.tenantId,
+      customerId: row!.customerId,
+      fromStage: (row!.fromStage as PipelineStage) ?? null,
+      toStage: row!.toStage as PipelineStage,
+      changedAt: row!.changedAt,
+      changedById: row!.changedById ?? null,
+      dealValue: row!.dealValue != null ? Number(row!.dealValue) : null,
+      lostReason: row!.lostReason ?? null,
+      notes: row!.notes ?? null,
+    };
+  },
+
+  async getStageHistory(
+    tenantId: string,
+    customerId: string,
+  ): Promise<PipelineStageHistoryRecord[]> {
+    const rows = await db
+      .select()
+      .from(pipelineStageHistory)
+      .where(
+        and(
+          eq(pipelineStageHistory.tenantId, tenantId),
+          eq(pipelineStageHistory.customerId, customerId),
+        ),
+      )
+      .orderBy(desc(pipelineStageHistory.changedAt));
+
+    return rows.map((r) => ({
+      id: r.id,
+      tenantId: r.tenantId,
+      customerId: r.customerId,
+      fromStage: (r.fromStage as PipelineStage) ?? null,
+      toStage: r.toStage as PipelineStage,
+      changedAt: r.changedAt,
+      changedById: r.changedById ?? null,
+      dealValue: r.dealValue != null ? Number(r.dealValue) : null,
+      lostReason: r.lostReason ?? null,
+      notes: r.notes ?? null,
+    }));
+  },
+
+  async getStageConversionMetrics(
+    tenantId: string,
+  ): Promise<StageConversionMetric[]> {
+    const rows = await db
+      .select({
+        fromStage: pipelineStageHistory.fromStage,
+        toStage: pipelineStageHistory.toStage,
+        avgTimeMs: sql<number>`AVG(EXTRACT(EPOCH FROM (${pipelineStageHistory.changedAt} - LAG(${pipelineStageHistory.changedAt}) OVER (PARTITION BY ${pipelineStageHistory.customerId} ORDER BY ${pipelineStageHistory.changedAt}))) * 1000)`.as("avg_time_ms"),
+        count: count(),
+      })
+      .from(pipelineStageHistory)
+      .where(
+        and(
+          eq(pipelineStageHistory.tenantId, tenantId),
+          isNotNull(pipelineStageHistory.fromStage),
+        ),
+      )
+      .groupBy(pipelineStageHistory.fromStage, pipelineStageHistory.toStage);
+
+    return rows.map((r) => ({
+      fromStage: r.fromStage!,
+      toStage: r.toStage,
+      avgTimeMs: r.avgTimeMs != null ? Number(r.avgTimeMs) : 0,
+      count: Number(r.count),
     }));
   },
 };

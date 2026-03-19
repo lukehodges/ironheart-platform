@@ -10,6 +10,8 @@ import type {
   CustomerRecord,
   CustomerNoteRecord,
   PipelineStage,
+  PipelineStageHistoryRecord,
+  StageConversionMetric,
 } from "./customer.types";
 import type { z } from "zod";
 import type {
@@ -278,6 +280,17 @@ export const customerService = {
       lostReason,
     );
 
+    // Record stage change in history
+    await customerRepository.createStageHistoryEntry({
+      tenantId: ctx.tenantId,
+      customerId,
+      fromStage: (existing.pipelineStage as PipelineStage) ?? null,
+      toStage: stage,
+      changedById: ctx.user?.id ?? null,
+      dealValue: updated.dealValue ?? null,
+      lostReason: stage === "LOST" ? (lostReason ?? null) : null,
+    });
+
     log.info(
       { tenantId: ctx.tenantId, customerId, fromStage: existing.pipelineStage, toStage: stage },
       "Customer pipeline stage updated via service",
@@ -309,6 +322,26 @@ export const customerService = {
     ctx: Context,
   ): Promise<Array<{ stage: string; count: number; totalDealValue: number }>> {
     return customerRepository.getPipelineSummary(ctx.tenantId);
+  },
+
+  // ---------------------------------------------------------------------------
+  // PIPELINE STAGE HISTORY
+  // ---------------------------------------------------------------------------
+
+  async getStageHistory(
+    ctx: Context,
+    customerId: string,
+  ): Promise<PipelineStageHistoryRecord[]> {
+    const customer = await customerRepository.findById(ctx.tenantId, customerId);
+    if (!customer) throw new NotFoundError("Customer", customerId);
+
+    return customerRepository.getStageHistory(ctx.tenantId, customerId);
+  },
+
+  async getStageConversionMetrics(
+    ctx: Context,
+  ): Promise<StageConversionMetric[]> {
+    return customerRepository.getStageConversionMetrics(ctx.tenantId);
   },
 
   // ---------------------------------------------------------------------------

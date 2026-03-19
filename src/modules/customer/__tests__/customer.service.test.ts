@@ -23,6 +23,9 @@ vi.mock('../customer.repository', () => ({
     updatePipelineStage: vi.fn(),
     listByPipelineStage: vi.fn(),
     getPipelineSummary: vi.fn(),
+    createStageHistoryEntry: vi.fn(),
+    getStageHistory: vi.fn(),
+    getStageConversionMetrics: vi.fn(),
   },
 }))
 
@@ -216,6 +219,12 @@ describe('customerService.updatePipelineStage', () => {
 
     const updated = { ...existing, pipelineStage: 'OUTREACH', pipelineStageChangedAt: new Date() }
     vi.mocked(customerRepository.updatePipelineStage).mockResolvedValue(updated as never)
+    vi.mocked(customerRepository.createStageHistoryEntry).mockResolvedValue({
+      id: 'hist-1', tenantId: TENANT_ID, customerId: SOURCE_ID,
+      fromStage: 'PROSPECT', toStage: 'OUTREACH' as const,
+      changedAt: new Date(), changedById: 'user-1',
+      dealValue: null, lostReason: null, notes: null,
+    } as never)
 
     const { inngest } = await import('@/shared/inngest')
     const ctx = makeCtx()
@@ -254,6 +263,12 @@ describe('customerService.updatePipelineStage', () => {
 
     const updated = { ...existing, pipelineStage: 'LOST', lostReason: 'Budget cut', pipelineStageChangedAt: new Date() }
     vi.mocked(customerRepository.updatePipelineStage).mockResolvedValue(updated as never)
+    vi.mocked(customerRepository.createStageHistoryEntry).mockResolvedValue({
+      id: 'hist-2', tenantId: TENANT_ID, customerId: SOURCE_ID,
+      fromStage: 'PROPOSAL', toStage: 'LOST' as const,
+      changedAt: new Date(), changedById: 'user-1',
+      dealValue: null, lostReason: 'Budget cut', notes: null,
+    } as never)
 
     const ctx = makeCtx()
     const result = await customerService.updatePipelineStage(ctx, SOURCE_ID, 'LOST', 'Budget cut')
@@ -330,5 +345,153 @@ describe('customerService.getPipelineSummary', () => {
     expect(result[0]).toEqual({ stage: 'PROSPECT', count: 5, totalDealValue: 25000 })
     expect(result[1]).toEqual({ stage: 'PROPOSAL', count: 3, totalDealValue: 75000 })
     expect(result[2]).toEqual({ stage: 'WON', count: 2, totalDealValue: 50000 })
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Pipeline Stage History
+// ---------------------------------------------------------------------------
+
+describe('customerService.updatePipelineStage — history tracking', () => {
+  beforeEach(() => { vi.clearAllMocks() })
+
+  it('creates a history entry with correct fromStage and toStage', async () => {
+    const existing = makeCustomer(SOURCE_ID)
+    existing.pipelineStage = 'DISCOVERY'
+    vi.mocked(customerRepository.findById).mockResolvedValue(existing as never)
+
+    const updated = { ...existing, pipelineStage: 'AUDIT', dealValue: 5000, pipelineStageChangedAt: new Date() }
+    vi.mocked(customerRepository.updatePipelineStage).mockResolvedValue(updated as never)
+    vi.mocked(customerRepository.createStageHistoryEntry).mockResolvedValue({
+      id: 'hist-3', tenantId: TENANT_ID, customerId: SOURCE_ID,
+      fromStage: 'DISCOVERY', toStage: 'AUDIT' as const,
+      changedAt: new Date(), changedById: 'user-1',
+      dealValue: 5000, lostReason: null, notes: null,
+    } as never)
+
+    const ctx = makeCtx()
+    await customerService.updatePipelineStage(ctx, SOURCE_ID, 'AUDIT')
+
+    expect(customerRepository.createStageHistoryEntry).toHaveBeenCalledWith({
+      tenantId: TENANT_ID,
+      customerId: SOURCE_ID,
+      fromStage: 'DISCOVERY',
+      toStage: 'AUDIT',
+      changedById: 'user-1',
+      dealValue: 5000,
+      lostReason: null,
+    })
+  })
+
+  it('records null fromStage when customer has no previous pipeline stage', async () => {
+    const existing = makeCustomer(SOURCE_ID)
+    existing.pipelineStage = null
+    vi.mocked(customerRepository.findById).mockResolvedValue(existing as never)
+
+    const updated = { ...existing, pipelineStage: 'PROSPECT', dealValue: null, pipelineStageChangedAt: new Date() }
+    vi.mocked(customerRepository.updatePipelineStage).mockResolvedValue(updated as never)
+    vi.mocked(customerRepository.createStageHistoryEntry).mockResolvedValue({
+      id: 'hist-4', tenantId: TENANT_ID, customerId: SOURCE_ID,
+      fromStage: null, toStage: 'PROSPECT' as const,
+      changedAt: new Date(), changedById: 'user-1',
+      dealValue: null, lostReason: null, notes: null,
+    } as never)
+
+    const ctx = makeCtx()
+    await customerService.updatePipelineStage(ctx, SOURCE_ID, 'PROSPECT')
+
+    expect(customerRepository.createStageHistoryEntry).toHaveBeenCalledWith({
+      tenantId: TENANT_ID,
+      customerId: SOURCE_ID,
+      fromStage: null,
+      toStage: 'PROSPECT',
+      changedById: 'user-1',
+      dealValue: null,
+      lostReason: null,
+    })
+  })
+
+  it('includes lostReason in history when stage is LOST', async () => {
+    const existing = makeCustomer(SOURCE_ID)
+    existing.pipelineStage = 'NEGOTIATION'
+    vi.mocked(customerRepository.findById).mockResolvedValue(existing as never)
+
+    const updated = { ...existing, pipelineStage: 'LOST', dealValue: 10000, lostReason: 'Went with competitor', pipelineStageChangedAt: new Date() }
+    vi.mocked(customerRepository.updatePipelineStage).mockResolvedValue(updated as never)
+    vi.mocked(customerRepository.createStageHistoryEntry).mockResolvedValue({
+      id: 'hist-5', tenantId: TENANT_ID, customerId: SOURCE_ID,
+      fromStage: 'NEGOTIATION', toStage: 'LOST' as const,
+      changedAt: new Date(), changedById: 'user-1',
+      dealValue: 10000, lostReason: 'Went with competitor', notes: null,
+    } as never)
+
+    const ctx = makeCtx()
+    await customerService.updatePipelineStage(ctx, SOURCE_ID, 'LOST', 'Went with competitor')
+
+    expect(customerRepository.createStageHistoryEntry).toHaveBeenCalledWith(
+      expect.objectContaining({
+        fromStage: 'NEGOTIATION',
+        toStage: 'LOST',
+        lostReason: 'Went with competitor',
+      }),
+    )
+  })
+})
+
+// ---------------------------------------------------------------------------
+// customerService.getStageHistory
+// ---------------------------------------------------------------------------
+
+describe('customerService.getStageHistory', () => {
+  beforeEach(() => { vi.clearAllMocks() })
+
+  it('returns history entries in descending order', async () => {
+    vi.mocked(customerRepository.findById).mockResolvedValue(makeCustomer(SOURCE_ID) as never)
+
+    const history = [
+      { id: 'h2', tenantId: TENANT_ID, customerId: SOURCE_ID, fromStage: 'OUTREACH', toStage: 'DISCOVERY' as const, changedAt: new Date('2026-03-19'), changedById: 'user-1', dealValue: null, lostReason: null, notes: null },
+      { id: 'h1', tenantId: TENANT_ID, customerId: SOURCE_ID, fromStage: null, toStage: 'OUTREACH' as const, changedAt: new Date('2026-03-18'), changedById: 'user-1', dealValue: null, lostReason: null, notes: null },
+    ]
+    vi.mocked(customerRepository.getStageHistory).mockResolvedValue(history as never)
+
+    const ctx = makeCtx()
+    const result = await customerService.getStageHistory(ctx, SOURCE_ID)
+
+    expect(customerRepository.getStageHistory).toHaveBeenCalledWith(TENANT_ID, SOURCE_ID)
+    expect(result).toHaveLength(2)
+    expect(result[0]!.toStage).toBe('DISCOVERY')
+    expect(result[1]!.toStage).toBe('OUTREACH')
+  })
+
+  it('throws NotFoundError for non-existent customer', async () => {
+    vi.mocked(customerRepository.findById).mockResolvedValue(null as never)
+
+    const ctx = makeCtx()
+    await expect(
+      customerService.getStageHistory(ctx, 'non-existent')
+    ).rejects.toThrow(NotFoundError)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// customerService.getStageConversionMetrics
+// ---------------------------------------------------------------------------
+
+describe('customerService.getStageConversionMetrics', () => {
+  beforeEach(() => { vi.clearAllMocks() })
+
+  it('returns conversion metrics from repository', async () => {
+    const metrics = [
+      { fromStage: 'PROSPECT', toStage: 'OUTREACH', avgTimeMs: 86400000, count: 10 },
+      { fromStage: 'OUTREACH', toStage: 'DISCOVERY', avgTimeMs: 172800000, count: 7 },
+    ]
+    vi.mocked(customerRepository.getStageConversionMetrics).mockResolvedValue(metrics as never)
+
+    const ctx = makeCtx()
+    const result = await customerService.getStageConversionMetrics(ctx)
+
+    expect(customerRepository.getStageConversionMetrics).toHaveBeenCalledWith(TENANT_ID)
+    expect(result).toHaveLength(2)
+    expect(result[0]).toEqual({ fromStage: 'PROSPECT', toStage: 'OUTREACH', avgTimeMs: 86400000, count: 10 })
   })
 })

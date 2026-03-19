@@ -97,6 +97,26 @@ export interface AddNoteInput {
   isPrivate?: boolean
 }
 
+export interface PipelineStageHistoryRecord {
+  id: string
+  tenantId: string
+  customerId: string
+  fromStage: PipelineStage | null
+  toStage: PipelineStage
+  changedAt: Date
+  changedById: string | null
+  dealValue: number | null
+  lostReason: string | null
+  notes: string | null
+}
+
+export interface StageConversionMetric {
+  fromStage: string
+  toStage: string
+  avgTimeMs: number
+  count: number
+}
+
 export interface ListCustomersInput {
   search?: string
   tags?: string[]
