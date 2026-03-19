@@ -1,5 +1,9 @@
 import { z } from 'zod'
 
+export const pipelineStageSchema = z.enum([
+  'PROSPECT', 'OUTREACH', 'DISCOVERY', 'AUDIT', 'PROPOSAL', 'NEGOTIATION', 'WON', 'DELIVERING', 'COMPLETE', 'LOST',
+])
+
 export const addressSchema = z.object({
   line1: z.string().optional(),
   line2: z.string().optional(),
@@ -19,6 +23,9 @@ export const createCustomerSchema = z.object({
   notes: z.string().optional().nullable(),
   referralSource: z.string().optional().nullable(),
   address: addressSchema.optional().nullable(),
+  pipelineStage: pipelineStageSchema.optional().nullable(),
+  dealValue: z.number().optional().nullable(),
+  lostReason: z.string().optional().nullable(),
 })
 
 export const updateCustomerSchema = z.object({
@@ -32,6 +39,9 @@ export const updateCustomerSchema = z.object({
   notes: z.string().optional().nullable(),
   referralSource: z.string().optional().nullable(),
   address: addressSchema.optional().nullable(),
+  pipelineStage: pipelineStageSchema.optional().nullable(),
+  dealValue: z.number().optional().nullable(),
+  lostReason: z.string().optional().nullable(),
 })
 
 export const mergeCustomersSchema = z.object({
@@ -52,4 +62,16 @@ export const listCustomersSchema = z.object({
   isActive: z.boolean().optional(),
   limit: z.number().int().max(100).default(50),
   cursor: z.string().optional(),
+})
+
+export const updatePipelineStageSchema = z.object({
+  customerId: z.string(),
+  stage: pipelineStageSchema,
+  lostReason: z.string().optional(),
+  dealValue: z.number().optional(),
+})
+
+export const listByPipelineStageSchema = z.object({
+  stage: pipelineStageSchema.optional(),
+  includeAll: z.boolean().optional(),
 })

@@ -11,6 +11,8 @@ import {
   updateCustomerSchema,
   mergeCustomersSchema,
   addNoteSchema,
+  updatePipelineStageSchema,
+  listByPipelineStageSchema,
 } from "./customer.schemas";
 
 /**
@@ -49,6 +51,22 @@ export const customerRouter = router({
   anonymise: modulePermission("customers:delete")
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => customerService.anonymiseCustomer(ctx, input.id)),
+
+  // Pipeline
+  updatePipelineStage: modulePermission("customer:update")
+    .input(updatePipelineStageSchema)
+    .mutation(async ({ ctx, input }) =>
+      customerService.updatePipelineStage(ctx, input.customerId, input.stage, input.lostReason, input.dealValue)
+    ),
+
+  listByPipelineStage: moduleProcedure
+    .input(listByPipelineStageSchema)
+    .query(async ({ ctx, input }) =>
+      customerService.listByPipelineStage(ctx, input.includeAll ? undefined : input.stage)
+    ),
+
+  getPipelineSummary: moduleProcedure
+    .query(async ({ ctx }) => customerService.getPipelineSummary(ctx)),
 
   // Notes
   listNotes: moduleProcedure

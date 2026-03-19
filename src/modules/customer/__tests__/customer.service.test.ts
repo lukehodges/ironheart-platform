@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { customerService } from '../customer.service'
 import { customerRepository } from '../customer.repository'
-import { NotFoundError, ForbiddenError } from '@/shared/errors'
+import { NotFoundError, ForbiddenError, BadRequestError } from '@/shared/errors'
 
 // ---------------------------------------------------------------------------
 // Mocks
@@ -20,6 +20,15 @@ vi.mock('../customer.repository', () => ({
     deleteNote: vi.fn(),
     getBookingHistory: vi.fn(),
     list: vi.fn(),
+    updatePipelineStage: vi.fn(),
+    listByPipelineStage: vi.fn(),
+    getPipelineSummary: vi.fn(),
+  },
+}))
+
+vi.mock('@/shared/inngest', () => ({
+  inngest: {
+    send: vi.fn().mockResolvedValue(undefined),
   },
 }))
 
@@ -62,6 +71,10 @@ function makeCustomer(id: string, tenantId = TENANT_ID) {
     anonymisedAt: null,
     mergedIntoId: null,
     deletedAt: null,
+    pipelineStage: null as string | null,
+    pipelineStageChangedAt: null as Date | null,
+    lostReason: null as string | null,
+    dealValue: null as number | null,
     createdAt: new Date(),
     updatedAt: new Date(),
   }
@@ -186,5 +199,136 @@ describe('customerService.anonymiseCustomer', () => {
 
     expect(capturedHashes[0]).toBe(capturedHashes[1])
     expect(capturedHashes[0]).toHaveLength(8)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// customerService.updatePipelineStage
+// ---------------------------------------------------------------------------
+
+describe('customerService.updatePipelineStage', () => {
+  beforeEach(() => { vi.clearAllMocks() })
+
+  it('updates pipeline stage and emits event', async () => {
+    const existing = makeCustomer(SOURCE_ID)
+    existing.pipelineStage = 'PROSPECT'
+    vi.mocked(customerRepository.findById).mockResolvedValue(existing as never)
+
+    const updated = { ...existing, pipelineStage: 'OUTREACH', pipelineStageChangedAt: new Date() }
+    vi.mocked(customerRepository.updatePipelineStage).mockResolvedValue(updated as never)
+
+    const { inngest } = await import('@/shared/inngest')
+    const ctx = makeCtx()
+    const result = await customerService.updatePipelineStage(ctx, SOURCE_ID, 'OUTREACH')
+
+    expect(customerRepository.updatePipelineStage).toHaveBeenCalledWith(
+      TENANT_ID,
+      SOURCE_ID,
+      'OUTREACH',
+      undefined,
+    )
+    expect(result.pipelineStage).toBe('OUTREACH')
+    expect(inngest.send).toHaveBeenCalledWith({
+      name: 'customer/stage.changed',
+      data: {
+        customerId: SOURCE_ID,
+        tenantId: TENANT_ID,
+        fromStage: 'PROSPECT',
+        toStage: 'OUTREACH',
+        dealValue: null,
+      },
+    })
+  })
+
+  it('throws BadRequestError when stage is LOST without lostReason', async () => {
+    const ctx = makeCtx()
+    await expect(
+      customerService.updatePipelineStage(ctx, SOURCE_ID, 'LOST')
+    ).rejects.toThrow(BadRequestError)
+  })
+
+  it('allows LOST stage when lostReason is provided', async () => {
+    const existing = makeCustomer(SOURCE_ID)
+    existing.pipelineStage = 'PROPOSAL'
+    vi.mocked(customerRepository.findById).mockResolvedValue(existing as never)
+
+    const updated = { ...existing, pipelineStage: 'LOST', lostReason: 'Budget cut', pipelineStageChangedAt: new Date() }
+    vi.mocked(customerRepository.updatePipelineStage).mockResolvedValue(updated as never)
+
+    const ctx = makeCtx()
+    const result = await customerService.updatePipelineStage(ctx, SOURCE_ID, 'LOST', 'Budget cut')
+
+    expect(customerRepository.updatePipelineStage).toHaveBeenCalledWith(
+      TENANT_ID,
+      SOURCE_ID,
+      'LOST',
+      'Budget cut',
+    )
+    expect(result.pipelineStage).toBe('LOST')
+  })
+
+  it('throws NotFoundError if customer does not exist', async () => {
+    vi.mocked(customerRepository.findById).mockResolvedValue(null as never)
+
+    const ctx = makeCtx()
+    await expect(
+      customerService.updatePipelineStage(ctx, SOURCE_ID, 'OUTREACH')
+    ).rejects.toThrow(NotFoundError)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// customerService.listByPipelineStage
+// ---------------------------------------------------------------------------
+
+describe('customerService.listByPipelineStage', () => {
+  beforeEach(() => { vi.clearAllMocks() })
+
+  it('filters by specific stage', async () => {
+    const customers = [makeCustomer(SOURCE_ID)]
+    vi.mocked(customerRepository.listByPipelineStage).mockResolvedValue(customers as never)
+
+    const ctx = makeCtx()
+    const result = await customerService.listByPipelineStage(ctx, 'PROPOSAL')
+
+    expect(customerRepository.listByPipelineStage).toHaveBeenCalledWith(TENANT_ID, 'PROPOSAL')
+    expect(result).toHaveLength(1)
+  })
+
+  it('returns all pipeline customers when no stage specified', async () => {
+    const customers = [makeCustomer(SOURCE_ID), makeCustomer(TARGET_ID)]
+    vi.mocked(customerRepository.listByPipelineStage).mockResolvedValue(customers as never)
+
+    const ctx = makeCtx()
+    const result = await customerService.listByPipelineStage(ctx)
+
+    expect(customerRepository.listByPipelineStage).toHaveBeenCalledWith(TENANT_ID, undefined)
+    expect(result).toHaveLength(2)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// customerService.getPipelineSummary
+// ---------------------------------------------------------------------------
+
+describe('customerService.getPipelineSummary', () => {
+  beforeEach(() => { vi.clearAllMocks() })
+
+  it('returns correct counts and dealValue sums per stage', async () => {
+    const summary = [
+      { stage: 'PROSPECT', count: 5, totalDealValue: 25000 },
+      { stage: 'PROPOSAL', count: 3, totalDealValue: 75000 },
+      { stage: 'WON', count: 2, totalDealValue: 50000 },
+    ]
+    vi.mocked(customerRepository.getPipelineSummary).mockResolvedValue(summary as never)
+
+    const ctx = makeCtx()
+    const result = await customerService.getPipelineSummary(ctx)
+
+    expect(customerRepository.getPipelineSummary).toHaveBeenCalledWith(TENANT_ID)
+    expect(result).toHaveLength(3)
+    expect(result[0]).toEqual({ stage: 'PROSPECT', count: 5, totalDealValue: 25000 })
+    expect(result[1]).toEqual({ stage: 'PROPOSAL', count: 3, totalDealValue: 75000 })
+    expect(result[2]).toEqual({ stage: 'WON', count: 2, totalDealValue: 50000 })
   })
 })

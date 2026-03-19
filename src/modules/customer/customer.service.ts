@@ -2,12 +2,14 @@ import { createHash } from "node:crypto";
 import { db } from "@/shared/db";
 import { logger } from "@/shared/logger";
 import { auditLog } from "@/shared/audit";
-import { NotFoundError, ForbiddenError } from "@/shared/errors";
+import { NotFoundError, ForbiddenError, BadRequestError } from "@/shared/errors";
+import { inngest } from "@/shared/inngest";
 import type { Context } from "@/shared/trpc";
 import { customerRepository } from "./customer.repository";
 import type {
   CustomerRecord,
   CustomerNoteRecord,
+  PipelineStage,
 } from "./customer.types";
 import type { z } from "zod";
 import type {
@@ -240,6 +242,73 @@ export const customerService = {
       { tenantId: ctx.tenantId, noteId },
       "Customer note deleted via service",
     );
+  },
+
+  // ---------------------------------------------------------------------------
+  // PIPELINE
+  // ---------------------------------------------------------------------------
+
+  async updatePipelineStage(
+    ctx: Context,
+    customerId: string,
+    stage: PipelineStage,
+    lostReason?: string,
+    dealValue?: number,
+  ): Promise<CustomerRecord> {
+    if (stage === "LOST" && !lostReason) {
+      throw new BadRequestError("lostReason is required when setting stage to LOST");
+    }
+
+    // Load current customer to capture fromStage
+    const existing = await customerRepository.findById(ctx.tenantId, customerId);
+    if (!existing) throw new NotFoundError("Customer", customerId);
+
+    // If dealValue provided, update it first
+    if (dealValue !== undefined) {
+      await customerRepository.update(ctx.tenantId, customerId, {
+        id: customerId,
+        dealValue,
+      });
+    }
+
+    const updated = await customerRepository.updatePipelineStage(
+      ctx.tenantId,
+      customerId,
+      stage,
+      lostReason,
+    );
+
+    log.info(
+      { tenantId: ctx.tenantId, customerId, fromStage: existing.pipelineStage, toStage: stage },
+      "Customer pipeline stage updated via service",
+    );
+
+    // Emit stage change event for workflow triggers
+    await inngest.send({
+      name: "customer/stage.changed",
+      data: {
+        customerId,
+        tenantId: ctx.tenantId,
+        fromStage: existing.pipelineStage ?? null,
+        toStage: stage,
+        dealValue: updated.dealValue ?? null,
+      },
+    });
+
+    return updated;
+  },
+
+  async listByPipelineStage(
+    ctx: Context,
+    stage?: PipelineStage,
+  ): Promise<CustomerRecord[]> {
+    return customerRepository.listByPipelineStage(ctx.tenantId, stage);
+  },
+
+  async getPipelineSummary(
+    ctx: Context,
+  ): Promise<Array<{ stage: string; count: number; totalDealValue: number }>> {
+    return customerRepository.getPipelineSummary(ctx.tenantId);
   },
 
   // ---------------------------------------------------------------------------

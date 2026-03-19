@@ -107,6 +107,15 @@ type IronheartEvents = {
       rating: number;
     };
   };
+  "customer/stage.changed": {
+    data: {
+      customerId: string;
+      tenantId: string;
+      fromStage: string | null;
+      toStage: string;
+      dealValue: number | null;
+    };
+  };
   "stripe/webhook.received": {
     data: {
       eventType: string;

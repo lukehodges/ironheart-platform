@@ -1,5 +1,7 @@
 export type NoteType = 'GENERAL' | 'MEDICAL' | 'PREFERENCE' | 'COMPLAINT' | 'FOLLOWUP'
 
+export type PipelineStage = 'PROSPECT' | 'OUTREACH' | 'DISCOVERY' | 'AUDIT' | 'PROPOSAL' | 'NEGOTIATION' | 'WON' | 'DELIVERING' | 'COMPLETE' | 'LOST'
+
 export interface CustomerAddress {
   line1?: string
   line2?: string
@@ -26,6 +28,10 @@ export interface CustomerRecord {
   anonymisedAt?: Date | null
   mergedIntoId?: string | null
   deletedAt?: Date | null
+  pipelineStage?: string | null
+  pipelineStageChangedAt?: Date | null
+  lostReason?: string | null
+  dealValue?: number | null
   createdAt: Date
   updatedAt: Date
 }
@@ -58,6 +64,9 @@ export interface CreateCustomerInput {
   notes?: string | null
   referralSource?: string | null
   address?: CustomerAddress | null
+  pipelineStage?: PipelineStage | null
+  dealValue?: number | null
+  lostReason?: string | null
 }
 
 export interface UpdateCustomerInput {
@@ -71,6 +80,9 @@ export interface UpdateCustomerInput {
   notes?: string | null
   referralSource?: string | null
   address?: CustomerAddress | null
+  pipelineStage?: PipelineStage | null
+  dealValue?: number | null
+  lostReason?: string | null
 }
 
 export interface MergeCustomersInput {

@@ -21,6 +21,19 @@ import { users } from "./auth.schema"
 
 export const customerStatus = pgEnum("CustomerStatus", ['ACTIVE', 'INACTIVE', 'BLOCKED'])
 
+export const pipelineStageEnum = pgEnum("pipeline_stage", [
+  'PROSPECT',
+  'OUTREACH',
+  'DISCOVERY',
+  'AUDIT',
+  'PROPOSAL',
+  'NEGOTIATION',
+  'WON',
+  'DELIVERING',
+  'COMPLETE',
+  'LOST',
+])
+
 // ---------------------------------------------------------------------------
 // Tables
 // ---------------------------------------------------------------------------
@@ -51,12 +64,17 @@ export const customers = pgTable("customers", {
 	deletedAt: timestamp({ precision: 3, mode: 'date' }),
 	version: integer().notNull().default(1),
 	anonymisedAt: timestamp('anonymised_at', { withTimezone: true, mode: 'date' }),
+	pipelineStage: pipelineStageEnum(),
+	pipelineStageChangedAt: timestamp({ precision: 3, mode: 'date' }),
+	lostReason: text(),
+	dealValue: numeric({ precision: 10, scale: 2 }),
 }, (table) => [
 	index("customers_email_idx").on( table.email),
 	index("customers_phone_idx").on( table.phone),
 	uniqueIndex("customers_tenantId_email_key").on( table.tenantId, table.email),
 	index("customers_tenantId_idx").on( table.tenantId),
 	index("customers_tenantId_lastName_idx").on( table.tenantId, table.lastName),
+	index("customers_tenantId_pipelineStage_idx").on( table.tenantId, table.pipelineStage),
 	foreignKey({
 		columns: [table.tenantId],
 		foreignColumns: [tenants.id],
