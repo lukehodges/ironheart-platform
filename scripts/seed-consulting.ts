@@ -356,39 +356,422 @@ Luke`,
 ];
 
 // ---------------------------------------------------------------------------
-// Workflow definitions
+// Workflow graph helpers
 // ---------------------------------------------------------------------------
 
-const WORKFLOW_DEFS = [
+interface WfNode {
+  id: string;
+  type: string;
+  label?: string;
+  position: { x: number; y: number };
+  config: Record<string, unknown>;
+}
+
+interface WfEdge {
+  id: string;
+  source: string;
+  target: string;
+  sourceHandle: string;
+  label?: string;
+}
+
+function edge(
+  source: string,
+  target: string,
+  sourceHandle = "output",
+  label?: string
+): WfEdge {
+  return {
+    id: `e_${source}_${target}`,
+    source,
+    target,
+    sourceHandle,
+    ...(label && { label }),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Workflow definitions — full graph mode (isVisual: true)
+// ---------------------------------------------------------------------------
+
+const WORKFLOW_DEFS: Array<{
+  name: string;
+  description: string;
+  nodes: WfNode[];
+  edges: WfEdge[];
+}> = [
+  // -------------------------------------------------------------------------
+  // 1. Outreach Sequence
+  // -------------------------------------------------------------------------
   {
     name: "Outreach Sequence",
     description:
-      "Automated cold email sequence: initial → 3 day wait → follow-up 1 → 4 day wait → follow-up 2 → 3 day wait → auto-LOST",
+      "Automated cold email sequence: initial → 3 day wait → follow-up 1 → 4 day wait → follow-up 2 → 3 day wait → stop",
+    nodes: [
+      {
+        id: "trigger_1",
+        type: "TRIGGER",
+        label: "Customer → OUTREACH",
+        position: { x: 250, y: 0 },
+        config: {
+          eventType: "customer/stage.changed",
+          conditions: {
+            logic: "AND",
+            conditions: [{ field: "toStage", operator: "equals", value: "OUTREACH" }],
+          },
+        },
+      },
+      {
+        id: "send_email_1",
+        type: "SEND_EMAIL",
+        label: "Cold Outreach Initial",
+        position: { x: 250, y: 150 },
+        config: {
+          templateId: "outreach.initial",
+          recipientField: "triggerData.customerId",
+          subject: "Quick question about your pipeline",
+        },
+      },
+      {
+        id: "wait_1",
+        type: "WAIT_UNTIL",
+        label: "Wait 3 days",
+        position: { x: 250, y: 300 },
+        config: { mode: "duration", duration: "P3D" },
+      },
+      {
+        id: "if_replied",
+        type: "IF",
+        label: "Check reply received",
+        position: { x: 250, y: 450 },
+        config: {
+          conditions: {
+            logic: "AND",
+            conditions: [
+              { field: "variables.replyReceived", operator: "equals", value: "true" },
+            ],
+          },
+        },
+      },
+      {
+        id: "send_email_2",
+        type: "SEND_EMAIL",
+        label: "Follow-up 1",
+        position: { x: 400, y: 600 },
+        config: {
+          templateId: "outreach.followup1",
+          recipientField: "triggerData.customerId",
+          subject: "Re: Quick question about your pipeline",
+        },
+      },
+      {
+        id: "wait_2",
+        type: "WAIT_UNTIL",
+        label: "Wait 4 days",
+        position: { x: 400, y: 750 },
+        config: { mode: "duration", duration: "P4D" },
+      },
+      {
+        id: "send_email_3",
+        type: "SEND_EMAIL",
+        label: "Follow-up 2",
+        position: { x: 400, y: 900 },
+        config: {
+          templateId: "outreach.followup2",
+          recipientField: "triggerData.customerId",
+          subject: "Last one from me",
+        },
+      },
+      {
+        id: "wait_3",
+        type: "WAIT_UNTIL",
+        label: "Wait 3 days",
+        position: { x: 400, y: 1050 },
+        config: { mode: "duration", duration: "P3D" },
+      },
+      {
+        id: "stop_sequence",
+        type: "STOP",
+        label: "Sequence complete",
+        position: { x: 400, y: 1200 },
+        config: {},
+      },
+      {
+        id: "stop_replied",
+        type: "STOP",
+        label: "Reply received — stop",
+        position: { x: 100, y: 600 },
+        config: {},
+      },
+    ],
+    edges: [
+      edge("trigger_1", "send_email_1"),
+      edge("send_email_1", "wait_1"),
+      edge("wait_1", "if_replied"),
+      edge("if_replied", "stop_replied", "true", "Replied"),
+      edge("if_replied", "send_email_2", "false", "No reply"),
+      edge("send_email_2", "wait_2"),
+      edge("wait_2", "send_email_3"),
+      edge("send_email_3", "wait_3"),
+      edge("wait_3", "stop_sequence"),
+    ],
   },
+
+  // -------------------------------------------------------------------------
+  // 2. Discovery Prep
+  // -------------------------------------------------------------------------
   {
     name: "Discovery Prep",
     description:
-      "When discovery call booked: send pre-discovery questionnaire form link",
+      "When discovery call booked: send confirmation email with pre-discovery questionnaire link",
+    nodes: [
+      {
+        id: "trigger_1",
+        type: "TRIGGER",
+        label: "Booking created",
+        position: { x: 250, y: 0 },
+        config: { eventType: "booking/created" },
+      },
+      {
+        id: "send_email_1",
+        type: "SEND_EMAIL",
+        label: "Discovery confirmation + form",
+        position: { x: 250, y: 200 },
+        config: {
+          templateId: "discovery.booked",
+          recipientField: "triggerData.customerId",
+          subject: "Confirmed: Discovery Call with Luke",
+        },
+      },
+      {
+        id: "stop_1",
+        type: "STOP",
+        label: "Done",
+        position: { x: 250, y: 400 },
+        config: {},
+      },
+    ],
+    edges: [
+      edge("trigger_1", "send_email_1"),
+      edge("send_email_1", "stop_1"),
+    ],
   },
+
+  // -------------------------------------------------------------------------
+  // 3. Post-Audit Follow-up
+  // -------------------------------------------------------------------------
   {
     name: "Post-Audit Follow-up",
     description:
-      "When stage moves to PROPOSAL: create draft invoice, start follow-up timer",
+      "When stage moves to PROPOSAL: notify Luke, then follow up with prospect after 3 days",
+    nodes: [
+      {
+        id: "trigger_1",
+        type: "TRIGGER",
+        label: "Customer → PROPOSAL",
+        position: { x: 250, y: 0 },
+        config: {
+          eventType: "customer/stage.changed",
+          conditions: {
+            logic: "AND",
+            conditions: [{ field: "toStage", operator: "equals", value: "PROPOSAL" }],
+          },
+        },
+      },
+      {
+        id: "send_email_1",
+        type: "SEND_EMAIL",
+        label: "Notify Luke: proposal sent",
+        position: { x: 250, y: 200 },
+        config: {
+          templateId: "proposal.sent",
+          recipientField: "triggerData.customerId",
+          subject: "Your Solution Map from Luke Hodges",
+        },
+      },
+      {
+        id: "wait_1",
+        type: "WAIT_UNTIL",
+        label: "Wait 3 days",
+        position: { x: 250, y: 400 },
+        config: { mode: "duration", duration: "P3D" },
+      },
+      {
+        id: "send_email_2",
+        type: "SEND_EMAIL",
+        label: "Follow-up with prospect",
+        position: { x: 250, y: 600 },
+        config: {
+          recipientField: "triggerData.customerId",
+          subject: "Following up on your solution map",
+          body: "Hi {{firstName}},\n\nJust checking in — did you get a chance to look over the solution map I sent?\n\nHappy to jump on a quick call if you'd like to talk through anything.\n\nLuke",
+        },
+      },
+      {
+        id: "stop_1",
+        type: "STOP",
+        label: "Done",
+        position: { x: 250, y: 800 },
+        config: {},
+      },
+    ],
+    edges: [
+      edge("trigger_1", "send_email_1"),
+      edge("send_email_1", "wait_1"),
+      edge("wait_1", "send_email_2"),
+      edge("send_email_2", "stop_1"),
+    ],
   },
+
+  // -------------------------------------------------------------------------
+  // 4. Deal Won Automation
+  // -------------------------------------------------------------------------
   {
     name: "Deal Won Automation",
     description:
-      "When stage moves to WON: create project with starter tasks, send invoice",
+      "When stage moves to WON: send congratulations to client, then notify Luke",
+    nodes: [
+      {
+        id: "trigger_1",
+        type: "TRIGGER",
+        label: "Customer → WON",
+        position: { x: 250, y: 0 },
+        config: {
+          eventType: "customer/stage.changed",
+          conditions: {
+            logic: "AND",
+            conditions: [{ field: "toStage", operator: "equals", value: "WON" }],
+          },
+        },
+      },
+      {
+        id: "send_email_1",
+        type: "SEND_EMAIL",
+        label: "Congratulations + next steps",
+        position: { x: 250, y: 200 },
+        config: {
+          recipientField: "triggerData.customerId",
+          subject: "Welcome aboard — next steps",
+          body: "Hi {{firstName}},\n\nThrilled to be working together! Here's what happens next:\n\n1. I'll send over an onboarding form to collect the details I need\n2. We'll schedule a kickoff call to align on priorities\n3. Work begins!\n\nKeep an eye on your inbox — the onboarding form is on its way.\n\nLuke",
+        },
+      },
+      {
+        id: "send_email_2",
+        type: "SEND_NOTIFICATION",
+        label: "Notify Luke: Deal won!",
+        position: { x: 250, y: 400 },
+        config: {
+          title: "Deal Won!",
+          body: "A new deal has been won. Customer ID: {{triggerData.customerId}}, Deal value: {{triggerData.dealValue}}",
+        },
+      },
+      {
+        id: "stop_1",
+        type: "STOP",
+        label: "Done",
+        position: { x: 250, y: 600 },
+        config: {},
+      },
+    ],
+    edges: [
+      edge("trigger_1", "send_email_1"),
+      edge("send_email_1", "send_email_2"),
+      edge("send_email_2", "stop_1"),
+    ],
   },
+
+  // -------------------------------------------------------------------------
+  // 5. Engagement Complete
+  // -------------------------------------------------------------------------
   {
     name: "Engagement Complete",
     description:
-      "When project completed: send review request, payment reminder if due",
+      "When stage moves to COMPLETE: wait 1 day, then send review request",
+    nodes: [
+      {
+        id: "trigger_1",
+        type: "TRIGGER",
+        label: "Customer → COMPLETE",
+        position: { x: 250, y: 0 },
+        config: {
+          eventType: "customer/stage.changed",
+          conditions: {
+            logic: "AND",
+            conditions: [{ field: "toStage", operator: "equals", value: "COMPLETE" }],
+          },
+        },
+      },
+      {
+        id: "wait_1",
+        type: "WAIT_UNTIL",
+        label: "Wait 1 day (let things settle)",
+        position: { x: 250, y: 200 },
+        config: { mode: "duration", duration: "P1D" },
+      },
+      {
+        id: "send_email_1",
+        type: "SEND_EMAIL",
+        label: "Send review request",
+        position: { x: 250, y: 400 },
+        config: {
+          templateId: "review.request",
+          recipientField: "triggerData.customerId",
+          subject: "How was working together?",
+        },
+      },
+      {
+        id: "stop_1",
+        type: "STOP",
+        label: "Done",
+        position: { x: 250, y: 600 },
+        config: {},
+      },
+    ],
+    edges: [
+      edge("trigger_1", "wait_1"),
+      edge("wait_1", "send_email_1"),
+      edge("send_email_1", "stop_1"),
+    ],
   },
+
+  // -------------------------------------------------------------------------
+  // 6. Weekly Pipeline Digest
+  // -------------------------------------------------------------------------
   {
     name: "Weekly Pipeline Digest",
     description:
-      "Monday 8am: count customers per stage, send summary email",
+      "Manual trigger: send pipeline summary email to Luke",
+    nodes: [
+      {
+        id: "trigger_1",
+        type: "TRIGGER",
+        label: "Manual trigger",
+        position: { x: 250, y: 0 },
+        config: { eventType: "workflow/trigger" },
+      },
+      {
+        id: "send_email_1",
+        type: "SEND_EMAIL",
+        label: "Pipeline digest to Luke",
+        position: { x: 250, y: 200 },
+        config: {
+          recipientEmail: "luke@lukehodges.co.uk",
+          subject: "Weekly Pipeline Digest",
+          body: "Hi Luke,\n\nHere's your weekly pipeline summary.\n\nThis is a placeholder — once connected to live data, this will include customer counts per stage, total pipeline value, and actions needed this week.\n\nIronheart",
+        },
+      },
+      {
+        id: "stop_1",
+        type: "STOP",
+        label: "Done",
+        position: { x: 250, y: 400 },
+        config: {},
+      },
+    ],
+    edges: [
+      edge("trigger_1", "send_email_1"),
+      edge("send_email_1", "stop_1"),
+    ],
   },
 ];
 
@@ -524,7 +907,9 @@ async function seed() {
       name: wf.name,
       description: wf.description,
       enabled: false,
-      isVisual: false,
+      isVisual: true,
+      nodes: wf.nodes,
+      edges: wf.edges,
       createdAt: now,
       updatedAt: now,
     });
