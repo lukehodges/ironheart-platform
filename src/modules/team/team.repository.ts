@@ -312,10 +312,149 @@ export const teamRepository = {
       deptMap.set(d.userId, list);
     }
 
+    // Batch-load skills for all returned staff
+    const skillRows = userIds.length > 0
+      ? await db
+          .select({
+            userId: resourceSkills.userId,
+            skillName: resourceSkills.skillName,
+            proficiency: resourceSkills.proficiency,
+          })
+          .from(resourceSkills)
+          .where(
+            and(
+              eq(resourceSkills.tenantId, tenantId),
+              inArray(resourceSkills.userId, userIds),
+            )
+          )
+      : [];
+
+    const skillMap = new Map<string, Array<{ skillName: string; proficiency: string | null }>>();
+    for (const s of skillRows) {
+      const list = skillMap.get(s.userId) ?? [];
+      list.push({ skillName: s.skillName, proficiency: s.proficiency });
+      skillMap.set(s.userId, list);
+    }
+
+    // Batch-load capacity for all returned staff (current effective "bookings" capacity)
+    const today = new Date();
+
+    const capRows = userIds.length > 0
+      ? await db
+          .select({
+            userId: resourceCapacities.userId,
+            maxDaily: resourceCapacities.maxDaily,
+          })
+          .from(resourceCapacities)
+          .where(
+            and(
+              eq(resourceCapacities.tenantId, tenantId),
+              inArray(resourceCapacities.userId, userIds),
+              eq(resourceCapacities.capacityType, "bookings"),
+              lte(resourceCapacities.effectiveFrom, today),
+              or(
+                isNull(resourceCapacities.effectiveUntil),
+                gte(resourceCapacities.effectiveUntil, today),
+              ),
+            )
+          )
+      : [];
+
+    const capMap = new Map<string, number>();
+    for (const c of capRows) {
+      if (c.maxDaily !== null) capMap.set(c.userId, c.maxDaily);
+    }
+
+    // Batch-load active assignment counts (capacity used) for today
+    const assignRows = userIds.length > 0
+      ? await db
+          .select({
+            userId: resourceAssignments.userId,
+            count: sql<number>`count(*)::int`,
+          })
+          .from(resourceAssignments)
+          .where(
+            and(
+              eq(resourceAssignments.tenantId, tenantId),
+              inArray(resourceAssignments.userId, userIds),
+              inArray(resourceAssignments.status, ["ASSIGNED", "ACTIVE"]),
+            )
+          )
+          .groupBy(resourceAssignments.userId)
+      : [];
+
+    const assignMap = new Map<string, number>();
+    for (const a of assignRows) {
+      assignMap.set(a.userId, a.count);
+    }
+
+    // Batch-load today's availability for all returned staff
+    const dayOfWeek = today.getDay(); // 0=Sun, 6=Sat
+    const availRows = userIds.length > 0
+      ? await db
+          .select({
+            userId: userAvailability.userId,
+            type: userAvailability.type,
+            specificDate: userAvailability.specificDate,
+            endDate: userAvailability.endDate,
+            dayOfWeek: userAvailability.dayOfWeek,
+          })
+          .from(userAvailability)
+          .where(
+            and(
+              inArray(userAvailability.userId, userIds),
+              or(
+                // BLOCKED entries covering today
+                and(
+                  eq(userAvailability.type, "BLOCKED"),
+                  lte(userAvailability.specificDate, today),
+                  or(
+                    isNull(userAvailability.endDate),
+                    gte(userAvailability.endDate, today),
+                  ),
+                ),
+                // SPECIFIC entries for today
+                and(
+                  eq(userAvailability.type, "SPECIFIC"),
+                  eq(userAvailability.specificDate, today),
+                ),
+                // RECURRING entries for today's day of week
+                and(
+                  eq(userAvailability.type, "RECURRING"),
+                  eq(userAvailability.dayOfWeek, dayOfWeek),
+                ),
+              ),
+            )
+          )
+      : [];
+
+    // Compute availability per user: BLOCKED > SPECIFIC > RECURRING
+    type AvailStatus = 'available' | 'blocked' | 'unavailable';
+    const availMap = new Map<string, AvailStatus>();
+    for (const a of availRows) {
+      const current = availMap.get(a.userId);
+      if (a.type === "BLOCKED") {
+        availMap.set(a.userId, "blocked");
+      } else if (a.type === "SPECIFIC" && current !== "blocked") {
+        availMap.set(a.userId, "available");
+      } else if (a.type === "RECURRING" && current !== "blocked" && current !== "available") {
+        availMap.set(a.userId, "available");
+      }
+    }
+
     return {
-      rows: sliced.map((r) =>
-        mapToStaffMember(r.user, r.profile, deptMap.get(r.user.id) ?? [])
-      ),
+      rows: sliced.map((r) => {
+        const member = mapToStaffMember(r.user, r.profile, deptMap.get(r.user.id) ?? []);
+        member.skills = skillMap.get(r.user.id) ?? [];
+        member.capacityMax = capMap.get(r.user.id) ?? undefined;
+        member.capacityUsed = assignMap.get(r.user.id) ?? undefined;
+        if (member.status !== "ACTIVE") {
+          member.availability = "unavailable";
+        } else {
+          member.availability = availMap.get(r.user.id) ?? "unavailable";
+        }
+        return member;
+      }),
       hasMore,
     };
   },
