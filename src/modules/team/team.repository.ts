@@ -15,6 +15,8 @@ import {
   staffCustomFieldDefinitions,
   staffCustomFieldValues,
   resourceSkills,
+  resourceCapacities,
+  resourceAssignments,
 } from "@/shared/db/schema";
 import {
   eq,
@@ -315,6 +317,80 @@ export const teamRepository = {
         mapToStaffMember(r.user, r.profile, deptMap.get(r.user.id) ?? [])
       ),
       hasMore,
+    };
+  },
+
+  async getStats(tenantId: string): Promise<import("./team.types").TeamStats> {
+    log.info({ tenantId }, "getStats");
+
+    // 1) Fetch all staff rows to derive status counts in JS (same logic as mapToStaffMember)
+    const staffRows = await db
+      .select({
+        user: users,
+        profile: staffProfiles,
+      })
+      .from(users)
+      .innerJoin(staffProfiles, eq(staffProfiles.userId, users.id))
+      .where(eq(users.tenantId, tenantId));
+
+    let activeCount = 0;
+    let inactiveCount = 0;
+    let suspendedCount = 0;
+
+    for (const row of staffRows) {
+      const profile = row.profile;
+      const user = row.user;
+
+      let status: "ACTIVE" | "INACTIVE" | "SUSPENDED";
+      if (profile?.staffStatus === "TERMINATED") {
+        status = "INACTIVE";
+      } else if (profile?.staffStatus === "ACTIVE") {
+        status = "ACTIVE";
+      } else if (user.status === "SUSPENDED") {
+        status = "SUSPENDED";
+      } else if (user.status === "DELETED") {
+        status = "INACTIVE";
+      } else if (user.status === "ACTIVE") {
+        status = "ACTIVE";
+      } else {
+        status = "INACTIVE";
+      }
+
+      if (status === "ACTIVE") activeCount++;
+      else if (status === "INACTIVE") inactiveCount++;
+      else if (status === "SUSPENDED") suspendedCount++;
+    }
+
+    // 2) Count active departments
+    const deptResult = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(staffDepartments)
+      .where(
+        and(
+          eq(staffDepartments.tenantId, tenantId),
+          eq(staffDepartments.isActive, true),
+        )
+      );
+
+    const departmentCount = Number(deptResult[0]?.count ?? 0);
+
+    // 3) Average capacity (max from resourceCapacities, used from resourceAssignments)
+    const capacityResult = await db
+      .select({
+        avgMax: sql<number | null>`avg(${resourceCapacities.maxDaily})`,
+        avgUsed: sql<number | null>`(select avg(cnt) from (select count(*) as cnt from ${resourceAssignments} where ${resourceAssignments.tenantId} = ${tenantId} and ${resourceAssignments.status} in ('ASSIGNED', 'ACTIVE') group by ${resourceAssignments.userId}) sub)`,
+      })
+      .from(resourceCapacities)
+      .where(eq(resourceCapacities.tenantId, tenantId));
+
+    return {
+      total: staffRows.length,
+      activeCount,
+      inactiveCount,
+      suspendedCount,
+      departmentCount,
+      avgCapacityMax: Number(capacityResult[0]?.avgMax ?? 0),
+      avgCapacityUsed: Number(capacityResult[0]?.avgUsed ?? 0),
     };
   },
 

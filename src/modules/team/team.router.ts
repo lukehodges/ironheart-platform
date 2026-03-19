@@ -52,6 +52,9 @@ export const teamRouter = router({
     .input(listStaffSchema)
     .query(({ ctx, input }) => teamService.listStaff(ctx, input)),
 
+  stats: moduleProcedure
+    .query(({ ctx }) => teamService.getStats(ctx)),
+
   getById: moduleProcedure
     .input(z.object({ userId: z.uuid() }))
     .query(({ ctx, input }) => teamService.getStaffMember(ctx, input.userId)),

@@ -84,6 +84,11 @@ export const teamService = {
     return result;
   },
 
+  async getStats(ctx: Context): Promise<import("./team.types").TeamStats> {
+    log.info({ tenantId: ctx.tenantId }, "Getting team stats");
+    return teamRepository.getStats(ctx.tenantId);
+  },
+
   async createStaff(
     ctx: Context,
     input: z.infer<typeof createStaffSchema>
