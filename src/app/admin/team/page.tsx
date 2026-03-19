@@ -1,261 +1,181 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo, useCallback } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
-import { UserPlus, Building2, Network, Search } from "lucide-react"
+import {
+  UserPlus,
+  Network,
+  Search,
+  List,
+  LayoutGrid,
+  Users,
+  TrendingUp,
+  Building2,
+  Activity,
+  ChevronRight,
+} from "lucide-react"
 import { api } from "@/lib/trpc/react"
-import { PageHeader } from "@/components/ui/page-header"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
-import { Skeleton } from "@/components/ui/skeleton"
-import { EmptyState } from "@/components/ui/empty-state"
-import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible"
-import { Separator } from "@/components/ui/separator"
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu"
-import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select"
-import { TeamMemberCard } from "@/components/team/team-member-card"
+import { Separator } from "@/components/ui/separator"
+import { Skeleton } from "@/components/ui/skeleton"
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu"
+import { Checkbox } from "@/components/ui/checkbox"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { TeamMemberSheet } from "@/components/team/team-member-sheet"
 import { AddMemberDialog } from "@/components/team/add-member-dialog"
+import { KpiCard } from "@/components/team/kpi-card"
+import { TeamSidebar } from "@/components/team/team-sidebar"
+import { TeamTable } from "@/components/team/team-table"
+import { TeamGridCard } from "@/components/team/team-grid-card"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
-import type { StaffStatus, StaffMember } from "@/modules/team/team.types"
+import type { StaffStatus, EmployeeType } from "@/modules/team/team.types"
 
-// ─── Filter types ────────────────────────────────────────────────────────────
+// ─── Types ───────────────────────────────────────────────────────────────────
 
 type StatusFilter = "ALL" | StaffStatus
-type EmployeeTypeFilter = "ALL" | "EMPLOYED" | "SELF_EMPLOYED" | "CONTRACTOR"
+type ViewMode = "table" | "grid"
 
-const STATUS_OPTIONS: { value: StatusFilter; label: string }[] = [
-  { value: "ALL", label: "All statuses" },
+const STATUS_FILTERS: Array<{ value: StatusFilter; label: string }> = [
+  { value: "ALL", label: "All" },
   { value: "ACTIVE", label: "Active" },
   { value: "INACTIVE", label: "Inactive" },
   { value: "SUSPENDED", label: "Suspended" },
 ]
 
-const EMPLOYEE_TYPE_OPTIONS: { value: EmployeeTypeFilter; label: string }[] = [
-  { value: "ALL", label: "All types" },
-  { value: "EMPLOYED", label: "Employed" },
-  { value: "SELF_EMPLOYED", label: "Self-employed" },
-  { value: "CONTRACTOR", label: "Contractor" },
-]
+// ─── localStorage helpers ────────────────────────────────────────────────────
 
-function FilterChip({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean
-  onClick: () => void
-  children: React.ReactNode
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        "inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium transition-colors",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-        active
-          ? "border-primary bg-primary text-primary-foreground"
-          : "border-border bg-background text-foreground hover:bg-muted"
-      )}
-      aria-pressed={active}
-    >
-      {children}
-    </button>
-  )
+function getStoredView(): ViewMode {
+  if (typeof window === "undefined") return "table"
+  return (localStorage.getItem("team-view-mode") as ViewMode) ?? "table"
 }
 
-function getInitials(name: string): string {
-  return name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2)
+function getStoredSidebar(): boolean {
+  if (typeof window === "undefined") return true
+  const stored = localStorage.getItem("team-sidebar-open")
+  return stored === null ? true : stored === "true"
 }
 
-// ─── Loading skeleton grid ────────────────────────────────────────────────────
+// ─── Loading skeleton ────────────────────────────────────────────────────────
 
-function TeamGridSkeleton() {
+function KpiSkeleton() {
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4">
-      {Array.from({ length: 8 }).map((_, i) => (
-        <div
-          key={i}
-          className="rounded-xl border border-border p-5 space-y-4"
-        >
-          <div className="flex flex-col items-center gap-3">
-            <Skeleton className="h-16 w-16 rounded-full" />
-            <div className="space-y-2 w-full text-center">
-              <Skeleton className="h-4 w-24 mx-auto" />
-              <Skeleton className="h-3 w-16 mx-auto" />
-            </div>
-            <Skeleton className="h-5 w-16 rounded-full" />
-          </div>
-          <div className="border-t border-border pt-3 flex justify-center">
-            <Skeleton className="h-4 w-28" />
-          </div>
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      {Array.from({ length: 4 }).map((_, i) => (
+        <div key={i} className="rounded-xl border border-zinc-200 p-5 space-y-3">
+          <Skeleton className="h-3 w-20" />
+          <Skeleton className="h-8 w-16" />
+          <Skeleton className="h-3 w-28" />
         </div>
       ))}
     </div>
   )
 }
 
-// ─── "Who's available now" indicator bar ─────────────────────────────────────
-
-function AvailabilityBar({
-  activeCount,
-  activeMembers,
-}: {
-  activeCount: number
-  activeMembers: Array<{ id: string; name: string; avatarUrl: string | null }>
-}) {
-  if (activeCount === 0) {
-    return (
-      <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/40 px-4 py-2.5">
-        <div className="h-2 w-2 rounded-full bg-muted-foreground" />
-        <span className="text-xs text-muted-foreground">No staff available right now</span>
-      </div>
-    )
-  }
-
-  const visible = activeMembers.slice(0, 6)
-  const overflow = activeCount - visible.length
-
+function TableSkeleton() {
   return (
-    <div className="flex items-center gap-3 rounded-lg border border-success/20 bg-success/5 px-4 py-2.5">
-      <div className="h-2 w-2 rounded-full bg-success animate-pulse" aria-hidden="true" />
-      <span className="text-xs font-medium text-success">
-        {activeCount} available now
-      </span>
-      <div className="flex -space-x-1.5 ml-1" aria-label={`${activeCount} available staff members`}>
-        {visible.map((m) => (
-          <Avatar key={m.id} className="h-6 w-6 ring-2 ring-background text-[10px]">
-            {m.avatarUrl && <AvatarImage src={m.avatarUrl} alt={m.name} />}
-            <AvatarFallback>{getInitials(m.name)}</AvatarFallback>
-          </Avatar>
-        ))}
-        {overflow > 0 && (
-          <div className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-[10px] font-medium text-muted-foreground ring-2 ring-background">
-            +{overflow}
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
-
-// ─── Department grouped view ─────────────────────────────────────────────────
-
-function DepartmentGroupedView({
-  members,
-  departments,
-  onSelectMember,
-  bulkMode,
-  selectedIds,
-  onToggleSelect,
-}: {
-  members: StaffMember[]
-  departments: any[]
-  onSelectMember: (id: string) => void
-  bulkMode: boolean
-  selectedIds: Set<string>
-  onToggleSelect: (id: string) => void
-}) {
-  // Group members by primary department
-  const grouped = new Map<string, StaffMember[]>()
-  const unassigned: StaffMember[] = []
-
-  for (const member of members) {
-    const depts = member.departments ?? []
-    const primary = depts.find((d) => d.isPrimary)
-    if (primary) {
-      const arr = grouped.get(primary.departmentName) ?? []
-      arr.push(member)
-      grouped.set(primary.departmentName, arr)
-    } else if (depts.length > 0) {
-      const arr = grouped.get(depts[0].departmentName) ?? []
-      arr.push(member)
-      grouped.set(depts[0].departmentName, arr)
-    } else {
-      unassigned.push(member)
-    }
-  }
-
-  const sections = [...Array.from(grouped.entries()), ...(unassigned.length > 0 ? [["Unassigned", unassigned] as const] : [])]
-
-  return (
-    <div className="space-y-4">
-      {sections.map(([name, groupMembers]) => (
-        <Collapsible key={name} defaultOpen>
-          <CollapsibleTrigger className="flex items-center gap-2 w-full text-left py-2 hover:bg-muted/50 rounded-md px-2 transition-colors">
-            <span className="text-sm font-medium">{name}</span>
-            <Badge variant="secondary" className="text-[10px]">{groupMembers.length}</Badge>
-          </CollapsibleTrigger>
-          <CollapsibleContent>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 mt-2" role="list">
-              {groupMembers.map((member) => (
-                <div key={member.id} role="listitem" className="relative">
-                  {bulkMode && (
-                    <div className="absolute top-2 left-2 z-10">
-                      <Checkbox
-                        checked={selectedIds.has(member.id)}
-                        onCheckedChange={() => onToggleSelect(member.id)}
-                        aria-label={`Select ${member.name}`}
-                      />
-                    </div>
-                  )}
-                  <TeamMemberCard
-                    member={member}
-                    onClick={() => bulkMode ? onToggleSelect(member.id) : onSelectMember(member.id)}
-                  />
-                </div>
-              ))}
+    <div className="rounded-xl border border-zinc-200 bg-white overflow-hidden">
+      <div className="p-4 space-y-3">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="flex items-center gap-4">
+            <Skeleton className="h-8 w-8 rounded-full" />
+            <div className="space-y-1.5 flex-1">
+              <Skeleton className="h-3.5 w-32" />
+              <Skeleton className="h-3 w-20" />
             </div>
-          </CollapsibleContent>
-        </Collapsible>
-      ))}
+            <Skeleton className="h-5 w-16 rounded-full" />
+            <Skeleton className="h-5 w-16 rounded-full" />
+            <Skeleton className="h-3 w-20" />
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
 
-// ─── Main page ────────────────────────────────────────────────────────────────
+// ─── Main page ───────────────────────────────────────────────────────────────
 
 export default function TeamPage() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+
+  // ─── Filter state from URL params ──────────────────────────────────────────
+  const statusFilter = (searchParams.get("status")?.toUpperCase() as StatusFilter) ?? "ALL"
+  const deptFilter = searchParams.get("dept") ?? null
+  const employeeTypeFilter = (searchParams.get("type")?.toUpperCase() as EmployeeType) ?? null
+  const searchParam = searchParams.get("search") ?? ""
+
+  const [search, setSearch] = useState(searchParam)
+  const [debouncedSearch, setDebouncedSearch] = useState(searchParam)
+
+  // ─── UI state (localStorage) ───────────────────────────────────────────────
+  const [viewMode, setViewMode] = useState<ViewMode>(getStoredView)
+  const [sidebarOpen, setSidebarOpen] = useState(getStoredSidebar)
+
+  // ─── Other state ───────────────────────────────────────────────────────────
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null)
   const [addDialogOpen, setAddDialogOpen] = useState(false)
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL")
-  const [employeeTypeFilter, setEmployeeTypeFilter] = useState<EmployeeTypeFilter>("ALL")
-  const [groupByDepartment, setGroupByDepartment] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [bulkMode, setBulkMode] = useState(false)
-  const [search, setSearch] = useState("")
-  const [debouncedSearch, setDebouncedSearch] = useState("")
-  const [departmentId, setDepartmentId] = useState<string | undefined>(undefined)
+  const [bulkUpdating, setBulkUpdating] = useState(false)
   const [cursor, setCursor] = useState<string | undefined>(undefined)
 
+  // ─── URL param helpers ─────────────────────────────────────────────────────
+  const updateParams = useCallback(
+    (updates: Record<string, string | null>) => {
+      const params = new URLSearchParams(searchParams.toString())
+      for (const [key, value] of Object.entries(updates)) {
+        if (value === null || value === "" || value === "ALL") {
+          params.delete(key)
+        } else {
+          params.set(key, value.toLowerCase())
+        }
+      }
+      const qs = params.toString()
+      router.replace(qs ? `?${qs}` : "/admin/team", { scroll: false })
+      setCursor(undefined)
+    },
+    [searchParams, router]
+  )
+
+  // ─── Debounced search → URL sync ──────────────────────────────────────────
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(search)
-      setCursor(undefined) // reset pagination on search change
+      if (search !== searchParam) {
+        updateParams({ search: search || null })
+      }
     }, 300)
     return () => clearTimeout(timer)
-  }, [search])
+  }, [search, searchParam, updateParams])
 
-  useEffect(() => {
-    setCursor(undefined)
-  }, [statusFilter, employeeTypeFilter, departmentId])
+  // ─── Persist view/sidebar prefs ────────────────────────────────────────────
+  useEffect(() => { localStorage.setItem("team-view-mode", viewMode) }, [viewMode])
+  useEffect(() => { localStorage.setItem("team-sidebar-open", String(sidebarOpen)) }, [sidebarOpen])
+
+  // ─── Data fetching ─────────────────────────────────────────────────────────
+  const { data: stats, isLoading: statsLoading } = api.team.stats.useQuery(undefined, {
+    staleTime: 60_000,
+  })
 
   const { data, isLoading } = api.team.list.useQuery({
     limit: 25,
     search: debouncedSearch || undefined,
-    departmentId,
+    departmentId: deptFilter ?? undefined,
     status: statusFilter === "ALL" ? undefined : statusFilter,
-    employeeType: employeeTypeFilter === "ALL" ? undefined : employeeTypeFilter,
+    employeeType: employeeTypeFilter ?? undefined,
     cursor,
   })
 
@@ -267,11 +187,38 @@ export default function TeamPage() {
 
   const utils = api.useUtils()
 
+  // ─── Build department color map ────────────────────────────────────────────
+  const deptColorMap = useMemo(() => {
+    const map = new Map<string, string>()
+    if (!departments) return map
+    function walk(list: typeof departments) {
+      for (const d of list!) {
+        if (d.color) map.set(d.name, d.color)
+        if (d.children?.length) walk(d.children)
+      }
+    }
+    walk(departments)
+    return map
+  }, [departments])
+
+  // Flatten departments for sidebar
+  const sidebarDepts = useMemo(() => {
+    if (!departments) return []
+    const result: Array<{ id: string; name: string; color: string | null; memberCount: number }> = []
+    function walk(list: typeof departments) {
+      for (const d of list!) {
+        result.push({ id: d.id, name: d.name, color: d.color ?? null, memberCount: d.memberCount ?? 0 })
+        if (d.children?.length) walk(d.children)
+      }
+    }
+    walk(departments)
+    return result
+  }, [departments])
+
+  // ─── Bulk actions ──────────────────────────────────────────────────────────
   const bulkUpdateMutation = api.team.update.useMutation({
     onError: (err) => toast.error(err.message ?? "Failed to update"),
   })
-
-  const [bulkUpdating, setBulkUpdating] = useState(false)
 
   async function handleBulkStatusChange(status: StaffStatus) {
     const ids = Array.from(selectedIds)
@@ -284,326 +231,330 @@ export default function TeamPage() {
       setSelectedIds(new Set())
       setBulkMode(false)
       void utils.team.list.invalidate()
+      void utils.team.stats.invalidate()
     } catch {
-      // onError handler already shows toast
+      // onError handler shows toast
     } finally {
       setBulkUpdating(false)
     }
   }
 
-  // Active members for the availability bar
-  const activeMembers = members.filter((m) => m.status === "ACTIVE")
-
-  function flattenDepts(depts: typeof departments): Array<{ id: string; name: string }> {
-    if (!depts) return []
-    const result: Array<{ id: string; name: string }> = []
-    function walk(list: typeof depts, prefix = "") {
-      for (const d of list!) {
-        result.push({ id: d.id, name: prefix ? `${prefix} / ${d.name}` : d.name })
-        if (d.children?.length) walk(d.children, prefix ? `${prefix} / ${d.name}` : d.name)
-      }
-    }
-    walk(depts)
-    return result
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
   }
 
+  // ─── Helpers ───────────────────────────────────────────────────────────────
+  const hasFilters = statusFilter !== "ALL" || deptFilter !== null || employeeTypeFilter !== null || search !== ""
+
+  function clearFilters() {
+    setSearch("")
+    router.replace("/admin/team", { scroll: false })
+    setCursor(undefined)
+  }
+
+  function getDeptColor(memberName: string): string {
+    return deptColorMap.get(memberName) ?? "#a1a1aa"
+  }
+
+  function getMemberDeptColor(member: typeof members[0]): string {
+    const deptName = member.departments?.find((d) => d.isPrimary)?.departmentName
+      ?? member.departments?.[0]?.departmentName
+    return deptName ? getDeptColor(deptName) : "#a1a1aa"
+  }
+
+  // ─── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="space-y-6 animate-fade-in">
-      {/* Page header */}
-      <PageHeader
-        title="Team"
-        description="Manage staff, availability, and capacity."
-      >
-        <Button
-          size="sm"
-          onClick={() => setAddDialogOpen(true)}
-          aria-label="Add team member"
-        >
-          <UserPlus className="h-4 w-4" />
-          Add Member
-        </Button>
-      </PageHeader>
+    <TooltipProvider>
+      <div className="space-y-6 animate-fade-in">
+        {/* Breadcrumb */}
+        <div className="flex items-center gap-1.5 text-xs text-zinc-400">
+          <span>Admin</span>
+          <ChevronRight className="h-3 w-3" />
+          <span className="text-zinc-600 font-medium">People</span>
+        </div>
 
-      {/* Availability bar */}
-      {!isLoading && (
-        <AvailabilityBar
-          activeCount={activeMembers.length}
-          activeMembers={activeMembers}
-        />
-      )}
+        {/* Header */}
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-zinc-900">People</h1>
+            <p className="mt-0.5 text-sm text-zinc-500">
+              Manage staff capacity, availability, and department structure.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/admin/team/departments">
+                <Network className="h-4 w-4" />
+                Departments
+              </Link>
+            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="sm"
+                  className="gap-2 bg-zinc-900 text-white hover:bg-zinc-700"
+                  onClick={() => setAddDialogOpen(true)}
+                >
+                  <UserPlus className="h-4 w-4" />
+                  Invite Member
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="text-xs">
+                Add a new team member
+              </TooltipContent>
+            </Tooltip>
+          </div>
+        </div>
 
-      {/* Filter row */}
-      <div className="space-y-2">
-        {/* Search input */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search staff by name..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
+        {/* KPI cards */}
+        {statsLoading ? (
+          <KpiSkeleton />
+        ) : stats ? (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <KpiCard
+              label="Total Members"
+              value={String(stats.total)}
+              sub={`Across ${stats.departmentCount} departments`}
+              icon={Users}
+            />
+            <KpiCard
+              label="Active Rate"
+              value={stats.total > 0 ? `${Math.round((stats.activeCount / stats.total) * 100)}%` : "0%"}
+              sub={`${stats.activeCount} active`}
+              icon={TrendingUp}
+            />
+            <KpiCard
+              label="Departments"
+              value={String(stats.departmentCount)}
+              icon={Building2}
+            />
+            <KpiCard
+              label="Avg Capacity"
+              value={stats.avgCapacityMax > 0 ? String(stats.avgCapacityUsed) : "\u2014"}
+              sub={stats.avgCapacityMax > 0 ? `Out of ${stats.avgCapacityMax} max` : "No capacity data"}
+              icon={Activity}
+            />
+          </div>
+        ) : null}
+
+        {/* Body: sidebar + main */}
+        <div className="flex items-start gap-5">
+          {/* Sidebar */}
+          <TeamSidebar
+            departments={sidebarDepts}
+            totalMembers={stats?.total ?? 0}
+            deptFilter={deptFilter}
+            onDeptFilter={(id) => updateParams({ dept: id })}
+            employeeTypeFilter={employeeTypeFilter}
+            onEmployeeTypeFilter={(type) => updateParams({ type: type })}
+            isOpen={sidebarOpen}
+            onToggle={() => setSidebarOpen(!sidebarOpen)}
           />
-        </div>
 
-        {/* Status filters */}
-        <div
-          className="flex flex-wrap items-center gap-2"
-          role="group"
-          aria-label="Filter by status"
-        >
-          <span className="text-xs text-muted-foreground mr-1">Status:</span>
-          {STATUS_OPTIONS.map((opt) => (
-            <FilterChip
-              key={opt.value}
-              active={statusFilter === opt.value}
-              onClick={() => setStatusFilter(opt.value)}
-            >
-              {opt.label}
-            </FilterChip>
-          ))}
-        </div>
-
-        {/* Employee type filters */}
-        <div
-          className="flex flex-wrap items-center gap-2"
-          role="group"
-          aria-label="Filter by employment type"
-        >
-          <span className="text-xs text-muted-foreground mr-1">Type:</span>
-          {EMPLOYEE_TYPE_OPTIONS.map((opt) => (
-            <FilterChip
-              key={opt.value}
-              active={employeeTypeFilter === opt.value}
-              onClick={() => setEmployeeTypeFilter(opt.value)}
-            >
-              {opt.label}
-            </FilterChip>
-          ))}
-        </div>
-
-        {/* Action row */}
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="text-xs h-7" asChild>
-            <Link href="/admin/team/departments">
-              <Network className="h-3.5 w-3.5" />
-              Departments
-            </Link>
-          </Button>
-          <Button
-            size="sm"
-            variant={groupByDepartment ? "default" : "outline"}
-            className="text-xs h-7"
-            onClick={() => setGroupByDepartment(!groupByDepartment)}
-          >
-            <Building2 className="h-3.5 w-3.5" />
-            Group by department
-          </Button>
-          <Select
-            value={departmentId ?? "ALL"}
-            onValueChange={(v) => setDepartmentId(v === "ALL" ? undefined : v)}
-          >
-            <SelectTrigger className="h-7 w-[180px] text-xs">
-              <SelectValue placeholder="All departments" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ALL">All departments</SelectItem>
-              {flattenDepts(departments).map((dept) => (
-                <SelectItem key={dept.id} value={dept.id}>{dept.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Button
-            size="sm"
-            variant={bulkMode ? "secondary" : "outline"}
-            className="text-xs h-7"
-            onClick={() => {
-              setBulkMode(!bulkMode)
-              setSelectedIds(new Set())
-            }}
-          >
-            {bulkMode ? "Cancel selection" : "Select"}
-          </Button>
-        </div>
-      </div>
-
-      {/* Results count */}
-      {!isLoading && (
-        <div className="flex items-center gap-2">
-          <Badge variant="secondary" className="text-xs">
-            {members.length} member{members.length !== 1 ? "s" : ""}
-          </Badge>
-          {(statusFilter !== "ALL" || employeeTypeFilter !== "ALL" || departmentId !== undefined || search !== "") && (
-            <button
-              type="button"
-              className="text-xs text-muted-foreground hover:text-foreground underline-offset-2 hover:underline transition-colors"
-              onClick={() => {
-                setStatusFilter("ALL")
-                setEmployeeTypeFilter("ALL")
-                setDepartmentId(undefined)
-                setSearch("")
-              }}
-            >
-              Clear filters
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* Content */}
-      {isLoading ? (
-        <TeamGridSkeleton />
-      ) : members.length === 0 ? (
-        <EmptyState
-          variant="users"
-          title={
-            statusFilter !== "ALL" || employeeTypeFilter !== "ALL" || departmentId !== undefined || search !== ""
-              ? "No members match your filters"
-              : "No team members yet"
-          }
-          description={
-            statusFilter !== "ALL" || employeeTypeFilter !== "ALL" || departmentId !== undefined || search !== ""
-              ? "Try adjusting the filters above."
-              : "Add your first team member to get started."
-          }
-          action={
-            statusFilter === "ALL" && employeeTypeFilter === "ALL" && departmentId === undefined && search === ""
-              ? { label: "Add Member", onClick: () => setAddDialogOpen(true) }
-              : undefined
-          }
-          secondaryAction={
-            statusFilter !== "ALL" || employeeTypeFilter !== "ALL" || departmentId !== undefined || search !== ""
-              ? {
-                  label: "Clear filters",
-                  onClick: () => {
-                    setStatusFilter("ALL")
-                    setEmployeeTypeFilter("ALL")
-                    setDepartmentId(undefined)
-                    setSearch("")
-                  },
-                }
-              : undefined
-          }
-        />
-      ) : (
-        groupByDepartment ? (
-          <DepartmentGroupedView
-            members={members}
-            departments={departments ?? []}
-            onSelectMember={(id) => setSelectedMemberId(id)}
-            bulkMode={bulkMode}
-            selectedIds={selectedIds}
-            onToggleSelect={(id) => {
-              setSelectedIds((prev) => {
-                const next = new Set(prev)
-                if (next.has(id)) next.delete(id)
-                else next.add(id)
-                return next
-              })
-            }}
-          />
-        ) : (
-          <div
-            className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4"
-            role="list"
-            aria-label="Team members"
-          >
-            {members.map((member) => (
-              <div key={member.id} role="listitem" className="relative">
-                {bulkMode && (
-                  <div className="absolute top-2 left-2 z-10">
-                    <Checkbox
-                      checked={selectedIds.has(member.id)}
-                      onCheckedChange={() => {
-                        setSelectedIds((prev) => {
-                          const next = new Set(prev)
-                          if (next.has(member.id)) next.delete(member.id)
-                          else next.add(member.id)
-                          return next
-                        })
-                      }}
-                      aria-label={`Select ${member.name}`}
-                    />
-                  </div>
-                )}
-                <TeamMemberCard
-                  member={member}
-                  onClick={() => bulkMode
-                    ? setSelectedIds((prev) => {
-                        const next = new Set(prev)
-                        if (next.has(member.id)) next.delete(member.id)
-                        else next.add(member.id)
-                        return next
-                      })
-                    : setSelectedMemberId(member.id)
-                  }
+          {/* Main content */}
+          <div className="flex-1 min-w-0 space-y-3">
+            {/* Search + view toggle */}
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-400" />
+                <Input
+                  placeholder="Search by name, title, skill..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="pl-9 h-9 text-sm border-zinc-200 bg-white placeholder:text-zinc-400"
                 />
               </div>
-            ))}
-          </div>
-        )
-      )}
-
-      {/* Load more */}
-      {data?.hasMore && (
-        <div className="flex justify-center pt-4">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              const lastMember = members[members.length - 1]
-              if (lastMember) setCursor(lastMember.id)
-            }}
-          >
-            Load more
-          </Button>
-        </div>
-      )}
-
-      {/* Bulk actions toolbar */}
-      {selectedIds.size > 0 && (
-        <div className="sticky bottom-4 z-10 mx-auto w-fit rounded-lg border border-border bg-card shadow-lg px-4 py-2 flex items-center gap-3">
-          <span className="text-xs font-medium">{selectedIds.size} selected</span>
-          <Separator orientation="vertical" className="h-5" />
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button size="sm" variant="outline" className="text-xs h-7" disabled={bulkUpdating}>
-                {bulkUpdating ? "Updating..." : "Change status"}
+              {/* View toggle */}
+              <div className="flex items-center rounded-lg border border-zinc-200 bg-white p-0.5 gap-0.5">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={() => setViewMode("table")}
+                      className={cn(
+                        "h-7 w-7 flex items-center justify-center rounded-md transition-colors",
+                        viewMode === "table" ? "bg-zinc-900 text-white" : "text-zinc-400 hover:text-zinc-700"
+                      )}
+                    >
+                      <List className="h-3.5 w-3.5" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="text-xs">Table view</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={() => setViewMode("grid")}
+                      className={cn(
+                        "h-7 w-7 flex items-center justify-center rounded-md transition-colors",
+                        viewMode === "grid" ? "bg-zinc-900 text-white" : "text-zinc-400 hover:text-zinc-700"
+                      )}
+                    >
+                      <LayoutGrid className="h-3.5 w-3.5" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="text-xs">Grid view</TooltipContent>
+                </Tooltip>
+              </div>
+              {/* Bulk select toggle */}
+              <Button
+                size="sm"
+                variant={bulkMode ? "secondary" : "outline"}
+                className="text-xs h-9"
+                onClick={() => { setBulkMode(!bulkMode); setSelectedIds(new Set()) }}
+              >
+                {bulkMode ? "Cancel" : "Select"}
               </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              {(["ACTIVE", "INACTIVE", "SUSPENDED"] as const).map((s) => (
-                <DropdownMenuItem
-                  key={s}
-                  onClick={() => void handleBulkStatusChange(s)}
+            </div>
+
+            {/* Status filter chips */}
+            <div className="flex items-center gap-1.5">
+              {STATUS_FILTERS.map((f) => (
+                <button
+                  key={f.value}
+                  type="button"
+                  onClick={() => updateParams({ status: f.value })}
+                  className={cn(
+                    "inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+                    statusFilter === f.value
+                      ? "border-zinc-900 bg-zinc-900 text-white"
+                      : "border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50"
+                  )}
                 >
-                  {s.charAt(0) + s.slice(1).toLowerCase()}
-                </DropdownMenuItem>
+                  {f.label}
+                </button>
               ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <Button
-            size="sm"
-            variant="ghost"
-            className="text-xs h-7"
-            onClick={() => { setSelectedIds(new Set()); setBulkMode(false) }}
-          >
-            Cancel
-          </Button>
+              {hasFilters && (
+                <>
+                  <Separator orientation="vertical" className="h-4 mx-1" />
+                  <button
+                    type="button"
+                    className="text-xs text-zinc-400 hover:text-zinc-700 transition-colors"
+                    onClick={clearFilters}
+                  >
+                    Clear filters
+                  </button>
+                </>
+              )}
+              <span className="ml-auto font-mono text-xs text-zinc-400 tabular-nums">
+                {members.length} member{members.length !== 1 ? "s" : ""}
+                {data?.hasMore ? "+" : ""}
+              </span>
+            </div>
+
+            {/* Content */}
+            {isLoading ? (
+              <TableSkeleton />
+            ) : viewMode === "table" ? (
+              <TeamTable
+                members={members}
+                departmentColors={deptColorMap}
+                onNavigate={(id) => router.push(`/admin/team/${id}`)}
+                onQuickView={(id) => setSelectedMemberId(id)}
+                bulkMode={bulkMode}
+                selectedIds={selectedIds}
+                onToggleSelect={toggleSelect}
+              />
+            ) : (
+              members.length === 0 ? (
+                <div className="flex h-24 items-center justify-center rounded-xl border border-zinc-200 bg-white">
+                  <p className="text-sm text-zinc-400">No members match your filters.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                  {members.map((member) => (
+                    <div key={member.id} className="relative">
+                      {bulkMode && (
+                        <div className="absolute top-2 left-2 z-10">
+                          <Checkbox
+                            checked={selectedIds.has(member.id)}
+                            onCheckedChange={() => toggleSelect(member.id)}
+                            aria-label={`Select ${member.name}`}
+                          />
+                        </div>
+                      )}
+                      <TeamGridCard
+                        member={member}
+                        deptColor={getMemberDeptColor(member)}
+                        onNavigate={(id) => bulkMode ? toggleSelect(id) : router.push(`/admin/team/${id}`)}
+                        onQuickView={(id) => setSelectedMemberId(id)}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )
+            )}
+
+            {/* Load more */}
+            {data?.hasMore && (
+              <div className="flex justify-center pt-4">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const lastMember = members[members.length - 1]
+                    if (lastMember) setCursor(lastMember.id)
+                  }}
+                >
+                  Load more
+                </Button>
+              </div>
+            )}
+          </div>
         </div>
-      )}
 
-      {/* Sheet */}
-      <TeamMemberSheet
-        memberId={selectedMemberId}
-        onClose={() => setSelectedMemberId(null)}
-      />
+        {/* Bulk actions toolbar */}
+        {selectedIds.size > 0 && (
+          <div className="sticky bottom-4 z-10 mx-auto w-fit rounded-lg border border-zinc-200 bg-white shadow-lg px-4 py-2 flex items-center gap-3">
+            <span className="text-xs font-medium">{selectedIds.size} selected</span>
+            <Separator orientation="vertical" className="h-5" />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="sm" variant="outline" className="text-xs h-7" disabled={bulkUpdating}>
+                  {bulkUpdating ? "Updating..." : "Change status"}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                {(["ACTIVE", "INACTIVE", "SUSPENDED"] as const).map((s) => (
+                  <DropdownMenuItem
+                    key={s}
+                    onClick={() => void handleBulkStatusChange(s)}
+                  >
+                    {s.charAt(0) + s.slice(1).toLowerCase()}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-xs h-7"
+              onClick={() => { setSelectedIds(new Set()); setBulkMode(false) }}
+            >
+              Cancel
+            </Button>
+          </div>
+        )}
 
-      {/* Add member dialog */}
-      <AddMemberDialog
-        open={addDialogOpen}
-        onOpenChange={setAddDialogOpen}
-        onSuccess={() => void utils.team.list.invalidate()}
-      />
-    </div>
+        {/* Sheet */}
+        <TeamMemberSheet
+          memberId={selectedMemberId}
+          onClose={() => setSelectedMemberId(null)}
+        />
+
+        {/* Add member dialog */}
+        <AddMemberDialog
+          open={addDialogOpen}
+          onOpenChange={setAddDialogOpen}
+          onSuccess={() => { void utils.team.list.invalidate(); void utils.team.stats.invalidate() }}
+        />
+      </div>
+    </TooltipProvider>
   )
 }
