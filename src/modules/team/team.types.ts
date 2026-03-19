@@ -42,8 +42,23 @@ export interface StaffMember {
   mileageRate: number | null
   startDate: Date | null
   departments: StaffDepartmentMembership[]
+  // Optional fields populated by list query joins
+  skills?: Array<{ skillName: string; proficiency: string | null }>
+  capacityUsed?: number
+  capacityMax?: number
+  availability?: 'available' | 'blocked' | 'unavailable'
   createdAt: Date
   updatedAt: Date
+}
+
+export interface TeamStats {
+  total: number
+  activeCount: number
+  inactiveCount: number
+  suspendedCount: number
+  departmentCount: number
+  avgCapacityUsed: number
+  avgCapacityMax: number
 }
 
 export interface StaffDepartmentMembership {
