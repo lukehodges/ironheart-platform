@@ -411,13 +411,13 @@ const WORKFLOW_DEFS: Array<{
       {
         id: "trigger_1",
         type: "TRIGGER",
-        label: "Customer → OUTREACH",
+        label: "Member → Outreach stage",
         position: { x: 250, y: 0 },
         config: {
-          eventType: "customer/stage.changed",
+          eventType: "pipeline/member.moved",
           conditions: {
             logic: "AND",
-            conditions: [{ field: "toStage", operator: "equals", value: "OUTREACH" }],
+            conditions: [{ field: "toStageId", operator: "equals", value: "{{outreach_stage_id}}" }],
           },
         },
       },
@@ -568,13 +568,13 @@ const WORKFLOW_DEFS: Array<{
       {
         id: "trigger_1",
         type: "TRIGGER",
-        label: "Customer → PROPOSAL",
+        label: "Member → Proposal stage",
         position: { x: 250, y: 0 },
         config: {
-          eventType: "customer/stage.changed",
+          eventType: "pipeline/member.moved",
           conditions: {
             logic: "AND",
-            conditions: [{ field: "toStage", operator: "equals", value: "PROPOSAL" }],
+            conditions: [{ field: "toStageId", operator: "equals", value: "{{proposal_stage_id}}" }],
           },
         },
       },
@@ -634,13 +634,13 @@ const WORKFLOW_DEFS: Array<{
       {
         id: "trigger_1",
         type: "TRIGGER",
-        label: "Customer → WON",
+        label: "Member → Won (closed)",
         position: { x: 250, y: 0 },
         config: {
-          eventType: "customer/stage.changed",
+          eventType: "pipeline/member.closed",
           conditions: {
             logic: "AND",
-            conditions: [{ field: "toStage", operator: "equals", value: "WON" }],
+            conditions: [{ field: "stageType", operator: "equals", value: "WON" }],
           },
         },
       },
@@ -691,13 +691,13 @@ const WORKFLOW_DEFS: Array<{
       {
         id: "trigger_1",
         type: "TRIGGER",
-        label: "Customer → COMPLETE",
+        label: "Member → Complete stage",
         position: { x: 250, y: 0 },
         config: {
-          eventType: "customer/stage.changed",
+          eventType: "pipeline/member.moved",
           conditions: {
             logic: "AND",
-            conditions: [{ field: "toStage", operator: "equals", value: "COMPLETE" }],
+            conditions: [{ field: "toStageId", operator: "equals", value: "{{complete_stage_id}}" }],
           },
         },
       },
