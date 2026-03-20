@@ -11,7 +11,6 @@ export const customerManifest: ModuleManifest = {
     { path: '/admin/customers', label: 'Customers', permission: 'customers:read' },
   ],
   sidebarItems: [
-    { title: 'Pipeline', href: '/admin/pipeline', icon: 'Layers', section: 'operations', permission: 'customers:read' },
     { title: 'Customers', href: '/admin/customers', icon: 'Users', section: 'operations', permission: 'customers:read' },
   ],
   quickActions: [

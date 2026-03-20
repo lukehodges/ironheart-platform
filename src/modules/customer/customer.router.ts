@@ -11,9 +11,6 @@ import {
   updateCustomerSchema,
   mergeCustomersSchema,
   addNoteSchema,
-  updatePipelineStageSchema,
-  listByPipelineStageSchema,
-  getStageHistorySchema,
 } from "./customer.schemas";
 
 /**
@@ -53,22 +50,6 @@ export const customerRouter = router({
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => customerService.anonymiseCustomer(ctx, input.id)),
 
-  // Pipeline
-  updatePipelineStage: modulePermission("customer:update")
-    .input(updatePipelineStageSchema)
-    .mutation(async ({ ctx, input }) =>
-      customerService.updatePipelineStage(ctx, input.customerId, input.stage, input.lostReason, input.dealValue)
-    ),
-
-  listByPipelineStage: moduleProcedure
-    .input(listByPipelineStageSchema)
-    .query(async ({ ctx, input }) =>
-      customerService.listByPipelineStage(ctx, input.includeAll ? undefined : input.stage)
-    ),
-
-  getPipelineSummary: moduleProcedure
-    .query(async ({ ctx }) => customerService.getPipelineSummary(ctx)),
-
   // Notes
   listNotes: moduleProcedure
     .input(z.object({ customerId: z.string() }))
@@ -81,14 +62,6 @@ export const customerRouter = router({
   deleteNote: modulePermission("customers:write")
     .input(z.object({ noteId: z.string() }))
     .mutation(async ({ ctx, input }) => customerService.deleteNote(ctx, input.noteId)),
-
-  // Pipeline Stage History
-  getStageHistory: moduleProcedure
-    .input(getStageHistorySchema)
-    .query(async ({ ctx, input }) => customerService.getStageHistory(ctx, input.customerId)),
-
-  getStageConversionMetrics: moduleProcedure
-    .query(async ({ ctx }) => customerService.getStageConversionMetrics(ctx)),
 
   // History
   getBookingHistory: moduleProcedure

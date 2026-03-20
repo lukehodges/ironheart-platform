@@ -10,7 +10,6 @@ import {
   invoices,
   payments,
   completedForms,
-  pipelineStageHistory,
 } from "@/shared/db/schema";
 import {
   eq,
@@ -18,11 +17,8 @@ import {
   or,
   ilike,
   isNull,
-  isNotNull,
   desc,
   sql,
-  count,
-  sum,
 } from "drizzle-orm";
 import type {
   CustomerRecord,
@@ -30,9 +26,6 @@ import type {
   CreateCustomerInput,
   UpdateCustomerInput,
   AddNoteInput,
-  PipelineStage,
-  PipelineStageHistoryRecord,
-  StageConversionMetric,
 } from "./customer.types";
 
 const log = logger.child({ module: "customer.repository" });
@@ -74,10 +67,6 @@ function toCustomerRecord(row: CustomerRow): CustomerRecord {
     anonymisedAt: null,
     mergedIntoId: null,
     deletedAt: row.deletedAt ?? null,
-    pipelineStage: row.pipelineStage ?? null,
-    pipelineStageChangedAt: row.pipelineStageChangedAt ?? null,
-    lostReason: row.lostReason ?? null,
-    dealValue: row.dealValue != null ? Number(row.dealValue) : null,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
@@ -216,10 +205,6 @@ export const customerRepository = {
         referralSource: input.referralSource ?? null,
         status: "ACTIVE",
         marketingOptIn: false,
-        pipelineStage: input.pipelineStage as typeof customers.$inferInsert["pipelineStage"] ?? undefined,
-        pipelineStageChangedAt: input.pipelineStage ? now : undefined,
-        dealValue: input.dealValue != null ? String(input.dealValue) : undefined,
-        lostReason: input.lostReason ?? undefined,
         createdAt: now,
         updatedAt: now,
       })
@@ -256,13 +241,6 @@ export const customerRepository = {
       updateData.postcode = input.address?.postcode ?? null;
       updateData.country = input.address?.country ?? "GB";
     }
-
-    if (input.pipelineStage !== undefined) {
-      updateData.pipelineStage = input.pipelineStage;
-      updateData.pipelineStageChangedAt = new Date();
-    }
-    if (input.dealValue !== undefined) updateData.dealValue = input.dealValue != null ? String(input.dealValue) : null;
-    if (input.lostReason !== undefined) updateData.lostReason = input.lostReason;
 
     const [updated] = await db
       .update(customers)
@@ -414,93 +392,6 @@ export const customerRepository = {
     log.info({ tenantId, noteId }, "Customer note deleted");
   },
 
-  // ---- PIPELINE ----
-
-  async updatePipelineStage(
-    tenantId: string,
-    customerId: string,
-    stage: PipelineStage,
-    lostReason?: string,
-  ): Promise<CustomerRecord> {
-    const updateData: Record<string, unknown> = {
-      pipelineStage: stage,
-      pipelineStageChangedAt: new Date(),
-      updatedAt: new Date(),
-    };
-
-    if (stage === "LOST" && lostReason) {
-      updateData.lostReason = lostReason;
-    } else if (stage !== "LOST") {
-      updateData.lostReason = null;
-    }
-
-    const [updated] = await db
-      .update(customers)
-      .set(updateData as Partial<typeof customers.$inferInsert>)
-      .where(
-        and(
-          eq(customers.id, customerId),
-          eq(customers.tenantId, tenantId),
-          isNull(customers.deletedAt),
-        ),
-      )
-      .returning();
-
-    if (!updated) throw new NotFoundError("Customer", customerId);
-    log.info({ tenantId, customerId, stage }, "Customer pipeline stage updated");
-    return toCustomerRecord(updated);
-  },
-
-  async listByPipelineStage(
-    tenantId: string,
-    stage?: PipelineStage,
-  ): Promise<CustomerRecord[]> {
-    const conditions = [
-      eq(customers.tenantId, tenantId),
-      isNull(customers.deletedAt),
-    ];
-
-    if (stage) {
-      conditions.push(eq(customers.pipelineStage, stage));
-    } else {
-      conditions.push(isNotNull(customers.pipelineStage));
-    }
-
-    const rows = await db
-      .select()
-      .from(customers)
-      .where(and(...conditions))
-      .orderBy(desc(customers.pipelineStageChangedAt));
-
-    return rows.map(toCustomerRecord);
-  },
-
-  async getPipelineSummary(
-    tenantId: string,
-  ): Promise<Array<{ stage: string; count: number; totalDealValue: number }>> {
-    const rows = await db
-      .select({
-        stage: customers.pipelineStage,
-        count: count(),
-        totalDealValue: sum(customers.dealValue),
-      })
-      .from(customers)
-      .where(
-        and(
-          eq(customers.tenantId, tenantId),
-          isNull(customers.deletedAt),
-          isNotNull(customers.pipelineStage),
-        ),
-      )
-      .groupBy(customers.pipelineStage);
-
-    return rows.map((r) => ({
-      stage: r.stage!,
-      count: Number(r.count),
-      totalDealValue: r.totalDealValue != null ? Number(r.totalDealValue) : 0,
-    }));
-  },
-
   // ---- HISTORY ----
 
   async getBookingHistory(
@@ -538,106 +429,4 @@ export const customerRepository = {
     }));
   },
 
-  // ---- PIPELINE STAGE HISTORY ----
-
-  async createStageHistoryEntry(entry: {
-    tenantId: string;
-    customerId: string;
-    fromStage: PipelineStage | null;
-    toStage: PipelineStage;
-    changedById?: string | null;
-    dealValue?: number | null;
-    lostReason?: string | null;
-    notes?: string | null;
-  }): Promise<PipelineStageHistoryRecord> {
-    const [row] = await db
-      .insert(pipelineStageHistory)
-      .values({
-        id: crypto.randomUUID(),
-        tenantId: entry.tenantId,
-        customerId: entry.customerId,
-        fromStage: entry.fromStage as typeof pipelineStageHistory.$inferInsert["fromStage"] ?? undefined,
-        toStage: entry.toStage as typeof pipelineStageHistory.$inferInsert["toStage"],
-        changedAt: new Date(),
-        changedById: entry.changedById ?? null,
-        dealValue: entry.dealValue != null ? String(entry.dealValue) : null,
-        lostReason: entry.lostReason ?? null,
-        notes: entry.notes ?? null,
-      })
-      .returning();
-
-    log.info(
-      { tenantId: entry.tenantId, customerId: entry.customerId, fromStage: entry.fromStage, toStage: entry.toStage },
-      "Pipeline stage history entry created",
-    );
-
-    return {
-      id: row!.id,
-      tenantId: row!.tenantId,
-      customerId: row!.customerId,
-      fromStage: (row!.fromStage as PipelineStage) ?? null,
-      toStage: row!.toStage as PipelineStage,
-      changedAt: row!.changedAt,
-      changedById: row!.changedById ?? null,
-      dealValue: row!.dealValue != null ? Number(row!.dealValue) : null,
-      lostReason: row!.lostReason ?? null,
-      notes: row!.notes ?? null,
-    };
-  },
-
-  async getStageHistory(
-    tenantId: string,
-    customerId: string,
-  ): Promise<PipelineStageHistoryRecord[]> {
-    const rows = await db
-      .select()
-      .from(pipelineStageHistory)
-      .where(
-        and(
-          eq(pipelineStageHistory.tenantId, tenantId),
-          eq(pipelineStageHistory.customerId, customerId),
-        ),
-      )
-      .orderBy(desc(pipelineStageHistory.changedAt));
-
-    return rows.map((r) => ({
-      id: r.id,
-      tenantId: r.tenantId,
-      customerId: r.customerId,
-      fromStage: (r.fromStage as PipelineStage) ?? null,
-      toStage: r.toStage as PipelineStage,
-      changedAt: r.changedAt,
-      changedById: r.changedById ?? null,
-      dealValue: r.dealValue != null ? Number(r.dealValue) : null,
-      lostReason: r.lostReason ?? null,
-      notes: r.notes ?? null,
-    }));
-  },
-
-  async getStageConversionMetrics(
-    tenantId: string,
-  ): Promise<StageConversionMetric[]> {
-    const rows = await db
-      .select({
-        fromStage: pipelineStageHistory.fromStage,
-        toStage: pipelineStageHistory.toStage,
-        avgTimeMs: sql<number>`AVG(EXTRACT(EPOCH FROM (${pipelineStageHistory.changedAt} - LAG(${pipelineStageHistory.changedAt}) OVER (PARTITION BY ${pipelineStageHistory.customerId} ORDER BY ${pipelineStageHistory.changedAt}))) * 1000)`.as("avg_time_ms"),
-        count: count(),
-      })
-      .from(pipelineStageHistory)
-      .where(
-        and(
-          eq(pipelineStageHistory.tenantId, tenantId),
-          isNotNull(pipelineStageHistory.fromStage),
-        ),
-      )
-      .groupBy(pipelineStageHistory.fromStage, pipelineStageHistory.toStage);
-
-    return rows.map((r) => ({
-      fromStage: r.fromStage!,
-      toStage: r.toStage,
-      avgTimeMs: r.avgTimeMs != null ? Number(r.avgTimeMs) : 0,
-      count: Number(r.count),
-    }));
-  },
 };
