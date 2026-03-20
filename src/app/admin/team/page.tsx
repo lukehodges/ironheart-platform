@@ -41,7 +41,7 @@ import { TeamTable } from "@/components/team/team-table"
 import { TeamGridCard } from "@/components/team/team-grid-card"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
-import type { StaffStatus, EmployeeType } from "@/modules/team/team.types"
+import type { StaffMember, StaffStatus, EmployeeType } from "@/modules/team/team.types"
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -112,9 +112,17 @@ export default function TeamPage() {
   const searchParams = useSearchParams()
 
   // ─── Filter state from URL params ──────────────────────────────────────────
-  const statusFilter = (searchParams.get("status")?.toUpperCase() as StatusFilter) ?? "ALL"
+  const VALID_STATUSES = new Set(["ALL", "ACTIVE", "INACTIVE", "SUSPENDED"])
+  const VALID_EMPLOYEE_TYPES = new Set(["EMPLOYED", "SELF_EMPLOYED", "CONTRACTOR"])
+
+  const rawStatus = searchParams.get("status")?.toUpperCase() ?? "ALL"
+  const statusFilter: StatusFilter = VALID_STATUSES.has(rawStatus) ? (rawStatus as StatusFilter) : "ALL"
+
   const deptFilter = searchParams.get("dept") ?? null
-  const employeeTypeFilter = (searchParams.get("type")?.toUpperCase() as EmployeeType) ?? null
+
+  const rawType = searchParams.get("type")?.toUpperCase() ?? ""
+  const employeeTypeFilter: EmployeeType | null = VALID_EMPLOYEE_TYPES.has(rawType) ? (rawType as EmployeeType) : null
+
   const searchParam = searchParams.get("search") ?? ""
 
   const [search, setSearch] = useState(searchParam)
@@ -179,7 +187,19 @@ export default function TeamPage() {
     cursor,
   })
 
-  const members = data?.rows ?? []
+  const [allMembers, setAllMembers] = useState<StaffMember[]>([])
+
+  // Accumulate pages or reset on filter/search change
+  useEffect(() => {
+    if (!data) return
+    if (cursor) {
+      // Appending next page
+      setAllMembers((prev) => [...prev, ...data.rows])
+    } else {
+      // Fresh query (filters changed, initial load)
+      setAllMembers(data.rows)
+    }
+  }, [data, cursor])
 
   const { data: departments } = api.team.departments.list.useQuery(undefined, {
     staleTime: 60_000,
@@ -257,11 +277,11 @@ export default function TeamPage() {
     setCursor(undefined)
   }
 
-  function getDeptColor(memberName: string): string {
-    return deptColorMap.get(memberName) ?? "#a1a1aa"
+  function getDeptColor(deptName: string): string {
+    return deptColorMap.get(deptName) ?? "#a1a1aa"
   }
 
-  function getMemberDeptColor(member: typeof members[0]): string {
+  function getMemberDeptColor(member: typeof allMembers[0]): string {
     const deptName = member.departments?.find((d) => d.isPrimary)?.departmentName
       ?? member.departments?.[0]?.departmentName
     return deptName ? getDeptColor(deptName) : "#a1a1aa"
@@ -443,7 +463,7 @@ export default function TeamPage() {
                 </>
               )}
               <span className="ml-auto font-mono text-xs text-zinc-400 tabular-nums">
-                {members.length} member{members.length !== 1 ? "s" : ""}
+                {allMembers.length} member{allMembers.length !== 1 ? "s" : ""}
                 {data?.hasMore ? "+" : ""}
               </span>
             </div>
@@ -453,7 +473,7 @@ export default function TeamPage() {
               <TableSkeleton />
             ) : viewMode === "table" ? (
               <TeamTable
-                members={members}
+                members={allMembers}
                 departmentColors={deptColorMap}
                 onNavigate={(id) => router.push(`/admin/team/${id}`)}
                 onQuickView={(id) => setSelectedMemberId(id)}
@@ -462,13 +482,13 @@ export default function TeamPage() {
                 onToggleSelect={toggleSelect}
               />
             ) : (
-              members.length === 0 ? (
+              allMembers.length === 0 ? (
                 <div className="flex h-24 items-center justify-center rounded-xl border border-zinc-200 bg-white">
                   <p className="text-sm text-zinc-400">No members match your filters.</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                  {members.map((member) => (
+                  {allMembers.map((member) => (
                     <div key={member.id} className="relative">
                       {bulkMode && (
                         <div className="absolute top-2 left-2 z-10">
@@ -498,7 +518,7 @@ export default function TeamPage() {
                   variant="outline"
                   size="sm"
                   onClick={() => {
-                    const lastMember = members[members.length - 1]
+                    const lastMember = allMembers[allMembers.length - 1]
                     if (lastMember) setCursor(lastMember.id)
                   }}
                 >
