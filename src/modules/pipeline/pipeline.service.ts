@@ -167,7 +167,7 @@ export const pipelineService = {
       memberId: member.id,
       fromStageId: null,
       toStageId: stageId,
-      changedById: ctx.userId,
+      changedById: ctx.user?.id ?? null,
     });
 
     // Emit event
@@ -235,7 +235,7 @@ export const pipelineService = {
       memberId: input.memberId,
       fromStageId: member.stageId,
       toStageId: input.toStageId,
-      changedById: ctx.userId,
+      changedById: ctx.user?.id ?? null,
       dealValue: input.dealValue,
       lostReason: input.lostReason,
       notes: input.notes,

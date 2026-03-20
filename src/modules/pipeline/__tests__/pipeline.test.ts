@@ -52,7 +52,7 @@ const STAGE_OPEN_2_ID = "00000000-0000-0000-0000-000000000204";
 const MEMBER_ID = "00000000-0000-0000-0000-000000000300";
 const CUSTOMER_ID = "00000000-0000-0000-0000-000000000400";
 
-const ctx = { tenantId: TENANT_ID, userId: USER_ID } as any;
+const ctx = { tenantId: TENANT_ID, user: { id: USER_ID } } as any;
 
 function makeStage(overrides: Partial<any> = {}) {
   return {
