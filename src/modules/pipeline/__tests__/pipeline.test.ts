@@ -437,32 +437,31 @@ describe("pipelineService", () => {
       expect(repo.updateMemberStage).not.toHaveBeenCalled();
     });
 
-    it("allows transition when allowedTransitions is empty (no restrictions)", async () => {
+    it("rejects transition when allowedTransitions is empty (terminal stage)", async () => {
       const member = makeMember();
       const currentStage = makeStage({
         id: STAGE_OPEN_ID,
-        allowedTransitions: [], // No restrictions
+        allowedTransitions: [], // Terminal — no moves allowed
       });
       const targetStage = makeStage({
         id: STAGE_WON_ID,
         type: "WON",
         name: "Won",
       });
-      const updatedMember = makeMember({ stageId: STAGE_WON_ID, closedAt: new Date() });
 
       repo.findMemberById.mockResolvedValue(member);
       repo.findStageById
         .mockResolvedValueOnce(currentStage)
         .mockResolvedValueOnce(targetStage);
-      repo.updateMemberStage.mockResolvedValue(updatedMember);
-      repo.createHistoryEntry.mockResolvedValue({});
 
-      await pipelineService.moveMember(ctx, {
-        memberId: MEMBER_ID,
-        toStageId: STAGE_WON_ID,
-      });
+      await expect(
+        pipelineService.moveMember(ctx, {
+          memberId: MEMBER_ID,
+          toStageId: STAGE_WON_ID,
+        }),
+      ).rejects.toThrow(BadRequestError);
 
-      expect(repo.updateMemberStage).toHaveBeenCalled();
+      expect(repo.updateMemberStage).not.toHaveBeenCalled();
     });
 
     it("creates history entry with correct from/to stage IDs", async () => {

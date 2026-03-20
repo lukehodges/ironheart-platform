@@ -209,11 +209,8 @@ export const pipelineService = {
     // Find target stage
     const targetStage = await pipelineRepository.findStageById(ctx.tenantId, input.toStageId);
 
-    // Validate transition
-    if (
-      currentStage.allowedTransitions.length > 0 &&
-      !currentStage.allowedTransitions.includes(input.toStageId)
-    ) {
+    // Validate transition — empty allowedTransitions = terminal (no moves allowed)
+    if (!currentStage.allowedTransitions.includes(input.toStageId)) {
       throw new BadRequestError(
         `Transition from "${currentStage.name}" to "${targetStage.name}" is not allowed`,
       );
