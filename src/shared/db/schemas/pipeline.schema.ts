@@ -7,6 +7,7 @@ import {
   boolean,
   numeric,
   timestamp,
+  jsonb,
   uniqueIndex,
   index,
   foreignKey,
@@ -36,12 +37,13 @@ export const pipelines = pgTable("pipelines", {
   name: text().notNull(),
   description: text(),
   isDefault: boolean().default(false).notNull(),
+  isArchived: boolean().default(false).notNull(),
   createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
-  updatedAt: timestamp({ precision: 3, mode: 'date' }).notNull(),
+  updatedAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 }, (table) => [
   index("pipelines_tenantId_idx").on(table.tenantId),
   uniqueIndex("pipelines_tenantId_isDefault_key")
-    .on(table.tenantId, table.isDefault)
+    .on(table.tenantId)
     .where(sql`"isDefault" = true`),
   foreignKey({
     columns: [table.tenantId],
@@ -52,19 +54,26 @@ export const pipelines = pgTable("pipelines", {
 
 export const pipelineStages = pgTable("pipeline_stages", {
   id: uuid().primaryKey().default(sql`gen_random_uuid()`).notNull(),
+  tenantId: uuid().notNull(),
   pipelineId: uuid().notNull(),
   name: text().notNull(),
   slug: text().notNull(),
-  type: pipelineStageTypeEnum().default("OPEN").notNull(),
   position: integer().notNull(),
   color: text(),
-  allowedTransitions: uuid().array(),
+  type: pipelineStageTypeEnum().default("OPEN").notNull(),
+  allowedTransitions: uuid().array().notNull().default(sql`'{}'::uuid[]`),
   createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
-  updatedAt: timestamp({ precision: 3, mode: 'date' }).notNull(),
+  updatedAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 }, (table) => [
   index("pipeline_stages_pipelineId_idx").on(table.pipelineId),
+  index("pipeline_stages_tenantId_idx").on(table.tenantId),
   uniqueIndex("pipeline_stages_pipelineId_slug_key").on(table.pipelineId, table.slug),
   uniqueIndex("pipeline_stages_pipelineId_position_key").on(table.pipelineId, table.position),
+  foreignKey({
+    columns: [table.tenantId],
+    foreignColumns: [tenants.id],
+    name: "pipeline_stages_tenantId_fkey",
+  }).onUpdate("cascade").onDelete("cascade"),
   foreignKey({
     columns: [table.pipelineId],
     foreignColumns: [pipelines.id],
@@ -74,21 +83,28 @@ export const pipelineStages = pgTable("pipeline_stages", {
 
 export const pipelineMembers = pgTable("pipeline_members", {
   id: uuid().primaryKey().default(sql`gen_random_uuid()`).notNull(),
+  tenantId: uuid().notNull(),
   pipelineId: uuid().notNull(),
   customerId: uuid().notNull(),
   stageId: uuid().notNull(),
-  dealValue: numeric({ precision: 10, scale: 2 }),
+  dealValue: numeric({ precision: 12, scale: 2 }),
   lostReason: text(),
-  notes: text(),
-  enteredAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
-  stageChangedAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+  enteredStageAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+  addedAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+  closedAt: timestamp({ precision: 3, mode: 'date' }),
+  metadata: jsonb().$type<Record<string, unknown>>().default({}),
   createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
-  updatedAt: timestamp({ precision: 3, mode: 'date' }).notNull(),
+  updatedAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 }, (table) => [
-  index("pipeline_members_pipelineId_idx").on(table.pipelineId),
-  index("pipeline_members_customerId_idx").on(table.customerId),
-  index("pipeline_members_stageId_idx").on(table.stageId),
   uniqueIndex("pipeline_members_pipelineId_customerId_key").on(table.pipelineId, table.customerId),
+  index("pipeline_members_pipelineId_stageId_idx").on(table.pipelineId, table.stageId),
+  index("pipeline_members_customerId_idx").on(table.customerId),
+  index("pipeline_members_tenantId_idx").on(table.tenantId),
+  foreignKey({
+    columns: [table.tenantId],
+    foreignColumns: [tenants.id],
+    name: "pipeline_members_tenantId_fkey",
+  }).onUpdate("cascade").onDelete("cascade"),
   foreignKey({
     columns: [table.pipelineId],
     foreignColumns: [pipelines.id],
@@ -108,31 +124,27 @@ export const pipelineMembers = pgTable("pipeline_members", {
 
 export const pipelineStageHistory = pgTable("pipeline_stage_history_v2", {
   id: uuid().primaryKey().default(sql`gen_random_uuid()`).notNull(),
+  tenantId: uuid().notNull(),
   memberId: uuid().notNull(),
   fromStageId: uuid(),
   toStageId: uuid().notNull(),
   changedAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
   changedById: uuid(),
-  dealValue: numeric({ precision: 10, scale: 2 }),
+  dealValue: numeric({ precision: 12, scale: 2 }),
   lostReason: text(),
   notes: text(),
 }, (table) => [
   index("pipeline_stage_history_v2_memberId_idx").on(table.memberId),
-  index("pipeline_stage_history_v2_changedAt_idx").on(table.changedAt),
+  index("pipeline_stage_history_v2_tenantId_changedAt_idx").on(table.tenantId, table.changedAt),
+  foreignKey({
+    columns: [table.tenantId],
+    foreignColumns: [tenants.id],
+    name: "pipeline_stage_history_v2_tenantId_fkey",
+  }).onUpdate("cascade").onDelete("cascade"),
   foreignKey({
     columns: [table.memberId],
     foreignColumns: [pipelineMembers.id],
     name: "pipeline_stage_history_v2_memberId_fkey",
-  }).onUpdate("cascade").onDelete("cascade"),
-  foreignKey({
-    columns: [table.fromStageId],
-    foreignColumns: [pipelineStages.id],
-    name: "pipeline_stage_history_v2_fromStageId_fkey",
-  }).onUpdate("cascade").onDelete("set null"),
-  foreignKey({
-    columns: [table.toStageId],
-    foreignColumns: [pipelineStages.id],
-    name: "pipeline_stage_history_v2_toStageId_fkey",
   }).onUpdate("cascade").onDelete("cascade"),
   foreignKey({
     columns: [table.changedById],
@@ -145,7 +157,7 @@ export const pipelineStageHistory = pgTable("pipeline_stage_history_v2", {
 // Type aliases
 // ---------------------------------------------------------------------------
 
-export type Pipeline = typeof pipelines.$inferSelect
-export type PipelineStage = typeof pipelineStages.$inferSelect
-export type PipelineMember = typeof pipelineMembers.$inferSelect
+export type PipelineRow = typeof pipelines.$inferSelect
+export type PipelineStageRow = typeof pipelineStages.$inferSelect
+export type PipelineMemberRow = typeof pipelineMembers.$inferSelect
 export type PipelineStageHistoryRow = typeof pipelineStageHistory.$inferSelect

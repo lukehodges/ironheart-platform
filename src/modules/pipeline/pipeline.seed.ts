@@ -49,6 +49,7 @@ export async function seedDefaultPipeline(tenantId: string): Promise<string> {
       slugToId.set(stage.slug, stageId)
       await tx.insert(pipelineStages).values({
         id: stageId,
+        tenantId,
         pipelineId,
         name: stage.name,
         slug: stage.slug,
