@@ -107,13 +107,42 @@ type IronheartEvents = {
       rating: number;
     };
   };
-  "customer/stage.changed": {
+  "pipeline/member.added": {
     data: {
+      memberId: string;
+      pipelineId: string;
+      customerId: string;
+      stageId: string;
+      tenantId: string;
+    };
+  };
+  "pipeline/member.moved": {
+    data: {
+      memberId: string;
+      pipelineId: string;
+      customerId: string;
+      fromStageId: string;
+      toStageId: string;
+      dealValue: number | null;
+      tenantId: string;
+    };
+  };
+  "pipeline/member.removed": {
+    data: {
+      memberId: string;
+      pipelineId: string;
       customerId: string;
       tenantId: string;
-      fromStage: string | null;
-      toStage: string;
+    };
+  };
+  "pipeline/member.closed": {
+    data: {
+      memberId: string;
+      pipelineId: string;
+      customerId: string;
+      stageType: string;
       dealValue: number | null;
+      tenantId: string;
     };
   };
   "stripe/webhook.received": {

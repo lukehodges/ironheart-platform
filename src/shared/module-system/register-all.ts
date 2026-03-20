@@ -11,24 +11,21 @@ import { auditManifest } from '@/modules/audit/audit.manifest'
 import { notificationManifest } from '@/modules/notification/notification.manifest'
 import { settingsManifest } from '@/modules/settings/settings.manifest'
 
-// ---------------------------------------------------------------------------
-// Vertical / feature modules - DISABLED while platform layer is hardened.
-// Code remains in src/modules/ and tests still pass individually.
-// Re-enable here once platform layer is solid.
-// ---------------------------------------------------------------------------
-// import { customerManifest } from '@/modules/customer/customer.manifest'
-// import { bookingManifest } from '@/modules/booking/booking.manifest'
+// Vertical / feature modules
+import { customerManifest } from '@/modules/customer/customer.manifest'
+import { bookingManifest } from '@/modules/booking/booking.manifest'
 import { teamManifest } from '@/modules/team/team.manifest'
-// import { schedulingManifest } from '@/modules/scheduling/scheduling.manifest'
-// import { portalManifest } from '@/modules/portal/portal.manifest'
-// import { staffManifest } from '@/modules/staff/staff.manifest'
-// import { workflowManifest } from '@/modules/workflow/workflow.manifest'
-// import { formsManifest } from '@/modules/forms/forms.manifest'
-// import { reviewManifest } from '@/modules/review/review.manifest'
-// import { calendarSyncManifest } from '@/modules/calendar-sync/calendar-sync.manifest'
-// import { paymentManifest } from '@/modules/payment/payment.manifest'
-// import { developerManifest } from '@/modules/developer/developer.manifest'
+import { schedulingManifest } from '@/modules/scheduling/scheduling.manifest'
+import { portalManifest } from '@/modules/portal/portal.manifest'
+import { staffManifest } from '@/modules/staff/staff.manifest'
+import { workflowManifest } from '@/modules/workflow/workflow.manifest'
+import { formsManifest } from '@/modules/forms/forms.manifest'
+import { reviewManifest } from '@/modules/review/review.manifest'
+import { calendarSyncManifest } from '@/modules/calendar-sync/calendar-sync.manifest'
+import { paymentManifest } from '@/modules/payment/payment.manifest'
+import { developerManifest } from '@/modules/developer/developer.manifest'
 import { aiManifest } from '@/modules/ai/ai.manifest'
+import { pipelineManifest } from '@/modules/pipeline/pipeline.manifest'
 
 export const moduleRegistry = new ModuleRegistry()
 
@@ -42,25 +39,21 @@ moduleRegistry.register(auditManifest)
 moduleRegistry.register(notificationManifest)
 moduleRegistry.register(settingsManifest)
 
-// --- Vertical / feature modules (DISABLED) ---
-// When re-enabling a module, also register its search provider if it has one:
-// import { customerSearchProvider } from '@/modules/customer/customer.search-provider'
-// import { bookingSearchProvider } from '@/modules/booking/booking.search-provider'
-// moduleRegistry.register(customerManifest)
-// searchProviderRegistry.register(customerSearchProvider)
-// moduleRegistry.register(bookingManifest)
-// searchProviderRegistry.register(bookingSearchProvider)
+// --- Vertical / feature modules ---
+moduleRegistry.register(customerManifest)
+moduleRegistry.register(bookingManifest)
 moduleRegistry.register(teamManifest)
-// moduleRegistry.register(schedulingManifest)
-// moduleRegistry.register(portalManifest)
-// moduleRegistry.register(staffManifest)
-// moduleRegistry.register(workflowManifest)
-// moduleRegistry.register(formsManifest)
-// moduleRegistry.register(reviewManifest)
-// moduleRegistry.register(calendarSyncManifest)
-// moduleRegistry.register(paymentManifest)
-// moduleRegistry.register(developerManifest)
+moduleRegistry.register(schedulingManifest)
+moduleRegistry.register(portalManifest)
+moduleRegistry.register(staffManifest)
+moduleRegistry.register(workflowManifest)
+moduleRegistry.register(formsManifest)
+moduleRegistry.register(reviewManifest)
+moduleRegistry.register(calendarSyncManifest)
+moduleRegistry.register(paymentManifest)
+moduleRegistry.register(developerManifest)
 moduleRegistry.register(aiManifest)
+moduleRegistry.register(pipelineManifest)
 
 // Validate dependency graph at startup
 moduleRegistry.validate()
@@ -72,4 +65,3 @@ for (const manifest of moduleRegistry.getAllManifests()) {
     notificationTriggerRegistry.register(manifest.slug, manifest.notificationTriggers)
   }
 }
-

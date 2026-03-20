@@ -13,6 +13,7 @@ import { handleStripeWebhook, overdueInvoiceCron } from "@/modules/payment/payme
 import { computeMetricSnapshots } from "@/modules/analytics/analytics.events";
 import { dispatchWebhooks } from "@/modules/developer/developer.events";
 import { aiFunctions } from "@/modules/ai";
+import { pipelineFunctions } from "@/modules/pipeline";
 
 /**
  * Inngest serve endpoint.
@@ -52,5 +53,7 @@ export const { GET, POST, PUT } = serve({
     dispatchWebhooks,
     // AI module
     ...aiFunctions,
+    // Pipeline module
+    ...pipelineFunctions,
   ],
 });

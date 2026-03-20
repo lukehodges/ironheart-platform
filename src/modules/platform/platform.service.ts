@@ -15,6 +15,7 @@ import type { Context } from "@/shared/trpc";
 import { platformRepository } from "./platform.repository";
 import { tenantRepository } from "@/modules/tenant/tenant.repository";
 import { redis } from "@/shared/redis";
+import { seedDefaultPipeline } from "@/modules/pipeline";
 import type {
   TenantRecord,
   FeatureFlag,
@@ -164,6 +165,9 @@ export const platformService = {
     if (!createdTenant) {
       throw new ValidationError("Failed to provision tenant");
     }
+
+    // 4. Seed default pipeline
+    await seedDefaultPipeline(createdTenant.id);
 
     log.info(
       { tenantId: createdTenant.id, businessName: input.businessName },
