@@ -195,7 +195,7 @@ The Q&A is not a defence of your business model. It's 5 minutes of additional op
 "Everything we build runs on enterprise-grade infrastructure with full tenant isolation — each department's data is completely separated. We build to WCAG accessibility standards, we support SSO integration, and we can work within your existing data governance policies. We've already built systems for regulated industries — healthcare and environmental compliance — where data governance is non-negotiable."
 
 **"You're a student here, aren't you?"**
-"I studied Computer Science here — that's actually how I got into this. I saw how much manual operational work goes on behind the scenes at large institutions and realised I could build something better. That was a while ago. Now Ironheart has paying clients across four industries with production systems they rely on every day."
+"I studied Computer Science here — that's actually where I first saw how much operational inefficiency runs beneath the surface of large institutions. Since then, Ironheart has delivered production systems across four industries with paying clients who rely on them every day."
 
 Then immediately pivot to a client result. The "student" label dissolves the moment you talk about real commercial work.
 
@@ -385,6 +385,8 @@ University of Bath procurement thresholds:
 | Over £40,000 | Formal competitive tender |
 
 **Strategy:** First engagement under £10k. A department head can approve this from the room.
+
+**Timing tailwind:** Bath's financial year ends 31 July. Pitching in late March means departments are in Q4 — often with unspent budget they need to use or lose. This works in your favour.
 
 **Pricing ladder:**
 1. **Paid diagnostic / audit** — £5k-£8k (under threshold, virtually no process)
