@@ -115,7 +115,14 @@ export default function OutreachPage() {
         </Button>
       </div>
 
-      {view === "today" && <OutreachToday />}
+      {view === "today" && (
+        <OutreachToday
+          dueContacts={[...(dashboard?.overdue ?? []), ...(dashboard?.dueNow ?? [])]}
+          recentReplies={dashboard?.recentReplies ?? []}
+          todayStats={dashboard?.todayStats}
+          isLoading={dashboardQuery.isLoading}
+        />
+      )}
       {view === "sequences" && <OutreachSequences />}
       {view === "analytics" && <OutreachAnalytics />}
     </div>
