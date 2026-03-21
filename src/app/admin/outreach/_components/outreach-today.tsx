@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { toast } from "sonner"
 import { Mail, Linkedin, Phone, ArrowRightCircle, Copy, Check } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
@@ -112,12 +112,14 @@ function ProgressRing({ sent, total }: { sent: number; total: number }) {
 function ContactCard({
   contact,
   selected,
+  isFocused,
   onToggleSelect,
   onMarkSent,
   onCopyBody,
 }: {
   contact: DashboardContact
   selected: boolean
+  isFocused: boolean
   onToggleSelect: (id: string) => void
   onMarkSent: (id: string) => void
   onCopyBody: (contactId: string, contactName: string) => void
@@ -129,6 +131,7 @@ function ContactCard({
       className={cn(
         "rounded-lg border border-border bg-card p-3 shadow-sm hover:shadow-md transition-shadow",
         overdue && "bg-amber-50 dark:bg-amber-950/20",
+        isFocused && "ring-2 ring-indigo-500 ring-offset-1",
       )}
     >
       <div className="flex items-start justify-between gap-2">
@@ -311,6 +314,58 @@ export function OutreachToday({ dueContacts, recentReplies, todayStats, isLoadin
 
   const overdueContacts = filteredContacts.filter((c) => isOverdue(c))
   const todayContacts = filteredContacts.filter((c) => !isOverdue(c))
+  const allContacts = [...overdueContacts, ...todayContacts]
+
+  // Keyboard navigation
+  const [focusedIndex, setFocusedIndex] = useState(0)
+  const [showShortcuts, setShowShortcuts] = useState(false)
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+
+      const contact = allContacts[focusedIndex]
+      if (!contact && e.key !== "?") return
+
+      switch (e.key) {
+        case "j":
+          e.preventDefault()
+          setFocusedIndex(i => Math.min(i + 1, allContacts.length - 1))
+          break
+        case "k":
+          e.preventDefault()
+          setFocusedIndex(i => Math.max(i - 1, 0))
+          break
+        case "s":
+          e.preventDefault()
+          if (contact) handleMarkSent(contact.id)
+          break
+        case "c":
+          e.preventDefault()
+          if (contact) handleCopyBody(contact.id, contact.customerName)
+          break
+        case "o": {
+          e.preventDefault()
+          if (contact) {
+            const mailto = `mailto:${contact.customerEmail ?? ""}?subject=${encodeURIComponent(contact.subject ?? "")}`
+            window.open(mailto, "_blank")
+          }
+          break
+        }
+        case "x":
+          e.preventDefault()
+          if (contact) toggleSelect(contact.id)
+          break
+        case "?":
+          e.preventDefault()
+          setShowShortcuts(v => !v)
+          break
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [focusedIndex, allContacts])
 
   function selectAll() {
     if (selectedIds.size === filteredContacts.length) setSelectedIds(new Set())
@@ -438,30 +493,30 @@ export function OutreachToday({ dueContacts, recentReplies, todayStats, isLoadin
           </div>
         )}
 
-        {/* Overdue contacts first */}
-        {overdueContacts.length > 0 && (
-          <div className="space-y-2">
-            {overdueContacts.map((contact) => (
-              <ContactCard
-                key={contact.id}
-                contact={contact}
-                selected={selectedIds.has(contact.id)}
-                onToggleSelect={toggleSelect}
-                onMarkSent={handleMarkSent}
-                onCopyBody={handleCopyBody}
-              />
-            ))}
-          </div>
+        {/* Keyboard shortcuts help */}
+        {showShortcuts && (
+          <Card className="p-4">
+            <p className="text-sm font-semibold mb-2">Keyboard Shortcuts</p>
+            <div className="grid grid-cols-2 gap-1 text-sm text-muted-foreground">
+              <span><kbd className="px-1 bg-muted rounded text-xs">j/k</kbd> Navigate</span>
+              <span><kbd className="px-1 bg-muted rounded text-xs">s</kbd> Mark sent</span>
+              <span><kbd className="px-1 bg-muted rounded text-xs">c</kbd> Copy body</span>
+              <span><kbd className="px-1 bg-muted rounded text-xs">o</kbd> Open in Gmail</span>
+              <span><kbd className="px-1 bg-muted rounded text-xs">x</kbd> Toggle select</span>
+              <span><kbd className="px-1 bg-muted rounded text-xs">?</kbd> Toggle shortcuts</span>
+            </div>
+          </Card>
         )}
 
-        {/* Today's contacts */}
-        {todayContacts.length > 0 && (
+        {/* Contact list (overdue first, then today) */}
+        {allContacts.length > 0 && (
           <div className="space-y-2">
-            {todayContacts.map((contact) => (
+            {allContacts.map((contact, index) => (
               <ContactCard
                 key={contact.id}
                 contact={contact}
                 selected={selectedIds.has(contact.id)}
+                isFocused={index === focusedIndex}
                 onToggleSelect={toggleSelect}
                 onMarkSent={handleMarkSent}
                 onCopyBody={handleCopyBody}
