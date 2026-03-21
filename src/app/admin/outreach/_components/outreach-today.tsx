@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "@/lib/utils"
 import { api } from "@/lib/trpc/react"
 import type { DashboardContact, OutreachChannel } from "@/modules/outreach/outreach.types"
+import { ContactDetail } from "./contact-detail"
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -116,6 +117,7 @@ function ContactCard({
   onToggleSelect,
   onMarkSent,
   onCopyBody,
+  onClickName,
 }: {
   contact: DashboardContact
   selected: boolean
@@ -123,6 +125,7 @@ function ContactCard({
   onToggleSelect: (id: string) => void
   onMarkSent: (id: string) => void
   onCopyBody: (contactId: string, contactName: string) => void
+  onClickName: (contact: DashboardContact) => void
 }) {
   const overdue = isOverdue(contact)
 
@@ -143,9 +146,12 @@ function ContactCard({
           />
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
-              <p className="text-sm font-medium text-foreground truncate">
+              <button
+                className="text-sm font-medium text-foreground truncate hover:underline text-left"
+                onClick={() => onClickName(contact)}
+              >
                 {contact.company ?? contact.customerName}
-              </p>
+              </button>
               {overdue && (
                 <Badge variant="destructive" className="text-[9px] px-1.5 py-0 shrink-0">
                   OVERDUE
@@ -287,6 +293,9 @@ export function OutreachToday({ dueContacts, recentReplies, todayStats, isLoadin
       setSelectedIds(new Set())
     },
   })
+
+  // Contact detail slide-over
+  const [selectedContact, setSelectedContact] = useState<DashboardContact | null>(null)
 
   // Batch selection
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -520,6 +529,7 @@ export function OutreachToday({ dueContacts, recentReplies, todayStats, isLoadin
                 onToggleSelect={toggleSelect}
                 onMarkSent={handleMarkSent}
                 onCopyBody={handleCopyBody}
+                onClickName={setSelectedContact}
               />
             ))}
           </div>
@@ -582,6 +592,12 @@ export function OutreachToday({ dueContacts, recentReplies, todayStats, isLoadin
         {/* Sequence Performance */}
         <SequenceMiniTable />
       </div>
+
+      <ContactDetail
+        contact={selectedContact}
+        open={selectedContact !== null}
+        onOpenChange={(open) => { if (!open) setSelectedContact(null) }}
+      />
     </div>
   )
 }
