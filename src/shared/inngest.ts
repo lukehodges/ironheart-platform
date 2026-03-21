@@ -225,6 +225,34 @@ type IronheartEvents = {
   "ai/ghost-operator.completed": {
     data: { tenantId: string; actionsExecuted: number; actionsQueued: number };
   };
+  "outreach/contact.enrolled": {
+    data: {
+      contactId: string;
+      customerId: string;
+      sequenceId: string;
+      tenantId: string;
+    };
+  };
+  "outreach/activity.logged": {
+    data: {
+      contactId: string;
+      sequenceId: string;
+      customerId: string;
+      activityType: string;
+      sector: string;
+      tenantId: string;
+    };
+  };
+  "outreach/contact.converted": {
+    data: {
+      contactId: string;
+      customerId: string;
+      sequenceId: string;
+      pipelineId: string;
+      pipelineMemberId: string;
+      tenantId: string;
+    };
+  };
 };
 
 /**
