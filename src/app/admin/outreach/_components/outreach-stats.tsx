@@ -35,7 +35,7 @@ export function OutreachStats({
       <StatCard
         label="Overdue"
         value={overdue}
-        valueClassName="text-red-600"
+        valueClassName={overdue > 0 ? "text-red-600" : undefined}
         icon={<AlertTriangle className="h-4 w-4 text-red-500" aria-hidden="true" />}
         iconBg="bg-red-500/10"
         isLoading={isLoading}
