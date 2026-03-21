@@ -28,7 +28,7 @@ vi.mock("@/modules/outreach/outreach.repository", () => ({
     getContactActivities: vi.fn(),
   },
 }))
-vi.mock("@/modules/pipeline/pipeline.service", () => ({
+vi.mock("@/modules/pipeline", () => ({
   pipelineService: { addMember: vi.fn() },
 }))
 
