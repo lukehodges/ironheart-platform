@@ -206,7 +206,7 @@ export const outreachService = {
       activityType: input.activityType,
       deliveredTo: input.deliveredTo,
       notes: input.notes,
-      performedByUserId: ctx.userId,
+      performedByUserId: ctx.user?.id ?? null,
       previousState,
     });
 

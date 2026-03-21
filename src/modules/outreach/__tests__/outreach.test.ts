@@ -45,7 +45,15 @@ const SEQUENCE_ID = "s-00000000-0000-0000-0000-000000000001"
 const CUSTOMER_ID = "u-00000000-0000-0000-0000-000000000001"
 const ACTIVITY_ID = "a-00000000-0000-0000-0000-000000000001"
 
-const ctx = { tenantId: TENANT_ID, userId: "user-1", permissions: ["outreach:write"] }
+const ctx = {
+  tenantId: TENANT_ID,
+  user: { id: "user-1", tenantId: TENANT_ID },
+  db: {},
+  session: null,
+  requestId: "req-1",
+  req: {} as unknown,
+  tenantSlug: "test-tenant",
+} as unknown as import("@/shared/trpc").Context
 
 function makeContact(overrides: Record<string, unknown> = {}) {
   return {
