@@ -94,12 +94,17 @@ Compact table: Sequence Name | Active | Reply Rate | Sent Today
 Top 5 sequences by activity. Links to full Sequences view.
 
 ### Data Source
-Single endpoint: `outreach.dashboard.get` returns `{ briefing, dueContacts, overdueCount, todayStats, recentReplies, sequencePerformance }`.
+Extend the existing `outreach.dashboard.get` endpoint (from backend spec) to return the full cockpit payload: `{ briefing, dueContacts, overdueCount, todayStats, recentReplies, sequencePerformance }`. The briefing (streak counter, estimated time, summary) is computed server-side from the same data the endpoint already queries — no separate `getBriefing` endpoint needed.
+
+**Sector filter chips**: derived client-side from `dueContacts` — extract distinct `sector` values from the returned contacts. No separate endpoint needed at current scale; add `outreach.sequence.listSectors` only if the distinct list needs to include sectors with no due contacts.
+
+**Progress ring**: uses optimistic UI updates via tRPC `useMutation`'s `onMutate` — increment sent count and remove the card immediately on click, revert on error.
 
 New endpoints needed:
-- `outreach.dashboard.getBriefing` — aggregated stats + streak
-- `outreach.contact.batchLogActivity` — batch mark sent/skip/pause
-- `outreach.contact.undoActivity` — soft undo within 5-second window
+- `outreach.contact.batchLogActivity` — batch mark sent/skip/pause (calls `logActivity` per contact in a transaction)
+- `outreach.contact.undoActivity` — undo within 5-second window. Implementation: insert a compensating `UNDONE` activity (preserving append-only design), then revert the contact's `currentStep`, `status`, and `nextDueAt` to their pre-action values. The original activity's snapshot of these fields is stored in a `previousState` JSONB column on the activity record at write time, so undo can restore them exactly. The 5-second window is enforced client-side (button disappears after timeout); server-side validates `occurredAt` is within 30 seconds as a safety bound.
+
+**Backend fix required**: The existing `outreach/activity.logged` Inngest event emission in the service layer is missing the `sector` field that the backend spec defines. This must be fixed when implementing these UI features — add `sector` (from the sequence record) to the event data.
 
 ---
 
@@ -150,7 +155,7 @@ Pagination: cursor-based, 25 per page, "Load more" button.
 - Import button with count: "Import 47 contacts"
 
 New endpoints:
-- `outreach.contact.import` — accepts mapped CSV data, creates customers + enrolls
+- `outreach.contact.import` — accepts mapped CSV data, creates customers + enrolls. **Duplicate handling**: if a customer with the same email already exists for the tenant, use the existing customer record (do not create a duplicate). If that customer is already enrolled in the target sequence, skip them and include in a `skipped` count in the response. Response shape: `{ imported: number, skipped: number, skippedEmails: string[] }`.
 - `outreach.contact.bulkEnroll` — enroll existing contacts into a sequence
 
 #### 2.5 Contact Detail Slide-Over
@@ -209,13 +214,13 @@ Filterable list of contacts with status REPLIED.
 - Search by name/company
 
 **Reply cards:**
-- Contact name (bold if unread/uncategorized)
+- Contact name (bold if uncategorized — i.e. `replyCategory IS NULL`)
 - Company
-- Sentiment badge (colour-coded pill)
+- Sentiment badge (colour-coded pill) — derived from `replyCategory` (see Sentiment section below)
 - Reply preview (first ~80 chars)
 - Sequence name tag
 - Relative timestamp
-- Unread indicator (blue dot) for uncategorized replies
+- Blue dot indicator for uncategorized replies (`replyCategory IS NULL`) — this is NOT a separate read/unread tracking system
 
 Sorted by `lastActivityAt DESC`.
 
@@ -263,16 +268,36 @@ Five buttons in a row, each a quick-categorize action:
 - Source: auto-filled "Outreach — {sequence name}"
 - "Convert" button — calls `outreach.contact.convert`
 
+### Sentiment vs Reply Category
+
+`replyCategory` is the primary field — set by the user via the One-Click Categorization Row. `sentiment` is auto-derived from `replyCategory` and never set independently:
+
+| replyCategory | Auto-derived sentiment |
+|---------------|----------------------|
+| INTERESTED | POSITIVE |
+| NOT_NOW | NOT_NOW |
+| NOT_INTERESTED | NEGATIVE |
+| WRONG_PERSON | NEUTRAL |
+| AUTO_REPLY | NEUTRAL |
+
+The `categorize` endpoint sets `replyCategory` and auto-computes `sentiment`. Dashboard reply cards and list filters use `sentiment` for colour-coded display; the Replies view uses `replyCategory` for the detailed categorization buttons.
+
 ### Schema Additions Required
-- `outreach_contacts.sentiment` — enum: POSITIVE | NEUTRAL | NEGATIVE | NOT_NOW (nullable)
-- `outreach_contacts.replyCategory` — enum: INTERESTED | NOT_NOW | NOT_INTERESTED | WRONG_PERSON | AUTO_REPLY (nullable)
+- `outreach_contacts.sentiment` — pgEnum: POSITIVE | NEUTRAL | NEGATIVE | NOT_NOW (nullable, auto-derived from replyCategory)
+- `outreach_contacts.replyCategory` — pgEnum: INTERESTED | NOT_NOW | NOT_INTERESTED | WRONG_PERSON | AUTO_REPLY (nullable)
 - `outreach_contacts.snoozedUntil` — timestamp (nullable)
 
-New state transition: `REPLIED → ACTIVE` (when snooze expires, contact re-enters the queue)
+### State Machine Extension Required
+
+The backend spec's state machine does NOT include `REPLIED → ACTIVE`. This transition must be added to the backend:
+- **Trigger**: Inngest cron `outreach/check-snooze` finds contacts where `status = REPLIED AND snoozedUntil <= now()`
+- **Action**: set `status = ACTIVE`, recompute `nextDueAt` from current step, clear `snoozedUntil`
+- **Service change**: add `reactivateSnoozedContact` method (separate from `resumeContact` which only handles PAUSED)
+- The `snooze` endpoint itself does NOT change status — it sets `snoozedUntil` while status remains REPLIED. The cron handles the transition.
 
 New endpoints:
-- `outreach.contact.categorize` — sets sentiment + replyCategory
-- `outreach.contact.snooze` — sets snoozedUntil, status remains REPLIED until snooze triggers
+- `outreach.contact.categorize` — sets replyCategory + auto-derives sentiment
+- `outreach.contact.snooze` — sets snoozedUntil on a REPLIED contact
 
 ---
 
@@ -326,13 +351,13 @@ Full-height right panel. Tabs: Settings | Steps | Contacts | Performance.
 - Description textarea
 - Sector dropdown
 - Target ICP textarea
-- A/B variant toggle (links to paired sequence)
+- A/B variant toggle: when enabled on a sequence without a pair, duplicates the current sequence with `abVariant: 'B'` and sets `pairedSequenceId` on both records (satisfying the CHECK constraint). When disabled, clears `abVariant` and `pairedSequenceId` on both sequences (the paired sequence is NOT deleted — it becomes a standalone sequence).
 - Active/Paused status toggle
 
 **Steps tab:**
 - Collapsible accordion of steps, ordered by position
 - Each step expands to show:
-  - Channel selector: Email / LinkedIn Request / LinkedIn Message / Call
+  - Channel selector: Email / LinkedIn Request / LinkedIn Message / Call (note: `channel` is stored as `text` in the schema, not a pgEnum — validation happens at the application layer via Zod enum)
   - Delay days input: "Wait N days after previous step"
   - Subject line input (email only)
   - Body editor: rich text area with template variable pills
@@ -541,19 +566,24 @@ New endpoints:
 ## Schema Changes Summary
 
 ### Modifications to `outreach_contacts`
-- Add `sentiment` — pgEnum: POSITIVE | NEUTRAL | NEGATIVE | NOT_NOW (nullable)
+- Add `sentiment` — pgEnum: POSITIVE | NEUTRAL | NEGATIVE | NOT_NOW (nullable, auto-derived from replyCategory)
 - Add `replyCategory` — pgEnum: INTERESTED | NOT_NOW | NOT_INTERESTED | WRONG_PERSON | AUTO_REPLY (nullable)
 - Add `snoozedUntil` — timestamp (nullable)
 
 ### Modifications to `outreach_activities`
 - Add `performedByUserId` — uuid FK to users (nullable, for team attribution)
+- Add `previousState` — jsonb (nullable, stores `{ currentStep, status, nextDueAt }` snapshot for undo support)
 
 ### New Tables
 - `outreach_templates` — reusable email/message templates
 - `outreach_snippets` — reusable content blocks
 
-### New State Transition
-- `REPLIED → ACTIVE` — when `snoozedUntil` expires (snooze reactivation via Inngest cron)
+### New State Transition (backend extension required)
+- `REPLIED → ACTIVE` — when `snoozedUntil` expires (snooze reactivation via Inngest cron `outreach/check-snooze`)
+- Requires new service method `reactivateSnoozedContact` (distinct from existing `resumeContact` which handles PAUSED only)
+
+### New Activity Type
+- `UNDONE` — compensating activity for undo support (preserves append-only design)
 
 ### New Inngest Crons
 - `outreach/check-snooze` — daily, reactivates snoozed contacts where `snoozedUntil <= now()`
@@ -566,9 +596,9 @@ New endpoints:
 ## New Endpoints Summary
 
 ### Dashboard
-- `outreach.dashboard.getBriefing` — aggregated stats + streak
+- Extend existing `outreach.dashboard.get` — add briefing (streak, estimated time, summary) to response
 - `outreach.contact.batchLogActivity` — batch mark sent/skip/pause
-- `outreach.contact.undoActivity` — soft undo within 5-second window
+- `outreach.contact.undoActivity` — compensating UNDONE activity + state revert (30s server-side limit)
 
 ### Contacts
 - `outreach.contact.import` — CSV import with column mapping
@@ -577,8 +607,8 @@ New endpoints:
 - `outreach.contact.getActivities` — paginated activity timeline for a contact
 
 ### Replies
-- `outreach.contact.categorize` — set sentiment + replyCategory
-- `outreach.contact.snooze` — set snoozedUntil
+- `outreach.contact.categorize` — set replyCategory + auto-derive sentiment
+- `outreach.contact.snooze` — set snoozedUntil on REPLIED contact
 
 ### Analytics
 - `outreach.analytics.timing` — reply rate by day/hour
