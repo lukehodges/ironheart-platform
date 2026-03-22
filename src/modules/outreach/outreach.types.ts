@@ -37,6 +37,14 @@ export type OutreachReplyCategory =
   | "WRONG_PERSON"
   | "AUTO_REPLY"
 
+export type OutreachTemplateCategory =
+  | "intro"
+  | "follow-up"
+  | "break-up"
+  | "case-study"
+  | "linkedin"
+  | "custom"
+
 // ---------------------------------------------------------------------------
 // JSONB step shape
 // ---------------------------------------------------------------------------
@@ -106,6 +114,35 @@ export interface OutreachActivityRecord {
   previousState: { currentStep: number; status: string; nextDueAt: string | null } | null
   occurredAt: Date
   createdAt: Date
+}
+
+// ---------------------------------------------------------------------------
+// Template & Snippet records
+// ---------------------------------------------------------------------------
+
+export interface OutreachTemplateRecord {
+  id: string
+  tenantId: string
+  name: string
+  category: string
+  channel: string
+  subject: string | null
+  bodyMarkdown: string
+  tags: string[] | null
+  isActive: boolean
+  createdAt: Date
+  updatedAt: Date
+}
+
+export interface OutreachSnippetRecord {
+  id: string
+  tenantId: string
+  name: string
+  category: string
+  bodyMarkdown: string
+  isActive: boolean
+  createdAt: Date
+  updatedAt: Date
 }
 
 // ---------------------------------------------------------------------------
