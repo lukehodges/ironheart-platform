@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { api } from "@/lib/trpc/react"
+import type { OutreachTemplateCategory, OutreachChannel } from "@/modules/outreach/outreach.types"
 import {
   Dialog,
   DialogContent,
@@ -66,8 +67,8 @@ export function TemplateEditor({ open, onOpenChange, template }: TemplateEditorP
   const isEdit = template !== null
 
   const [name, setName] = useState("")
-  const [category, setCategory] = useState("intro")
-  const [channel, setChannel] = useState("EMAIL")
+  const [category, setCategory] = useState<OutreachTemplateCategory>("intro")
+  const [channel, setChannel] = useState<OutreachChannel>("EMAIL")
   const [subject, setSubject] = useState("")
   const [body, setBody] = useState("")
   const [tagInput, setTagInput] = useState("")
@@ -79,8 +80,8 @@ export function TemplateEditor({ open, onOpenChange, template }: TemplateEditorP
   useEffect(() => {
     if (template) {
       setName(template.name)
-      setCategory(template.category)
-      setChannel(template.channel)
+      setCategory(template.category as OutreachTemplateCategory)
+      setChannel(template.channel as OutreachChannel)
       setSubject(template.subject ?? "")
       setBody(template.bodyMarkdown)
       setTags(template.tags ?? [])
@@ -186,7 +187,7 @@ export function TemplateEditor({ open, onOpenChange, template }: TemplateEditorP
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <label className="text-sm font-medium">Category</label>
-              <Select value={category} onValueChange={setCategory}>
+              <Select value={category} onValueChange={(v) => setCategory(v as OutreachTemplateCategory)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -201,7 +202,7 @@ export function TemplateEditor({ open, onOpenChange, template }: TemplateEditorP
             </div>
             <div className="space-y-1.5">
               <label className="text-sm font-medium">Channel</label>
-              <Select value={channel} onValueChange={setChannel}>
+              <Select value={channel} onValueChange={(v) => setChannel(v as OutreachChannel)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
