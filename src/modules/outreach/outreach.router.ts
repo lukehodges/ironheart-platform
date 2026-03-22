@@ -21,6 +21,16 @@ import {
   undoActivitySchema,
   getContactDetailSchema,
   getContactActivitiesSchema,
+  listTemplatesSchema,
+  getTemplateByIdSchema,
+  createTemplateSchema,
+  updateTemplateSchema,
+  deleteTemplateSchema,
+  listSnippetsSchema,
+  getSnippetByIdSchema,
+  createSnippetSchema,
+  updateSnippetSchema,
+  deleteSnippetSchema,
 } from "./outreach.schemas"
 
 const moduleGate = createModuleMiddleware("outreach")
@@ -134,4 +144,61 @@ export const outreachRouter = router({
   sectorAnalytics: moduleProcedure
     .input(sectorAnalyticsSchema)
     .query(async ({ ctx, input }) => outreachService.getSectorAnalytics(ctx, input)),
+
+  // Templates
+  listTemplates: moduleProcedure
+    .input(listTemplatesSchema)
+    .query(async ({ ctx, input }) => outreachService.listTemplates(ctx, input)),
+
+  getTemplateById: moduleProcedure
+    .input(getTemplateByIdSchema)
+    .query(async ({ ctx, input }) => outreachService.getTemplateById(ctx, input.templateId)),
+
+  createTemplate: modulePermission("outreach:write")
+    .input(createTemplateSchema)
+    .mutation(async ({ ctx, input }) => outreachService.createTemplate(ctx, input)),
+
+  updateTemplate: modulePermission("outreach:write")
+    .input(updateTemplateSchema)
+    .mutation(async ({ ctx, input }) =>
+      outreachService.updateTemplate(ctx, input.templateId, {
+        name: input.name, category: input.category, channel: input.channel,
+        subject: input.subject, bodyMarkdown: input.bodyMarkdown,
+        tags: input.tags, isActive: input.isActive,
+      })
+    ),
+
+  deleteTemplate: modulePermission("outreach:write")
+    .input(deleteTemplateSchema)
+    .mutation(async ({ ctx, input }) => outreachService.deleteTemplate(ctx, input.templateId)),
+
+  duplicateTemplate: modulePermission("outreach:write")
+    .input(getTemplateByIdSchema)
+    .mutation(async ({ ctx, input }) => outreachService.duplicateTemplate(ctx, input.templateId)),
+
+  // Snippets
+  listSnippets: moduleProcedure
+    .input(listSnippetsSchema)
+    .query(async ({ ctx, input }) => outreachService.listSnippets(ctx, input)),
+
+  getSnippetById: moduleProcedure
+    .input(getSnippetByIdSchema)
+    .query(async ({ ctx, input }) => outreachService.getSnippetById(ctx, input.snippetId)),
+
+  createSnippet: modulePermission("outreach:write")
+    .input(createSnippetSchema)
+    .mutation(async ({ ctx, input }) => outreachService.createSnippet(ctx, input)),
+
+  updateSnippet: modulePermission("outreach:write")
+    .input(updateSnippetSchema)
+    .mutation(async ({ ctx, input }) =>
+      outreachService.updateSnippet(ctx, input.snippetId, {
+        name: input.name, category: input.category,
+        bodyMarkdown: input.bodyMarkdown, isActive: input.isActive,
+      })
+    ),
+
+  deleteSnippet: modulePermission("outreach:write")
+    .input(deleteSnippetSchema)
+    .mutation(async ({ ctx, input }) => outreachService.deleteSnippet(ctx, input.snippetId)),
 })
