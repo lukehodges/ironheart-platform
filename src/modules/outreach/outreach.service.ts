@@ -13,6 +13,8 @@ import type {
   OutreachContactRecord,
   OutreachContactWithDetails,
   OutreachActivityRecord,
+  OutreachTemplateRecord,
+  OutreachSnippetRecord,
   OutreachStep,
   DashboardContact,
   DailyDashboard,
@@ -649,5 +651,127 @@ export const outreachService = {
     filters?: { dateFrom?: Date; dateTo?: Date },
   ): Promise<SectorPerformance[]> {
     return outreachRepository.getSectorPerformance(ctx.tenantId, filters);
+  },
+
+  // -------------------------------------------------------------------
+  // TEMPLATES
+  // -------------------------------------------------------------------
+
+  async listTemplates(
+    ctx: Context,
+    filters?: { category?: string; isActive?: boolean },
+  ): Promise<OutreachTemplateRecord[]> {
+    return outreachRepository.listTemplates(ctx.tenantId, filters);
+  },
+
+  async getTemplateById(ctx: Context, templateId: string): Promise<OutreachTemplateRecord> {
+    return outreachRepository.findTemplateById(ctx.tenantId, templateId);
+  },
+
+  async createTemplate(
+    ctx: Context,
+    input: {
+      name: string;
+      category: string;
+      channel: string;
+      subject?: string | null;
+      bodyMarkdown: string;
+      tags?: string[] | null;
+      isActive?: boolean;
+    },
+  ): Promise<OutreachTemplateRecord> {
+    const template = await outreachRepository.createTemplate(ctx.tenantId, input);
+    log.info({ tenantId: ctx.tenantId, templateId: template.id }, "Outreach template created");
+    return template;
+  },
+
+  async updateTemplate(
+    ctx: Context,
+    templateId: string,
+    input: Partial<{
+      name: string;
+      category: string;
+      channel: string;
+      subject: string | null;
+      bodyMarkdown: string;
+      tags: string[] | null;
+      isActive: boolean;
+    }>,
+  ): Promise<OutreachTemplateRecord> {
+    return outreachRepository.updateTemplate(ctx.tenantId, templateId, input);
+  },
+
+  async deleteTemplate(ctx: Context, templateId: string): Promise<OutreachTemplateRecord> {
+    const deleted = await outreachRepository.deleteTemplate(ctx.tenantId, templateId);
+    log.info({ tenantId: ctx.tenantId, templateId }, "Outreach template deleted");
+    return deleted;
+  },
+
+  async duplicateTemplate(ctx: Context, templateId: string): Promise<OutreachTemplateRecord> {
+    const source = await outreachRepository.findTemplateById(ctx.tenantId, templateId);
+
+    const copy = await outreachRepository.createTemplate(ctx.tenantId, {
+      name: `${source.name} (copy)`,
+      category: source.category,
+      channel: source.channel,
+      subject: source.subject,
+      bodyMarkdown: source.bodyMarkdown,
+      tags: source.tags,
+      isActive: source.isActive,
+    });
+
+    log.info(
+      { tenantId: ctx.tenantId, sourceTemplateId: templateId, newTemplateId: copy.id },
+      "Outreach template duplicated",
+    );
+    return copy;
+  },
+
+  // -------------------------------------------------------------------
+  // SNIPPETS
+  // -------------------------------------------------------------------
+
+  async listSnippets(
+    ctx: Context,
+    filters?: { category?: string; isActive?: boolean },
+  ): Promise<OutreachSnippetRecord[]> {
+    return outreachRepository.listSnippets(ctx.tenantId, filters);
+  },
+
+  async getSnippetById(ctx: Context, snippetId: string): Promise<OutreachSnippetRecord> {
+    return outreachRepository.findSnippetById(ctx.tenantId, snippetId);
+  },
+
+  async createSnippet(
+    ctx: Context,
+    input: {
+      name: string;
+      category: string;
+      bodyMarkdown: string;
+      isActive?: boolean;
+    },
+  ): Promise<OutreachSnippetRecord> {
+    const snippet = await outreachRepository.createSnippet(ctx.tenantId, input);
+    log.info({ tenantId: ctx.tenantId, snippetId: snippet.id }, "Outreach snippet created");
+    return snippet;
+  },
+
+  async updateSnippet(
+    ctx: Context,
+    snippetId: string,
+    input: Partial<{
+      name: string;
+      category: string;
+      bodyMarkdown: string;
+      isActive: boolean;
+    }>,
+  ): Promise<OutreachSnippetRecord> {
+    return outreachRepository.updateSnippet(ctx.tenantId, snippetId, input);
+  },
+
+  async deleteSnippet(ctx: Context, snippetId: string): Promise<OutreachSnippetRecord> {
+    const deleted = await outreachRepository.deleteSnippet(ctx.tenantId, snippetId);
+    log.info({ tenantId: ctx.tenantId, snippetId }, "Outreach snippet deleted");
+    return deleted;
   },
 };
