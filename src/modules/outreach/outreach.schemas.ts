@@ -176,3 +176,41 @@ export const sectorAnalyticsSchema = z.object({
   dateFrom: z.coerce.date().optional(),
   dateTo: z.coerce.date().optional(),
 })
+
+// ---------------------------------------------------------------------------
+// Template schemas
+// ---------------------------------------------------------------------------
+
+const templateCategoryEnum = z.enum(['intro', 'follow-up', 'break-up', 'case-study', 'linkedin', 'custom'])
+const templateChannelEnum = z.enum(['EMAIL', 'LINKEDIN_REQUEST', 'LINKEDIN_MESSAGE', 'CALL'])
+
+export const listTemplatesSchema = z.object({ category: templateCategoryEnum.optional(), isActive: z.boolean().optional() })
+export const getTemplateByIdSchema = z.object({ templateId: z.uuid() })
+export const createTemplateSchema = z.object({
+  name: z.string().min(1).max(200), category: templateCategoryEnum, channel: templateChannelEnum,
+  subject: z.string().max(500).optional(), bodyMarkdown: z.string().min(1).max(10000),
+  tags: z.array(z.string().max(50)).max(20).optional(), isActive: z.boolean().optional(),
+})
+export const updateTemplateSchema = z.object({
+  templateId: z.uuid(), name: z.string().min(1).max(200).optional(), category: templateCategoryEnum.optional(),
+  channel: templateChannelEnum.optional(), subject: z.string().max(500).nullable().optional(),
+  bodyMarkdown: z.string().min(1).max(10000).optional(), tags: z.array(z.string().max(50)).max(20).nullable().optional(),
+  isActive: z.boolean().optional(),
+})
+export const deleteTemplateSchema = z.object({ templateId: z.uuid() })
+
+// ---------------------------------------------------------------------------
+// Snippet schemas
+// ---------------------------------------------------------------------------
+
+export const listSnippetsSchema = z.object({ category: z.string().max(100).optional(), isActive: z.boolean().optional() })
+export const getSnippetByIdSchema = z.object({ snippetId: z.uuid() })
+export const createSnippetSchema = z.object({
+  name: z.string().min(1).max(200), category: z.string().min(1).max(100),
+  bodyMarkdown: z.string().min(1).max(10000), isActive: z.boolean().optional(),
+})
+export const updateSnippetSchema = z.object({
+  snippetId: z.uuid(), name: z.string().min(1).max(200).optional(), category: z.string().min(1).max(100).optional(),
+  bodyMarkdown: z.string().min(1).max(10000).optional(), isActive: z.boolean().optional(),
+})
+export const deleteSnippetSchema = z.object({ snippetId: z.uuid() })
