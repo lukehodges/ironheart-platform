@@ -5,6 +5,9 @@ export type {
   OutreachSequenceRecord,
   OutreachContactRecord,
   OutreachActivityRecord,
+  OutreachTemplateRecord,
+  OutreachSnippetRecord,
+  OutreachTemplateCategory,
   DailyDashboard,
   ImportResult,
 } from "./outreach.types"
