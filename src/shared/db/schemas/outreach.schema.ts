@@ -179,9 +179,56 @@ export const outreachActivities = pgTable("outreach_activities", {
 ])
 
 // ---------------------------------------------------------------------------
+// Templates & Snippets
+// ---------------------------------------------------------------------------
+
+export const outreachTemplates = pgTable("outreach_templates", {
+  id: uuid().primaryKey().default(sql`gen_random_uuid()`).notNull(),
+  tenantId: uuid().notNull(),
+  name: text().notNull(),
+  category: text().notNull(),
+  channel: text().notNull(),
+  subject: text(),
+  bodyMarkdown: text().notNull(),
+  tags: text("tags").array(),
+  isActive: boolean().default(true).notNull(),
+  createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+}, (table) => [
+  index("outreach_templates_tenantId_idx").on(table.tenantId),
+  index("outreach_templates_tenantId_category_idx").on(table.tenantId, table.category),
+  foreignKey({
+    columns: [table.tenantId],
+    foreignColumns: [tenants.id],
+    name: "outreach_templates_tenantId_fkey",
+  }).onUpdate("cascade").onDelete("cascade"),
+])
+
+export const outreachSnippets = pgTable("outreach_snippets", {
+  id: uuid().primaryKey().default(sql`gen_random_uuid()`).notNull(),
+  tenantId: uuid().notNull(),
+  name: text().notNull(),
+  category: text().notNull(),
+  bodyMarkdown: text().notNull(),
+  isActive: boolean().default(true).notNull(),
+  createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+}, (table) => [
+  index("outreach_snippets_tenantId_idx").on(table.tenantId),
+  index("outreach_snippets_tenantId_category_idx").on(table.tenantId, table.category),
+  foreignKey({
+    columns: [table.tenantId],
+    foreignColumns: [tenants.id],
+    name: "outreach_snippets_tenantId_fkey",
+  }).onUpdate("cascade").onDelete("cascade"),
+])
+
+// ---------------------------------------------------------------------------
 // Type aliases
 // ---------------------------------------------------------------------------
 
 export type OutreachSequenceRow = typeof outreachSequences.$inferSelect
 export type OutreachContactRow = typeof outreachContacts.$inferSelect
 export type OutreachActivityRow = typeof outreachActivities.$inferSelect
+export type OutreachTemplateRow = typeof outreachTemplates.$inferSelect
+export type OutreachSnippetRow = typeof outreachSnippets.$inferSelect
