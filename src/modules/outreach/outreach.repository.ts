@@ -5,6 +5,8 @@ import {
   outreachSequences,
   outreachContacts,
   outreachActivities,
+  outreachTemplates,
+  outreachSnippets,
   customers,
 } from "@/shared/db/schema";
 import {
@@ -15,6 +17,7 @@ import {
   sql,
   count,
   gte,
+  lt,
   lte,
   or,
   isNull,
@@ -24,6 +27,8 @@ import type {
   OutreachContactRecord,
   OutreachContactWithDetails,
   OutreachActivityRecord,
+  OutreachTemplateRecord,
+  OutreachSnippetRecord,
   OutreachStep,
   DashboardContact,
   SequencePerformance,
@@ -101,6 +106,38 @@ function toActivityRecord(row: ActivityRow): OutreachActivityRecord {
     previousState: row.previousState ?? null,
     occurredAt: row.occurredAt,
     createdAt: row.createdAt,
+  };
+}
+
+type TemplateRow = typeof outreachTemplates.$inferSelect;
+type SnippetRow = typeof outreachSnippets.$inferSelect;
+
+function toTemplateRecord(row: TemplateRow): OutreachTemplateRecord {
+  return {
+    id: row.id,
+    tenantId: row.tenantId,
+    name: row.name,
+    category: row.category,
+    channel: row.channel,
+    subject: row.subject ?? null,
+    bodyMarkdown: row.bodyMarkdown,
+    tags: row.tags ?? null,
+    isActive: row.isActive,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
+}
+
+function toSnippetRecord(row: SnippetRow): OutreachSnippetRecord {
+  return {
+    id: row.id,
+    tenantId: row.tenantId,
+    name: row.name,
+    category: row.category,
+    bodyMarkdown: row.bodyMarkdown,
+    isActive: row.isActive,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
   };
 }
 
@@ -513,7 +550,7 @@ export const outreachRepository = {
         and(
           eq(outreachContacts.tenantId, tenantId),
           eq(outreachContacts.status, "ACTIVE"),
-          sql`${outreachContacts.nextDueAt} < ${startOfToday}`,
+          lt(outreachContacts.nextDueAt, startOfToday),
         ),
       )
       .orderBy(asc(outreachContacts.nextDueAt))
@@ -1002,5 +1039,267 @@ export const outreachRepository = {
 
     if (!row) throw new NotFoundError("OutreachActivity", activityId);
     return toActivityRecord(row);
+  },
+
+  // -------------------------------------------------------------------
+  // TEMPLATES
+  // -------------------------------------------------------------------
+
+  async listTemplates(
+    tenantId: string,
+    filters?: { category?: string; isActive?: boolean },
+  ): Promise<OutreachTemplateRecord[]> {
+    const conditions = [eq(outreachTemplates.tenantId, tenantId)];
+
+    if (filters?.category) {
+      conditions.push(eq(outreachTemplates.category, filters.category));
+    }
+    if (filters?.isActive !== undefined) {
+      conditions.push(eq(outreachTemplates.isActive, filters.isActive));
+    }
+
+    const rows = await db
+      .select()
+      .from(outreachTemplates)
+      .where(and(...conditions))
+      .orderBy(desc(outreachTemplates.createdAt));
+
+    return rows.map(toTemplateRecord);
+  },
+
+  async findTemplateById(
+    tenantId: string,
+    templateId: string,
+  ): Promise<OutreachTemplateRecord> {
+    const [row] = await db
+      .select()
+      .from(outreachTemplates)
+      .where(
+        and(
+          eq(outreachTemplates.id, templateId),
+          eq(outreachTemplates.tenantId, tenantId),
+        ),
+      )
+      .limit(1);
+
+    if (!row) throw new NotFoundError("OutreachTemplate", templateId);
+    return toTemplateRecord(row);
+  },
+
+  async createTemplate(
+    tenantId: string,
+    input: {
+      name: string;
+      category: string;
+      channel: string;
+      subject?: string | null;
+      bodyMarkdown: string;
+      tags?: string[] | null;
+      isActive?: boolean;
+    },
+  ): Promise<OutreachTemplateRecord> {
+    const now = new Date();
+
+    const [row] = await db
+      .insert(outreachTemplates)
+      .values({
+        tenantId,
+        name: input.name,
+        category: input.category,
+        channel: input.channel,
+        subject: input.subject ?? null,
+        bodyMarkdown: input.bodyMarkdown,
+        tags: input.tags ?? null,
+        isActive: input.isActive ?? true,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning();
+
+    log.info({ tenantId, templateId: row!.id }, "Outreach template created");
+    return toTemplateRecord(row!);
+  },
+
+  async updateTemplate(
+    tenantId: string,
+    templateId: string,
+    input: Partial<{
+      name: string;
+      category: string;
+      channel: string;
+      subject: string | null;
+      bodyMarkdown: string;
+      tags: string[] | null;
+      isActive: boolean;
+    }>,
+  ): Promise<OutreachTemplateRecord> {
+    const updateData: Record<string, unknown> = { updatedAt: new Date() };
+
+    if (input.name !== undefined) updateData.name = input.name;
+    if (input.category !== undefined) updateData.category = input.category;
+    if (input.channel !== undefined) updateData.channel = input.channel;
+    if (input.subject !== undefined) updateData.subject = input.subject;
+    if (input.bodyMarkdown !== undefined) updateData.bodyMarkdown = input.bodyMarkdown;
+    if (input.tags !== undefined) updateData.tags = input.tags;
+    if (input.isActive !== undefined) updateData.isActive = input.isActive;
+
+    const [updated] = await db
+      .update(outreachTemplates)
+      .set(updateData as Partial<typeof outreachTemplates.$inferInsert>)
+      .where(
+        and(
+          eq(outreachTemplates.id, templateId),
+          eq(outreachTemplates.tenantId, tenantId),
+        ),
+      )
+      .returning();
+
+    if (!updated) throw new NotFoundError("OutreachTemplate", templateId);
+    log.info({ tenantId, templateId }, "Outreach template updated");
+    return toTemplateRecord(updated);
+  },
+
+  async deleteTemplate(
+    tenantId: string,
+    templateId: string,
+  ): Promise<OutreachTemplateRecord> {
+    const [deleted] = await db
+      .delete(outreachTemplates)
+      .where(
+        and(
+          eq(outreachTemplates.id, templateId),
+          eq(outreachTemplates.tenantId, tenantId),
+        ),
+      )
+      .returning();
+
+    if (!deleted) throw new NotFoundError("OutreachTemplate", templateId);
+    log.info({ tenantId, templateId }, "Outreach template deleted");
+    return toTemplateRecord(deleted);
+  },
+
+  // -------------------------------------------------------------------
+  // SNIPPETS
+  // -------------------------------------------------------------------
+
+  async listSnippets(
+    tenantId: string,
+    filters?: { category?: string; isActive?: boolean },
+  ): Promise<OutreachSnippetRecord[]> {
+    const conditions = [eq(outreachSnippets.tenantId, tenantId)];
+
+    if (filters?.category) {
+      conditions.push(eq(outreachSnippets.category, filters.category));
+    }
+    if (filters?.isActive !== undefined) {
+      conditions.push(eq(outreachSnippets.isActive, filters.isActive));
+    }
+
+    const rows = await db
+      .select()
+      .from(outreachSnippets)
+      .where(and(...conditions))
+      .orderBy(desc(outreachSnippets.createdAt));
+
+    return rows.map(toSnippetRecord);
+  },
+
+  async findSnippetById(
+    tenantId: string,
+    snippetId: string,
+  ): Promise<OutreachSnippetRecord> {
+    const [row] = await db
+      .select()
+      .from(outreachSnippets)
+      .where(
+        and(
+          eq(outreachSnippets.id, snippetId),
+          eq(outreachSnippets.tenantId, tenantId),
+        ),
+      )
+      .limit(1);
+
+    if (!row) throw new NotFoundError("OutreachSnippet", snippetId);
+    return toSnippetRecord(row);
+  },
+
+  async createSnippet(
+    tenantId: string,
+    input: {
+      name: string;
+      category: string;
+      bodyMarkdown: string;
+      isActive?: boolean;
+    },
+  ): Promise<OutreachSnippetRecord> {
+    const now = new Date();
+
+    const [row] = await db
+      .insert(outreachSnippets)
+      .values({
+        tenantId,
+        name: input.name,
+        category: input.category,
+        bodyMarkdown: input.bodyMarkdown,
+        isActive: input.isActive ?? true,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning();
+
+    log.info({ tenantId, snippetId: row!.id }, "Outreach snippet created");
+    return toSnippetRecord(row!);
+  },
+
+  async updateSnippet(
+    tenantId: string,
+    snippetId: string,
+    input: Partial<{
+      name: string;
+      category: string;
+      bodyMarkdown: string;
+      isActive: boolean;
+    }>,
+  ): Promise<OutreachSnippetRecord> {
+    const updateData: Record<string, unknown> = { updatedAt: new Date() };
+
+    if (input.name !== undefined) updateData.name = input.name;
+    if (input.category !== undefined) updateData.category = input.category;
+    if (input.bodyMarkdown !== undefined) updateData.bodyMarkdown = input.bodyMarkdown;
+    if (input.isActive !== undefined) updateData.isActive = input.isActive;
+
+    const [updated] = await db
+      .update(outreachSnippets)
+      .set(updateData as Partial<typeof outreachSnippets.$inferInsert>)
+      .where(
+        and(
+          eq(outreachSnippets.id, snippetId),
+          eq(outreachSnippets.tenantId, tenantId),
+        ),
+      )
+      .returning();
+
+    if (!updated) throw new NotFoundError("OutreachSnippet", snippetId);
+    log.info({ tenantId, snippetId }, "Outreach snippet updated");
+    return toSnippetRecord(updated);
+  },
+
+  async deleteSnippet(
+    tenantId: string,
+    snippetId: string,
+  ): Promise<OutreachSnippetRecord> {
+    const [deleted] = await db
+      .delete(outreachSnippets)
+      .where(
+        and(
+          eq(outreachSnippets.id, snippetId),
+          eq(outreachSnippets.tenantId, tenantId),
+        ),
+      )
+      .returning();
+
+    if (!deleted) throw new NotFoundError("OutreachSnippet", snippetId);
+    log.info({ tenantId, snippetId }, "Outreach snippet deleted");
+    return toSnippetRecord(deleted);
   },
 };
