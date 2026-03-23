@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ironheart — Acceler8 Demo Day</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,300;1,9..144,400&family=Sora:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #08090c;
+    --bg-card: #0f1014;
+    --bg-elevated: #151619;
+    --text-1: #e9eaed;
+    --text-2: #8b8f9a;
+    --text-3: #4a4e5a;
+    --amber: #c8964c;
+    --amber-bright: #e4ad5c;
+    --amber-dim: rgba(200,150,76,0.08);
+    --amber-border: rgba(200,150,76,0.15);
+    --green: #4a9e6e;
+    --green-dim: rgba(74,158,110,0.10);
+    --green-border: rgba(74,158,110,0.18);
+    --border: #1a1c22;
+    --border-light: #22242c;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    width: 100%; height: 100%; overflow: hidden;
+    background: var(--bg); color: var(--text-1);
+    font-family: 'Sora', sans-serif;
+    font-size: 16px; line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3 { font-family: 'Fraunces', serif; font-weight: 400; line-height: 1.2; }
+
+  /* Grain */
+  body::after {
+    content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 999;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  }
+
+  /* Progress + Counter */
+  #progress {
+    position: fixed; top: 0; left: 0; height: 2px; z-index: 1000;
+    background: linear-gradient(90deg, var(--amber), var(--amber-bright));
+    transition: width 0.5s cubic-bezier(0.4,0,0.2,1);
+  }
+  #counter {
+    position: fixed; bottom: 24px; right: 32px; z-index: 1000;
+    font-size: 12px; color: var(--text-3); letter-spacing: 0.1em;
+    font-variant-numeric: tabular-nums;
+  }
+  #nav-hint {
+    position: fixed; bottom: 24px; left: 32px; z-index: 1000;
+    font-size: 11px; color: var(--text-3); letter-spacing: 0.05em;
+    transition: opacity 1s ease;
+  }
+  #nav-hint.hidden { opacity: 0; }
+
+  /* Slides */
+  #deck { position: relative; width: 100%; height: 100%; }
+
+  .slide {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    justify-content: center; align-items: center;
+    padding: 48px 80px;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.4s ease;
+    overflow-y: auto;
+  }
+  .slide.active { opacity: 1; pointer-events: auto; }
+
+  /* Ambient glow */
+  .ambient {
+    position: absolute; width: 500px; height: 500px; border-radius: 50%;
+    filter: blur(120px); opacity: 0.04; pointer-events: none;
+    top: 20%; left: 50%; transform: translateX(-50%);
+  }
+
+  /* Shared */
+  .section-tag {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.3em;
+    text-transform: uppercase; margin-bottom: 28px;
+  }
+  .section-tag.muted { color: var(--text-3); }
+  .section-tag.amber { color: var(--amber); }
+  .section-tag.green { color: var(--green); }
+
+  /* Animations */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .reveal-item {
+    opacity: 0; transform: translateY(14px);
+    transition: opacity 0.45s ease, transform 0.45s ease;
+  }
+  .reveal-item.visible { opacity: 1; transform: translateY(0); }
+
+
+  /* ══════════════════════════════════════
+     SLIDE 1 — TITLE
+  ══════════════════════════════════════ */
+  .s-title { }
+  .s-title .ambient { background: var(--amber); }
+  .s-title .logo-mark {
+    font-family: 'Sora', sans-serif; font-size: 11px; font-weight: 600;
+    letter-spacing: 0.35em; text-transform: uppercase; color: var(--amber);
+    margin-bottom: 48px; opacity: 0; animation: fadeUp 0.8s ease 0.2s forwards;
+  }
+  .s-title h1 {
+    font-size: clamp(32px, 4.5vw, 60px); text-align: center; max-width: 800px;
+    opacity: 0; animation: fadeUp 0.8s ease 0.5s forwards;
+  }
+  .s-title h1 em { font-style: italic; color: var(--amber-bright); }
+  .s-title .sub {
+    font-size: clamp(14px, 1.6vw, 18px); color: var(--text-2);
+    margin-top: 28px; text-align: center; max-width: 560px;
+    opacity: 0; animation: fadeUp 0.8s ease 0.9s forwards;
+  }
+  .s-title .founder {
+    position: absolute; bottom: 44px; font-size: 13px; color: var(--text-3);
+  }
+  .s-title .founder strong { color: var(--text-2); font-weight: 500; }
+
+
+  /* ══════════════════════════════════════
+     SLIDE 2 — PROBLEM
+  ══════════════════════════════════════ */
+  .s-problem { justify-content: flex-start; padding-top: 8vh; }
+  .s-problem h2 {
+    font-size: clamp(26px, 3.5vw, 48px); text-align: center;
+    max-width: 780px; margin-bottom: 5vh;
+  }
+  .s-problem h2 em { font-style: italic; color: var(--amber-bright); }
+  .s-problem .grid {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 16px; max-width: 860px; width: 100%;
+  }
+  .s-problem .card {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 10px; padding: 28px 24px;
+  }
+  .s-problem .card .icon { font-size: 28px; margin-bottom: 16px; }
+  .s-problem .card .label {
+    font-family: 'Fraunces', serif; font-size: clamp(15px, 1.4vw, 18px);
+    color: var(--text-1); margin-bottom: 8px;
+  }
+  .s-problem .card .desc { font-size: 13px; color: var(--text-2); line-height: 1.5; }
+
+
+  /* ══════════════════════════════════════
+     SLIDE 3 — APPROACH
+  ══════════════════════════════════════ */
+  .s-approach .main-text {
+    font-family: 'Fraunces', serif; font-size: clamp(22px, 3vw, 40px);
+    text-align: center; max-width: 720px; line-height: 1.35;
+  }
+  .s-approach .steps {
+    margin-top: 56px; display: flex; align-items: center; gap: 0;
+  }
+  .s-approach .step {
+    display: flex; flex-direction: column; align-items: center;
+    gap: 10px; padding: 0 32px;
+  }
+  .s-approach .step-num {
+    width: 36px; height: 36px; border-radius: 50%;
+    border: 1px solid var(--amber-border); background: var(--amber-dim);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 500; color: var(--amber-bright);
+  }
+  .s-approach .step-label {
+    font-family: 'Fraunces', serif; font-size: clamp(16px, 1.8vw, 22px);
+  }
+  .s-approach .step-desc {
+    font-size: 12px; color: var(--text-2); text-align: center; max-width: 160px;
+  }
+  .s-approach .arrow { color: var(--text-3); font-size: 18px; margin-top: -20px; }
+
+
+  /* ══════════════════════════════════════
+     SLIDE 4 — DEMO OVERVIEW
+  ══════════════════════════════════════ */
+  .s-demos { justify-content: flex-start; padding-top: 8vh; }
+  .s-demos h2 { font-size: clamp(24px, 3vw, 42px); margin-bottom: 8px; }
+  .s-demos .sub { font-size: clamp(13px, 1.4vw, 16px); color: var(--text-2); margin-bottom: 5vh; }
+  .s-demos .grid {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 16px; max-width: 900px; width: 100%;
+  }
+  .s-demos .card {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 10px; padding: 32px 24px 28px;
+    display: flex; flex-direction: column; gap: 12px;
+    transition: border-color 0.3s ease, background 0.3s ease;
+  }
+  .s-demos .card:hover { border-color: var(--border-light); background: var(--bg-elevated); }
+  .s-demos .card .num {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.15em;
+    color: var(--text-3); text-transform: uppercase;
+  }
+  .s-demos .card .title {
+    font-family: 'Fraunces', serif; font-size: clamp(16px, 1.6vw, 20px);
+    color: var(--text-1); line-height: 1.3;
+  }
+  .s-demos .card .desc { font-size: 13px; color: var(--text-2); line-height: 1.5; }
+  .s-demos .card .tag {
+    display: inline-block; font-size: 10px; font-weight: 600;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    padding: 4px 10px; border-radius: 20px; width: fit-content; margin-top: auto;
+    background: var(--green-dim); color: var(--green); border: 1px solid var(--green-border);
+  }
+
+
+  /* ══════════════════════════════════════
+     DEMO SLIDES (5, 6, 7)
+  ══════════════════════════════════════ */
+  .s-demo {
+    justify-content: flex-start;
+    padding-top: 3vh;
+    padding-bottom: 24px;
+  }
+  .s-demo .ambient { background: var(--green); opacity: 0.03; }
+
+  .s-demo .video-placeholder {
+    width: min(520px, 56vw);
+    aspect-ratio: 16 / 9;
+    border-radius: 10px; overflow: hidden;
+    border: 1px solid var(--border); background: var(--bg-card);
+    margin-bottom: 20px; flex-shrink: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 10px;
+  }
+  .s-demo .video-placeholder .placeholder-icon {
+    width: 48px; height: 48px; border-radius: 50%;
+    border: 1.5px solid var(--text-3);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .s-demo .video-placeholder .placeholder-icon svg {
+    width: 16px; height: 16px; fill: var(--text-3); margin-left: 2px;
+  }
+  .s-demo .video-placeholder .placeholder-label {
+    font-size: 11px; color: var(--text-3);
+    letter-spacing: 0.1em; text-transform: uppercase;
+  }
+
+  .s-demo .demo-label {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.3em;
+    text-transform: uppercase; color: var(--green); margin-bottom: 8px;
+  }
+  .s-demo .demo-title {
+    font-family: 'Fraunces', serif; font-size: clamp(20px, 2.4vw, 32px);
+    text-align: center; margin-bottom: 6px; color: var(--text-1);
+  }
+  .s-demo .demo-context {
+    font-size: clamp(12px, 1.2vw, 14px); color: var(--text-2);
+    text-align: center; max-width: 520px; margin-bottom: 16px;
+  }
+  .s-demo .demo-points {
+    display: flex; flex-direction: column; gap: 8px; max-width: 480px;
+  }
+  .s-demo .demo-point {
+    display: flex; align-items: flex-start; gap: 10px;
+    font-size: 13px; color: var(--text-2);
+  }
+  .s-demo .demo-point::before {
+    content: ''; width: 5px; height: 5px; border-radius: 50%;
+    background: var(--amber); flex-shrink: 0; margin-top: 7px;
+  }
+
+
+  /* ══════════════════════════════════════
+     SLIDE 8 — TRACTION
+  ══════════════════════════════════════ */
+  .s-traction { justify-content: flex-start; padding-top: 8vh; }
+  .s-traction h2 {
+    font-size: clamp(24px, 3vw, 42px); margin-bottom: 5vh; color: var(--text-1);
+  }
+  .s-traction .stats {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 16px; max-width: 860px; width: 100%;
+  }
+  .s-traction .stat {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 10px; padding: 24px 20px; text-align: center;
+  }
+  .s-traction .stat .num {
+    font-family: 'Fraunces', serif; font-size: clamp(28px, 3vw, 40px);
+    color: var(--amber-bright); margin-bottom: 4px;
+  }
+  .s-traction .stat .label { font-size: 12px; color: var(--text-2); line-height: 1.4; }
+
+  .s-traction .clients {
+    margin-top: 4vh; display: grid; grid-template-columns: repeat(2, 1fr);
+    gap: 12px; max-width: 700px; width: 100%;
+  }
+  .s-traction .client {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 8px; padding: 16px 20px;
+    display: flex; align-items: center; gap: 14px;
+  }
+  .s-traction .client .dot {
+    width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+  }
+  .s-traction .client .dot.green { background: var(--green); }
+  .s-traction .client .dot.amber { background: var(--amber); }
+  .s-traction .client .name { font-size: 14px; font-weight: 500; color: var(--text-1); }
+  .s-traction .client .type { font-size: 12px; color: var(--text-2); }
+
+
+  /* ══════════════════════════════════════
+     SLIDE 9 — COMPOUNDING
+  ══════════════════════════════════════ */
+  .s-compound { }
+  .s-compound .ambient { background: var(--amber); opacity: 0.03; }
+  .s-compound h2 {
+    font-size: clamp(24px, 3.2vw, 44px); text-align: center;
+    max-width: 700px; margin-bottom: 16px; color: var(--text-1);
+  }
+  .s-compound .sub {
+    font-size: clamp(14px, 1.4vw, 17px); color: var(--text-2);
+    text-align: center; max-width: 600px; margin-bottom: 48px;
+  }
+  .s-compound .visual { display: flex; align-items: center; gap: 20px; }
+  .s-compound .block {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 10px; padding: 20px 24px; text-align: center; min-width: 140px;
+  }
+  .s-compound .block .bl { font-size: 12px; color: var(--text-2); margin-bottom: 4px; }
+  .s-compound .block .bv {
+    font-family: 'Fraunces', serif; font-size: 18px; color: var(--text-1);
+  }
+  .s-compound .op { color: var(--text-3); font-size: 16px; flex-shrink: 0; }
+  .s-compound .result {
+    background: var(--amber-dim); border: 1px solid var(--amber-border);
+    border-radius: 10px; padding: 20px 24px; text-align: center; min-width: 160px;
+  }
+  .s-compound .result .bl { font-size: 12px; color: var(--amber); margin-bottom: 4px; }
+  .s-compound .result .bv {
+    font-family: 'Fraunces', serif; font-size: 18px; color: var(--amber-bright);
+  }
+
+
+  /* ══════════════════════════════════════
+     SLIDE 10 — CLOSE
+  ══════════════════════════════════════ */
+  .s-close { }
+  .s-close .ambient { background: var(--amber); opacity: 0.035; }
+  .s-close .headline {
+    font-family: 'Fraunces', serif; font-size: clamp(24px, 3.2vw, 44px);
+    text-align: center; max-width: 680px; line-height: 1.35; margin-bottom: 12px;
+    color: var(--text-1);
+  }
+  .s-close .headline em { font-style: italic; color: var(--amber-bright); }
+  .s-close .sub {
+    font-size: clamp(14px, 1.5vw, 18px); color: var(--text-2);
+    margin-bottom: 48px; text-align: center; max-width: 520px;
+  }
+  .s-close .contact {
+    display: flex; align-items: center; gap: 48px;
+  }
+  .s-close .contact .info { display: flex; flex-direction: column; gap: 6px; }
+  .s-close .contact .info .name {
+    font-family: 'Fraunces', serif; font-size: 22px; color: var(--text-1);
+  }
+  .s-close .contact .info a {
+    color: var(--text-2); text-decoration: none; font-size: 14px;
+    transition: color 0.2s ease;
+  }
+  .s-close .contact .info a:hover { color: var(--text-1); }
+  .s-close .qr {
+    width: 100px; height: 100px; border: 1px solid var(--border);
+    border-radius: 8px; display: flex; align-items: center; justify-content: center;
+    font-size: 10px; color: var(--text-3); letter-spacing: 0.1em;
+    text-transform: uppercase; flex-shrink: 0;
+  }
+  .s-close .footer {
+    position: absolute; bottom: 44px; font-size: 12px; color: var(--text-3);
+  }
+
+
+  /* ══════════════════════════════════════
+     RESPONSIVE
+  ══════════════════════════════════════ */
+  @media (max-width: 860px) {
+    .slide { padding: 36px 28px; }
+    .s-problem .grid,
+    .s-demos .grid { grid-template-columns: 1fr; max-width: 400px; }
+    .s-traction .stats { grid-template-columns: repeat(2, 1fr); }
+    .s-traction .clients { grid-template-columns: 1fr; }
+    .s-approach .steps { flex-direction: column; gap: 20px; }
+    .s-approach .arrow { transform: rotate(90deg); }
+    .s-compound .visual { flex-direction: column; }
+    .s-compound .op { transform: rotate(90deg); }
+    .s-close .contact { flex-direction: column; gap: 24px; align-items: center; }
+    .s-demo .video-placeholder { width: min(400px, 85vw); }
+  }
+</style>
+</head>
+<body>
+
+<div id="progress"></div>
+<div id="counter"></div>
+<div id="nav-hint">arrow keys or click to navigate</div>
+
+<div id="deck">
+
+  <!-- SLIDE 1 — TITLE -->
+  <div class="slide s-title active">
+    <div class="ambient"></div>
+    <div class="logo-mark">Ironheart</div>
+    <h1>Custom AI systems for organisations that still run on <em>paper</em></h1>
+    <div class="sub">We audit operations, find the bottlenecks, and build software that removes them permanently.</div>
+    <div class="founder"><strong>Luke Hodges</strong> &middot; Founder</div>
+  </div>
+
+  <!-- SLIDE 2 — PROBLEM -->
+  <div class="slide s-problem" data-steps="3">
+    <div class="section-tag muted">The Problem</div>
+    <h2>Entire organisations running on <em>spreadsheets, phone calls, and workarounds</em></h2>
+    <div class="grid">
+      <div class="card reveal-item">
+        <div class="icon">&#9202;</div>
+        <div class="label">Time drain</div>
+        <div class="desc">Staff spending 10+ hours a week on tasks a machine should handle. Data entry, chasing updates, copying between systems.</div>
+      </div>
+      <div class="card reveal-item">
+        <div class="icon">&#128176;</div>
+        <div class="label">Wasted spend</div>
+        <div class="desc">Three people doing what one system could. Solutions that are &lsquo;good enough&rsquo; &mdash; meaning slow, manual, and the first thing to break when someone&rsquo;s off sick.</div>
+      </div>
+      <div class="card reveal-item">
+        <div class="icon">&#128683;</div>
+        <div class="label">Stalled projects</div>
+        <div class="desc">&ldquo;Digital transformation&rdquo; that takes 18 months, costs six figures, and changes nothing. Good intentions that never make it past the proposal stage.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 3 — APPROACH -->
+  <div class="slide s-approach">
+    <div class="section-tag amber">Our Approach</div>
+    <div class="main-text">Find the 20% of your operations causing 80% of the friction. Build systems that fix it. Stay on to run them.</div>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-label">Audit</div>
+        <div class="step-desc">Map your workflows. Find the real bottlenecks.</div>
+      </div>
+      <div class="arrow">&rarr;</div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-label">Build</div>
+        <div class="step-desc">Custom system. Weeks, not months. AI where it helps.</div>
+      </div>
+      <div class="arrow">&rarr;</div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-label">Operate</div>
+        <div class="step-desc">We maintain it. You focus on what matters.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 4 — DEMO OVERVIEW -->
+  <div class="slide s-demos">
+    <div class="section-tag green">Live Demo</div>
+    <h2>What We've Built</h2>
+    <div class="sub">Three systems. Three industries. All built in the last six months.</div>
+    <div class="grid">
+      <div class="card">
+        <div class="num">Demo 01</div>
+        <div class="title">Compliance &amp; Audit Tracker</div>
+        <div class="desc">Automated compliance monitoring for regulated industries. Tracks obligations, flags risks, generates reports.</div>
+        <span class="tag">Live</span>
+      </div>
+      <div class="card">
+        <div class="num">Demo 02</div>
+        <div class="title">Customer Support System</div>
+        <div class="desc">Unified inbox that pulls from email, web, and phone. AI-assisted triage and routing. Full conversation history.</div>
+        <span class="tag">Live</span>
+      </div>
+      <div class="card">
+        <div class="num">Demo 03</div>
+        <div class="title">Booking &amp; Scheduling Engine</div>
+        <div class="desc">Multi-provider scheduling with automated reminders, intake forms, and capacity management.</div>
+        <span class="tag">Live</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 5 — DEMO 1: COMPLIANCE -->
+  <div class="slide s-demo">
+    <div class="ambient"></div>
+    <div class="video-placeholder">
+      <div class="placeholder-icon"><svg viewBox="0 0 24 24"><polygon points="8,5 19,12 8,19"/></svg></div>
+      <div class="placeholder-label">Demo video</div>
+    </div>
+    <div class="demo-label">Demo 01</div>
+    <div class="demo-title">Compliance &amp; Audit Tracker</div>
+    <div class="demo-context">Built for an environmental consultancy handling biodiversity net gain obligations across multiple sites.</div>
+    <div class="demo-points">
+      <div class="demo-point">Automated obligation tracking across regulatory frameworks</div>
+      <div class="demo-point">Real-time compliance status dashboard</div>
+      <div class="demo-point">Audit-ready report generation in one click</div>
+    </div>
+  </div>
+
+  <!-- SLIDE 6 — DEMO 2: SUPPORT -->
+  <div class="slide s-demo">
+    <div class="ambient"></div>
+    <div class="video-placeholder">
+      <div class="placeholder-icon"><svg viewBox="0 0 24 24"><polygon points="8,5 19,12 8,19"/></svg></div>
+      <div class="placeholder-label">Demo video</div>
+    </div>
+    <div class="demo-label">Demo 02</div>
+    <div class="demo-title">Customer Support System</div>
+    <div class="demo-context">Built for a service business managing hundreds of customer interactions per week across email, phone, and web.</div>
+    <div class="demo-points">
+      <div class="demo-point">Unified inbox — every channel in one place</div>
+      <div class="demo-point">AI triage that routes to the right person automatically</div>
+      <div class="demo-point">Full customer history and context on every interaction</div>
+    </div>
+  </div>
+
+  <!-- SLIDE 7 — DEMO 3: BOOKING -->
+  <div class="slide s-demo">
+    <div class="ambient"></div>
+    <div class="video-placeholder">
+      <div class="placeholder-icon"><svg viewBox="0 0 24 24"><polygon points="8,5 19,12 8,19"/></svg></div>
+      <div class="placeholder-label">Demo video</div>
+    </div>
+    <div class="demo-label">Demo 03</div>
+    <div class="demo-title">Booking &amp; Scheduling Engine</div>
+    <div class="demo-context">Built for a mobile healthcare clinic managing multi-provider schedules across multiple locations.</div>
+    <div class="demo-points">
+      <div class="demo-point">Dynamic scheduling with travel time and capacity constraints</div>
+      <div class="demo-point">Automated reminders and intake form collection</div>
+      <div class="demo-point">Eliminated 8+ hours per week of manual admin</div>
+    </div>
+  </div>
+
+  <!-- SLIDE 8 — TRACTION -->
+  <div class="slide s-traction">
+    <div class="section-tag muted">Traction</div>
+    <h2>Early, But Real</h2>
+    <div class="stats">
+      <div class="stat">
+        <div class="num">4</div>
+        <div class="label">Clients served</div>
+      </div>
+      <div class="stat">
+        <div class="num">4</div>
+        <div class="label">Different industries</div>
+      </div>
+      <div class="stat">
+        <div class="num">6mo</div>
+        <div class="label">Build time total</div>
+      </div>
+      <div class="stat">
+        <div class="num">1</div>
+        <div class="label">Platform powering it all</div>
+      </div>
+    </div>
+    <div class="clients">
+      <div class="client">
+        <div class="dot green"></div>
+        <div><div class="name">Mobile Healthcare Clinic</div><div class="type">Routing &amp; scheduling system</div></div>
+      </div>
+      <div class="client">
+        <div class="dot amber"></div>
+        <div><div class="name">Theatre Company</div><div class="type">Back-office automation</div></div>
+      </div>
+      <div class="client">
+        <div class="dot amber"></div>
+        <div><div class="name">Events &amp; Hospitality</div><div class="type">Full operational platform</div></div>
+      </div>
+      <div class="client">
+        <div class="dot green"></div>
+        <div><div class="name">Environmental Consultancy</div><div class="type">Compliance &amp; brokerage platform</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 9 — COMPOUNDING -->
+  <div class="slide s-compound">
+    <div class="ambient"></div>
+    <div class="section-tag amber">The Model</div>
+    <h2>Every Client Makes the Platform Smarter</h2>
+    <div class="sub">Each module we build for one industry becomes available to the next. We're not starting from scratch — we're compounding.</div>
+    <div class="visual">
+      <div class="block"><div class="bl">Client 1</div><div class="bv">Booking Engine</div></div>
+      <div class="op">+</div>
+      <div class="block"><div class="bl">Client 2</div><div class="bv">Compliance</div></div>
+      <div class="op">+</div>
+      <div class="block"><div class="bl">Client 3</div><div class="bv">Support Inbox</div></div>
+      <div class="op">=</div>
+      <div class="result"><div class="bl">Client 4</div><div class="bv">All three + more</div></div>
+    </div>
+  </div>
+
+  <!-- SLIDE 10 — CLOSE -->
+  <div class="slide s-close">
+    <div class="ambient"></div>
+    <div class="headline">We're looking for our next <em>industry partner</em></div>
+    <div class="sub">If your organisation runs on manual processes that software should handle — we'd love to talk.</div>
+    <div class="contact">
+      <div class="info">
+        <div class="name">Luke Hodges</div>
+        <a href="mailto:luke@theironheart.org">luke@theironheart.org</a>
+        <a href="https://theironheart.org" target="_blank">theironheart.org</a>
+      </div>
+      <div class="qr">QR</div>
+    </div>
+    <div class="footer">Acceler8 &middot; University of Bath &middot; 2026</div>
+  </div>
+
+</div>
+
+<script>
+(function() {
+  var slides = document.querySelectorAll('.slide');
+  var total = slides.length;
+  var bar = document.getElementById('progress');
+  var counter = document.getElementById('counter');
+  var navHint = document.getElementById('nav-hint');
+  var current = 0;
+  var stepStates = {};
+
+  slides.forEach(function(s, i) {
+    var max = parseInt(s.dataset.steps || '0');
+    if (max > 0) stepStates[i] = { current: 0, max: max };
+  });
+
+  function update() {
+    slides.forEach(function(s, i) {
+      if (i === current) { s.classList.add('active'); }
+      else { s.classList.remove('active'); }
+    });
+    bar.style.width = ((current + 1) / total * 100) + '%';
+    counter.textContent = (current + 1) + ' / ' + total;
+    if (current > 0) navHint.classList.add('hidden');
+
+    if (stepStates[current] !== undefined) {
+      var items = slides[current].querySelectorAll('.reveal-item');
+      items.forEach(function(item, idx) {
+        if (idx < stepStates[current].current) item.classList.add('visible');
+        else item.classList.remove('visible');
+      });
+    }
+  }
+
+  function next() {
+    if (stepStates[current] !== undefined && stepStates[current].current < stepStates[current].max) {
+      stepStates[current].current++;
+      var items = slides[current].querySelectorAll('.reveal-item');
+      items[stepStates[current].current - 1].classList.add('visible');
+      return;
+    }
+    if (current < total - 1) {
+      current++;
+      if (stepStates[current] !== undefined) stepStates[current].current = 0;
+      update();
+    }
+  }
+
+  function prev() {
+    if (stepStates[current] !== undefined && stepStates[current].current > 0) {
+      stepStates[current].current--;
+      var items = slides[current].querySelectorAll('.reveal-item');
+      items[stepStates[current].current].classList.remove('visible');
+      return;
+    }
+    if (current > 0) {
+      current--;
+      if (stepStates[current] !== undefined) stepStates[current].current = stepStates[current].max;
+      update();
+    }
+  }
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') {
+      e.preventDefault(); next();
+    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+      e.preventDefault(); prev();
+    }
+  });
+
+  document.addEventListener('click', function(e) {
+    if (e.target.closest('a')) return;
+    if (e.clientX > window.innerWidth / 2) next();
+    else prev();
+  });
+
+  update();
+})();
+</script>
+</body>
+</html>
