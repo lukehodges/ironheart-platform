@@ -374,9 +374,48 @@
   }
   .s-expansion .card .desc { font-size: 13px; color: var(--text-2); line-height: 1.5; }
 
+  /* ══════════════════════════════════════
+     SLIDE 11 — TEAM
+  ══════════════════════════════════════ */
+  .s-team { }
+  .s-team .ambient { background: var(--amber); opacity: 0.03; }
+  .s-team .avatars {
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 32px;
+  }
+  .s-team .avatar {
+    width: 120px; height: 120px; border-radius: 50%;
+    border: 2px solid var(--amber); background: var(--bg-elevated);
+    overflow: hidden; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .s-team .avatar + .avatar { margin-left: -24px; }
+  .s-team .avatar img {
+    width: 100%; height: 100%; object-fit: cover;
+  }
+  .s-team .avatar .placeholder-silhouette {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: var(--text-3); opacity: 0.3;
+  }
+  .s-team .member-name {
+    font-family: 'Fraunces', serif; font-size: clamp(20px, 2.4vw, 28px);
+    color: var(--text-1); margin-bottom: 4px;
+  }
+  .s-team .member-title {
+    font-size: 14px; color: var(--amber); font-weight: 500;
+    letter-spacing: 0.05em; margin-bottom: 4px;
+  }
+  .s-team .member-uni {
+    font-size: 13px; color: var(--text-2); margin-bottom: 20px;
+  }
+  .s-team .member-bio {
+    font-size: 14px; color: var(--text-2); text-align: center;
+    max-width: 480px; line-height: 1.6;
+  }
+
 
   /* ══════════════════════════════════════
-     SLIDE 10 — CLOSE
+     SLIDE 12 — CLOSE
   ══════════════════════════════════════ */
   .s-close { }
   .s-close .ambient { background: var(--amber); opacity: 0.035; }
@@ -428,6 +467,9 @@
     .s-compound .op { transform: rotate(90deg); }
     .s-close .contact { flex-direction: column; gap: 24px; align-items: center; }
     .s-demo .video-placeholder { width: min(400px, 85vw); }
+    .s-expansion .grid { grid-template-columns: 1fr; max-width: 400px; }
+    .s-team .avatar { width: 90px; height: 90px; }
+    .s-team .avatar + .avatar { margin-left: -16px; }
   }
 </style>
 </head>
