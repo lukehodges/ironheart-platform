@@ -267,19 +267,33 @@
   transform-origin: top left;
   transform: scale(var(--preview-scale, 0.361));
   pointer-events: none;
-  animation: scroll-site 20s ease-in-out 1s infinite alternate;
-  animation-play-state: paused;
+  animation: none;
+  transition: none;
   font-family: system-ui, -apple-system, sans-serif;
   color: #111827; line-height: 1.5;
 }
-.slide.s-demo.active .site-preview .sp-inner {
-  animation-play-state: running !important;
-}
   .s-demo .site-preview .sp-inner * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  /* Image-based site preview (screenshot scroll) */
+  .s-demo .site-preview.sp-img {
+    background: #F7F5F3;
+  }
+  .s-demo .site-preview.sp-img img {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%;
+    display: block;
+    pointer-events: none;
+    animation: none;
+  }
+.slide.s-demo.active .site-preview .sp-inner,
+.slide.s-demo.active .site-preview.sp-img img {
+  animation: scroll-site 18s ease-in-out 1.5s 1 forwards;
+}
   @keyframes scroll-site {
     0%   { top: 0; }
-    8%   { top: 0; }
-    92%  { top: calc(var(--sp-scroll-distance, -2000px)); }
+    10%  { top: 0; }
+    90%  { top: calc(var(--sp-scroll-distance, -2000px)); }
     100% { top: calc(var(--sp-scroll-distance, -2000px)); }
   }
 
@@ -1392,12 +1406,14 @@
         <div class="item-label"><span class="label-dot green"></span> Cotswold Children&rsquo;s Parties</div>
       </div>
       <div class="showcase-item">
-        <img src="assets/v1-screenshots/healthcare-portal.png" alt="Feet &amp; Care healthcare portal">
-        <div class="item-label"><span class="label-dot green"></span> Feet &amp; Care - Healthcare</div>
+        <img src="assets/v1-screenshots/healthcare-portal.png" alt="Feet &amp; Care healthcare portal" style="object-position: center top;">
+        <div class="item-label"><span class="label-dot green"></span> Feet &amp; Care &mdash; Healthcare</div>
       </div>
-      <div class="showcase-item span-2">
-        <img src="assets/v1-screenshots/portal-config.png" alt="Portal configuration admin" style="object-fit: cover; object-position: top center;">
-        <div class="item-label"><span class="label-dot amber"></span> Portal Configuration - Admin</div>
+      <div class="showcase-item span-2" style="display: flex; align-items: center; justify-content: center; padding: 24px 32px; background: var(--bg-card);">
+        <div style="text-align: center; max-width: 600px;">
+          <div style="font-size: 13px; font-weight: 600; color: var(--amber); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 8px;">All From One Admin Panel</div>
+          <div style="font-size: 14px; color: var(--text-2); line-height: 1.6;">Each portal is configured, branded, and deployed from a single dashboard. Set the scheduling mode, assign team members, customise colours, and publish to any domain &mdash; all without touching code.</div>
+        </div>
       </div>
     </div>
   </div>
@@ -1431,9 +1447,8 @@
   <!-- DEMO 2: THE PLATFORM (refactor) -->
   <div class="slide s-demo">
     <div class="ambient"></div>
-    <div class="video-placeholder">
-      <div class="placeholder-icon"><svg viewBox="0 0 24 24"><polygon points="8,5 19,12 8,19"/></svg></div>
-      <div class="placeholder-label">Live demo</div>
+    <div class="site-preview sp-img">
+      <img src="assets/ironheart-site-full.png" alt="theironheart.org full page">
     </div>
     <div class="demo-label">The Platform</div>
     <div class="demo-title">From One Vertical to Any Vertical</div>
@@ -1443,6 +1458,106 @@
       <div class="demo-point">Visual workflow builder with conditional logic and automation</div>
       <div class="demo-point">AI assistant with live tool execution and streaming</div>
       <div class="demo-point">Multi-tenant - one platform, unlimited organisations</div>
+    </div>
+  </div>
+
+  <!-- SHOWCASE: Environmental Brokerage — Pipeline & Sites -->
+  <div class="slide s-showcase">
+    <div class="ambient"></div>
+    <div class="showcase-label">Vertical 02 — Environmental Brokerage</div>
+    <div class="showcase-title">Biodiversity Net Gain &amp; Nutrient Credits</div>
+    <div class="showcase-subtitle">A full brokerage platform for environmental consultancies — deal pipeline, site management, credit inventory, and compliance tracking. Built on the same engine.</div>
+    <div class="showcase-grid two-up">
+      <div class="showcase-item">
+        <img src="assets/v2-screenshots/deals-pipeline.png" alt="Deals pipeline with BNG and nutrient credit tracking">
+        <div class="item-label"><span class="label-dot green"></span> Deals Pipeline &mdash; &pound;2.25m tracked</div>
+      </div>
+      <div class="showcase-item">
+        <img src="assets/v2-screenshots/site-detail.png" alt="Site detail with map, credit capacity, and compliance">
+        <div class="item-label"><span class="label-dot green"></span> Site Detail &mdash; Credits, Maps &amp; Compliance</div>
+      </div>
+      <div class="showcase-item span-2" style="display: flex; align-items: center; justify-content: center; padding: 24px 32px; background: var(--bg-card);">
+        <div style="text-align: center; max-width: 600px;">
+          <div style="font-size: 13px; font-weight: 600; color: var(--amber); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 8px;">Same Platform, Completely Different Vertical</div>
+          <div style="font-size: 14px; color: var(--text-2); line-height: 1.6;">Booking portals became site registers. Scheduling became deal pipeline stages. Capacity management became credit inventory. The modular architecture means we&rsquo;re not rebuilding &mdash; we&rsquo;re reconfiguring.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SHOWCASE: Environmental — Marketplace & Contacts -->
+  <div class="slide s-showcase">
+    <div class="ambient"></div>
+    <div class="showcase-label">Vertical 02 — The Marketplace</div>
+    <div class="showcase-title">Matching Supply to Demand</div>
+    <div class="showcase-subtitle">Automated credit matching connects landowner supply with developer demand. Inventory tracking, contact management, and intelligent matching rules.</div>
+    <div class="showcase-grid four-up">
+      <div class="showcase-item">
+        <img src="assets/v2-screenshots/matching.png" alt="Supply and demand matching engine">
+        <div class="item-label"><span class="label-dot green"></span> Supply / Demand Matching</div>
+      </div>
+      <div class="showcase-item">
+        <img src="assets/v2-screenshots/inventory.png" alt="Credit inventory with availability tracking">
+        <div class="item-label"><span class="label-dot green"></span> Credit Inventory &amp; Availability</div>
+      </div>
+      <div class="showcase-item">
+        <img src="assets/v2-screenshots/contacts.png" alt="Contact management for landowners and developers">
+        <div class="item-label"><span class="label-dot amber"></span> Contacts &mdash; Supply &amp; Demand Sides</div>
+      </div>
+      <div class="showcase-item">
+        <img src="assets/v2-screenshots/reports.png" alt="Pipeline, financial, and inventory reports">
+        <div class="item-label"><span class="label-dot amber"></span> Reports &amp; Analytics</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SHOWCASE: Environmental — Compliance & Documents -->
+  <div class="slide s-showcase">
+    <div class="ambient"></div>
+    <div class="showcase-label">Vertical 02 — Operations</div>
+    <div class="showcase-title">Compliance, Documents &amp; Audit Trail</div>
+    <div class="showcase-subtitle">Conservation covenants with signature workflows, compliance calendars with deadline tracking, and full audit trails across every entity.</div>
+    <div class="showcase-grid two-up">
+      <div class="showcase-item">
+        <img src="assets/v2-screenshots/documents.png" alt="Document management with signature status tracking">
+        <div class="item-label"><span class="label-dot green"></span> Documents &amp; Signature Workflows</div>
+      </div>
+      <div class="showcase-item">
+        <img src="assets/v2-screenshots/compliance.png" alt="Compliance calendar with monitoring deadlines">
+        <div class="item-label"><span class="label-dot green"></span> Compliance Calendar</div>
+      </div>
+      <div class="showcase-item span-2" style="display: flex; align-items: center; justify-content: center; padding: 24px 32px; background: var(--bg-card);">
+        <div style="text-align: center; max-width: 640px;">
+          <div style="font-size: 13px; font-weight: 600; color: var(--green); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 8px;">12 Modules. One Vertical. Days, Not Months.</div>
+          <div style="font-size: 14px; color: var(--text-2); line-height: 1.6;">Deals, sites, contacts, assessments, inventory, matching, documents, compliance, financials, reports, settings, and a landowner portal &mdash; all configured from the same platform that runs the booking vertical.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DOGFOODING — I Am My Own Tenant -->
+  <div class="slide s-showcase">
+    <div class="ambient"></div>
+    <div class="showcase-label" style="color: var(--amber);">Eating Our Own Cooking</div>
+    <div class="showcase-title">I&rsquo;m Using It to Build It</div>
+    <div class="showcase-subtitle">Ironheart is its own tenant. Outreach sequences, reply management, visual workflows, and team operations &mdash; the platform that builds the platform.</div>
+    <div class="showcase-grid four-up">
+      <div class="showcase-item">
+        <img src="assets/v2-screenshots/outreach.png" alt="Cold outreach sequences and daily missions">
+        <div class="item-label"><span class="label-dot green"></span> Outreach &amp; Sequences</div>
+      </div>
+      <div class="showcase-item">
+        <img src="assets/v2-screenshots/replies.png" alt="Reply categorisation and deal conversion">
+        <div class="item-label"><span class="label-dot green"></span> Reply Management</div>
+      </div>
+      <div class="showcase-item">
+        <img src="assets/v2-screenshots/workflows.png" alt="Visual workflow builder with conditional logic">
+        <div class="item-label"><span class="label-dot amber"></span> Visual Workflow Builder</div>
+      </div>
+      <div class="showcase-item">
+        <img src="assets/v2-screenshots/team-people.png" alt="Team management with departments and capacity">
+        <div class="item-label"><span class="label-dot amber"></span> Team &amp; Operations</div>
+      </div>
     </div>
   </div>
 
@@ -1461,7 +1576,7 @@
         <div class="label">Projects delivered</div>
       </div>
       <div class="stat">
-        <div class="num">6mo</div>
+        <div class="num">3mo</div>
         <div class="label">Build time total</div>
       </div>
     </div>
@@ -1743,6 +1858,24 @@
       });
     }
 
+    // Restart scroll animations on site-preview slides
+    slides.forEach(function(s) {
+      // HTML-based preview
+      var inner = s.querySelector('.site-preview .sp-inner');
+      if (inner) {
+        inner.style.animation = 'none';
+        inner.offsetHeight;
+        inner.style.animation = '';
+      }
+      // Image-based preview
+      var img = s.querySelector('.site-preview.sp-img img');
+      if (img) {
+        img.style.animation = 'none';
+        img.offsetHeight;
+        img.style.animation = '';
+      }
+    });
+
     // Toggle step-N classes on compound slide for live hex outlines
     slides.forEach(function(s) {
       for (var c = 0; c < 5; c++) s.classList.remove('step-' + c);
@@ -1808,18 +1941,27 @@
 (function() {
   function scalePreview() {
     document.querySelectorAll('.site-preview').forEach(function(el) {
+      // Image-based preview (screenshot)
+      if (el.classList.contains('sp-img')) {
+        var img = el.querySelector('img');
+        if (!img) return;
+        var scrollDist = -(img.offsetHeight - el.offsetHeight);
+        el.style.setProperty('--sp-scroll-distance', scrollDist + 'px');
+        return;
+      }
+      // HTML-based preview
       var inner = el.querySelector('.sp-inner');
       if (!inner) return;
       var scale = el.offsetWidth / 1440;
       el.style.setProperty('--preview-scale', scale);
-      // Calculate scroll distance: scaled content height - container height
       var scrollDist = -(inner.scrollHeight * scale - el.offsetHeight);
       el.style.setProperty('--sp-scroll-distance', scrollDist + 'px');
     });
   }
-  // Run after paint so heights are computed
+  // Run after paint and after images load
   requestAnimationFrame(function() { requestAnimationFrame(scalePreview); });
   window.addEventListener('resize', scalePreview);
+  window.addEventListener('load', scalePreview);
 })();
 </script>
 </body>
