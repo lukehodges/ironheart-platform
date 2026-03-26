@@ -11,8 +11,8 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg: hsl(0 0% 100%);
-  --fg: hsl(240 10% 3.9%);
+  --background: #ffffff;
+  --foreground: hsl(240 10% 3.9%);
   --primary: hsl(221.2 83.2% 53.3%);
   --primary-fg: hsl(210 40% 98%);
   --muted: hsl(240 4.8% 95.9%);
@@ -31,12 +31,20 @@
 
 body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  background: var(--bg);
-  color: var(--fg);
+  background: var(--background);
+  color: var(--foreground);
   line-height: 1.5;
   overflow: hidden;
   height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
+
+/* Scrollbar styling */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: hsl(240 5.9% 85%); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: hsl(240 5.9% 75%); }
 
 /* Sidebar */
 .sidebar {
@@ -44,10 +52,11 @@ body {
   background: var(--sidebar-bg); color: var(--sidebar-fg);
   border-right: 1px solid var(--sidebar-border);
   display: flex; flex-direction: column;
-  overflow-y: auto; z-index: 50;
+  z-index: 50;
 }
-.sidebar::-webkit-scrollbar { width: 4px; }
-.sidebar::-webkit-scrollbar-thumb { background: var(--sidebar-border); border-radius: 2px; }
+.sidebar-scroll { flex: 1; overflow-y: auto; }
+.sidebar-scroll::-webkit-scrollbar { width: 4px; }
+.sidebar-scroll::-webkit-scrollbar-thumb { background: var(--sidebar-border); border-radius: 2px; }
 
 .sidebar-header {
   padding: 16px 16px 12px;
@@ -61,7 +70,7 @@ body {
 }
 .sidebar-brand { font-weight: 600; font-size: 15px; }
 
-.sidebar-nav { padding: 8px; flex: 1; }
+.sidebar-nav { padding: 8px; }
 .nav-section-label {
   font-size: 10px; font-weight: 600; letter-spacing: 0.08em;
   text-transform: uppercase; color: var(--sidebar-muted-fg);
@@ -71,48 +80,93 @@ body {
   display: flex; align-items: center; gap: 8px;
   padding: 7px 12px; border-radius: 8px; cursor: pointer;
   font-size: 13.5px; font-weight: 500; color: var(--sidebar-fg);
-  transition: background 0.15s, color 0.15s;
+  transition: background 0.15s ease, color 0.15s ease;
   text-decoration: none; margin: 1px 0;
 }
 .nav-item:hover { background: var(--sidebar-accent); }
 .nav-item.active { background: var(--primary); color: white; }
 .nav-item i { width: 16px; height: 16px; flex-shrink: 0; }
 
+/* Sidebar user section */
+.sidebar-user {
+  padding: 12px 16px;
+  border-top: 1px solid var(--sidebar-border);
+  display: flex; align-items: center; gap: 10px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.sidebar-user:hover { background: var(--sidebar-accent); }
+.sidebar-user-avatar {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: var(--primary); color: white;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 600; font-size: 11px; flex-shrink: 0;
+}
+.sidebar-user-info { flex: 1; min-width: 0; }
+.sidebar-user-name { font-size: 13px; font-weight: 600; line-height: 1.3; }
+.sidebar-user-email { font-size: 11px; color: var(--sidebar-muted-fg); line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sidebar-user-chevron { color: var(--sidebar-muted-fg); flex-shrink: 0; }
+
 /* Top bar */
 .topbar {
   position: fixed; top: 0; left: 240px; right: 0; height: 56px;
-  background: var(--bg); border-bottom: 1px solid var(--border);
+  background: rgba(255,255,255,0.95);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
   display: flex; align-items: center; justify-content: space-between;
   padding: 0 24px; z-index: 40;
 }
-.topbar-title { font-weight: 600; font-size: 15px; color: var(--fg); }
-.topbar-right { display: flex; align-items: center; gap: 16px; }
-.topbar-bell {
+@supports (backdrop-filter: blur(12px)) {
+  .topbar { background: rgba(255,255,255,0.6); }
+}
+.topbar-left { display: flex; align-items: center; gap: 8px; }
+.topbar-breadcrumb { display: flex; align-items: center; gap: 6px; font-size: 14px; }
+.topbar-breadcrumb-org { color: var(--muted-fg); font-weight: 500; }
+.topbar-breadcrumb-sep { color: var(--border); }
+.topbar-breadcrumb-page { color: var(--foreground); font-weight: 600; }
+.topbar-right { display: flex; align-items: center; gap: 8px; }
+.topbar-search {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 12px; border-radius: var(--radius);
+  border: 1px solid var(--border); cursor: pointer;
+  font-size: 13px; color: var(--muted-fg);
+  transition: all 0.15s ease; background: var(--background);
+}
+.topbar-search:hover { border-color: hsl(240 5.9% 80%); background: var(--muted); }
+.topbar-search kbd {
+  font-family: inherit; font-size: 11px; padding: 1px 5px;
+  border-radius: 4px; background: var(--muted); border: 1px solid var(--border);
+  color: var(--muted-fg); font-weight: 500;
+}
+.topbar-icon-btn {
   width: 36px; height: 36px; border-radius: 8px; display: flex;
   align-items: center; justify-content: center; cursor: pointer;
-  position: relative; color: var(--muted-fg);
-  transition: background 0.15s;
+  position: relative; color: var(--muted-fg); border: none; background: none;
+  transition: all 0.15s ease;
 }
-.topbar-bell:hover { background: var(--muted); }
-.topbar-bell .notif-dot {
+.topbar-icon-btn:hover { background: var(--muted); color: var(--foreground); }
+.notif-dot {
   position: absolute; top: 6px; right: 6px; width: 8px; height: 8px;
-  background: var(--destructive); border-radius: 50%; border: 2px solid var(--bg);
+  background: var(--destructive); border-radius: 50%; border: 2px solid var(--background);
 }
 .avatar {
   width: 34px; height: 34px; border-radius: 50%;
   background: var(--primary); color: white;
   display: flex; align-items: center; justify-content: center;
   font-weight: 600; font-size: 12px; cursor: pointer;
+  transition: opacity 0.15s ease;
 }
+.avatar:hover { opacity: 0.85; }
 
 /* Main */
 .main { margin-left: 240px; margin-top: 56px; height: calc(100vh - 56px); overflow-y: auto; }
-.page { display: none; padding: 32px; animation: fadeIn 0.2s ease; }
+.page { display: none; padding: 32px; animation: fadeIn 0.25s ease; }
 .page.active { display: block; }
-@keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 
 .page-header { margin-bottom: 24px; }
-.page-header h1 { font-size: 24px; font-weight: 700; color: var(--fg); }
+.page-header h1 { font-size: 24px; font-weight: 700; color: var(--foreground); }
 .page-header p { font-size: 14px; color: var(--muted-fg); margin-top: 2px; }
 .page-header-row { display: flex; align-items: center; justify-content: space-between; }
 
@@ -121,12 +175,12 @@ body {
   display: inline-flex; align-items: center; gap: 6px;
   padding: 8px 16px; border-radius: var(--radius); font-size: 13px;
   font-weight: 500; cursor: pointer; border: 1px solid var(--border);
-  background: var(--bg); color: var(--fg); transition: all 0.15s;
+  background: var(--background); color: var(--foreground); transition: all 0.15s ease;
   font-family: inherit;
 }
-.btn:hover { background: var(--muted); }
+.btn:hover { background: var(--muted); border-color: hsl(240 5.9% 80%); }
 .btn-primary { background: var(--primary); color: white; border-color: var(--primary); }
-.btn-primary:hover { opacity: 0.9; }
+.btn-primary:hover { background: hsl(221.2 83.2% 48%); border-color: hsl(221.2 83.2% 48%); }
 .btn-sm { padding: 5px 12px; font-size: 12px; }
 .btn-group { display: flex; gap: 0; }
 .btn-group .btn { border-radius: 0; margin-left: -1px; }
@@ -137,20 +191,35 @@ body {
 /* Cards */
 .card {
   background: white; border: 1px solid var(--border); border-radius: var(--radius);
-  padding: 20px; transition: box-shadow 0.2s;
+  padding: 20px; transition: all 0.15s ease;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
 }
-.card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+.card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
 .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
 .card-title { font-size: 15px; font-weight: 600; }
 
 /* KPI */
 .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
-.kpi-card { background: white; border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
+.kpi-card {
+  background: white; border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 20px; position: relative; overflow: hidden;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.04); transition: all 0.15s ease;
+}
+.kpi-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
 .kpi-label { font-size: 12px; color: var(--muted-fg); font-weight: 500; margin-bottom: 6px; }
-.kpi-value { font-size: 28px; font-weight: 700; color: var(--fg); line-height: 1.1; }
+.kpi-value { font-size: 28px; font-weight: 700; color: var(--foreground); line-height: 1.1; }
 .kpi-change { font-size: 12px; font-weight: 500; margin-top: 4px; }
 .kpi-change.up { color: var(--success); }
 .kpi-change.down { color: var(--destructive); }
+.kpi-icon {
+  position: absolute; top: 16px; right: 16px;
+  width: 36px; height: 36px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+}
+.kpi-icon.emerald { background: hsl(142.1 76.2% 92%); color: var(--success); }
+.kpi-icon.violet { background: hsl(270 60% 92%); color: hsl(270 60% 50%); }
+.kpi-icon.amber { background: hsl(32.1 94.6% 90%); color: var(--warning); }
+.kpi-icon.sky { background: hsl(200 80% 90%); color: hsl(200 80% 45%); }
 
 /* Tables */
 .table-wrap { overflow-x: auto; }
@@ -161,6 +230,7 @@ thead th {
   text-transform: uppercase; letter-spacing: 0.03em;
 }
 tbody td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+tbody tr { transition: background 0.1s ease; }
 tbody tr:hover { background: hsl(240 4.8% 97.5%); }
 
 /* Badges */
@@ -177,10 +247,10 @@ tbody tr:hover { background: hsl(240 4.8% 97.5%); }
 /* Inputs */
 .input, select {
   padding: 7px 12px; border: 1px solid var(--border); border-radius: var(--radius);
-  font-size: 13px; font-family: inherit; background: white; color: var(--fg);
-  outline: none; transition: border-color 0.15s;
+  font-size: 13px; font-family: inherit; background: white; color: var(--foreground);
+  outline: none; transition: all 0.15s ease;
 }
-.input:focus, select:focus { border-color: var(--primary); }
+.input:focus, select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px hsl(221.2 83.2% 53.3% / 0.1); }
 .input-row { display: flex; gap: 8px; align-items: center; margin-bottom: 16px; flex-wrap: wrap; }
 
 /* Grid helpers */
@@ -203,18 +273,18 @@ tbody tr:hover { background: hsl(240 4.8% 97.5%); }
 .tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
 .tab {
   padding: 10px 20px; font-size: 13px; font-weight: 500; cursor: pointer;
-  border-bottom: 2px solid transparent; color: var(--muted-fg); transition: all 0.15s;
+  border-bottom: 2px solid transparent; color: var(--muted-fg); transition: all 0.15s ease;
 }
-.tab:hover { color: var(--fg); }
+.tab:hover { color: var(--foreground); }
 .tab.active { color: var(--primary); border-bottom-color: var(--primary); }
 
 /* Form fields */
 .form-group { margin-bottom: 16px; }
 .form-label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 4px; }
-.form-input { width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 13px; font-family: inherit; }
-.form-input:focus { outline: none; border-color: var(--primary); }
+.form-input { width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 13px; font-family: inherit; transition: all 0.15s ease; }
+.form-input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px hsl(221.2 83.2% 53.3% / 0.1); }
 
-/* Specific: Calendar */
+/* Calendar */
 .cal-grid { display: grid; grid-template-columns: 60px repeat(7,1fr); gap: 0; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
 .cal-header { background: var(--muted); padding: 10px 8px; font-size: 12px; font-weight: 600; text-align: center; border-bottom: 1px solid var(--border); }
 .cal-hour { font-size: 11px; color: var(--muted-fg); padding: 4px 8px; text-align: right; height: 48px; border-bottom: 1px solid var(--border); border-right: 1px solid var(--border); }
@@ -222,45 +292,24 @@ tbody tr:hover { background: hsl(240 4.8% 97.5%); }
 .cal-event {
   position: absolute; left: 2px; right: 2px; border-radius: 4px; padding: 2px 4px;
   font-size: 10px; font-weight: 500; line-height: 1.3; overflow: hidden;
-  cursor: pointer;
+  cursor: pointer; transition: opacity 0.15s ease;
 }
+.cal-event:hover { opacity: 0.8; }
 
-/* Specific: Kanban */
+/* Kanban */
 .kanban { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 8px; }
 .kanban-col { min-width: 240px; flex: 1; background: var(--muted); border-radius: var(--radius); padding: 12px; }
-.kanban-col-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 2px solid transparent; }
+.kanban-col-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; padding-bottom: 8px; }
 .kanban-card {
   background: white; border: 1px solid var(--border); border-radius: var(--radius);
-  padding: 12px; margin-bottom: 8px; cursor: pointer; transition: box-shadow 0.15s;
+  padding: 12px; margin-bottom: 8px; cursor: pointer;
+  transition: all 0.15s ease; box-shadow: 0 1px 2px rgba(0,0,0,0.04);
 }
-.kanban-card:hover { box-shadow: 0 2px 6px rgba(0,0,0,0.08); }
-
-/* Chat */
-.chat-container { display: flex; flex-direction: column; height: calc(100vh - 56px - 32px - 32px - 60px); }
-.chat-messages { flex: 1; overflow-y: auto; padding: 16px 0; }
-.chat-msg { display: flex; gap: 12px; margin-bottom: 16px; }
-.chat-msg-avatar { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; flex-shrink: 0; }
-.chat-msg-avatar.user { background: var(--primary); color: white; }
-.chat-msg-avatar.ai { background: var(--sidebar-bg); color: var(--sidebar-fg); }
-.chat-msg-content { background: var(--muted); border-radius: 12px; padding: 10px 14px; font-size: 13.5px; max-width: 80%; line-height: 1.6; }
-.chat-msg.from-user { flex-direction: row-reverse; }
-.chat-msg.from-user .chat-msg-content { background: var(--primary); color: white; }
-.chat-input-bar {
-  display: flex; gap: 8px; padding: 12px; background: var(--muted); border-radius: var(--radius);
-  border: 1px solid var(--border);
-}
-.chat-input-bar input { flex: 1; border: none; background: transparent; font-size: 13.5px; font-family: inherit; outline: none; }
-
-/* Workflow diagram */
-.wf-diagram { display: flex; align-items: center; gap: 0; padding: 24px 0; overflow-x: auto; }
-.wf-node {
-  background: white; border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 16px;
-  text-align: center; min-width: 140px; flex-shrink: 0;
-}
-.wf-node-type { font-size: 10px; font-weight: 600; text-transform: uppercase; margin-bottom: 4px; letter-spacing: 0.05em; }
-.wf-node-label { font-size: 12px; font-weight: 500; }
-.wf-arrow { width: 32px; height: 2px; background: var(--border); flex-shrink: 0; position: relative; }
-.wf-arrow::after { content: ''; position: absolute; right: 0; top: -4px; border: 5px solid transparent; border-left-color: var(--border); }
+.kanban-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); transform: translateY(-1px); }
+.risk-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; flex-shrink: 0; }
+.risk-green { background: var(--success); }
+.risk-amber { background: var(--warning); }
+.risk-red { background: var(--destructive); }
 
 /* Scheduling grid */
 .sched-grid { display: grid; grid-template-columns: 140px repeat(7,1fr); gap: 1px; background: var(--border); border-radius: var(--radius); overflow: hidden; }
@@ -274,7 +323,7 @@ tbody tr:hover { background: hsl(240 4.8% 97.5%); }
 /* Bar charts */
 .bar-chart { display: flex; align-items: flex-end; gap: 12px; height: 160px; padding-top: 8px; }
 .bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; height: 100%; justify-content: flex-end; }
-.bar { width: 100%; background: var(--primary); border-radius: 4px 4px 0 0; transition: height 0.3s; min-width: 20px; }
+.bar { width: 100%; background: var(--primary); border-radius: 4px 4px 0 0; transition: height 0.3s ease; min-width: 20px; }
 .bar-label { font-size: 11px; color: var(--muted-fg); }
 .bar-val { font-size: 11px; font-weight: 600; }
 
@@ -283,6 +332,72 @@ tbody tr:hover { background: hsl(240 4.8% 97.5%); }
 .hbar-label { width: 90px; font-size: 12px; font-weight: 500; text-align: right; flex-shrink: 0; }
 .hbar-track { flex: 1; height: 24px; background: var(--muted); border-radius: 4px; overflow: hidden; }
 .hbar-fill { height: 100%; background: var(--primary); border-radius: 4px; display: flex; align-items: center; padding-left: 8px; font-size: 11px; color: white; font-weight: 600; }
+
+/* Chat */
+.chat-container { display: flex; flex-direction: column; height: calc(100vh - 56px - 32px - 32px - 60px); }
+.chat-messages { flex: 1; overflow-y: auto; padding: 16px 0; }
+.chat-msg { display: flex; gap: 12px; margin-bottom: 16px; max-width: 720px; }
+.chat-msg-avatar { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; flex-shrink: 0; }
+.chat-msg-avatar.user { background: var(--primary); color: white; }
+.chat-msg-avatar.ai { background: var(--sidebar-bg); color: var(--sidebar-fg); }
+.chat-msg-content { background: var(--muted); border-radius: 12px; padding: 10px 14px; font-size: 13.5px; max-width: 80%; line-height: 1.6; }
+.chat-msg.from-user { flex-direction: row-reverse; }
+.chat-msg.from-user .chat-msg-content { background: var(--primary); color: white; }
+.chat-input-bar {
+  display: flex; gap: 8px; padding: 12px; background: var(--muted); border-radius: var(--radius);
+  border: 1px solid var(--border); transition: border-color 0.15s ease;
+}
+.chat-input-bar:focus-within { border-color: var(--primary); }
+.chat-input-bar input { flex: 1; border: none; background: transparent; font-size: 13.5px; font-family: inherit; outline: none; }
+
+/* Tool call card */
+.tool-call-card {
+  background: hsl(240 4.8% 97%); border: 1px solid var(--border); border-radius: 8px;
+  padding: 10px 14px; margin-bottom: 16px; max-width: 520px;
+  font-size: 12px;
+}
+.tool-call-header { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; font-weight: 600; color: var(--foreground); font-size: 11px; text-transform: uppercase; letter-spacing: 0.03em; }
+.tool-call-code { font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace; font-size: 12px; color: hsl(240 10% 30%); background: white; border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; line-height: 1.5; margin-bottom: 6px; }
+.tool-call-result { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--success); font-weight: 500; }
+
+/* Workflow visual graph */
+.wf-canvas {
+  position: relative; min-height: 340px; background: white;
+  border: 1px solid var(--border); border-radius: var(--radius);
+  overflow: hidden;
+  background-image: radial-gradient(circle, hsl(240 5.9% 85%) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+.wf-node-v2 {
+  position: absolute; background: white; border: 2px solid var(--border);
+  border-radius: 10px; padding: 10px 16px; text-align: center;
+  min-width: 150px; box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  transition: box-shadow 0.15s ease;
+  z-index: 2;
+}
+.wf-node-v2:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.12); }
+.wf-node-v2 .wf-node-type { font-size: 10px; font-weight: 600; text-transform: uppercase; margin-bottom: 3px; letter-spacing: 0.05em; }
+.wf-node-v2 .wf-node-label { font-size: 12px; font-weight: 500; }
+.wf-diamond {
+  position: absolute; width: 120px; height: 120px; z-index: 2;
+}
+.wf-diamond-inner {
+  width: 85px; height: 85px; background: white; border: 2px solid hsl(270 60% 55%);
+  transform: rotate(45deg); position: absolute; top: 18px; left: 18px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  transition: box-shadow 0.15s ease;
+}
+.wf-diamond-inner:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.12); }
+.wf-diamond-text {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  text-align: center; width: 110px; z-index: 3;
+}
+.wf-diamond-text .wf-node-type { font-size: 10px; font-weight: 600; text-transform: uppercase; margin-bottom: 2px; letter-spacing: 0.05em; color: hsl(270 60% 55%); }
+.wf-diamond-text .wf-node-label { font-size: 11px; font-weight: 500; }
+.wf-edge-label {
+  position: absolute; font-size: 10px; font-weight: 600; padding: 2px 8px;
+  border-radius: 4px; background: white; border: 1px solid var(--border); z-index: 3;
+}
 </style>
 </head>
 <body>
@@ -293,48 +408,69 @@ tbody tr:hover { background: hsl(240 4.8% 97.5%); }
     <div class="sidebar-logo">IH</div>
     <span class="sidebar-brand">Ironheart</span>
   </div>
-  <div class="sidebar-nav">
-    <div data-page="dashboard" class="nav-item active"><i data-lucide="layout-dashboard"></i> Dashboard</div>
+  <div class="sidebar-scroll">
+    <div class="sidebar-nav">
+      <div data-page="dashboard" class="nav-item active"><i data-lucide="layout-dashboard"></i> Dashboard</div>
 
-    <div class="nav-section-label">Operations</div>
-    <div data-page="bookings" class="nav-item"><i data-lucide="calendar"></i> Bookings</div>
-    <div data-page="calendar" class="nav-item"><i data-lucide="calendar-days"></i> Calendar</div>
-    <div data-page="scheduling" class="nav-item"><i data-lucide="clock"></i> Scheduling</div>
+      <div class="nav-section-label">Operations</div>
+      <div data-page="bookings" class="nav-item"><i data-lucide="calendar"></i> Bookings</div>
+      <div data-page="calendar" class="nav-item"><i data-lucide="calendar-days"></i> Calendar</div>
+      <div data-page="scheduling" class="nav-item"><i data-lucide="clock"></i> Scheduling</div>
 
-    <div class="nav-section-label">People</div>
-    <div data-page="team" class="nav-item"><i data-lucide="user-cog"></i> Team</div>
-    <div data-page="customers" class="nav-item"><i data-lucide="users"></i> Customers</div>
+      <div class="nav-section-label">People</div>
+      <div data-page="team" class="nav-item"><i data-lucide="user-cog"></i> Team</div>
+      <div data-page="customers" class="nav-item"><i data-lucide="users"></i> Customers</div>
 
-    <div class="nav-section-label">Engagement</div>
-    <div data-page="forms" class="nav-item"><i data-lucide="file-text"></i> Forms</div>
-    <div data-page="reviews" class="nav-item"><i data-lucide="star"></i> Reviews</div>
-    <div data-page="outreach" class="nav-item"><i data-lucide="send"></i> Outreach</div>
+      <div class="nav-section-label">Engagement</div>
+      <div data-page="forms" class="nav-item"><i data-lucide="file-text"></i> Forms</div>
+      <div data-page="reviews" class="nav-item"><i data-lucide="star"></i> Reviews</div>
+      <div data-page="outreach" class="nav-item"><i data-lucide="send"></i> Outreach</div>
 
-    <div class="nav-section-label">Revenue</div>
-    <div data-page="payments" class="nav-item"><i data-lucide="credit-card"></i> Payments</div>
-    <div data-page="pipeline" class="nav-item"><i data-lucide="layers"></i> Pipeline</div>
+      <div class="nav-section-label">Revenue</div>
+      <div data-page="payments" class="nav-item"><i data-lucide="credit-card"></i> Payments</div>
+      <div data-page="pipeline" class="nav-item"><i data-lucide="layers"></i> Pipeline</div>
 
-    <div class="nav-section-label">Automation</div>
-    <div data-page="workflows" class="nav-item"><i data-lucide="zap"></i> Workflows</div>
+      <div class="nav-section-label">Automation</div>
+      <div data-page="workflows" class="nav-item"><i data-lucide="zap"></i> Workflows</div>
 
-    <div class="nav-section-label">Insights</div>
-    <div data-page="analytics" class="nav-item"><i data-lucide="bar-chart-3"></i> Analytics</div>
+      <div class="nav-section-label">Insights</div>
+      <div data-page="analytics" class="nav-item"><i data-lucide="bar-chart-3"></i> Analytics</div>
 
-    <div class="nav-section-label">System</div>
-    <div data-page="ai-chat" class="nav-item"><i data-lucide="bot"></i> AI Chat</div>
-    <div data-page="developer" class="nav-item"><i data-lucide="code-2"></i> Developer</div>
-    <div data-page="settings" class="nav-item"><i data-lucide="settings"></i> Settings</div>
+      <div class="nav-section-label">System</div>
+      <div data-page="ai-chat" class="nav-item"><i data-lucide="bot"></i> AI Chat</div>
+      <div data-page="developer" class="nav-item"><i data-lucide="code-2"></i> Developer</div>
+      <div data-page="settings" class="nav-item"><i data-lucide="settings"></i> Settings</div>
 
-    <div class="nav-section-label">Account</div>
-    <div data-page="audit-log" class="nav-item"><i data-lucide="scroll-text"></i> Audit Log</div>
+      <div class="nav-section-label">Account</div>
+      <div data-page="audit-log" class="nav-item"><i data-lucide="scroll-text"></i> Audit Log</div>
+    </div>
+  </div>
+  <div class="sidebar-user">
+    <div class="sidebar-user-avatar">LH</div>
+    <div class="sidebar-user-info">
+      <div class="sidebar-user-name">Luke Hodges</div>
+      <div class="sidebar-user-email">luke@ironheart.dev</div>
+    </div>
+    <div class="sidebar-user-chevron"><i data-lucide="chevrons-up-down" style="width:14px;height:14px"></i></div>
   </div>
 </nav>
 
 <!-- Topbar -->
 <header class="topbar">
-  <div class="topbar-title">Riverside Wellness Clinic</div>
+  <div class="topbar-left">
+    <div class="topbar-breadcrumb">
+      <span class="topbar-breadcrumb-org">Riverside Wellness Clinic</span>
+      <span class="topbar-breadcrumb-sep">/</span>
+      <span class="topbar-breadcrumb-page" id="topbar-page-title">Dashboard</span>
+    </div>
+  </div>
   <div class="topbar-right">
-    <div class="topbar-bell"><i data-lucide="bell" style="width:18px;height:18px"></i><div class="notif-dot"></div></div>
+    <div class="topbar-search">
+      <i data-lucide="search" style="width:14px;height:14px"></i>
+      <span>Search...</span>
+      <kbd>&#8984;K</kbd>
+    </div>
+    <button class="topbar-icon-btn"><i data-lucide="bell" style="width:18px;height:18px"></i><div class="notif-dot"></div></button>
     <div class="avatar">LH</div>
   </div>
 </header>
@@ -349,10 +485,30 @@ tbody tr:hover { background: hsl(240 4.8% 97.5%); }
     <p>Welcome back, Luke</p>
   </div>
   <div class="kpi-grid">
-    <div class="kpi-card"><div class="kpi-label">Total Bookings</div><div class="kpi-value">1,247</div><div class="kpi-change up">+12% from last month</div></div>
-    <div class="kpi-card"><div class="kpi-label">Revenue</div><div class="kpi-value">£84,320</div><div class="kpi-change up">+8% from last month</div></div>
-    <div class="kpi-card"><div class="kpi-label">Customers</div><div class="kpi-value">892</div><div class="kpi-change up">+15% from last month</div></div>
-    <div class="kpi-card"><div class="kpi-label">Avg Rating</div><div class="kpi-value">4.8<span style="font-size:16px;color:var(--muted-fg)">/5.0</span></div><div class="kpi-change up">+0.2 from last month</div></div>
+    <div class="kpi-card">
+      <div class="kpi-label">Total Bookings</div>
+      <div class="kpi-value">1,247</div>
+      <div class="kpi-change up">+12% from last month</div>
+      <div class="kpi-icon amber"><i data-lucide="calendar-check" style="width:18px;height:18px"></i></div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Revenue</div>
+      <div class="kpi-value">£84,320</div>
+      <div class="kpi-change up">+8% from last month</div>
+      <div class="kpi-icon emerald"><i data-lucide="pound-sterling" style="width:18px;height:18px"></i></div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Customers</div>
+      <div class="kpi-value">892</div>
+      <div class="kpi-change up">+15% from last month</div>
+      <div class="kpi-icon violet"><i data-lucide="users" style="width:18px;height:18px"></i></div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Avg Rating</div>
+      <div class="kpi-value">4.8<span style="font-size:16px;color:var(--muted-fg)">/5.0</span></div>
+      <div class="kpi-change up">+0.2 from last month</div>
+      <div class="kpi-icon sky"><i data-lucide="star" style="width:18px;height:18px"></i></div>
+    </div>
   </div>
   <div class="grid-2">
     <div class="card">
@@ -548,694 +704,3 @@ tbody tr:hover { background: hsl(240 4.8% 97.5%); }
     <div class="sched-cell"><div class="sched-block sched-unavail">Off</div></div>
   </div>
 </div>
-
-<!-- ============ TEAM ============ -->
-<div id="page-team" class="page">
-  <div class="page-header">
-    <div class="page-header-row"><h1>Team</h1><button class="btn btn-primary"><i data-lucide="plus" style="width:14px;height:14px"></i> Add Member</button></div>
-  </div>
-  <div class="grid-3">
-    <div class="card" style="text-align:center">
-      <div style="display:flex;justify-content:center;margin-bottom:12px;position:relative">
-        <div class="avatar" style="width:56px;height:56px;font-size:18px;background:hsl(340 65% 50%)">SC</div>
-        <span class="status-dot online" style="position:absolute;bottom:2px;right:calc(50% - 32px)"></span>
-      </div>
-      <div style="font-weight:600;font-size:14px">Dr. Sarah Chen</div>
-      <div style="font-size:12px;color:var(--muted-fg)">Lead Practitioner</div>
-      <div style="font-size:11px;color:var(--muted-fg);margin-top:2px">Clinical</div>
-      <div style="font-size:11px;color:var(--muted-fg);margin-top:8px">Active bookings: 4</div>
-    </div>
-    <div class="card" style="text-align:center">
-      <div style="display:flex;justify-content:center;margin-bottom:12px;position:relative">
-        <div class="avatar" style="width:56px;height:56px;font-size:18px;background:hsl(200 65% 50%)">EW</div>
-        <span class="status-dot online" style="position:absolute;bottom:2px;right:calc(50% - 32px)"></span>
-      </div>
-      <div style="font-weight:600;font-size:14px">Emma Wilson</div>
-      <div style="font-size:12px;color:var(--muted-fg)">Therapist</div>
-      <div style="font-size:11px;color:var(--muted-fg);margin-top:2px">Massage</div>
-      <div style="font-size:11px;color:var(--muted-fg);margin-top:8px">Active bookings: 6</div>
-    </div>
-    <div class="card" style="text-align:center">
-      <div style="display:flex;justify-content:center;margin-bottom:12px;position:relative">
-        <div class="avatar" style="width:56px;height:56px;font-size:18px;background:hsl(160 65% 40%)">JT</div>
-        <span class="status-dot online" style="position:absolute;bottom:2px;right:calc(50% - 32px)"></span>
-      </div>
-      <div style="font-weight:600;font-size:14px">James Taylor</div>
-      <div style="font-size:12px;color:var(--muted-fg)">Physiotherapist</div>
-      <div style="font-size:11px;color:var(--muted-fg);margin-top:2px">Physiotherapy</div>
-      <div style="font-size:11px;color:var(--muted-fg);margin-top:8px">Active bookings: 5</div>
-    </div>
-    <div class="card" style="text-align:center">
-      <div style="display:flex;justify-content:center;margin-bottom:12px;position:relative">
-        <div class="avatar" style="width:56px;height:56px;font-size:18px;background:hsl(280 55% 50%)">PP</div>
-        <span class="status-dot online" style="position:absolute;bottom:2px;right:calc(50% - 32px)"></span>
-      </div>
-      <div style="font-weight:600;font-size:14px">Priya Patel</div>
-      <div style="font-size:12px;color:var(--muted-fg)">Aesthetician</div>
-      <div style="font-size:11px;color:var(--muted-fg);margin-top:2px">Skincare</div>
-      <div style="font-size:11px;color:var(--muted-fg);margin-top:8px">Active bookings: 3</div>
-    </div>
-    <div class="card" style="text-align:center">
-      <div style="display:flex;justify-content:center;margin-bottom:12px;position:relative">
-        <div class="avatar" style="width:56px;height:56px;font-size:18px;background:hsl(30 65% 50%)">TR</div>
-        <span class="status-dot offline" style="position:absolute;bottom:2px;right:calc(50% - 32px)"></span>
-      </div>
-      <div style="font-weight:600;font-size:14px">Tom Richards</div>
-      <div style="font-size:12px;color:var(--muted-fg)">Receptionist</div>
-      <div style="font-size:11px;color:var(--muted-fg);margin-top:2px">Front Desk</div>
-      <div style="font-size:11px;color:var(--muted-fg);margin-top:8px">Active bookings: 0</div>
-    </div>
-    <div class="card" style="text-align:center">
-      <div style="display:flex;justify-content:center;margin-bottom:12px;position:relative">
-        <div class="avatar" style="width:56px;height:56px;font-size:18px;background:hsl(10 65% 50%)">LA</div>
-        <span class="status-dot offline" style="position:absolute;bottom:2px;right:calc(50% - 32px)"></span>
-      </div>
-      <div style="font-weight:600;font-size:14px">Lisa Ahmed</div>
-      <div style="font-size:12px;color:var(--muted-fg)">Wellness Coach</div>
-      <div style="font-size:11px;color:var(--muted-fg);margin-top:2px">Wellness</div>
-      <div style="font-size:11px;color:var(--muted-fg);margin-top:8px">Active bookings: 2</div>
-    </div>
-  </div>
-</div>
-
-<!-- ============ CUSTOMERS ============ -->
-<div id="page-customers" class="page">
-  <div class="page-header">
-    <div class="page-header-row"><h1>Customers <span style="font-size:14px;font-weight:400;color:var(--muted-fg)">(892 total)</span></h1><button class="btn btn-primary"><i data-lucide="plus" style="width:14px;height:14px"></i> Add Customer</button></div>
-  </div>
-  <div class="input-row">
-    <input type="text" class="input" placeholder="Search customers..." style="width:280px">
-    <select><option>All Tags</option><option>VIP</option><option>Regular</option><option>New</option></select>
-  </div>
-  <div class="card" style="padding:0">
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Total Visits</th><th>Total Spent</th><th>Last Visit</th><th>Tags</th></tr></thead>
-        <tbody>
-          <tr><td>Olivia Thompson</td><td>olivia.t@gmail.com</td><td>07712 345678</td><td>24</td><td>£2,160</td><td>25 Mar 2026</td><td><span class="badge badge-primary">VIP</span></td></tr>
-          <tr><td>James Whitfield</td><td>j.whitfield@outlook.com</td><td>07891 234567</td><td>18</td><td>£1,710</td><td>25 Mar 2026</td><td><span class="badge badge-primary">VIP</span></td></tr>
-          <tr><td>Sophie Reynolds</td><td>sophie.r@hotmail.co.uk</td><td>07654 321098</td><td>12</td><td>£900</td><td>25 Mar 2026</td><td><span class="badge badge-success">Regular</span></td></tr>
-          <tr><td>Daniel Cooper</td><td>dan.cooper@btinternet.com</td><td>07432 109876</td><td>1</td><td>£120</td><td>25 Mar 2026</td><td><span class="badge badge-warning">New</span></td></tr>
-          <tr><td>Emily Saunders</td><td>em.saunders@gmail.com</td><td>07765 432109</td><td>8</td><td>£560</td><td>25 Mar 2026</td><td><span class="badge badge-success">Regular</span></td></tr>
-          <tr><td>Marcus Brown</td><td>m.brown@yahoo.co.uk</td><td>07823 456789</td><td>31</td><td>£2,945</td><td>23 Mar 2026</td><td><span class="badge badge-primary">VIP</span></td></tr>
-          <tr><td>Hannah Mitchell</td><td>hannah.m@icloud.com</td><td>07912 345678</td><td>6</td><td>£510</td><td>22 Mar 2026</td><td><span class="badge badge-success">Regular</span></td></tr>
-          <tr><td>Raj Gupta</td><td>raj.gupta@gmail.com</td><td>07534 678901</td><td>2</td><td>£190</td><td>20 Mar 2026</td><td><span class="badge badge-warning">New</span></td></tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-</div>
-
-<!-- ============ FORMS ============ -->
-<div id="page-forms" class="page">
-  <div class="page-header">
-    <div class="page-header-row"><h1>Forms</h1><button class="btn btn-primary"><i data-lucide="plus" style="width:14px;height:14px"></i> Create Form</button></div>
-  </div>
-  <div class="grid-2">
-    <div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:12px">
-        <div style="font-weight:600;font-size:15px">New Patient Intake</div>
-        <span class="badge badge-success">Active</span>
-      </div>
-      <div style="font-size:13px;color:var(--muted-fg);margin-bottom:8px">Collects patient details, medical history, and consent</div>
-      <div style="display:flex;gap:16px;font-size:12px;color:var(--muted-fg)">
-        <span>12 fields</span><span>234 submissions</span><span>Modified 3d ago</span>
-      </div>
-    </div>
-    <div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:12px">
-        <div style="font-weight:600;font-size:15px">Post-Treatment Feedback</div>
-        <span class="badge badge-success">Active</span>
-      </div>
-      <div style="font-size:13px;color:var(--muted-fg);margin-bottom:8px">Gathers feedback after each appointment</div>
-      <div style="display:flex;gap:16px;font-size:12px;color:var(--muted-fg)">
-        <span>8 fields</span><span>567 submissions</span><span>Modified 1w ago</span>
-      </div>
-    </div>
-    <div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:12px">
-        <div style="font-weight:600;font-size:15px">Medical History Update</div>
-        <span class="badge badge-success">Active</span>
-      </div>
-      <div style="font-size:13px;color:var(--muted-fg);margin-bottom:8px">Annual update for existing patients' medical records</div>
-      <div style="display:flex;gap:16px;font-size:12px;color:var(--muted-fg)">
-        <span>15 fields</span><span>128 submissions</span><span>Modified 2w ago</span>
-      </div>
-    </div>
-    <div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:12px">
-        <div style="font-weight:600;font-size:15px">Consultation Request</div>
-        <span class="badge badge-muted">Draft</span>
-      </div>
-      <div style="font-size:13px;color:var(--muted-fg);margin-bottom:8px">Online form for prospective patients to request a consultation</div>
-      <div style="display:flex;gap:16px;font-size:12px;color:var(--muted-fg)">
-        <span>6 fields</span><span>89 submissions</span><span>Modified 5d ago</span>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ============ REVIEWS ============ -->
-<div id="page-reviews" class="page">
-  <div class="page-header">
-    <div class="page-header-row">
-      <h1>Reviews <span class="badge badge-success" style="font-size:13px;margin-left:8px;vertical-align:middle"><span class="stars" style="margin-right:4px"><span class="star">★</span><span class="star">★</span><span class="star">★</span><span class="star">★</span><span class="star">★</span></span> 4.8</span></h1>
-    </div>
-  </div>
-  <div class="kpi-grid" style="margin-bottom:24px">
-    <div class="kpi-card"><div class="kpi-label">Total Reviews</div><div class="kpi-value">567</div></div>
-    <div class="kpi-card"><div class="kpi-label">Average Rating</div><div class="kpi-value">4.8</div></div>
-    <div class="kpi-card"><div class="kpi-label">Positive (4-5★)</div><div class="kpi-value">92%</div></div>
-    <div class="kpi-card"><div class="kpi-label">Pending Approval</div><div class="kpi-value">23</div></div>
-  </div>
-  <div style="display:flex;flex-direction:column;gap:12px">
-    <div class="card" style="display:flex;align-items:start;gap:16px">
-      <div class="avatar" style="width:40px;height:40px;font-size:13px;flex-shrink:0;background:hsl(340 65% 50%)">HM</div>
-      <div style="flex:1">
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <div><span style="font-weight:600">Hannah Mitchell</span> <span class="stars" style="margin-left:8px"><span class="star">★</span><span class="star">★</span><span class="star">★</span><span class="star">★</span><span class="star">★</span></span></div>
-          <span class="badge badge-success">Published</span>
-        </div>
-        <div style="font-size:13px;margin-top:4px">"Absolutely wonderful experience. Sarah was incredibly thorough and professional. My back feels so much better after just one session."</div>
-        <div style="font-size:11px;color:var(--muted-fg);margin-top:6px">22 Mar 2026</div>
-      </div>
-    </div>
-    <div class="card" style="display:flex;align-items:start;gap:16px">
-      <div class="avatar" style="width:40px;height:40px;font-size:13px;flex-shrink:0;background:hsl(200 65% 50%)">MB</div>
-      <div style="flex:1">
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <div><span style="font-weight:600">Marcus Brown</span> <span class="stars" style="margin-left:8px"><span class="star">★</span><span class="star">★</span><span class="star">★</span><span class="star">★</span><span class="star">★</span></span></div>
-          <span class="badge badge-success">Published</span>
-        </div>
-        <div style="font-size:13px;margin-top:4px">"Best physiotherapy clinic in the area. James really knows his stuff — highly recommend to anyone dealing with sports injuries."</div>
-        <div style="font-size:11px;color:var(--muted-fg);margin-top:6px">21 Mar 2026</div>
-      </div>
-    </div>
-    <div class="card" style="display:flex;align-items:start;gap:16px">
-      <div class="avatar" style="width:40px;height:40px;font-size:13px;flex-shrink:0;background:hsl(160 65% 40%)">CW</div>
-      <div style="flex:1">
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <div><span style="font-weight:600">Charlotte West</span> <span class="stars" style="margin-left:8px"><span class="star">★</span><span class="star">★</span><span class="star">★</span><span class="star">★</span><span class="star empty">★</span></span></div>
-          <span class="badge badge-success">Published</span>
-        </div>
-        <div style="font-size:13px;margin-top:4px">"Great facial treatment. Priya was lovely and my skin felt amazing afterwards. A bit pricey but definitely worth it."</div>
-        <div style="font-size:11px;color:var(--muted-fg);margin-top:6px">20 Mar 2026</div>
-      </div>
-    </div>
-    <div class="card" style="display:flex;align-items:start;gap:16px">
-      <div class="avatar" style="width:40px;height:40px;font-size:13px;flex-shrink:0;background:hsl(30 65% 50%)">AC</div>
-      <div style="flex:1">
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <div><span style="font-weight:600">Aiden Clarke</span> <span class="stars" style="margin-left:8px"><span class="star">★</span><span class="star">★</span><span class="star">★</span><span class="star">★</span><span class="star">★</span></span></div>
-          <span class="badge badge-success">Published</span>
-        </div>
-        <div style="font-size:13px;margin-top:4px">"James sorted my back pain in just two sessions. Can't believe I put up with it for so long. Life changing!"</div>
-        <div style="font-size:11px;color:var(--muted-fg);margin-top:6px">19 Mar 2026</div>
-      </div>
-    </div>
-    <div class="card" style="display:flex;align-items:start;gap:16px">
-      <div class="avatar" style="width:40px;height:40px;font-size:13px;flex-shrink:0;background:hsl(280 55% 50%)">NB</div>
-      <div style="flex:1">
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <div><span style="font-weight:600">Nadia Begum</span> <span class="stars" style="margin-left:8px"><span class="star">★</span><span class="star">★</span><span class="star">★</span><span class="star">★</span><span class="star">★</span></span></div>
-          <span class="badge badge-warning">Pending</span>
-        </div>
-        <div style="font-size:13px;margin-top:4px">"Emma's aromatherapy massage was exactly what I needed. Such a calming atmosphere. Will definitely be coming back."</div>
-        <div style="font-size:11px;color:var(--muted-fg);margin-top:6px">18 Mar 2026</div>
-      </div>
-    </div>
-    <div class="card" style="display:flex;align-items:start;gap:16px">
-      <div class="avatar" style="width:40px;height:40px;font-size:13px;flex-shrink:0;background:hsl(10 65% 50%)">RG</div>
-      <div style="flex:1">
-        <div style="display:flex;justify-content:space-between;align-items:center">
-          <div><span style="font-weight:600">Raj Gupta</span> <span class="stars" style="margin-left:8px"><span class="star">★</span><span class="star">★</span><span class="star">★</span><span class="star">★</span><span class="star empty">★</span></span></div>
-          <span class="badge badge-warning">Pending</span>
-        </div>
-        <div style="font-size:13px;margin-top:4px">"Good consultation with Dr. Chen. Very thorough assessment. Only downside was the wait time — 15 minutes late starting."</div>
-        <div style="font-size:11px;color:var(--muted-fg);margin-top:6px">17 Mar 2026</div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ============ OUTREACH ============ -->
-<div id="page-outreach" class="page">
-  <div class="page-header">
-    <div class="page-header-row"><h1>Outreach</h1><button class="btn btn-primary"><i data-lucide="plus" style="width:14px;height:14px"></i> New Sequence</button></div>
-  </div>
-  <div class="kpi-grid" style="grid-template-columns:repeat(4,1fr)">
-    <div class="kpi-card"><div class="kpi-label">Active Contacts</div><div class="kpi-value">234</div></div>
-    <div class="kpi-card"><div class="kpi-label">Replied</div><div class="kpi-value">28 <span style="font-size:14px;color:var(--muted-fg)">12.0%</span></div></div>
-    <div class="kpi-card"><div class="kpi-label">Converted</div><div class="kpi-value">6 <span style="font-size:14px;color:var(--muted-fg)">2.6%</span></div></div>
-    <div class="kpi-card"><div class="kpi-label">Bounced</div><div class="kpi-value">12</div></div>
-  </div>
-  <div class="tabs">
-    <div class="tab active">Due Today (15)</div>
-    <div class="tab">Replies (4)</div>
-    <div class="tab">Sequences (6)</div>
-    <div class="tab">Analytics</div>
-  </div>
-  <div style="display:flex;flex-direction:column;gap:8px">
-    <div class="card" style="padding:12px 16px;display:flex;align-items:center;gap:12px">
-      <div style="flex:1"><span style="font-weight:600;font-size:13px">Glow Aesthetics Ltd</span><br><span style="font-size:12px;color:var(--muted-fg)">Sarah Matthews — Director</span></div>
-      <span class="badge badge-primary" style="font-size:10px">Corporate Wellness</span>
-      <span style="font-size:12px;color:var(--muted-fg)">Step 2/5</span>
-      <i data-lucide="mail" style="width:14px;height:14px;color:var(--muted-fg)"></i>
-      <span style="font-size:12px;color:var(--muted-fg)">9:00 AM</span>
-    </div>
-    <div class="card" style="padding:12px 16px;display:flex;align-items:center;gap:12px">
-      <div style="flex:1"><span style="font-weight:600;font-size:13px">FitLife Gym Oxford</span><br><span style="font-size:12px;color:var(--muted-fg)">Mark Johnson — Owner</span></div>
-      <span class="badge badge-success" style="font-size:10px">Partnership</span>
-      <span style="font-size:12px;color:var(--muted-fg)">Step 3/4</span>
-      <i data-lucide="linkedin" style="width:14px;height:14px;color:var(--muted-fg)"></i>
-      <span style="font-size:12px;color:var(--muted-fg)">10:30 AM</span>
-    </div>
-    <div class="card" style="padding:12px 16px;display:flex;align-items:center;gap:12px">
-      <div style="flex:1"><span style="font-weight:600;font-size:13px">Thames Valley HR Solutions</span><br><span style="font-size:12px;color:var(--muted-fg)">Claire Bennett — Managing Partner</span></div>
-      <span class="badge badge-primary" style="font-size:10px">Corporate Wellness</span>
-      <span style="font-size:12px;color:var(--muted-fg)">Step 1/5</span>
-      <i data-lucide="mail" style="width:14px;height:14px;color:var(--muted-fg)"></i>
-      <span style="font-size:12px;color:var(--muted-fg)">11:00 AM</span>
-    </div>
-    <div class="card" style="padding:12px 16px;display:flex;align-items:center;gap:12px">
-      <div style="flex:1"><span style="font-weight:600;font-size:13px">Radley College</span><br><span style="font-size:12px;color:var(--muted-fg)">David Thornton — Head of Sport</span></div>
-      <span class="badge badge-warning" style="font-size:10px">Education</span>
-      <span style="font-size:12px;color:var(--muted-fg)">Step 4/5</span>
-      <i data-lucide="phone" style="width:14px;height:14px;color:var(--muted-fg)"></i>
-      <span style="font-size:12px;color:var(--destructive);font-weight:600">Overdue</span>
-    </div>
-    <div class="card" style="padding:12px 16px;display:flex;align-items:center;gap:12px">
-      <div style="flex:1"><span style="font-weight:600;font-size:13px">Henley Rowing Club</span><br><span style="font-size:12px;color:var(--muted-fg)">Laura Peters — Club Manager</span></div>
-      <span class="badge badge-success" style="font-size:10px">Partnership</span>
-      <span style="font-size:12px;color:var(--muted-fg)">Step 2/4</span>
-      <i data-lucide="mail" style="width:14px;height:14px;color:var(--muted-fg)"></i>
-      <span style="font-size:12px;color:var(--muted-fg)">1:00 PM</span>
-    </div>
-    <div class="card" style="padding:12px 16px;display:flex;align-items:center;gap:12px">
-      <div style="flex:1"><span style="font-weight:600;font-size:13px">Blenheim Spa Hotel</span><br><span style="font-size:12px;color:var(--muted-fg)">Jessica Ward — Spa Director</span></div>
-      <span class="badge badge-primary" style="font-size:10px">Corporate Wellness</span>
-      <span style="font-size:12px;color:var(--muted-fg)">Step 1/5</span>
-      <i data-lucide="mail" style="width:14px;height:14px;color:var(--muted-fg)"></i>
-      <span style="font-size:12px;color:var(--muted-fg)">2:00 PM</span>
-    </div>
-    <div class="card" style="padding:12px 16px;display:flex;align-items:center;gap:12px">
-      <div style="flex:1"><span style="font-weight:600;font-size:13px">Oxford United FC</span><br><span style="font-size:12px;color:var(--muted-fg)">Steve Williams — Head Physio</span></div>
-      <span class="badge badge-success" style="font-size:10px">Partnership</span>
-      <span style="font-size:12px;color:var(--muted-fg)">Step 3/4</span>
-      <i data-lucide="linkedin" style="width:14px;height:14px;color:var(--muted-fg)"></i>
-      <span style="font-size:12px;color:var(--muted-fg)">3:30 PM</span>
-    </div>
-    <div class="card" style="padding:12px 16px;display:flex;align-items:center;gap:12px">
-      <div style="flex:1"><span style="font-weight:600;font-size:13px">Cotswold Care Home Group</span><br><span style="font-size:12px;color:var(--muted-fg)">Angela Price — Operations Director</span></div>
-      <span class="badge badge-warning" style="font-size:10px">Healthcare</span>
-      <span style="font-size:12px;color:var(--muted-fg)">Step 2/5</span>
-      <i data-lucide="mail" style="width:14px;height:14px;color:var(--muted-fg)"></i>
-      <span style="font-size:12px;color:var(--destructive);font-weight:600">Overdue</span>
-    </div>
-  </div>
-</div>
-
-<!-- ============ PAYMENTS ============ -->
-<div id="page-payments" class="page">
-  <div class="page-header"><h1>Payments</h1></div>
-  <div class="kpi-grid">
-    <div class="kpi-card"><div class="kpi-label">Revenue This Month</div><div class="kpi-value">£12,480</div></div>
-    <div class="kpi-card"><div class="kpi-label">Outstanding</div><div class="kpi-value">£3,240</div></div>
-    <div class="kpi-card"><div class="kpi-label">Overdue</div><div class="kpi-value" style="color:var(--destructive)">£890</div></div>
-    <div class="kpi-card"><div class="kpi-label">Avg Transaction</div><div class="kpi-value">£67</div></div>
-  </div>
-  <div class="card" style="padding:0">
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>Invoice #</th><th>Customer</th><th>Service</th><th>Amount</th><th>Date</th><th>Status</th><th>Method</th></tr></thead>
-        <tbody>
-          <tr><td>INV-1247</td><td>Olivia Thompson</td><td>Deep Tissue Massage</td><td>£85</td><td>25 Mar 2026</td><td><span class="badge badge-success">Paid</span></td><td>Card</td></tr>
-          <tr><td>INV-1246</td><td>James Whitfield</td><td>Sports Physiotherapy</td><td>£95</td><td>25 Mar 2026</td><td><span class="badge badge-success">Paid</span></td><td>Card</td></tr>
-          <tr><td>INV-1245</td><td>Sophie Reynolds</td><td>Hydrating Facial</td><td>£75</td><td>25 Mar 2026</td><td><span class="badge badge-warning">Pending</span></td><td>—</td></tr>
-          <tr><td>INV-1244</td><td>Marcus Brown</td><td>Sports Physiotherapy</td><td>£95</td><td>23 Mar 2026</td><td><span class="badge badge-success">Paid</span></td><td>BACS</td></tr>
-          <tr><td>INV-1243</td><td>Emily Saunders</td><td>Aromatherapy Massage</td><td>£70</td><td>22 Mar 2026</td><td><span class="badge badge-danger">Overdue</span></td><td>—</td></tr>
-          <tr><td>INV-1242</td><td>Hannah Mitchell</td><td>Swedish Massage</td><td>£65</td><td>21 Mar 2026</td><td><span class="badge badge-success">Paid</span></td><td>Cash</td></tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-</div>
-
-<!-- ============ PIPELINE ============ -->
-<div id="page-pipeline" class="page">
-  <div class="page-header">
-    <div class="page-header-row"><h1>Sales Pipeline</h1><button class="btn btn-primary"><i data-lucide="plus" style="width:14px;height:14px"></i> Add to Pipeline</button></div>
-  </div>
-  <div class="grid-5" style="margin-bottom:20px">
-    <div class="kpi-card"><div class="kpi-label">Total Value</div><div class="kpi-value" style="font-size:22px">£127,500</div></div>
-    <div class="kpi-card"><div class="kpi-label">Active Deals</div><div class="kpi-value" style="font-size:22px">18</div></div>
-    <div class="kpi-card"><div class="kpi-label">Win Rate</div><div class="kpi-value" style="font-size:22px">64%</div></div>
-    <div class="kpi-card"><div class="kpi-label">Avg Deal Size</div><div class="kpi-value" style="font-size:22px">£7,083</div></div>
-    <div class="kpi-card"><div class="kpi-label">Avg Velocity</div><div class="kpi-value" style="font-size:22px">18d</div></div>
-  </div>
-  <div style="display:flex;gap:8px;margin-bottom:16px">
-    <div class="btn-group">
-      <button class="btn btn-sm active">Board</button>
-      <button class="btn btn-sm">List</button>
-      <button class="btn btn-sm">Forecast</button>
-    </div>
-  </div>
-  <div class="kanban">
-    <div class="kanban-col">
-      <div class="kanban-col-header" style="border-bottom-color:var(--primary)">
-        <div><span style="font-weight:600;font-size:13px">New Lead</span> <span class="badge badge-muted" style="margin-left:4px">5</span></div>
-        <span style="font-size:12px;color:var(--muted-fg)">£18,500</span>
-      </div>
-      <div class="kanban-card"><div style="font-weight:600;font-size:13px">FitLife Gym Oxford</div><div style="font-size:12px;color:var(--muted-fg)">mark@fitlifegym.co.uk</div><div style="font-size:14px;font-weight:600;color:var(--success);margin-top:6px">£4,500</div><div style="font-size:11px;color:var(--muted-fg);margin-top:4px">Added 2d ago</div></div>
-      <div class="kanban-card"><div style="font-weight:600;font-size:13px">Cotswold Care Homes</div><div style="font-size:12px;color:var(--muted-fg)">angela@cotswoldcare.co.uk</div><div style="font-size:14px;font-weight:600;color:var(--success);margin-top:6px">£8,000</div><div style="font-size:11px;color:var(--muted-fg);margin-top:4px">Added 5d ago</div></div>
-      <div class="kanban-card"><div style="font-weight:600;font-size:13px">Thame Tennis Club</div><div style="font-size:12px;color:var(--muted-fg)">info@thametennis.org.uk</div><div style="font-size:14px;font-weight:600;color:var(--success);margin-top:6px">£6,000</div><div style="font-size:11px;color:var(--muted-fg);margin-top:4px">Added 1w ago</div></div>
-    </div>
-    <div class="kanban-col">
-      <div class="kanban-col-header" style="border-bottom-color:hsl(200 80% 55%)">
-        <div><span style="font-weight:600;font-size:13px">Contacted</span> <span class="badge badge-muted" style="margin-left:4px">4</span></div>
-        <span style="font-size:12px;color:var(--muted-fg)">£24,000</span>
-      </div>
-      <div class="kanban-card"><div style="font-weight:600;font-size:13px">Radley College</div><div style="font-size:12px;color:var(--muted-fg)">d.thornton@radley.org.uk</div><div style="font-size:14px;font-weight:600;color:var(--success);margin-top:6px">£12,000</div><div style="font-size:11px;color:var(--muted-fg);margin-top:4px">Contacted 3d ago</div></div>
-      <div class="kanban-card"><div style="font-weight:600;font-size:13px">Henley Rowing Club</div><div style="font-size:12px;color:var(--muted-fg)">laura@henleyrc.co.uk</div><div style="font-size:14px;font-weight:600;color:var(--success);margin-top:6px">£6,000</div><div style="font-size:11px;color:var(--muted-fg);margin-top:4px">Contacted 5d ago</div></div>
-    </div>
-    <div class="kanban-col">
-      <div class="kanban-col-header" style="border-bottom-color:var(--warning)">
-        <div><span style="font-weight:600;font-size:13px">Qualified</span> <span class="badge badge-muted" style="margin-left:4px">4</span></div>
-        <span style="font-size:12px;color:var(--muted-fg)">£32,000</span>
-      </div>
-      <div class="kanban-card"><div style="font-weight:600;font-size:13px">Thames Valley HR</div><div style="font-size:12px;color:var(--muted-fg)">claire@tvhr.co.uk</div><div style="font-size:14px;font-weight:600;color:var(--success);margin-top:6px">£15,000</div><div style="font-size:11px;color:var(--muted-fg);margin-top:4px">Qualified 1d ago</div></div>
-      <div class="kanban-card"><div style="font-weight:600;font-size:13px">Oxford United FC</div><div style="font-size:12px;color:var(--muted-fg)">s.williams@oufc.co.uk</div><div style="font-size:14px;font-weight:600;color:var(--success);margin-top:6px">£9,000</div><div style="font-size:11px;color:var(--muted-fg);margin-top:4px">Qualified 4d ago</div></div>
-    </div>
-    <div class="kanban-col">
-      <div class="kanban-col-header" style="border-bottom-color:hsl(270 60% 55%)">
-        <div><span style="font-weight:600;font-size:13px">Proposal</span> <span class="badge badge-muted" style="margin-left:4px">3</span></div>
-        <span style="font-size:12px;color:var(--muted-fg)">£28,000</span>
-      </div>
-      <div class="kanban-card"><div style="font-weight:600;font-size:13px">Glow Aesthetics Ltd</div><div style="font-size:12px;color:var(--muted-fg)">sarah@glowaesthetics.co.uk</div><div style="font-size:14px;font-weight:600;color:var(--success);margin-top:6px">£10,000</div><div style="font-size:11px;color:var(--muted-fg);margin-top:4px">Sent 2d ago</div></div>
-      <div class="kanban-card"><div style="font-weight:600;font-size:13px">Blenheim Spa Hotel</div><div style="font-size:12px;color:var(--muted-fg)">jessica@blenheim.co.uk</div><div style="font-size:14px;font-weight:600;color:var(--success);margin-top:6px">£18,000</div><div style="font-size:11px;color:var(--muted-fg);margin-top:4px">Sent 6d ago</div></div>
-    </div>
-    <div class="kanban-col">
-      <div class="kanban-col-header" style="border-bottom-color:var(--success)">
-        <div><span style="font-weight:600;font-size:13px">Negotiation</span> <span class="badge badge-muted" style="margin-left:4px">2</span></div>
-        <span style="font-size:12px;color:var(--muted-fg)">£25,000</span>
-      </div>
-      <div class="kanban-card"><div style="font-weight:600;font-size:13px">Harwell Science Park</div><div style="font-size:12px;color:var(--muted-fg)">wellness@harwell.ac.uk</div><div style="font-size:14px;font-weight:600;color:var(--success);margin-top:6px">£15,000</div><div style="font-size:11px;color:var(--muted-fg);margin-top:4px">In negotiation 3d</div></div>
-      <div class="kanban-card"><div style="font-weight:600;font-size:13px">BMW Mini Oxford</div><div style="font-size:12px;color:var(--muted-fg)">hr@mini-oxford.co.uk</div><div style="font-size:14px;font-weight:600;color:var(--success);margin-top:6px">£10,000</div><div style="font-size:11px;color:var(--muted-fg);margin-top:4px">In negotiation 1w</div></div>
-    </div>
-  </div>
-</div>
-
-<!-- ============ WORKFLOWS ============ -->
-<div id="page-workflows" class="page">
-  <div class="page-header">
-    <div class="page-header-row"><h1>Workflows</h1><button class="btn btn-primary"><i data-lucide="plus" style="width:14px;height:14px"></i> Create Workflow</button></div>
-  </div>
-  <div class="grid-2" style="margin-bottom:32px">
-    <div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:8px">
-        <div style="font-weight:600;font-size:15px">New Booking Confirmation</div>
-        <span class="badge badge-success">Active</span>
-      </div>
-      <div style="font-size:12px;color:var(--muted-fg);margin-bottom:8px">Trigger: Booking Created</div>
-      <div style="display:flex;gap:16px;font-size:12px;color:var(--muted-fg)">
-        <span>1,247 runs</span><span>Last run 2m ago</span>
-      </div>
-    </div>
-    <div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:8px">
-        <div style="font-weight:600;font-size:15px">Review Request After Visit</div>
-        <span class="badge badge-success">Active</span>
-      </div>
-      <div style="font-size:12px;color:var(--muted-fg);margin-bottom:8px">Trigger: Booking Completed</div>
-      <div style="display:flex;gap:16px;font-size:12px;color:var(--muted-fg)">
-        <span>567 runs</span><span>Last run 1h ago</span>
-      </div>
-    </div>
-    <div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:8px">
-        <div style="font-weight:600;font-size:15px">Payment Reminder</div>
-        <span class="badge badge-success">Active</span>
-      </div>
-      <div style="font-size:12px;color:var(--muted-fg);margin-bottom:8px">Trigger: Invoice Overdue</div>
-      <div style="display:flex;gap:16px;font-size:12px;color:var(--muted-fg)">
-        <span>89 runs</span><span>Last run 4h ago</span>
-      </div>
-    </div>
-    <div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:8px">
-        <div style="font-weight:600;font-size:15px">Birthday Discount</div>
-        <span class="badge badge-warning">Paused</span>
-      </div>
-      <div style="font-size:12px;color:var(--muted-fg);margin-bottom:8px">Trigger: Customer Birthday</div>
-      <div style="display:flex;gap:16px;font-size:12px;color:var(--muted-fg)">
-        <span>234 runs</span><span>Last run 2d ago</span>
-      </div>
-    </div>
-  </div>
-  <div class="card">
-    <div class="card-header"><span class="card-title">Workflow Preview — New Booking Confirmation</span></div>
-    <div class="wf-diagram">
-      <div class="wf-node" style="border-color:var(--primary);border-width:2px">
-        <div class="wf-node-type" style="color:var(--primary)">Trigger</div>
-        <div class="wf-node-label">Booking Created</div>
-      </div>
-      <div class="wf-arrow"></div>
-      <div class="wf-node">
-        <div class="wf-node-type" style="color:var(--success)">Send Email</div>
-        <div class="wf-node-label">Confirmation</div>
-      </div>
-      <div class="wf-arrow"></div>
-      <div class="wf-node">
-        <div class="wf-node-type" style="color:var(--warning)">Wait</div>
-        <div class="wf-node-label">24 hours</div>
-      </div>
-      <div class="wf-arrow"></div>
-      <div class="wf-node" style="border-color:hsl(270 60% 55%);border-width:2px">
-        <div class="wf-node-type" style="color:hsl(270 60% 55%)">Condition</div>
-        <div class="wf-node-label">Has Feedback Form?</div>
-      </div>
-      <div class="wf-arrow"></div>
-      <div class="wf-node">
-        <div class="wf-node-type" style="color:var(--success)">Send Email</div>
-        <div class="wf-node-label">Feedback Request</div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ============ ANALYTICS ============ -->
-<div id="page-analytics" class="page">
-  <div class="page-header">
-    <div class="page-header-row">
-      <h1>Analytics</h1>
-      <div style="display:flex;gap:8px;align-items:center">
-        <input type="date" class="input" value="2026-01-01" style="font-size:12px;padding:5px 10px">
-        <span style="color:var(--muted-fg)">to</span>
-        <input type="date" class="input" value="2026-03-25" style="font-size:12px;padding:5px 10px">
-      </div>
-    </div>
-  </div>
-  <div class="kpi-grid">
-    <div class="kpi-card"><div class="kpi-label">Bookings</div><div class="kpi-value">1,247</div></div>
-    <div class="kpi-card"><div class="kpi-label">Revenue</div><div class="kpi-value">£84,320</div></div>
-    <div class="kpi-card"><div class="kpi-label">New Customers</div><div class="kpi-value">156</div></div>
-    <div class="kpi-card"><div class="kpi-label">Retention Rate</div><div class="kpi-value">78%</div></div>
-  </div>
-  <div class="grid-2" style="margin-bottom:24px">
-    <div class="card">
-      <div class="card-header"><span class="card-title">Revenue Trend</span></div>
-      <div class="bar-chart">
-        <div class="bar-col"><div class="bar-val">£11.2k</div><div class="bar" style="height:56%"></div><div class="bar-label">Jan</div></div>
-        <div class="bar-col"><div class="bar-val">£12.8k</div><div class="bar" style="height:64%"></div><div class="bar-label">Feb</div></div>
-        <div class="bar-col"><div class="bar-val">£13.5k</div><div class="bar" style="height:68%"></div><div class="bar-label">Mar</div></div>
-        <div class="bar-col"><div class="bar-val">£15.1k</div><div class="bar" style="height:76%"></div><div class="bar-label">Apr</div></div>
-        <div class="bar-col"><div class="bar-val">£16.4k</div><div class="bar" style="height:82%"></div><div class="bar-label">May</div></div>
-        <div class="bar-col"><div class="bar-val">£15.3k</div><div class="bar" style="height:77%"></div><div class="bar-label">Jun</div></div>
-      </div>
-    </div>
-    <div class="card">
-      <div class="card-header"><span class="card-title">Bookings by Service</span></div>
-      <div class="hbar-chart">
-        <div class="hbar-row"><div class="hbar-label">Massage</div><div class="hbar-track"><div class="hbar-fill" style="width:35%">35%</div></div></div>
-        <div class="hbar-row"><div class="hbar-label">Facial</div><div class="hbar-track"><div class="hbar-fill" style="width:25%;background:hsl(270 60% 55%)">25%</div></div></div>
-        <div class="hbar-row"><div class="hbar-label">Physio</div><div class="hbar-track"><div class="hbar-fill" style="width:20%;background:var(--success)">20%</div></div></div>
-        <div class="hbar-row"><div class="hbar-label">Consultation</div><div class="hbar-track"><div class="hbar-fill" style="width:12%;background:var(--warning)">12%</div></div></div>
-        <div class="hbar-row"><div class="hbar-label">Other</div><div class="hbar-track"><div class="hbar-fill" style="width:8%;background:var(--muted-fg)">8%</div></div></div>
-      </div>
-    </div>
-  </div>
-  <div class="card">
-    <div class="card-header"><span class="card-title">Top Performing Staff</span></div>
-    <table>
-      <thead><tr><th>Name</th><th>Bookings</th><th>Revenue</th><th>Avg Rating</th></tr></thead>
-      <tbody>
-        <tr><td>Emma Wilson</td><td>312</td><td>£23,400</td><td><span class="stars"><span class="star">★</span><span class="star">★</span><span class="star">★</span><span class="star">★</span><span class="star">★</span></span> 4.9</td></tr>
-        <tr><td>James Taylor</td><td>287</td><td>£27,265</td><td><span class="stars"><span class="star">★</span><span class="star">★</span><span class="star">★</span><span class="star">★</span><span class="star">★</span></span> 4.9</td></tr>
-        <tr><td>Dr. Sarah Chen</td><td>245</td><td>£29,400</td><td><span class="stars"><span class="star">★</span><span class="star">★</span><span class="star">★</span><span class="star">★</span><span class="star">★</span></span> 4.8</td></tr>
-        <tr><td>Priya Patel</td><td>198</td><td>£16,830</td><td><span class="stars"><span class="star">★</span><span class="star">★</span><span class="star">★</span><span class="star">★</span><span class="star empty">★</span></span> 4.7</td></tr>
-      </tbody>
-    </table>
-  </div>
-</div>
-
-<!-- ============ AI CHAT ============ -->
-<div id="page-ai-chat" class="page" style="display:none;padding-bottom:0">
-  <div class="page-header"><h1>AI Assistant</h1></div>
-  <div class="chat-container">
-    <div class="chat-messages">
-      <div class="chat-msg from-user">
-        <div class="chat-msg-avatar user">LH</div>
-        <div class="chat-msg-content">Show me today's bookings summary</div>
-      </div>
-      <div class="chat-msg">
-        <div class="chat-msg-avatar ai">IH</div>
-        <div class="chat-msg-content">You have <strong>12 bookings</strong> today. 8 confirmed, 3 pending confirmation, and 1 cancelled.<br><br>Total expected revenue: <strong>£840</strong>.<br><br>Dr. Sarah Chen has the most bookings (4) and there's a gap at 2pm–3pm that could be filled.</div>
-      </div>
-      <div class="chat-msg from-user">
-        <div class="chat-msg-avatar user">LH</div>
-        <div class="chat-msg-content">Send a reminder to the 3 pending customers</div>
-      </div>
-      <div class="chat-msg">
-        <div class="chat-msg-avatar ai">IH</div>
-        <div class="chat-msg-content">I've queued reminder notifications for the 3 pending bookings:<br><br>
-          <strong>1.</strong> Sophie Reynolds — Hydrating Facial at 1:00 PM<br>
-          <strong>2.</strong> Emily Saunders — Aromatherapy Massage at 4:00 PM<br>
-          <strong>3.</strong> Daniel Cooper — Initial Consultation at 2:30 PM<br><br>
-          Each will receive an email and SMS. Would you also like me to set up auto-reminders for all future pending bookings 24h before their slot?</div>
-      </div>
-    </div>
-    <div class="chat-input-bar">
-      <input type="text" placeholder="Ask Ironheart AI...">
-      <button class="btn btn-primary btn-sm"><i data-lucide="send" style="width:14px;height:14px"></i></button>
-    </div>
-  </div>
-</div>
-
-<!-- ============ DEVELOPER ============ -->
-<div id="page-developer" class="page">
-  <div class="page-header"><h1>Developer</h1></div>
-  <div class="card" style="margin-bottom:16px">
-    <div class="card-header"><span class="card-title">API Keys</span></div>
-    <div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--muted);border-radius:var(--radius);font-family:monospace;font-size:13px">
-      <span style="flex:1">sk-live-************************************a3f2</span>
-      <span style="font-size:11px;color:var(--muted-fg);font-family:Inter,sans-serif">Created 14 Jan 2026</span>
-      <button class="btn btn-sm" style="font-family:Inter,sans-serif">Regenerate</button>
-    </div>
-  </div>
-  <div class="card" style="margin-bottom:16px">
-    <div class="card-header"><span class="card-title">Webhooks</span></div>
-    <table>
-      <thead><tr><th>URL</th><th>Events</th><th>Status</th></tr></thead>
-      <tbody>
-        <tr><td style="font-family:monospace;font-size:12px">https://hooks.riverside-wellness.co.uk/bookings</td><td>booking.created, booking.updated, booking.cancelled</td><td><span class="badge badge-success">Active</span></td></tr>
-        <tr><td style="font-family:monospace;font-size:12px">https://hooks.riverside-wellness.co.uk/payments</td><td>payment.completed, invoice.overdue</td><td><span class="badge badge-muted">Inactive</span></td></tr>
-      </tbody>
-    </table>
-  </div>
-  <div class="card">
-    <div class="card-header"><span class="card-title">API Usage</span></div>
-    <div style="font-size:14px;font-weight:600;margin-bottom:8px">1,247 requests this month</div>
-    <div style="background:var(--muted);border-radius:4px;height:12px;overflow:hidden">
-      <div style="background:var(--primary);height:100%;width:12.47%;border-radius:4px"></div>
-    </div>
-    <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted-fg);margin-top:4px">
-      <span>1,247 used</span><span>10,000 limit</span>
-    </div>
-  </div>
-</div>
-
-<!-- ============ SETTINGS ============ -->
-<div id="page-settings" class="page">
-  <div class="page-header"><h1>Settings</h1></div>
-  <div class="tabs">
-    <div class="tab active">General</div>
-    <div class="tab">Branding</div>
-    <div class="tab">Notifications</div>
-    <div class="tab">Billing</div>
-  </div>
-  <div class="card" style="max-width:560px">
-    <div class="form-group">
-      <label class="form-label">Clinic Name</label>
-      <input class="form-input" value="Riverside Wellness Clinic">
-    </div>
-    <div class="form-group">
-      <label class="form-label">Slug</label>
-      <input class="form-input" value="riverside-wellness" style="color:var(--muted-fg)">
-    </div>
-    <div class="form-group">
-      <label class="form-label">Timezone</label>
-      <select class="form-input" style="width:100%"><option>Europe/London</option></select>
-    </div>
-    <div class="form-group">
-      <label class="form-label">Currency</label>
-      <select class="form-input" style="width:100%"><option>GBP (£)</option></select>
-    </div>
-    <div class="form-group">
-      <label class="form-label">Default Booking Duration</label>
-      <select class="form-input" style="width:100%"><option>60 minutes</option><option>30 minutes</option><option>90 minutes</option></select>
-    </div>
-    <button class="btn btn-primary" style="margin-top:8px">Save Changes</button>
-  </div>
-</div>
-
-<!-- ============ AUDIT LOG ============ -->
-<div id="page-audit-log" class="page">
-  <div class="page-header"><h1>Audit Log</h1></div>
-  <div class="input-row">
-    <select><option>All Actions</option><option>Login</option><option>Create</option><option>Update</option><option>Delete</option></select>
-    <select><option>All Users</option><option>Luke Hodges</option><option>Dr. Sarah Chen</option><option>Tom Richards</option></select>
-    <input type="date" class="input" value="2026-03-20">
-    <input type="date" class="input" value="2026-03-25">
-  </div>
-  <div class="card" style="padding:0">
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>Timestamp</th><th>User</th><th>Action</th><th>Resource</th><th>Details</th></tr></thead>
-        <tbody>
-          <tr><td style="white-space:nowrap">25 Mar, 09:42</td><td>Luke Hodges</td><td><span class="badge badge-primary">Login</span></td><td>Session</td><td>Logged in via SSO</td></tr>
-          <tr><td style="white-space:nowrap">25 Mar, 09:38</td><td>Tom Richards</td><td><span class="badge badge-success">Create</span></td><td>Booking #1247</td><td>Created booking for Olivia Thompson</td></tr>
-          <tr><td style="white-space:nowrap">25 Mar, 09:15</td><td>Dr. Sarah Chen</td><td><span class="badge badge-warning">Update</span></td><td>Schedule</td><td>Updated availability for Friday</td></tr>
-          <tr><td style="white-space:nowrap">24 Mar, 17:30</td><td>Luke Hodges</td><td><span class="badge badge-warning">Update</span></td><td>Settings</td><td>Changed default booking duration to 60m</td></tr>
-          <tr><td style="white-space:nowrap">24 Mar, 16:45</td><td>Tom Richards</td><td><span class="badge badge-danger">Cancel</span></td><td>Booking #1240</td><td>Cancelled booking for Tom Bradley</td></tr>
-          <tr><td style="white-space:nowrap">24 Mar, 14:20</td><td>Luke Hodges</td><td><span class="badge badge-warning">Update</span></td><td>User Role</td><td>Changed Lisa Ahmed role to Wellness Coach</td></tr>
-          <tr><td style="white-space:nowrap">24 Mar, 11:00</td><td>Dr. Sarah Chen</td><td><span class="badge badge-primary">Login</span></td><td>Session</td><td>Logged in via SSO</td></tr>
-          <tr><td style="white-space:nowrap">23 Mar, 15:30</td><td>Tom Richards</td><td><span class="badge badge-success">Create</span></td><td>Customer</td><td>Added new customer Raj Gupta</td></tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-</div>
-
-</main>
-
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-  lucide.createIcons();
-
-  const navItems = document.querySelectorAll('.nav-item[data-page]');
-  const pages = document.querySelectorAll('.page');
-
-  navItems.forEach(function(item) {
-    item.addEventListener('click', function() {
-      const target = this.getAttribute('data-page');
-
-      navItems.forEach(function(n) { n.classList.remove('active'); });
-      this.classList.add('active');
-
-      pages.forEach(function(p) { p.classList.remove('active'); p.style.display = 'none'; });
-
-      const page = document.getElementById('page-' + target);
-      if (page) {
-        page.style.display = 'block';
-        // Force reflow for animation
-        void page.offsetWidth;
-        page.classList.add('active');
-      }
-
-      lucide.createIcons();
-    });
-  });
-});
-</script>
-</body>
-</html>

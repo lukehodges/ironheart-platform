@@ -1,4 +1,4 @@
-x<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -251,6 +251,38 @@ x<!DOCTYPE html>
     letter-spacing: 0.1em; text-transform: uppercase;
   }
 
+  /* Scrolling site preview */
+  .s-demo .site-preview {
+    width: min(520px, 56vw);
+    aspect-ratio: 16 / 9;
+    border-radius: 10px; overflow: hidden;
+    border: 1px solid var(--border); background: #fafafa;
+    margin-bottom: 20px; flex-shrink: 0;
+    position: relative;
+  }
+.s-demo .site-preview .sp-inner {
+  position: absolute;
+  top: 0; left: 0;
+  width: 1440px;
+  transform-origin: top left;
+  transform: scale(var(--preview-scale, 0.361));
+  pointer-events: none;
+  animation: scroll-site 20s ease-in-out 1s infinite alternate;
+  animation-play-state: paused;
+  font-family: system-ui, -apple-system, sans-serif;
+  color: #111827; line-height: 1.5;
+}
+.slide.s-demo.active .site-preview .sp-inner {
+  animation-play-state: running !important;
+}
+  .s-demo .site-preview .sp-inner * { box-sizing: border-box; margin: 0; padding: 0; }
+  @keyframes scroll-site {
+    0%   { top: 0; }
+    8%   { top: 0; }
+    92%  { top: calc(var(--sp-scroll-distance, -2000px)); }
+    100% { top: calc(var(--sp-scroll-distance, -2000px)); }
+  }
+
   .s-demo .demo-label {
     font-size: 11px; font-weight: 600; letter-spacing: 0.3em;
     text-transform: uppercase; color: var(--green); margin-bottom: 8px;
@@ -273,6 +305,80 @@ x<!DOCTYPE html>
   .s-demo .demo-point::before {
     content: ''; width: 5px; height: 5px; border-radius: 50%;
     background: var(--amber); flex-shrink: 0; margin-top: 7px;
+  }
+
+
+  /* ══════════════════════════════════════
+     SHOWCASE — Screenshot gallery slides
+  ══════════════════════════════════════ */
+  .s-showcase { }
+  .s-showcase .ambient { background: var(--amber); opacity: 0.025; }
+  .s-showcase .showcase-label {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.3em;
+    text-transform: uppercase; color: var(--green); margin-bottom: 8px;
+  }
+  .s-showcase .showcase-title {
+    font-family: 'Fraunces', serif; font-size: clamp(20px, 2.4vw, 30px);
+    text-align: center; margin-bottom: 6px; color: var(--text-1);
+  }
+  .s-showcase .showcase-subtitle {
+    font-size: clamp(12px, 1.2vw, 14px); color: var(--text-2);
+    text-align: center; max-width: 560px; margin-bottom: 24px;
+  }
+  .s-showcase .showcase-grid {
+    display: grid; gap: 10px; width: 100%; max-width: 960px;
+    flex: 1; min-height: 0;
+  }
+  .s-showcase .showcase-grid.two-up {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 3fr 2fr;
+  }
+  .s-showcase .showcase-grid.four-up {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+  }
+  .s-showcase .showcase-item {
+    position: relative; border-radius: 8px; overflow: hidden;
+    border: 1px solid var(--border-light);
+    background: var(--bg-card);
+    min-height: 0;
+  }
+  .s-showcase .showcase-item.span-2 {
+    grid-column: 1 / -1;
+  }
+  .s-showcase .showcase-item img {
+    width: 100%; height: 100%; object-fit: cover; object-position: top center;
+    display: block;
+  }
+  .s-showcase .showcase-item .item-label {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    padding: 8px 14px;
+    background: linear-gradient(transparent, rgba(8,9,12,0.92));
+    font-size: 11px; font-weight: 600; letter-spacing: 0.08em;
+    color: var(--text-1);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .s-showcase .showcase-item .item-label .label-dot {
+    width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
+  }
+  .s-showcase .showcase-item .item-label .label-dot.green { background: var(--green); }
+  .s-showcase .showcase-item .item-label .label-dot.amber { background: var(--amber); }
+  .s-showcase .showcase-callout {
+    grid-column: 1 / -1;
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    padding: 14px 24px;
+    background: var(--bg-card); border: 1px solid var(--border-light);
+    border-radius: 8px; font-size: 13px; color: var(--text-2);
+    letter-spacing: 0.02em;
+  }
+  .s-showcase .showcase-callout .callout-icon {
+    font-size: 16px; color: var(--amber); flex-shrink: 0;
+  }
+
+  @media (max-width: 860px) {
+    .s-showcase .showcase-grid.two-up,
+    .s-showcase .showcase-grid.four-up { grid-template-columns: 1fr; }
+    .s-showcase .showcase-item.span-2 { grid-column: auto; }
   }
 
 
@@ -870,6 +976,7 @@ x<!DOCTYPE html>
     .s-compound .op { transform: rotate(90deg); }
     .s-close .contact { flex-direction: column; gap: 24px; align-items: center; }
     .s-demo .video-placeholder { width: min(400px, 85vw); }
+    .s-demo .site-preview { width: min(400px, 85vw); }
     .s-why-now .grid { grid-template-columns: 1fr; max-width: 400px; }
     .s-expansion .grid { grid-template-columns: 1fr; max-width: 400px; }
     .s-team .avatar { width: 90px; height: 90px; }
@@ -967,31 +1074,370 @@ x<!DOCTYPE html>
   <!-- DEMO 1: BOOKING (old ironheart, live) -->
   <div class="slide s-demo">
     <div class="ambient"></div>
-    <div class="video-placeholder">
-      <div class="placeholder-icon"><svg viewBox="0 0 24 24"><polygon points="8,5 19,12 8,19"/></svg></div>
-      <div class="placeholder-label">Live demo</div>
+    <div class="site-preview">
+      <div class="sp-inner">
+        <!-- NAV -->
+        <div style="border-bottom:1px solid rgba(229,231,235,0.6);background:rgba(255,255,255,0.7);backdrop-filter:blur(16px);padding:0 48px;height:64px;display:flex;align-items:center;justify-content:space-between;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div style="width:32px;height:32px;border-radius:6px;background:linear-gradient(135deg,#fbbf24,#d97706);display:flex;align-items:center;justify-content:center;">
+              <span style="color:#fff;font-weight:700;font-size:12px;font-family:monospace;">IH</span>
+            </div>
+            <span style="font-weight:600;font-size:15px;color:#111827;">Ironheart</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:32px;font-size:13px;color:#6b7280;">
+            <span>Features</span><span>How it works</span><span>Templates</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:16px;">
+            <span style="font-size:13px;color:#6b7280;">Sign In</span>
+            <span style="font-size:13px;font-weight:500;background:#111827;color:#fff;padding:6px 16px;border-radius:6px;">Get Started</span>
+          </div>
+        </div>
+
+        <!-- HERO -->
+        <div style="padding:80px 48px 40px;text-align:center;">
+          <div style="display:inline-flex;align-items:center;gap:8px;border:1px solid rgba(252,211,77,0.4);background:#fffbeb;border-radius:999px;padding:6px 16px;margin-bottom:32px;">
+            <span style="width:6px;height:6px;border-radius:50%;background:#f59e0b;"></span>
+            <span style="font-size:12px;color:#92400e;font-weight:500;">Now serving 500+ bookings per month</span>
+          </div>
+          <h1 style="font-size:72px;font-weight:700;line-height:1.08;letter-spacing:-0.02em;color:#111827;">
+            Stop losing bookings.<br>
+            Start <span style="background:linear-gradient(90deg,#f59e0b,#ea580c,#f59e0b);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">growing.</span>
+          </h1>
+          <p style="margin-top:24px;font-size:17px;color:#6b7280;max-width:640px;margin-left:auto;margin-right:auto;line-height:1.7;">
+            The booking platform that runs your business while you sleep. Smart scheduling, team management, and branded portals — all in one place.
+          </p>
+          <div style="margin-top:32px;display:flex;justify-content:center;gap:16px;">
+            <span style="display:inline-flex;align-items:center;gap:10px;background:linear-gradient(90deg,#f59e0b,#d97706);color:#fff;font-weight:600;padding:12px 28px;border-radius:12px;box-shadow:0 10px 15px -3px rgba(245,158,11,0.25);font-size:15px;">Start Free Trial →</span>
+            <span style="display:inline-flex;align-items:center;gap:10px;border:1px solid #e5e7eb;background:#fff;color:#6b7280;padding:12px 28px;border-radius:12px;font-size:15px;">▶ See a live demo</span>
+          </div>
+
+          <!-- DASHBOARD MOCKUP -->
+          <div style="max-width:900px;margin:64px auto 0;position:relative;">
+            <div style="border-radius:16px;border:1px solid rgba(229,231,235,0.8);background:#fff;overflow:hidden;box-shadow:0 25px 50px -12px rgba(0,0,0,0.15);">
+              <!-- Browser chrome -->
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 20px;border-bottom:1px solid #f3f4f6;background:rgba(249,250,251,0.6);">
+                <div style="display:flex;gap:8px;"><span style="width:12px;height:12px;border-radius:50%;background:#f87171;"></span><span style="width:12px;height:12px;border-radius:50%;background:#fbbf24;"></span><span style="width:12px;height:12px;border-radius:50%;background:#4ade80;"></span></div>
+                <span style="font-size:11px;color:#9ca3af;font-family:monospace;">ironheart.app/admin/dashboard</span>
+                <div style="width:64px;"></div>
+              </div>
+              <div style="padding:20px;">
+                <!-- Stat cards -->
+                <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;">
+                  <div style="border-radius:12px;background:#f9fafb;border:1px solid #f3f4f6;padding:14px;">
+                    <div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span style="font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;">Today's Bookings</span></div>
+                    <div style="display:flex;align-items:flex-end;gap:6px;"><span style="font-size:22px;font-weight:700;color:#111827;">24</span><span style="font-size:10px;color:#059669;">+12%</span></div>
+                  </div>
+                  <div style="border-radius:12px;background:#f9fafb;border:1px solid #f3f4f6;padding:14px;">
+                    <div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span style="font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;">Revenue</span></div>
+                    <div style="display:flex;align-items:flex-end;gap:6px;"><span style="font-size:22px;font-weight:700;color:#111827;">£2,420</span><span style="font-size:10px;color:#059669;">+8%</span></div>
+                  </div>
+                  <div style="border-radius:12px;background:#f9fafb;border:1px solid #f3f4f6;padding:14px;">
+                    <div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span style="font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;">Active Clients</span></div>
+                    <div style="display:flex;align-items:flex-end;gap:6px;"><span style="font-size:22px;font-weight:700;color:#111827;">1,210</span><span style="font-size:10px;color:#059669;">+23%</span></div>
+                  </div>
+                  <div style="border-radius:12px;background:#f9fafb;border:1px solid #f3f4f6;padding:14px;">
+                    <div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span style="font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:0.05em;">Team Members</span></div>
+                    <div><span style="font-size:22px;font-weight:700;color:#111827;">16</span></div>
+                  </div>
+                </div>
+                <!-- Chart + sidebar -->
+                <div style="display:grid;grid-template-columns:2fr 1fr;gap:12px;">
+                  <div style="border-radius:12px;background:#f9fafb;border:1px solid #f3f4f6;padding:16px;">
+                    <div style="display:flex;justify-content:space-between;margin-bottom:16px;">
+                      <span style="font-size:11px;color:#6b7280;font-weight:500;">Booking Overview</span>
+                      <div style="display:flex;gap:12px;font-size:10px;color:#9ca3af;">
+                        <span>● Confirmed</span><span style="color:#d1d5db;">● Pending</span>
+                      </div>
+                    </div>
+                    <div style="display:flex;align-items:flex-end;gap:6px;height:100px;">
+                      <div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;gap:2px;height:100%;"><div style="height:8%;background:#fde68a;border-radius:2px 2px 0 0;"></div><div style="height:32%;background:linear-gradient(to top,#f59e0b,#fbbf24);border-radius:0 0 2px 2px;"></div></div>
+                      <div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;gap:2px;height:100%;"><div style="height:10%;background:#fde68a;border-radius:2px 2px 0 0;"></div><div style="height:55%;background:linear-gradient(to top,#f59e0b,#fbbf24);border-radius:0 0 2px 2px;"></div></div>
+                      <div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;gap:2px;height:100%;"><div style="height:7%;background:#fde68a;border-radius:2px 2px 0 0;"></div><div style="height:38%;background:linear-gradient(to top,#f59e0b,#fbbf24);border-radius:0 0 2px 2px;"></div></div>
+                      <div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;gap:2px;height:100%;"><div style="height:12%;background:#fde68a;border-radius:2px 2px 0 0;"></div><div style="height:68%;background:linear-gradient(to top,#f59e0b,#fbbf24);border-radius:0 0 2px 2px;"></div></div>
+                      <div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;gap:2px;height:100%;"><div style="height:10%;background:#fde68a;border-radius:2px 2px 0 0;"></div><div style="height:45%;background:linear-gradient(to top,#f59e0b,#fbbf24);border-radius:0 0 2px 2px;"></div></div>
+                      <div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;gap:2px;height:100%;"><div style="height:12%;background:#fde68a;border-radius:2px 2px 0 0;"></div><div style="height:78%;background:linear-gradient(to top,#f59e0b,#fbbf24);border-radius:0 0 2px 2px;"></div></div>
+                      <div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;gap:2px;height:100%;"><div style="height:12%;background:#fde68a;border-radius:2px 2px 0 0;"></div><div style="height:58%;background:linear-gradient(to top,#f59e0b,#fbbf24);border-radius:0 0 2px 2px;"></div></div>
+                      <div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;gap:2px;height:100%;"><div style="height:10%;background:#fde68a;border-radius:2px 2px 0 0;"></div><div style="height:50%;background:linear-gradient(to top,#f59e0b,#fbbf24);border-radius:0 0 2px 2px;"></div></div>
+                      <div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;gap:2px;height:100%;"><div style="height:13%;background:#fde68a;border-radius:2px 2px 0 0;"></div><div style="height:72%;background:linear-gradient(to top,#f59e0b,#fbbf24);border-radius:0 0 2px 2px;"></div></div>
+                      <div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;gap:2px;height:100%;"><div style="height:13%;background:#fde68a;border-radius:2px 2px 0 0;"></div><div style="height:62%;background:linear-gradient(to top,#f59e0b,#fbbf24);border-radius:0 0 2px 2px;"></div></div>
+                      <div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;gap:2px;height:100%;"><div style="height:13%;background:#fde68a;border-radius:2px 2px 0 0;"></div><div style="height:82%;background:linear-gradient(to top,#d97706,#f59e0b);border-radius:0 0 2px 2px;"></div></div>
+                      <div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;gap:2px;height:100%;"><div style="height:8%;background:#fde68a;border-radius:2px 2px 0 0;"></div><div style="height:42%;background:linear-gradient(to top,#f59e0b,#fbbf24);border-radius:0 0 2px 2px;"></div></div>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;margin-top:8px;font-size:9px;color:#d1d5db;">
+                      <span>Jan</span><span>Feb</span><span>Mar</span><span>Apr</span><span>May</span><span>Jun</span><span>Jul</span><span>Aug</span><span>Sep</span><span>Oct</span><span>Nov</span><span>Dec</span>
+                    </div>
+                  </div>
+                  <!-- Upcoming sidebar -->
+                  <div style="border-radius:12px;background:#f9fafb;border:1px solid #f3f4f6;padding:16px;">
+                    <span style="font-size:11px;color:#6b7280;font-weight:500;display:block;margin-bottom:12px;">Upcoming</span>
+                    <div style="display:flex;flex-direction:column;gap:10px;">
+                      <div style="display:flex;align-items:center;gap:10px;"><span style="font-size:10px;color:#9ca3af;width:36px;font-family:monospace;">09:00</span><div style="width:4px;height:24px;border-radius:999px;background:#f59e0b;opacity:0.5;"></div><div><div style="font-size:11px;color:#374151;">Sarah M.</div><div style="font-size:9px;color:#9ca3af;">Consultation</div></div></div>
+                      <div style="display:flex;align-items:center;gap:10px;"><span style="font-size:10px;color:#9ca3af;width:36px;font-family:monospace;">10:30</span><div style="width:4px;height:24px;border-radius:999px;background:#0ea5e9;opacity:0.5;"></div><div><div style="font-size:11px;color:#374151;">James K.</div><div style="font-size:9px;color:#9ca3af;">Follow-up</div></div></div>
+                      <div style="display:flex;align-items:center;gap:10px;"><span style="font-size:10px;color:#9ca3af;width:36px;font-family:monospace;">11:00</span><div style="width:4px;height:24px;border-radius:999px;background:#8b5cf6;opacity:0.5;"></div><div><div style="font-size:11px;color:#374151;">Emily R.</div><div style="font-size:9px;color:#9ca3af;">Assessment</div></div></div>
+                      <div style="display:flex;align-items:center;gap:10px;"><span style="font-size:10px;color:#9ca3af;width:36px;font-family:monospace;">13:00</span><div style="width:4px;height:24px;border-radius:999px;background:#10b981;opacity:0.5;"></div><div><div style="font-size:11px;color:#374151;">David P.</div><div style="font-size:9px;color:#9ca3af;">Workshop</div></div></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- STATS BAR -->
+        <div style="border-top:1px solid rgba(229,231,235,0.6);border-bottom:1px solid rgba(229,231,235,0.6);background:rgba(255,255,255,0.5);padding:40px 48px;">
+          <div style="max-width:1152px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr);gap:32px;text-align:center;">
+            <div><span style="font-size:36px;font-weight:700;color:#111827;">10K</span><span style="font-size:18px;font-weight:600;color:#d97706;">+</span><br><span style="font-size:12px;color:#6b7280;">Bookings managed</span></div>
+            <div><span style="font-size:36px;font-weight:700;color:#111827;">99.9</span><span style="font-size:18px;font-weight:600;color:#d97706;">%</span><br><span style="font-size:12px;color:#6b7280;">Uptime guarantee</span></div>
+            <div><span style="font-size:36px;font-weight:700;color:#111827;">5</span><span style="font-size:18px;font-weight:600;color:#d97706;">min</span><br><span style="font-size:12px;color:#6b7280;">Setup time</span></div>
+            <div><span style="font-size:36px;font-weight:700;color:#111827;">24/7</span><br><span style="font-size:12px;color:#6b7280;">Online availability</span></div>
+          </div>
+        </div>
+
+        <!-- TRUST MARQUEE -->
+        <div style="padding:48px;text-align:center;">
+          <p style="font-size:11px;text-transform:uppercase;letter-spacing:0.2em;color:#9ca3af;margin-bottom:32px;">Trusted across industries</p>
+          <div style="display:flex;justify-content:center;gap:48px;font-size:14px;font-weight:500;color:#9ca3af;">
+            <span>Party Planners</span><span>Health Clinics</span><span>Beauty Studios</span><span>Fitness Centres</span><span>Event Venues</span><span>Consultancies</span><span>Wellness Spas</span><span>Training Academies</span>
+          </div>
+        </div>
+
+        <!-- FEATURES BENTO -->
+        <div style="padding:80px 48px;">
+          <div style="text-align:center;max-width:640px;margin:0 auto 56px;">
+            <div style="display:inline-flex;align-items:center;gap:8px;border:1px solid #e5e7eb;background:#fff;border-radius:999px;padding:4px 12px;margin-bottom:20px;box-shadow:0 1px 2px rgba(0,0,0,0.05);">
+              <span style="font-size:11px;text-transform:uppercase;letter-spacing:0.15em;color:#6b7280;font-weight:500;">⚡ Platform</span>
+            </div>
+            <h2 style="font-size:40px;font-weight:700;letter-spacing:-0.02em;color:#111827;">Everything to run your <span style="background:linear-gradient(90deg,#f59e0b,#ea580c);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">booking business</span></h2>
+            <p style="margin-top:16px;font-size:15px;color:#6b7280;line-height:1.7;">One platform for scheduling, teams, and customer portals. No plugins, no workarounds.</p>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:16px;max-width:1280px;margin:0 auto;">
+            <!-- Smart Scheduling (large) -->
+            <div style="grid-column:span 3;grid-row:span 2;border-radius:16px;border:1px solid rgba(229,231,235,0.8);background:#fff;padding:36px;">
+              <div style="width:48px;height:48px;border-radius:12px;background:#fffbeb;display:flex;align-items:center;justify-content:center;margin-bottom:20px;font-size:22px;">📅</div>
+              <h3 style="font-weight:600;font-size:18px;margin-bottom:8px;color:#111827;">Smart Scheduling</h3>
+              <p style="font-size:14px;color:#6b7280;line-height:1.7;">Slot-based, calendar-based, or hybrid. Real-time capacity tracking with sub-divided time windows. Automatic conflict detection.</p>
+              <div style="margin-top:20px;font-size:12px;font-weight:500;color:#d97706;">Learn more →</div>
+            </div>
+            <!-- Branded Portals (large) -->
+            <div style="grid-column:span 3;grid-row:span 2;border-radius:16px;border:1px solid rgba(229,231,235,0.8);background:#fff;padding:36px;">
+              <div style="width:48px;height:48px;border-radius:12px;background:#f0f9ff;display:flex;align-items:center;justify-content:center;margin-bottom:20px;font-size:22px;">🌐</div>
+              <h3 style="font-weight:600;font-size:18px;margin-bottom:8px;color:#111827;">Branded Portals</h3>
+              <p style="font-size:14px;color:#6b7280;line-height:1.7;">Custom booking pages for every industry. Your brand, your workflow, your domain. Full white-labelling.</p>
+              <div style="margin-top:20px;font-size:12px;font-weight:500;color:#d97706;">Learn more →</div>
+            </div>
+            <!-- Small cards -->
+            <div style="grid-column:span 2;border-radius:16px;border:1px solid rgba(229,231,235,0.8);background:#fff;padding:28px;">
+              <div style="width:40px;height:40px;border-radius:12px;background:#f5f3ff;display:flex;align-items:center;justify-content:center;margin-bottom:20px;font-size:18px;">👥</div>
+              <h3 style="font-weight:600;font-size:16px;margin-bottom:8px;color:#111827;">Team Management</h3>
+              <p style="font-size:13px;color:#6b7280;line-height:1.6;">Role-based access, per-member availability, and travel-aware scheduling.</p>
+            </div>
+            <div style="grid-column:span 2;border-radius:16px;border:1px solid rgba(229,231,235,0.8);background:#fff;padding:28px;">
+              <div style="width:40px;height:40px;border-radius:12px;background:#ecfdf5;display:flex;align-items:center;justify-content:center;margin-bottom:20px;font-size:18px;">🛡️</div>
+              <h3 style="font-weight:600;font-size:16px;margin-bottom:8px;color:#111827;">Slot Reservation</h3>
+              <p style="font-size:13px;color:#6b7280;line-height:1.6;">Hold timers prevent double-bookings. Auto-release for no-shows.</p>
+            </div>
+            <div style="grid-column:span 2;border-radius:16px;border:1px solid rgba(229,231,235,0.8);background:#fff;padding:28px;">
+              <div style="width:40px;height:40px;border-radius:12px;background:#fff1f2;display:flex;align-items:center;justify-content:center;margin-bottom:20px;font-size:18px;">📦</div>
+              <h3 style="font-weight:600;font-size:16px;margin-bottom:8px;color:#111827;">Multi-Tenant</h3>
+              <p style="font-size:13px;color:#6b7280;line-height:1.6;">Complete data isolation. Own subdomain and branding per business.</p>
+            </div>
+          </div>
+          <!-- Analytics row -->
+          <div style="margin-top:16px;border-radius:16px;border:1px solid rgba(229,231,235,0.8);background:linear-gradient(90deg,rgba(255,237,213,0.8),rgba(254,243,199,0.6),rgba(254,249,195,0.8));padding:32px;max-width:1280px;margin-left:auto;margin-right:auto;">
+            <div style="display:flex;align-items:flex-start;gap:24px;">
+              <div style="width:48px;height:48px;border-radius:12px;background:#ffedd5;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;">📊</div>
+              <div style="flex:1;">
+                <h3 style="font-weight:600;font-size:18px;margin-bottom:8px;color:#111827;">Insights & Analytics</h3>
+                <p style="font-size:14px;color:#6b7280;line-height:1.7;">Track booking trends, team utilisation, and revenue at a glance. Visual dashboards that help you understand what's working.</p>
+              </div>
+              <span style="font-size:12px;font-weight:500;color:#ea580c;flex-shrink:0;align-self:center;">Learn more →</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- HOW IT WORKS -->
+        <div style="padding:80px 48px;background:#fff;border-top:1px solid #f3f4f6;border-bottom:1px solid #f3f4f6;">
+          <div style="text-align:center;max-width:640px;margin:0 auto 56px;">
+            <div style="display:inline-flex;align-items:center;gap:8px;border:1px solid #e5e7eb;background:#f9fafb;border-radius:999px;padding:4px 12px;margin-bottom:20px;">
+              <span style="font-size:11px;text-transform:uppercase;letter-spacing:0.15em;color:#6b7280;font-weight:500;">📍 How it works</span>
+            </div>
+            <h2 style="font-size:40px;font-weight:700;letter-spacing:-0.02em;color:#111827;">Live in <span style="background:linear-gradient(90deg,#f59e0b,#ea580c);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">under five minutes</span></h2>
+          </div>
+          <div style="max-width:1024px;margin:0 auto;display:grid;grid-template-columns:repeat(3,1fr);gap:24px;">
+            <div style="border-radius:16px;border:1px solid rgba(229,231,235,0.8);background:rgba(249,250,251,0.5);padding:32px;">
+              <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+                <div style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#fef3c7,#fffbeb);border:1px solid rgba(252,211,77,0.6);display:flex;align-items:center;justify-content:center;"><span style="font-size:13px;font-weight:700;color:#92400e;font-family:monospace;">01</span></div>
+              </div>
+              <h3 style="font-weight:600;font-size:18px;margin-bottom:8px;color:#111827;">Configure your business</h3>
+              <p style="font-size:14px;color:#6b7280;line-height:1.7;">Add services, team members, and availability. Enable the modules you need — nothing more.</p>
+            </div>
+            <div style="border-radius:16px;border:1px solid rgba(229,231,235,0.8);background:rgba(249,250,251,0.5);padding:32px;">
+              <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+                <div style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#fef3c7,#fffbeb);border:1px solid rgba(252,211,77,0.6);display:flex;align-items:center;justify-content:center;"><span style="font-size:13px;font-weight:700;color:#92400e;font-family:monospace;">02</span></div>
+              </div>
+              <h3 style="font-weight:600;font-size:18px;margin-bottom:8px;color:#111827;">Pick a portal template</h3>
+              <p style="font-size:14px;color:#6b7280;line-height:1.7;">Choose from medical, party, salon, fitness, or generic. Customise colours and booking flow.</p>
+            </div>
+            <div style="border-radius:16px;border:1px solid rgba(229,231,235,0.8);background:rgba(249,250,251,0.5);padding:32px;">
+              <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+                <div style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#fef3c7,#fffbeb);border:1px solid rgba(252,211,77,0.6);display:flex;align-items:center;justify-content:center;"><span style="font-size:13px;font-weight:700;color:#92400e;font-family:monospace;">03</span></div>
+              </div>
+              <h3 style="font-weight:600;font-size:18px;margin-bottom:8px;color:#111827;">Share your link</h3>
+              <p style="font-size:14px;color:#6b7280;line-height:1.7;">Customers book online 24/7. Reservations lock slots, auto-release handles no-shows.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- TESTIMONIALS -->
+        <div style="padding:80px 48px;background:#fff;border-bottom:1px solid #f3f4f6;">
+          <div style="text-align:center;max-width:640px;margin:0 auto 56px;">
+            <h2 style="font-size:40px;font-weight:700;letter-spacing:-0.02em;color:#111827;">Loved by <span style="background:linear-gradient(90deg,#f59e0b,#ea580c);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">business owners</span></h2>
+          </div>
+          <div style="max-width:1024px;margin:0 auto;display:grid;grid-template-columns:repeat(3,1fr);gap:20px;">
+            <div style="border-radius:16px;border:1px solid rgba(229,231,235,0.8);background:rgba(249,250,251,0.5);padding:28px;">
+              <div style="display:flex;gap:2px;margin-bottom:16px;"><span style="color:#fbbf24;font-size:14px;">★★★★★</span></div>
+              <p style="font-size:14px;color:#4b5563;line-height:1.7;margin-bottom:24px;">"We went from losing 30% of enquiries to zero missed bookings. The reservation timer alone paid for itself in the first week."</p>
+              <div style="display:flex;align-items:center;gap:12px;">
+                <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#fb7185,#f43f5e);display:flex;align-items:center;justify-content:center;"><span style="font-size:10px;font-weight:700;color:#fff;">RC</span></div>
+                <div><div style="font-size:13px;font-weight:500;color:#111827;">Rachel T.</div><div style="font-size:11px;color:#9ca3af;">Owner, Cotswold Celebrations</div></div>
+              </div>
+            </div>
+            <div style="border-radius:16px;border:1px solid rgba(229,231,235,0.8);background:rgba(249,250,251,0.5);padding:28px;">
+              <div style="display:flex;gap:2px;margin-bottom:16px;"><span style="color:#fbbf24;font-size:14px;">★★★★★</span></div>
+              <p style="font-size:14px;color:#4b5563;line-height:1.7;margin-bottom:24px;">"My therapists can see exactly where they need to be and when. Travel-aware scheduling means no more double-bookings across locations."</p>
+              <div style="display:flex;align-items:center;gap:12px;">
+                <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#38bdf8,#3b82f6);display:flex;align-items:center;justify-content:center;"><span style="font-size:10px;font-weight:700;color:#fff;">JW</span></div>
+                <div><div style="font-size:13px;font-weight:500;color:#111827;">Dr. James Whitfield</div><div style="font-size:11px;color:#9ca3af;">Director, Riverside Health</div></div>
+              </div>
+            </div>
+            <div style="border-radius:16px;border:1px solid rgba(229,231,235,0.8);background:rgba(249,250,251,0.5);padding:28px;">
+              <div style="display:flex;gap:2px;margin-bottom:16px;"><span style="color:#fbbf24;font-size:14px;">★★★★★</span></div>
+              <p style="font-size:14px;color:#4b5563;line-height:1.7;margin-bottom:24px;">"Setup took minutes, not days. Our clients love being able to book online and the branded portal feels completely ours."</p>
+              <div style="display:flex;align-items:center;gap:12px;">
+                <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#fbbf24,#f97316);display:flex;align-items:center;justify-content:center;"><span style="font-size:10px;font-weight:700;color:#fff;">SM</span></div>
+                <div><div style="font-size:13px;font-weight:500;color:#111827;">Sophie Martinez</div><div style="font-size:11px;color:#9ca3af;">Founder, Glow Studio</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- CTA -->
+        <div style="padding:96px 48px;text-align:center;position:relative;">
+          <h2 style="font-size:48px;font-weight:700;letter-spacing:-0.02em;color:#111827;">Ready to grow<br>your business?</h2>
+          <p style="margin-top:24px;color:#6b7280;font-size:18px;max-width:560px;margin-left:auto;margin-right:auto;line-height:1.7;">Join hundreds of businesses using Ironheart to automate scheduling, manage teams, and delight their customers.</p>
+          <div style="margin-top:40px;display:flex;justify-content:center;gap:16px;">
+            <span style="display:inline-flex;align-items:center;gap:8px;background:linear-gradient(90deg,#f59e0b,#d97706);color:#fff;font-weight:600;padding:14px 32px;border-radius:12px;box-shadow:0 10px 15px -3px rgba(245,158,11,0.25);font-size:15px;">Get Started Free →</span>
+            <span style="display:inline-flex;align-items:center;gap:8px;border:1px solid #e5e7eb;background:#fff;color:#6b7280;padding:14px 32px;border-radius:12px;font-size:15px;">Sign In</span>
+          </div>
+        </div>
+
+        <!-- FOOTER -->
+        <div style="background:#111827;padding:56px 48px;">
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:32px;margin-bottom:48px;">
+            <div>
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+                <div style="width:28px;height:28px;border-radius:4px;background:linear-gradient(135deg,#fbbf24,#d97706);display:flex;align-items:center;justify-content:center;"><span style="color:#fff;font-weight:700;font-size:10px;font-family:monospace;">IH</span></div>
+                <span style="font-size:14px;font-weight:600;color:#fff;">Ironheart</span>
+              </div>
+              <p style="font-size:13px;color:rgba(255,255,255,0.5);line-height:1.6;">The booking platform built for growing businesses.</p>
+            </div>
+            <div>
+              <h4 style="font-size:12px;text-transform:uppercase;letter-spacing:0.15em;color:rgba(255,255,255,0.7);font-weight:500;margin-bottom:16px;">Product</h4>
+              <div style="display:flex;flex-direction:column;gap:10px;font-size:13px;color:rgba(255,255,255,0.5);">
+                <span>Features</span><span>Templates</span><span>How it works</span><span>Pricing</span>
+              </div>
+            </div>
+            <div>
+              <h4 style="font-size:12px;text-transform:uppercase;letter-spacing:0.15em;color:rgba(255,255,255,0.7);font-weight:500;margin-bottom:16px;">Company</h4>
+              <div style="display:flex;flex-direction:column;gap:10px;font-size:13px;color:rgba(255,255,255,0.5);">
+                <span>About</span><span>Careers</span><span>Blog</span><span>Contact</span>
+              </div>
+            </div>
+            <div>
+              <h4 style="font-size:12px;text-transform:uppercase;letter-spacing:0.15em;color:rgba(255,255,255,0.7);font-weight:500;margin-bottom:16px;">Resources</h4>
+              <div style="display:flex;flex-direction:column;gap:10px;font-size:13px;color:rgba(255,255,255,0.5);">
+                <span>Documentation</span><span>API Reference</span><span>Help Centre</span><span>Status</span>
+              </div>
+            </div>
+          </div>
+          <div style="border-top:1px solid rgba(255,255,255,0.1);padding-top:32px;display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-size:13px;color:rgba(255,255,255,0.5);">© 2026 Ironheart. All rights reserved.</span>
+            <div style="display:flex;gap:24px;font-size:13px;color:rgba(255,255,255,0.5);">
+              <span>Privacy</span><span>Terms</span><span>Cookies</span>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
-    <div class="demo-label">Demo 01 - The Vertical</div>
-    <div class="demo-title">Booking &amp; Scheduling</div>
-    <div class="demo-context">Built for a mobile healthcare clinic. This is our first vertical - live and handling real bookings every day. It worked, but we hit the ceiling on how modular it could be.</div>
+    <div class="demo-label">The First Vertical</div>
+    <div class="demo-title">Booking &amp; Scheduling Platform</div>
+    <div class="demo-context">We picked booking &amp; scheduling as our first vertical. Built the full stack - public portals, team scheduling, route planning, messaging, and automation. Two clients live on the same platform at their own domains.</div>
     <div class="demo-points">
-      <div class="demo-point">Multi-provider scheduling with route planning and capacity constraints</div>
-      <div class="demo-point">Public booking portal, automated reminders, intake forms</div>
-      <div class="demo-point">Staff portal with availability, schedule view, and calendar sync</div>
-      <div class="demo-point">Eliminated 8+ hours per week of manual admin</div>
+      <div class="demo-point">Multi-provider scheduling with travel-aware routing and capacity constraints</div>
+      <div class="demo-point">White-labelled booking portals - each client gets their own brand and domain</div>
+      <div class="demo-point">Messaging platform with templates, approvals, and automated notifications</div>
+      <div class="demo-point">Workflow engine for booking confirmations, reminders, and follow-ups</div>
     </div>
   </div>
 
-  <!-- SLIDE 6 — DEMO 2: PLATFORM (refactor) -->
+  <!-- SHOWCASE: Customer-Facing Side -->
+  <div class="slide s-showcase">
+    <div class="ambient"></div>
+    <div class="showcase-label">Vertical 01 - What Customers See</div>
+    <div class="showcase-title">One Platform, Multiple Brands</div>
+    <div class="showcase-subtitle">Each client gets a fully branded booking portal on their own domain. Same engine underneath - completely different experience on top.</div>
+    <div class="showcase-grid two-up">
+      <div class="showcase-item">
+        <img src="assets/v1-screenshots/party-booking.png" alt="Cotswold Children's Parties booking portal">
+        <div class="item-label"><span class="label-dot green"></span> Cotswold Children&rsquo;s Parties</div>
+      </div>
+      <div class="showcase-item">
+        <img src="assets/v1-screenshots/healthcare-portal.png" alt="Feet &amp; Care healthcare portal">
+        <div class="item-label"><span class="label-dot green"></span> Feet &amp; Care - Healthcare</div>
+      </div>
+      <div class="showcase-item span-2">
+        <img src="assets/v1-screenshots/portal-config.png" alt="Portal configuration admin" style="object-fit: cover; object-position: top center;">
+        <div class="item-label"><span class="label-dot amber"></span> Portal Configuration - Admin</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SHOWCASE: Operator Side -->
+  <div class="slide s-showcase">
+    <div class="ambient"></div>
+    <div class="showcase-label">Vertical 01 - What Operators See</div>
+    <div class="showcase-title">The Back Office</div>
+    <div class="showcase-subtitle">Team scheduling with travel awareness, route optimisation, messaging with templated comms, and a modular add-on system.</div>
+    <div class="showcase-grid four-up">
+      <div class="showcase-item">
+        <img src="assets/v1-screenshots/bookings-week.png" alt="Bookings week view with travel slots">
+        <div class="item-label"><span class="label-dot green"></span> Week View - Travel Slots</div>
+      </div>
+      <div class="showcase-item">
+        <img src="assets/v1-screenshots/daily-routes.png" alt="Daily routes map view">
+        <div class="item-label"><span class="label-dot green"></span> Route Planning</div>
+      </div>
+      <div class="showcase-item">
+        <img src="assets/v1-screenshots/messages-inbox.png" alt="Messages inbox">
+        <div class="item-label"><span class="label-dot amber"></span> Messaging &amp; Notifications</div>
+      </div>
+      <div class="showcase-item">
+        <img src="assets/v1-screenshots/modules.png" alt="Modules marketplace">
+        <div class="item-label"><span class="label-dot amber"></span> Modular Add-ons</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DEMO 2: THE PLATFORM (refactor) -->
   <div class="slide s-demo">
     <div class="ambient"></div>
     <div class="video-placeholder">
       <div class="placeholder-icon"><svg viewBox="0 0 24 24"><polygon points="8,5 19,12 8,19"/></svg></div>
       <div class="placeholder-label">Live demo</div>
     </div>
-    <div class="demo-label">Demo 02 - The Platform</div>
-    <div class="demo-title">Ironheart - Modular Operations Engine</div>
-    <div class="demo-context">So we rebuilt it. Same capabilities, but every module can be enabled, configured, and deployed independently for any organisation.</div>
+    <div class="demo-label">The Platform</div>
+    <div class="demo-title">From One Vertical to Any Vertical</div>
+    <div class="demo-context">We took everything we built and rebuilt it as a modular platform. Every module can be enabled, configured, and deployed independently - so we can spin up new verticals in days, not months.</div>
     <div class="demo-points">
       <div class="demo-point">Dashboard, pipeline, team management, customers, payments</div>
       <div class="demo-point">Visual workflow builder with conditional logic and automation</div>
@@ -1153,7 +1599,7 @@ x<!DOCTYPE html>
           <div class="tl-time amber">Now</div>
           <div class="tl-title">Live &amp; Paying</div>
           <div class="tl-points">
-            <div class="tl-point">3 live clients, 5 projects delivered in 6 months</div>
+            <div class="tl-point">3 live clients, 5 projects delivered in 3 months</div>
             <div class="tl-point">One platform powering every deployment</div>
           </div>
         </div>
@@ -1356,6 +1802,24 @@ x<!DOCTYPE html>
   });
 
   update();
+})();
+
+// Scale site-preview replicas to fit container
+(function() {
+  function scalePreview() {
+    document.querySelectorAll('.site-preview').forEach(function(el) {
+      var inner = el.querySelector('.sp-inner');
+      if (!inner) return;
+      var scale = el.offsetWidth / 1440;
+      el.style.setProperty('--preview-scale', scale);
+      // Calculate scroll distance: scaled content height - container height
+      var scrollDist = -(inner.scrollHeight * scale - el.offsetHeight);
+      el.style.setProperty('--sp-scroll-distance', scrollDist + 'px');
+    });
+  }
+  // Run after paint so heights are computed
+  requestAnimationFrame(function() { requestAnimationFrame(scalePreview); });
+  window.addEventListener('resize', scalePreview);
 })();
 </script>
 </body>

@@ -1,0 +1,3 @@
+[   17324ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_TIMED_OUT @ http://localhost:8765/assets/luke-hodges.png:0
+[   17324ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_TIMED_OUT @ http://localhost:8765/assets/qr-ironheart.svg:0
+[   17329ms] [ERROR] Failed to load resource: the server responded with a status of 404 (File not found) @ http://localhost:8765/favicon.ico:0
