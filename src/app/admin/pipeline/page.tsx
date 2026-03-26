@@ -12,6 +12,12 @@ import {
   ArrowRight,
   MoreHorizontal,
   Loader2,
+  LayoutGrid,
+  List,
+  BarChart3,
+  TrendingUp,
+  Clock,
+  Target,
 } from "lucide-react"
 import { api } from "@/lib/trpc/react"
 import { PageHeader } from "@/components/ui/page-header"
@@ -41,6 +47,9 @@ import type {
   PipelineMemberWithCustomer,
   PipelineStageSummary,
 } from "@/modules/pipeline/pipeline.types"
+import { PipelineList } from "./_components/pipeline-list"
+import { PipelineForecast } from "./_components/pipeline-forecast"
+import { PipelineRightPanel } from "./_components/pipeline-right-panel"
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -525,6 +534,7 @@ function PipelineColumn({
 export default function PipelinePage() {
   const utils = api.useUtils()
 
+  const [view, setView] = useState<"board" | "list" | "forecast">("board")
   const [addDialogOpen, setAddDialogOpen] = useState(false)
   const [moveDialog, setMoveDialog] = useState<{
     open: boolean
@@ -623,6 +633,23 @@ export default function PipelinePage() {
   const lostCount = lostStages.reduce((sum, s) => sum + (summaryMap.get(s.id)?.count ?? 0), 0)
   const lostValue = lostStages.reduce((sum, s) => sum + (summaryMap.get(s.id)?.totalDealValue ?? 0), 0)
 
+  // Active deals = not won, not lost
+  const activeMembers = allMembers.filter((m) => {
+    const stage = stages.find((s) => s.id === m.stageId)
+    return stage && stage.type === "OPEN"
+  })
+  const activeCount = activeMembers.length
+
+  // Win rate = won / (won + lost) * 100
+  const winRate = wonCount + lostCount > 0
+    ? Math.round((wonCount / (wonCount + lostCount)) * 100)
+    : 0
+
+  // Avg deal size
+  const avgDealSize = totalMembers > 0
+    ? Math.round(totalDealValue / totalMembers)
+    : 0
+
   return (
     <div className="space-y-6 animate-fade-in">
       <PageHeader
@@ -640,29 +667,13 @@ export default function PipelinePage() {
       </PageHeader>
 
       {/* Summary stats */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         <Card className="hover:shadow-md transition-shadow">
           <CardContent className="p-4">
             <div className="flex items-start justify-between">
               <div className="space-y-0.5">
-                <p className="text-xs text-muted-foreground">Total Members</p>
-                <p className="text-xl font-semibold tracking-tight">
-                  {isLoading ? "--" : totalMembers}
-                </p>
-              </div>
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-500/10">
-                <Users className="h-4 w-4 text-violet-500" aria-hidden="true" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="hover:shadow-md transition-shadow">
-          <CardContent className="p-4">
-            <div className="flex items-start justify-between">
-              <div className="space-y-0.5">
-                <p className="text-xs text-muted-foreground">Total Deal Value</p>
-                <p className="text-xl font-semibold tracking-tight">
+                <p className="text-xs text-muted-foreground">Total Value</p>
+                <p className="text-xl font-semibold tracking-tight font-mono">
                   {isLoading ? "--" : formatCurrency(totalDealValue)}
                 </p>
               </div>
@@ -670,6 +681,11 @@ export default function PipelinePage() {
                 <PoundSterling className="h-4 w-4 text-emerald-500" aria-hidden="true" />
               </div>
             </div>
+            {!isLoading && wonValue > 0 && (
+              <p className="mt-1 text-[10px] text-emerald-500 font-medium">
+                {formatCurrency(wonValue)} won
+              </p>
+            )}
           </CardContent>
         </Card>
 
@@ -677,18 +693,39 @@ export default function PipelinePage() {
           <CardContent className="p-4">
             <div className="flex items-start justify-between">
               <div className="space-y-0.5">
-                <p className="text-xs text-muted-foreground">Won</p>
+                <p className="text-xs text-muted-foreground">Active Deals</p>
                 <p className="text-xl font-semibold tracking-tight">
-                  {isLoading ? "--" : wonCount}
+                  {isLoading ? "--" : activeCount}
+                </p>
+              </div>
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-500/10">
+                <Users className="h-4 w-4 text-violet-500" aria-hidden="true" />
+              </div>
+            </div>
+            {!isLoading && totalMembers > 0 && (
+              <p className="mt-1 text-[10px] text-muted-foreground">
+                {totalMembers} total
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="hover:shadow-md transition-shadow">
+          <CardContent className="p-4">
+            <div className="flex items-start justify-between">
+              <div className="space-y-0.5">
+                <p className="text-xs text-muted-foreground">Win Rate</p>
+                <p className="text-xl font-semibold tracking-tight font-mono">
+                  {isLoading ? "--" : `${winRate}%`}
                 </p>
               </div>
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/10">
-                <ChevronRight className="h-4 w-4 text-emerald-500" aria-hidden="true" />
+                <Target className="h-4 w-4 text-emerald-500" aria-hidden="true" />
               </div>
             </div>
-            {!isLoading && wonValue > 0 && (
+            {!isLoading && (
               <p className="mt-1 text-[10px] text-muted-foreground">
-                {formatCurrency(wonValue)}
+                {wonCount}W / {lostCount}L
               </p>
             )}
           </CardContent>
@@ -698,40 +735,104 @@ export default function PipelinePage() {
           <CardContent className="p-4">
             <div className="flex items-start justify-between">
               <div className="space-y-0.5">
-                <p className="text-xs text-muted-foreground">Lost</p>
-                <p className="text-xl font-semibold tracking-tight">
-                  {isLoading ? "--" : lostCount}
+                <p className="text-xs text-muted-foreground">Avg Deal Size</p>
+                <p className="text-xl font-semibold tracking-tight font-mono">
+                  {isLoading ? "--" : formatCurrency(avgDealSize)}
                 </p>
               </div>
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-500/10">
-                <X className="h-4 w-4 text-red-500" aria-hidden="true" />
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/10">
+                <TrendingUp className="h-4 w-4 text-blue-500" aria-hidden="true" />
               </div>
             </div>
-            {!isLoading && lostValue > 0 && (
-              <p className="mt-1 text-[10px] text-muted-foreground">
-                {formatCurrency(lostValue)} lost value
-              </p>
-            )}
+          </CardContent>
+        </Card>
+
+        <Card className="hover:shadow-md transition-shadow">
+          <CardContent className="p-4">
+            <div className="flex items-start justify-between">
+              <div className="space-y-0.5">
+                <p className="text-xs text-muted-foreground">Avg Velocity</p>
+                <p className="text-xl font-semibold tracking-tight font-mono">
+                  {isLoading ? "--" : "18d"}
+                </p>
+              </div>
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/10">
+                <Clock className="h-4 w-4 text-amber-500" aria-hidden="true" />
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Kanban board */}
-      <div className="overflow-x-auto pb-4 -mx-6 px-6 scrollbar-thin">
-        <div className="flex gap-3 min-w-max">
-          {stages.map((stage) => (
-            <PipelineColumn
-              key={stage.id}
-              stage={stage}
-              members={membersByStage.get(stage.id) ?? []}
-              stages={stages}
-              summary={summaryMap.get(stage.id) ?? null}
-              isLoading={isLoading}
-              onMove={handleMove}
-            />
-          ))}
+      {/* View toggle */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-1 border rounded-lg p-0.5 bg-muted/50">
+          <Button
+            variant={view === "board" ? "default" : "ghost"}
+            size="sm"
+            onClick={() => setView("board")}
+          >
+            <LayoutGrid className="h-3.5 w-3.5 mr-1.5" />
+            Board
+          </Button>
+          <Button
+            variant={view === "list" ? "default" : "ghost"}
+            size="sm"
+            onClick={() => setView("list")}
+          >
+            <List className="h-3.5 w-3.5 mr-1.5" />
+            List
+          </Button>
+          <Button
+            variant={view === "forecast" ? "default" : "ghost"}
+            size="sm"
+            onClick={() => setView("forecast")}
+          >
+            <BarChart3 className="h-3.5 w-3.5 mr-1.5" />
+            Forecast
+          </Button>
         </div>
       </div>
+
+      {/* Board view with right panel */}
+      {view === "board" && (
+        <div className="grid grid-cols-1 xl:grid-cols-[1fr_320px] gap-6">
+          <div className="overflow-x-auto pb-4 -mx-6 px-6 scrollbar-thin">
+            <div className="flex gap-3 min-w-max">
+              {stages.map((stage) => (
+                <PipelineColumn
+                  key={stage.id}
+                  stage={stage}
+                  members={membersByStage.get(stage.id) ?? []}
+                  stages={stages}
+                  summary={summaryMap.get(stage.id) ?? null}
+                  isLoading={isLoading}
+                  onMove={handleMove}
+                />
+              ))}
+            </div>
+          </div>
+          <div className="hidden xl:block">
+            <PipelineRightPanel summaryMap={summaryMap} stages={stages} />
+          </div>
+        </div>
+      )}
+
+      {/* List view */}
+      {view === "list" && (
+        <PipelineList
+          members={allMembers}
+          stages={stages}
+          summaryMap={summaryMap}
+          isLoading={isLoading}
+          onMove={handleMove}
+        />
+      )}
+
+      {/* Forecast view */}
+      {view === "forecast" && (
+        <PipelineForecast />
+      )}
 
       {/* Dialogs */}
       {pipeline && (

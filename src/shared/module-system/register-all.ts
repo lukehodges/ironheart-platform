@@ -26,6 +26,7 @@ import { paymentManifest } from '@/modules/payment/payment.manifest'
 import { developerManifest } from '@/modules/developer/developer.manifest'
 import { aiManifest } from '@/modules/ai/ai.manifest'
 import { pipelineManifest } from '@/modules/pipeline/pipeline.manifest'
+import { outreachManifest } from '@/modules/outreach/outreach.manifest'
 
 export const moduleRegistry = new ModuleRegistry()
 
@@ -54,6 +55,7 @@ moduleRegistry.register(paymentManifest)
 moduleRegistry.register(developerManifest)
 moduleRegistry.register(aiManifest)
 moduleRegistry.register(pipelineManifest)
+moduleRegistry.register(outreachManifest)
 
 // Validate dependency graph at startup
 moduleRegistry.validate()

@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pipeline V2 — Analytics First</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f5f5f0;
+    --surface: #ffffff;
+    --surface-alt: #fafaf7;
+    --border: #e8e6e1;
+    --border-subtle: #f0eeea;
+    --text: #1a1a1a;
+    --text-secondary: #737373;
+    --text-muted: #a3a3a3;
+    --accent: #2563eb;
+    --accent-light: #eff6ff;
+    --green: #16a34a;
+    --green-light: #f0fdf4;
+    --amber: #ca8a04;
+    --amber-light: #fefce8;
+    --red: #dc2626;
+    --red-light: #fef2f2;
+    --purple: #9333ea;
+    --purple-light: #faf5ff;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Instrument Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 32px 40px;
+    animation: fadeIn 0.35s ease-out;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ─── Header ─── */
+  .header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    margin-bottom: 32px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .header h1 {
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 1;
+  }
+  .header-sub {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin-top: 6px;
+  }
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .period-selector {
+    display: flex;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--surface);
+  }
+  .period-btn {
+    padding: 6px 14px;
+    font-size: 12px;
+    font-weight: 500;
+    font-family: inherit;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .period-btn:not(:last-child) { border-right: 1px solid var(--border); }
+  .period-btn.active { background: var(--text); color: #fff; }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    font-family: inherit;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    transition: all 0.15s;
+  }
+  .btn:hover { background: var(--surface-alt); }
+  .btn-dark { background: var(--text); color: #fff; border-color: var(--text); }
+  .btn-dark:hover { background: #333; }
+  .btn svg { width: 14px; height: 14px; }
+
+  /* ─── Hero Metrics ─── */
+  .hero-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .hero-main {
+    background: var(--text);
+    border-radius: 14px;
+    padding: 28px;
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero-main::after {
+    content: '';
+    position: absolute;
+    top: -20px;
+    right: -20px;
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.04);
+  }
+  .hero-label {
+    font-size: 12px;
+    font-weight: 500;
+    opacity: 0.6;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .hero-value {
+    font-size: 42px;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    margin-top: 8px;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  .hero-detail {
+    margin-top: 12px;
+    font-size: 13px;
+    opacity: 0.5;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .hero-detail span { color: #4ade80; opacity: 1; font-weight: 600; }
+
+  .metric-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  .metric-label {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .metric-value {
+    font-size: 32px;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    margin-top: 4px;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  .metric-footer {
+    margin-top: 12px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+  }
+  .metric-up { color: var(--green); font-weight: 600; }
+  .metric-down { color: var(--red); font-weight: 600; }
+  .metric-neutral { color: var(--text-muted); }
+
+  /* ─── Two-Column Layout ─── */
+  .content-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+  }
+  .card-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border-subtle);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .card-title {
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  .card-body { padding: 20px; }
+
+  /* ─── Funnel Visualization ─── */
+  .funnel-visual {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    align-items: center;
+  }
+  .funnel-step {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    gap: 12px;
+  }
+  .funnel-step-label {
+    width: 100px;
+    text-align: right;
+    font-size: 12px;
+    color: var(--text-secondary);
+    flex-shrink: 0;
+  }
+  .funnel-step-bar-wrap {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+  }
+  .funnel-step-bar {
+    height: 32px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 600;
+    color: #fff;
+    transition: width 0.5s ease;
+    position: relative;
+  }
+  .funnel-step-stats {
+    width: 80px;
+    font-size: 12px;
+    color: var(--text-muted);
+    flex-shrink: 0;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  .funnel-drop {
+    font-size: 10px;
+    color: var(--text-muted);
+    text-align: center;
+    padding: 1px 0;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: 112px;
+  }
+  .funnel-drop svg { width: 10px; height: 10px; }
+
+  /* ─── Stage Table ─── */
+  .stage-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .stage-table th {
+    text-align: left;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 0 12px 10px;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .stage-table td {
+    padding: 10px 12px;
+    font-size: 13px;
+    border-bottom: 1px solid var(--border-subtle);
+    vertical-align: middle;
+  }
+  .stage-table tr:last-child td { border-bottom: none; }
+  .stage-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+    display: inline-block;
+    margin-right: 8px;
+    vertical-align: middle;
+  }
+  .stage-table .mono {
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 500;
+  }
+
+  /* ─── Mini Sparkline ─── */
+  .sparkline {
+    display: flex;
+    align-items: flex-end;
+    gap: 2px;
+    height: 24px;
+  }
+  .sparkline-bar {
+    width: 4px;
+    border-radius: 1px;
+    background: var(--accent);
+    opacity: 0.3;
+    transition: all 0.2s;
+  }
+  .sparkline-bar:last-child { opacity: 1; }
+
+  /* ─── Deals Table ─── */
+  .deals-section { margin-top: 24px; }
+  .deals-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .deals-title {
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .deals-table {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    border-collapse: separate;
+    border-spacing: 0;
+    overflow: hidden;
+  }
+  .deals-table th {
+    text-align: left;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 12px 16px;
+    background: var(--surface-alt);
+    border-bottom: 1px solid var(--border);
+  }
+  .deals-table td {
+    padding: 12px 16px;
+    font-size: 13px;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .deals-table tr:last-child td { border-bottom: none; }
+  .deals-table tr:hover td { background: var(--surface-alt); }
+
+  .deal-name { font-weight: 600; }
+  .deal-company { font-size: 12px; color: var(--text-secondary); margin-top: 1px; }
+
+  .stage-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  .progress-bar {
+    width: 80px;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+    display: inline-block;
+    vertical-align: middle;
+    margin-right: 8px;
+  }
+  .progress-fill { height: 100%; border-radius: 2px; }
+
+  .deal-actions {
+    display: flex;
+    gap: 4px;
+  }
+  .deal-action-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.15s;
+    color: var(--text-muted);
+  }
+  .deal-action-btn:hover { background: var(--surface-alt); color: var(--text); border-color: #d1d5db; }
+  .deal-action-btn svg { width: 13px; height: 13px; }
+</style>
+</head>
+<body>
+  <div class="page">
+    <!-- Header -->
+    <div class="header">
+      <div>
+        <h1>Pipeline</h1>
+        <div class="header-sub">Revenue analytics and deal management</div>
+      </div>
+      <div class="header-actions">
+        <div class="period-selector">
+          <button class="period-btn">7D</button>
+          <button class="period-btn active">30D</button>
+          <button class="period-btn">90D</button>
+          <button class="period-btn">YTD</button>
+        </div>
+        <button class="btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Export
+        </button>
+        <button class="btn btn-dark">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          New Deal
+        </button>
+      </div>
+    </div>
+
+    <!-- Hero Metrics -->
+    <div class="hero-grid">
+      <div class="hero-main">
+        <div>
+          <div class="hero-label">Total Pipeline Value</div>
+          <div class="hero-value">£247,300</div>
+        </div>
+        <div class="hero-detail">
+          <span>+12.4%</span> vs. previous period · 34 active deals
+        </div>
+      </div>
+      <div class="metric-card">
+        <div>
+          <div class="metric-label">Win Rate</div>
+          <div class="metric-value">38%</div>
+        </div>
+        <div class="metric-footer">
+          <span class="metric-down">-2.1%</span>
+          <span class="metric-neutral">vs. last month</span>
+        </div>
+      </div>
+      <div class="metric-card">
+        <div>
+          <div class="metric-label">Avg Deal</div>
+          <div class="metric-value">£7.3k</div>
+        </div>
+        <div class="metric-footer">
+          <span class="metric-up">+£800</span>
+          <span class="metric-neutral">vs. avg</span>
+        </div>
+      </div>
+      <div class="metric-card">
+        <div>
+          <div class="metric-label">Velocity</div>
+          <div class="metric-value">18d</div>
+        </div>
+        <div class="metric-footer">
+          <span class="metric-up">3d faster</span>
+          <span class="metric-neutral">avg close</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Two Column: Funnel + Stage Breakdown -->
+    <div class="content-grid">
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Conversion Funnel</span>
+          <span style="font-size:12px;color:var(--text-muted);">Last 30 days</span>
+        </div>
+        <div class="card-body">
+          <div class="funnel-visual">
+            <div class="funnel-step">
+              <span class="funnel-step-label">New Lead</span>
+              <div class="funnel-step-bar-wrap">
+                <div class="funnel-step-bar" style="width:100%;background:#6366f1;">34</div>
+              </div>
+              <span class="funnel-step-stats">100%</span>
+            </div>
+            <div class="funnel-drop">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+              26% drop-off
+            </div>
+            <div class="funnel-step">
+              <span class="funnel-step-label">Contacted</span>
+              <div class="funnel-step-bar-wrap">
+                <div class="funnel-step-bar" style="width:74%;background:#8b5cf6;">25</div>
+              </div>
+              <span class="funnel-step-stats">73.5%</span>
+            </div>
+            <div class="funnel-drop">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+              28% drop-off
+            </div>
+            <div class="funnel-step">
+              <span class="funnel-step-label">Qualified</span>
+              <div class="funnel-step-bar-wrap">
+                <div class="funnel-step-bar" style="width:53%;background:#a855f7;">18</div>
+              </div>
+              <span class="funnel-step-stats">52.9%</span>
+            </div>
+            <div class="funnel-drop">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+              28% drop-off
+            </div>
+            <div class="funnel-step">
+              <span class="funnel-step-label">Proposal</span>
+              <div class="funnel-step-bar-wrap">
+                <div class="funnel-step-bar" style="width:38%;background:#d946ef;">13</div>
+              </div>
+              <span class="funnel-step-stats">38.2%</span>
+            </div>
+            <div class="funnel-drop">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+              38% drop-off
+            </div>
+            <div class="funnel-step">
+              <span class="funnel-step-label">Won</span>
+              <div class="funnel-step-bar-wrap">
+                <div class="funnel-step-bar" style="width:24%;background:#22c55e;">8</div>
+              </div>
+              <span class="funnel-step-stats">23.5%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Stage Performance</span>
+          <span style="font-size:12px;color:var(--text-muted);">Current state</span>
+        </div>
+        <div class="card-body" style="padding:12px 20px;">
+          <table class="stage-table">
+            <thead>
+              <tr>
+                <th>Stage</th>
+                <th>Deals</th>
+                <th>Value</th>
+                <th>Avg Days</th>
+                <th>Trend</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="stage-dot" style="background:#6366f1;"></span>New Lead</td>
+                <td class="mono">8</td>
+                <td class="mono">£52k</td>
+                <td class="mono">3d</td>
+                <td>
+                  <div class="sparkline">
+                    <div class="sparkline-bar" style="height:40%;"></div>
+                    <div class="sparkline-bar" style="height:60%;"></div>
+                    <div class="sparkline-bar" style="height:45%;"></div>
+                    <div class="sparkline-bar" style="height:80%;"></div>
+                    <div class="sparkline-bar" style="height:70%;background:var(--green);"></div>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td><span class="stage-dot" style="background:#8b5cf6;"></span>Contacted</td>
+                <td class="mono">5</td>
+                <td class="mono">£38k</td>
+                <td class="mono">5d</td>
+                <td>
+                  <div class="sparkline">
+                    <div class="sparkline-bar" style="height:70%;"></div>
+                    <div class="sparkline-bar" style="height:50%;"></div>
+                    <div class="sparkline-bar" style="height:65%;"></div>
+                    <div class="sparkline-bar" style="height:55%;"></div>
+                    <div class="sparkline-bar" style="height:60%;background:var(--accent);"></div>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td><span class="stage-dot" style="background:#a855f7;"></span>Qualified</td>
+                <td class="mono">7</td>
+                <td class="mono">£64k</td>
+                <td class="mono">7d</td>
+                <td>
+                  <div class="sparkline">
+                    <div class="sparkline-bar" style="height:50%;"></div>
+                    <div class="sparkline-bar" style="height:80%;"></div>
+                    <div class="sparkline-bar" style="height:90%;"></div>
+                    <div class="sparkline-bar" style="height:75%;"></div>
+                    <div class="sparkline-bar" style="height:95%;background:var(--green);"></div>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td><span class="stage-dot" style="background:#d946ef;"></span>Proposal</td>
+                <td class="mono">4</td>
+                <td class="mono">£41k</td>
+                <td class="mono">9d</td>
+                <td>
+                  <div class="sparkline">
+                    <div class="sparkline-bar" style="height:60%;"></div>
+                    <div class="sparkline-bar" style="height:40%;"></div>
+                    <div class="sparkline-bar" style="height:35%;"></div>
+                    <div class="sparkline-bar" style="height:50%;"></div>
+                    <div class="sparkline-bar" style="height:45%;background:var(--amber);"></div>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td><span class="stage-dot" style="background:#ec4899;"></span>Negotiation</td>
+                <td class="mono">3</td>
+                <td class="mono">£29k</td>
+                <td class="mono">6d</td>
+                <td>
+                  <div class="sparkline">
+                    <div class="sparkline-bar" style="height:30%;"></div>
+                    <div class="sparkline-bar" style="height:50%;"></div>
+                    <div class="sparkline-bar" style="height:70%;"></div>
+                    <div class="sparkline-bar" style="height:60%;"></div>
+                    <div class="sparkline-bar" style="height:80%;background:var(--green);"></div>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td><span class="stage-dot" style="background:#22c55e;"></span>Won</td>
+                <td class="mono">12</td>
+                <td class="mono">£89k</td>
+                <td class="mono">—</td>
+                <td>
+                  <div class="sparkline">
+                    <div class="sparkline-bar" style="height:40%;background:var(--green);opacity:0.3;"></div>
+                    <div class="sparkline-bar" style="height:55%;background:var(--green);opacity:0.3;"></div>
+                    <div class="sparkline-bar" style="height:70%;background:var(--green);opacity:0.3;"></div>
+                    <div class="sparkline-bar" style="height:65%;background:var(--green);opacity:0.3;"></div>
+                    <div class="sparkline-bar" style="height:90%;background:var(--green);"></div>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Deals Table -->
+    <div class="deals-section">
+      <div class="deals-header">
+        <span class="deals-title">Active Deals</span>
+        <div style="display:flex;gap:8px;">
+          <input type="text" placeholder="Search deals..." style="padding:6px 12px 6px 30px;border:1px solid var(--border);border-radius:8px;font-size:12px;font-family:inherit;width:200px;background:var(--surface) url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2213%22 height=%2213%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23a3a3a3%22 stroke-width=%222%22%3E%3Ccircle cx=%2211%22 cy=%2211%22 r=%228%22/%3E%3Cline x1=%2221%22 y1=%2221%22 x2=%2216.65%22 y2=%2216.65%22/%3E%3C/svg%3E') no-repeat 9px center;outline:none;">
+          <button class="btn" style="font-size:12px;padding:5px 10px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+            Filters
+          </button>
+        </div>
+      </div>
+      <table class="deals-table">
+        <thead>
+          <tr>
+            <th>Deal</th>
+            <th>Stage</th>
+            <th>Value</th>
+            <th>Progress</th>
+            <th>Days Open</th>
+            <th>Last Activity</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>
+              <div class="deal-name">NorthStar Recruitment</div>
+              <div class="deal-company">Staffing agency · Newcastle</div>
+            </td>
+            <td><span class="stage-badge" style="background:var(--purple-light);color:var(--purple);"><span class="stage-dot" style="background:var(--purple);width:6px;height:6px;margin:0;"></span>Qualified</span></td>
+            <td style="font-family:'IBM Plex Mono',monospace;font-weight:600;">£18,500</td>
+            <td>
+              <div class="progress-bar"><div class="progress-fill" style="width:50%;background:var(--purple);"></div></div>
+              <span style="font-size:11px;color:var(--text-muted);">50%</span>
+            </td>
+            <td style="font-family:'IBM Plex Mono',monospace;">12d</td>
+            <td style="font-size:12px;color:var(--text-secondary);">Call scheduled tomorrow</td>
+            <td>
+              <div class="deal-actions">
+                <button class="deal-action-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+                <button class="deal-action-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></button>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <div class="deal-name">TrueBlue Plumbing</div>
+              <div class="deal-company">Plumbing · Edinburgh</div>
+            </td>
+            <td><span class="stage-badge" style="background:#fce7f3;color:#db2777;"><span class="stage-dot" style="background:#ec4899;width:6px;height:6px;margin:0;"></span>Negotiation</span></td>
+            <td style="font-family:'IBM Plex Mono',monospace;font-weight:600;">£15,000</td>
+            <td>
+              <div class="progress-bar"><div class="progress-fill" style="width:80%;background:#ec4899;"></div></div>
+              <span style="font-size:11px;color:var(--text-muted);">80%</span>
+            </td>
+            <td style="font-family:'IBM Plex Mono',monospace;">24d</td>
+            <td style="font-size:12px;color:var(--text-secondary);">Proposal revised, awaiting sign</td>
+            <td>
+              <div class="deal-actions">
+                <button class="deal-action-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+                <button class="deal-action-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></button>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <div class="deal-name">MoveIt Removals</div>
+              <div class="deal-company">Removal company · Oxford</div>
+            </td>
+            <td><span class="stage-badge" style="background:#fae8ff;color:#c026d3;"><span class="stage-dot" style="background:#d946ef;width:6px;height:6px;margin:0;"></span>Proposal Sent</span></td>
+            <td style="font-family:'IBM Plex Mono',monospace;font-weight:600;">£14,200</td>
+            <td>
+              <div class="progress-bar"><div class="progress-fill" style="width:60%;background:#d946ef;"></div></div>
+              <span style="font-size:11px;color:var(--text-muted);">60%</span>
+            </td>
+            <td style="font-family:'IBM Plex Mono',monospace;color:var(--amber);">31d</td>
+            <td style="font-size:12px;color:var(--amber);">Follow-up overdue</td>
+            <td>
+              <div class="deal-actions">
+                <button class="deal-action-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+                <button class="deal-action-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></button>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <div class="deal-name">Apex Roofing</div>
+              <div class="deal-company">Roofing contractor · Liverpool</div>
+            </td>
+            <td><span class="stage-badge" style="background:#ede9fe;color:#7c3aed;"><span class="stage-dot" style="background:#8b5cf6;width:6px;height:6px;margin:0;"></span>Contacted</span></td>
+            <td style="font-family:'IBM Plex Mono',monospace;font-weight:600;">£12,000</td>
+            <td>
+              <div class="progress-bar"><div class="progress-fill" style="width:30%;background:#8b5cf6;"></div></div>
+              <span style="font-size:11px;color:var(--text-muted);">30%</span>
+            </td>
+            <td style="font-family:'IBM Plex Mono',monospace;">8d</td>
+            <td style="font-size:12px;color:var(--text-secondary);">Discovery call completed</td>
+            <td>
+              <div class="deal-actions">
+                <button class="deal-action-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+                <button class="deal-action-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></button>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <div class="deal-name">Bright Spark Electrical</div>
+              <div class="deal-company">Electrical · Birmingham</div>
+            </td>
+            <td><span class="stage-badge" style="background:#eef2ff;color:#4f46e5;"><span class="stage-dot" style="background:#6366f1;width:6px;height:6px;margin:0;"></span>New Lead</span></td>
+            <td style="font-family:'IBM Plex Mono',monospace;font-weight:600;">£8,400</td>
+            <td>
+              <div class="progress-bar"><div class="progress-fill" style="width:15%;background:#6366f1;"></div></div>
+              <span style="font-size:11px;color:var(--text-muted);">15%</span>
+            </td>
+            <td style="font-family:'IBM Plex Mono',monospace;">2d</td>
+            <td style="font-size:12px;color:var(--text-secondary);">Inbound from outreach</td>
+            <td>
+              <div class="deal-actions">
+                <button class="deal-action-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>
+                <button class="deal-action-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg></button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</body>
+</html>

@@ -367,16 +367,21 @@ describe("AI Phase B — Guardrails, Approval, Guarded Caller", () => {
       expect(mockRecordApprovalDecision).toHaveBeenCalledWith("t1", "booking.create", true)
     })
 
-    it("unknown modules pass through without interception", async () => {
-      const { createGuardedCaller } = await import("../ai.guarded-caller")
+    it("unknown modules default to CONFIRM guardrail instead of passing through", async () => {
+      const { createGuardedCaller, ApprovalRequiredError } = await import("../ai.guarded-caller")
       const caller = buildMockCaller()
+      mockCreateAction.mockResolvedValue({ id: "action-unknown" })
 
       const guarded = (await createGuardedCaller(caller, callerOptions)) as typeof caller
-      const result = await guarded.unknownModule.doStuff({})
 
-      expect(result).toBe("ok")
-      expect(caller.unknownModule.doStuff).toHaveBeenCalled()
-      expect(mockCreateAction).not.toHaveBeenCalled()
+      // Unknown module functions should trigger CONFIRM approval, not pass through
+      await expect(guarded.unknownModule.doStuff({})).rejects.toThrow(ApprovalRequiredError)
+      expect(mockCreateAction).toHaveBeenCalledWith(
+        expect.objectContaining({
+          toolName: "unknownModule.doStuff",
+          guardrailTier: "CONFIRM",
+        })
+      )
     })
 
     it("AUTO mutation failure records failed status", async () => {

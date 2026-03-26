@@ -1,0 +1,1134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pipeline V1 — Command Center</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #fafafa;
+    --surface: #ffffff;
+    --surface-raised: #f8f9fb;
+    --border: #e5e7eb;
+    --border-subtle: #f0f1f3;
+    --text: #111827;
+    --text-secondary: #6b7280;
+    --text-muted: #9ca3af;
+    --primary: #2563eb;
+    --primary-light: #dbeafe;
+    --success: #059669;
+    --success-light: #d1fae5;
+    --warning: #d97706;
+    --warning-light: #fef3c7;
+    --danger: #dc2626;
+    --danger-light: #fee2e2;
+    --purple: #7c3aed;
+    --purple-light: #ede9fe;
+    --sidebar-bg: #0f1117;
+    --sidebar-text: #94a3b8;
+    --sidebar-active: #ffffff;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'DM Sans', -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ─── Sidebar ─── */
+  .sidebar {
+    width: 240px;
+    background: var(--sidebar-bg);
+    border-right: 1px solid rgba(255,255,255,0.06);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+  }
+  .sidebar-logo {
+    padding: 20px 20px 16px;
+    font-size: 15px;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: -0.02em;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .sidebar-logo .dot {
+    width: 8px;
+    height: 8px;
+    background: var(--primary);
+    border-radius: 2px;
+  }
+  .sidebar-section {
+    padding: 8px 12px;
+  }
+  .sidebar-section-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: rgba(148,163,184,0.5);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 8px 8px 4px;
+  }
+  .sidebar-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 8px;
+    border-radius: 6px;
+    color: var(--sidebar-text);
+    font-size: 13px;
+    font-weight: 400;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .sidebar-item:hover { background: rgba(255,255,255,0.06); color: #cbd5e1; }
+  .sidebar-item.active { background: rgba(37,99,235,0.15); color: #fff; font-weight: 500; }
+  .sidebar-item svg { width: 16px; height: 16px; opacity: 0.7; }
+  .sidebar-item.active svg { opacity: 1; }
+
+  /* ─── Main ─── */
+  .main {
+    flex: 1;
+    overflow-x: hidden;
+    min-width: 0;
+  }
+
+  .topbar {
+    height: 52px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .topbar-breadcrumb {
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+  .topbar-breadcrumb span { color: var(--text); font-weight: 500; }
+  .topbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .content {
+    padding: 24px;
+    max-width: 1440px;
+    margin: 0 auto;
+    animation: fadeUp 0.3s ease-out;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ─── Page Header ─── */
+  .page-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 24px;
+  }
+  .page-title {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+  }
+  .page-subtitle {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-top: 4px;
+  }
+
+  /* ─── Buttons ─── */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    font-family: inherit;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    transition: all 0.15s;
+  }
+  .btn:hover { border-color: #d1d5db; background: var(--surface-raised); }
+  .btn-primary {
+    background: var(--primary);
+    color: #fff;
+    border-color: var(--primary);
+  }
+  .btn-primary:hover { background: #1d4ed8; }
+  .btn svg { width: 14px; height: 14px; }
+  .btn-sm { padding: 4px 10px; font-size: 12px; }
+  .btn-ghost { border: none; background: none; }
+  .btn-ghost:hover { background: var(--surface-raised); }
+
+  /* ─── Stat Row ─── */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+  }
+  .stat-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-weight: 500;
+  }
+  .stat-value {
+    font-size: 24px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin-top: 4px;
+    line-height: 1;
+  }
+  .stat-change {
+    font-size: 11px;
+    font-weight: 500;
+    margin-top: 6px;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+  }
+  .stat-change.up { color: var(--success); }
+  .stat-change.down { color: var(--danger); }
+  .stat-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .stat-icon svg { width: 18px; height: 18px; }
+
+  /* ─── Kanban Board ─── */
+  .board-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .board-toolbar-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .view-toggle {
+    display: flex;
+    background: var(--surface-raised);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .view-toggle-btn {
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 500;
+    font-family: inherit;
+    border: none;
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    transition: all 0.15s;
+  }
+  .view-toggle-btn.active {
+    background: var(--surface);
+    color: var(--text);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  }
+  .view-toggle-btn svg { width: 13px; height: 13px; }
+
+  .search-input {
+    padding: 7px 12px 7px 32px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 13px;
+    font-family: inherit;
+    background: var(--surface);
+    width: 220px;
+    outline: none;
+    transition: border-color 0.15s;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'%3E%3C/circle%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'%3E%3C/line%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: 10px center;
+  }
+  .search-input:focus { border-color: var(--primary); }
+
+  .kanban {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    padding-bottom: 16px;
+    min-height: 500px;
+  }
+  .kanban::-webkit-scrollbar { height: 6px; }
+  .kanban::-webkit-scrollbar-track { background: transparent; }
+  .kanban::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+
+  .kanban-col {
+    min-width: 260px;
+    max-width: 260px;
+    flex-shrink: 0;
+  }
+  .kanban-col-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    border-radius: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+  }
+  .kanban-col-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .kanban-col-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+  }
+  .kanban-col-name {
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .kanban-col-count {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-weight: 500;
+    background: var(--surface-raised);
+    padding: 1px 6px;
+    border-radius: 4px;
+  }
+  .kanban-col-value {
+    font-size: 11px;
+    color: var(--text-secondary);
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 500;
+  }
+
+  .kanban-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .kanban-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    cursor: grab;
+    transition: all 0.15s;
+  }
+  .kanban-card:hover {
+    border-color: #d1d5db;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    transform: translateY(-1px);
+  }
+  .kanban-card-name {
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 2px;
+  }
+  .kanban-card-company {
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+  }
+  .kanban-card-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 8px;
+  }
+  .kanban-card-value {
+    font-size: 13px;
+    font-weight: 600;
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: -0.01em;
+  }
+  .kanban-card-meta {
+    font-size: 10px;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 3px;
+  }
+  .kanban-card-tags {
+    display: flex;
+    gap: 4px;
+    margin-top: 8px;
+  }
+  .kanban-tag {
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 500;
+  }
+  .kanban-card-avatar {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--primary-light);
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  /* ─── Right Panel ─── */
+  .layout-split {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 20px;
+  }
+  .right-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .panel-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .panel-card-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-subtle);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .panel-card-title {
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .panel-card-body { padding: 12px 16px; }
+
+  /* ─── Pipeline Funnel Mini ─── */
+  .funnel {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .funnel-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .funnel-label {
+    width: 80px;
+    font-size: 11px;
+    color: var(--text-secondary);
+    text-align: right;
+    flex-shrink: 0;
+  }
+  .funnel-bar-track {
+    flex: 1;
+    height: 24px;
+    background: var(--surface-raised);
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+  }
+  .funnel-bar {
+    height: 100%;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    padding-left: 8px;
+    font-size: 10px;
+    font-weight: 600;
+    color: #fff;
+    transition: width 0.6s ease;
+  }
+  .funnel-rate {
+    font-size: 11px;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text-secondary);
+    width: 36px;
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  /* ─── Activity Feed ─── */
+  .activity-list {
+    display: flex;
+    flex-direction: column;
+  }
+  .activity-item {
+    display: flex;
+    gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .activity-item:last-child { border-bottom: none; }
+  .activity-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    margin-top: 5px;
+    flex-shrink: 0;
+  }
+  .activity-text {
+    font-size: 12px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+  }
+  .activity-text strong { color: var(--text); font-weight: 600; }
+  .activity-time {
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+
+  /* ─── Velocity Chart ─── */
+  .velocity-chart {
+    display: flex;
+    align-items: flex-end;
+    gap: 6px;
+    height: 80px;
+    padding-top: 8px;
+  }
+  .velocity-bar {
+    flex: 1;
+    border-radius: 3px 3px 0 0;
+    position: relative;
+    transition: height 0.4s ease;
+  }
+  .velocity-label {
+    position: absolute;
+    bottom: -16px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 9px;
+    color: var(--text-muted);
+    white-space: nowrap;
+  }
+</style>
+</head>
+<body>
+  <!-- Sidebar -->
+  <nav class="sidebar">
+    <div class="sidebar-logo">
+      <div class="dot"></div>
+      Ironheart
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Operations</div>
+      <div class="sidebar-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        Dashboard
+      </div>
+      <div class="sidebar-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        Bookings
+      </div>
+      <div class="sidebar-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        Customers
+      </div>
+      <div class="sidebar-item active">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+        Pipeline
+      </div>
+      <div class="sidebar-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        Outreach
+      </div>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-section-label">Automation</div>
+      <div class="sidebar-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        Workflows
+      </div>
+    </div>
+  </nav>
+
+  <div class="main">
+    <!-- Topbar -->
+    <header class="topbar">
+      <div class="topbar-breadcrumb">Operations / <span>Pipeline</span></div>
+      <div class="topbar-actions">
+        <button class="btn btn-sm btn-ghost">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        </button>
+        <div style="width:28px;height:28px;border-radius:50%;background:var(--primary);display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:600;">LH</div>
+      </div>
+    </header>
+
+    <div class="content">
+      <!-- Header -->
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Sales Pipeline</h1>
+          <p class="page-subtitle">Track and manage deals across stages</p>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            Export
+          </button>
+          <button class="btn btn-primary">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Add Deal
+          </button>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="stats-row">
+        <div class="stat-card">
+          <div>
+            <div class="stat-label">Total Value</div>
+            <div class="stat-value">£247k</div>
+            <div class="stat-change up">↑ 12.4% vs last month</div>
+          </div>
+          <div class="stat-icon" style="background:var(--primary-light);">
+            <svg viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div>
+            <div class="stat-label">Active Deals</div>
+            <div class="stat-value">34</div>
+            <div class="stat-change up">↑ 3 this week</div>
+          </div>
+          <div class="stat-icon" style="background:var(--purple-light);">
+            <svg viewBox="0 0 24 24" fill="none" stroke="var(--purple)" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div>
+            <div class="stat-label">Win Rate</div>
+            <div class="stat-value">38%</div>
+            <div class="stat-change down">↓ 2.1% vs last month</div>
+          </div>
+          <div class="stat-icon" style="background:var(--success-light);">
+            <svg viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div>
+            <div class="stat-label">Avg Deal Size</div>
+            <div class="stat-value">£7.3k</div>
+            <div class="stat-change up">↑ £800 vs avg</div>
+          </div>
+          <div class="stat-icon" style="background:var(--warning-light);">
+            <svg viewBox="0 0 24 24" fill="none" stroke="var(--warning)" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div>
+            <div class="stat-label">Avg Velocity</div>
+            <div class="stat-value">18d</div>
+            <div class="stat-change up">↑ 3d faster</div>
+          </div>
+          <div class="stat-icon" style="background:#fce7f3;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#db2777" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          </div>
+        </div>
+      </div>
+
+      <div class="layout-split">
+        <!-- Left: Kanban -->
+        <div>
+          <div class="board-toolbar">
+            <div class="board-toolbar-left">
+              <div class="view-toggle">
+                <button class="view-toggle-btn active">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+                  Board
+                </button>
+                <button class="view-toggle-btn">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                  List
+                </button>
+                <button class="view-toggle-btn">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                  Analytics
+                </button>
+              </div>
+              <input type="text" class="search-input" placeholder="Search deals...">
+            </div>
+            <div style="display:flex;gap:6px;">
+              <button class="btn btn-sm">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+                Filter
+              </button>
+              <button class="btn btn-sm">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/></svg>
+                Sort
+              </button>
+            </div>
+          </div>
+
+          <div class="kanban">
+            <!-- New Lead -->
+            <div class="kanban-col">
+              <div class="kanban-col-header">
+                <div class="kanban-col-left">
+                  <div class="kanban-col-dot" style="background:#6366f1;"></div>
+                  <span class="kanban-col-name">New Lead</span>
+                  <span class="kanban-col-count">8</span>
+                </div>
+                <span class="kanban-col-value">£52k</span>
+              </div>
+              <div class="kanban-cards">
+                <div class="kanban-card">
+                  <div style="display:flex;align-items:center;justify-content:space-between;">
+                    <div class="kanban-card-name">Bright Spark Electrical</div>
+                    <div class="kanban-card-avatar">BS</div>
+                  </div>
+                  <div class="kanban-card-company">Electrical contractor — Birmingham</div>
+                  <div class="kanban-card-tags">
+                    <span class="kanban-tag" style="background:var(--primary-light);color:var(--primary);">AI Booking</span>
+                    <span class="kanban-tag" style="background:var(--success-light);color:var(--success);">Hot</span>
+                  </div>
+                  <div class="kanban-card-row">
+                    <span class="kanban-card-value">£8,400</span>
+                    <span class="kanban-card-meta">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                      2d ago
+                    </span>
+                  </div>
+                </div>
+                <div class="kanban-card">
+                  <div style="display:flex;align-items:center;justify-content:space-between;">
+                    <div class="kanban-card-name">Preston Plumbing</div>
+                    <div class="kanban-card-avatar">PP</div>
+                  </div>
+                  <div class="kanban-card-company">Plumbing services — Manchester</div>
+                  <div class="kanban-card-tags">
+                    <span class="kanban-tag" style="background:var(--warning-light);color:var(--warning);">Warm</span>
+                  </div>
+                  <div class="kanban-card-row">
+                    <span class="kanban-card-value">£4,200</span>
+                    <span class="kanban-card-meta">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                      5d ago
+                    </span>
+                  </div>
+                </div>
+                <div class="kanban-card">
+                  <div style="display:flex;align-items:center;justify-content:space-between;">
+                    <div class="kanban-card-name">CleanRight Ltd</div>
+                    <div class="kanban-card-avatar">CR</div>
+                  </div>
+                  <div class="kanban-card-company">Commercial cleaning — Leeds</div>
+                  <div class="kanban-card-row">
+                    <span class="kanban-card-value">£6,100</span>
+                    <span class="kanban-card-meta">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                      1d ago
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Contacted -->
+            <div class="kanban-col">
+              <div class="kanban-col-header">
+                <div class="kanban-col-left">
+                  <div class="kanban-col-dot" style="background:#8b5cf6;"></div>
+                  <span class="kanban-col-name">Contacted</span>
+                  <span class="kanban-col-count">5</span>
+                </div>
+                <span class="kanban-col-value">£38k</span>
+              </div>
+              <div class="kanban-cards">
+                <div class="kanban-card">
+                  <div style="display:flex;align-items:center;justify-content:space-between;">
+                    <div class="kanban-card-name">Apex Roofing</div>
+                    <div class="kanban-card-avatar">AR</div>
+                  </div>
+                  <div class="kanban-card-company">Roofing contractor — Liverpool</div>
+                  <div class="kanban-card-tags">
+                    <span class="kanban-tag" style="background:var(--success-light);color:var(--success);">Hot</span>
+                  </div>
+                  <div class="kanban-card-row">
+                    <span class="kanban-card-value">£12,000</span>
+                    <span class="kanban-card-meta">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                      3d ago
+                    </span>
+                  </div>
+                </div>
+                <div class="kanban-card">
+                  <div style="display:flex;align-items:center;justify-content:space-between;">
+                    <div class="kanban-card-name">Jade Dental</div>
+                    <div class="kanban-card-avatar">JD</div>
+                  </div>
+                  <div class="kanban-card-company">Dental practice — Sheffield</div>
+                  <div class="kanban-card-row">
+                    <span class="kanban-card-value">£9,500</span>
+                    <span class="kanban-card-meta">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                      6d ago
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Qualified -->
+            <div class="kanban-col">
+              <div class="kanban-col-header">
+                <div class="kanban-col-left">
+                  <div class="kanban-col-dot" style="background:#a855f7;"></div>
+                  <span class="kanban-col-name">Qualified</span>
+                  <span class="kanban-col-count">7</span>
+                </div>
+                <span class="kanban-col-value">£64k</span>
+              </div>
+              <div class="kanban-cards">
+                <div class="kanban-card">
+                  <div style="display:flex;align-items:center;justify-content:space-between;">
+                    <div class="kanban-card-name">NorthStar Recruitment</div>
+                    <div class="kanban-card-avatar">NR</div>
+                  </div>
+                  <div class="kanban-card-company">Staffing agency — Newcastle</div>
+                  <div class="kanban-card-tags">
+                    <span class="kanban-tag" style="background:var(--success-light);color:var(--success);">Hot</span>
+                    <span class="kanban-tag" style="background:var(--purple-light);color:var(--purple);">Enterprise</span>
+                  </div>
+                  <div class="kanban-card-row">
+                    <span class="kanban-card-value">£18,500</span>
+                    <span class="kanban-card-meta">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                      1d ago
+                    </span>
+                  </div>
+                </div>
+                <div class="kanban-card">
+                  <div style="display:flex;align-items:center;justify-content:space-between;">
+                    <div class="kanban-card-name">Evergreen Physio</div>
+                    <div class="kanban-card-avatar">EP</div>
+                  </div>
+                  <div class="kanban-card-company">Physiotherapy — Bristol</div>
+                  <div class="kanban-card-row">
+                    <span class="kanban-card-value">£5,800</span>
+                    <span class="kanban-card-meta">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                      4d ago
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Proposal Sent -->
+            <div class="kanban-col">
+              <div class="kanban-col-header">
+                <div class="kanban-col-left">
+                  <div class="kanban-col-dot" style="background:#d946ef;"></div>
+                  <span class="kanban-col-name">Proposal Sent</span>
+                  <span class="kanban-col-count">4</span>
+                </div>
+                <span class="kanban-col-value">£41k</span>
+              </div>
+              <div class="kanban-cards">
+                <div class="kanban-card">
+                  <div style="display:flex;align-items:center;justify-content:space-between;">
+                    <div class="kanban-card-name">MoveIt Removals</div>
+                    <div class="kanban-card-avatar">MR</div>
+                  </div>
+                  <div class="kanban-card-company">Removal company — Oxford</div>
+                  <div class="kanban-card-tags">
+                    <span class="kanban-tag" style="background:var(--warning-light);color:var(--warning);">Follow-up</span>
+                  </div>
+                  <div class="kanban-card-row">
+                    <span class="kanban-card-value">£14,200</span>
+                    <span class="kanban-card-meta">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                      7d ago
+                    </span>
+                  </div>
+                </div>
+                <div class="kanban-card">
+                  <div style="display:flex;align-items:center;justify-content:space-between;">
+                    <div class="kanban-card-name">Bright Smiles Dental</div>
+                    <div class="kanban-card-avatar">BS</div>
+                  </div>
+                  <div class="kanban-card-company">Dental — Nottingham</div>
+                  <div class="kanban-card-row">
+                    <span class="kanban-card-value">£7,600</span>
+                    <span class="kanban-card-meta">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                      2d ago
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Negotiation -->
+            <div class="kanban-col">
+              <div class="kanban-col-header">
+                <div class="kanban-col-left">
+                  <div class="kanban-col-dot" style="background:#ec4899;"></div>
+                  <span class="kanban-col-name">Negotiation</span>
+                  <span class="kanban-col-count">3</span>
+                </div>
+                <span class="kanban-col-value">£29k</span>
+              </div>
+              <div class="kanban-cards">
+                <div class="kanban-card">
+                  <div style="display:flex;align-items:center;justify-content:space-between;">
+                    <div class="kanban-card-name">TrueBlue Plumbing</div>
+                    <div class="kanban-card-avatar">TB</div>
+                  </div>
+                  <div class="kanban-card-company">Plumbing — Edinburgh</div>
+                  <div class="kanban-card-tags">
+                    <span class="kanban-tag" style="background:var(--success-light);color:var(--success);">Closing</span>
+                  </div>
+                  <div class="kanban-card-row">
+                    <span class="kanban-card-value">£15,000</span>
+                    <span class="kanban-card-meta">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="10" height="10"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                      1d ago
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Won -->
+            <div class="kanban-col">
+              <div class="kanban-col-header">
+                <div class="kanban-col-left">
+                  <div class="kanban-col-dot" style="background:#22c55e;"></div>
+                  <span class="kanban-col-name">Won</span>
+                  <span class="kanban-col-count">12</span>
+                </div>
+                <span class="kanban-col-value">£89k</span>
+              </div>
+              <div class="kanban-cards">
+                <div class="kanban-card" style="border-left:2px solid #22c55e;">
+                  <div style="display:flex;align-items:center;justify-content:space-between;">
+                    <div class="kanban-card-name">Precision Auto</div>
+                    <div class="kanban-card-avatar" style="background:var(--success-light);color:var(--success);">PA</div>
+                  </div>
+                  <div class="kanban-card-company">Auto repair — Cardiff</div>
+                  <div class="kanban-card-row">
+                    <span class="kanban-card-value">£11,200</span>
+                    <span class="kanban-card-meta">Won 2d ago</span>
+                  </div>
+                </div>
+                <div class="kanban-card" style="border-left:2px solid #22c55e;">
+                  <div style="display:flex;align-items:center;justify-content:space-between;">
+                    <div class="kanban-card-name">Sunset Wellness</div>
+                    <div class="kanban-card-avatar" style="background:var(--success-light);color:var(--success);">SW</div>
+                  </div>
+                  <div class="kanban-card-company">Spa & wellness — Bath</div>
+                  <div class="kanban-card-row">
+                    <span class="kanban-card-value">£8,900</span>
+                    <span class="kanban-card-meta">Won 5d ago</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Lost -->
+            <div class="kanban-col">
+              <div class="kanban-col-header">
+                <div class="kanban-col-left">
+                  <div class="kanban-col-dot" style="background:#ef4444;"></div>
+                  <span class="kanban-col-name">Lost</span>
+                  <span class="kanban-col-count">5</span>
+                </div>
+                <span class="kanban-col-value">£23k</span>
+              </div>
+              <div class="kanban-cards">
+                <div class="kanban-card" style="opacity:0.65;">
+                  <div style="display:flex;align-items:center;justify-content:space-between;">
+                    <div class="kanban-card-name">QuickFix HVAC</div>
+                    <div class="kanban-card-avatar" style="background:var(--danger-light);color:var(--danger);">QH</div>
+                  </div>
+                  <div class="kanban-card-company">HVAC — Glasgow</div>
+                  <div class="kanban-card-row">
+                    <span class="kanban-card-value" style="text-decoration:line-through;color:var(--text-muted);">£6,200</span>
+                    <span class="kanban-card-meta">Budget</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Panel -->
+        <div class="right-panel">
+          <!-- Funnel -->
+          <div class="panel-card">
+            <div class="panel-card-header">
+              <span class="panel-card-title">Conversion Funnel</span>
+              <button class="btn btn-sm btn-ghost" style="font-size:11px;color:var(--text-muted);">This month</button>
+            </div>
+            <div class="panel-card-body">
+              <div class="funnel">
+                <div class="funnel-row">
+                  <span class="funnel-label">New Lead</span>
+                  <div class="funnel-bar-track">
+                    <div class="funnel-bar" style="width:100%;background:#6366f1;">34</div>
+                  </div>
+                  <span class="funnel-rate">100%</span>
+                </div>
+                <div class="funnel-row">
+                  <span class="funnel-label">Contacted</span>
+                  <div class="funnel-bar-track">
+                    <div class="funnel-bar" style="width:74%;background:#8b5cf6;">25</div>
+                  </div>
+                  <span class="funnel-rate">74%</span>
+                </div>
+                <div class="funnel-row">
+                  <span class="funnel-label">Qualified</span>
+                  <div class="funnel-bar-track">
+                    <div class="funnel-bar" style="width:53%;background:#a855f7;">18</div>
+                  </div>
+                  <span class="funnel-rate">53%</span>
+                </div>
+                <div class="funnel-row">
+                  <span class="funnel-label">Proposal</span>
+                  <div class="funnel-bar-track">
+                    <div class="funnel-bar" style="width:38%;background:#d946ef;">13</div>
+                  </div>
+                  <span class="funnel-rate">38%</span>
+                </div>
+                <div class="funnel-row">
+                  <span class="funnel-label">Won</span>
+                  <div class="funnel-bar-track">
+                    <div class="funnel-bar" style="width:24%;background:#22c55e;">8</div>
+                  </div>
+                  <span class="funnel-rate">24%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Stage Velocity -->
+          <div class="panel-card">
+            <div class="panel-card-header">
+              <span class="panel-card-title">Stage Velocity</span>
+              <span style="font-size:11px;color:var(--text-muted);">Avg days in stage</span>
+            </div>
+            <div class="panel-card-body">
+              <div class="velocity-chart">
+                <div class="velocity-bar" style="height:35%;background:#6366f1;">
+                  <span class="velocity-label">3d</span>
+                </div>
+                <div class="velocity-bar" style="height:55%;background:#8b5cf6;">
+                  <span class="velocity-label">5d</span>
+                </div>
+                <div class="velocity-bar" style="height:80%;background:#a855f7;">
+                  <span class="velocity-label">7d</span>
+                </div>
+                <div class="velocity-bar" style="height:100%;background:#d946ef;">
+                  <span class="velocity-label">9d</span>
+                </div>
+                <div class="velocity-bar" style="height:65%;background:#ec4899;">
+                  <span class="velocity-label">6d</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Activity -->
+          <div class="panel-card">
+            <div class="panel-card-header">
+              <span class="panel-card-title">Recent Activity</span>
+              <button class="btn btn-sm btn-ghost" style="font-size:11px;color:var(--primary);">View all</button>
+            </div>
+            <div class="panel-card-body">
+              <div class="activity-list">
+                <div class="activity-item">
+                  <div class="activity-dot" style="background:var(--success);"></div>
+                  <div>
+                    <div class="activity-text"><strong>Precision Auto</strong> moved to <strong>Won</strong></div>
+                    <div class="activity-time">2 hours ago</div>
+                  </div>
+                </div>
+                <div class="activity-item">
+                  <div class="activity-dot" style="background:var(--primary);"></div>
+                  <div>
+                    <div class="activity-text"><strong>MoveIt Removals</strong> proposal sent — £14.2k</div>
+                    <div class="activity-time">4 hours ago</div>
+                  </div>
+                </div>
+                <div class="activity-item">
+                  <div class="activity-dot" style="background:var(--purple);"></div>
+                  <div>
+                    <div class="activity-text"><strong>NorthStar Recruitment</strong> qualified — enterprise tier</div>
+                    <div class="activity-time">Yesterday</div>
+                  </div>
+                </div>
+                <div class="activity-item">
+                  <div class="activity-dot" style="background:var(--danger);"></div>
+                  <div>
+                    <div class="activity-text"><strong>QuickFix HVAC</strong> marked as Lost — budget constraints</div>
+                    <div class="activity-time">Yesterday</div>
+                  </div>
+                </div>
+                <div class="activity-item">
+                  <div class="activity-dot" style="background:var(--warning);"></div>
+                  <div>
+                    <div class="activity-text"><strong>Bright Spark</strong> new lead from outreach sequence</div>
+                    <div class="activity-time">2 days ago</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

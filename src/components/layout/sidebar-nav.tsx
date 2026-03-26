@@ -38,6 +38,7 @@ import {
   ShieldCheck,
   PoundSterling,
   LockKeyhole,
+  Send,
   type LucideIcon,
 } from "lucide-react"
 
@@ -77,6 +78,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   ShieldCheck,
   PoundSterling,
   LockKeyhole,
+  Send,
 }
 
 function resolveIcon(iconName: string): LucideIcon {

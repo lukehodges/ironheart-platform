@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+x<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Ironheart — Acceler8 Demo Day</title>
+<title>Ironheart - Acceler8 Demo Day</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,300;1,9..144,400&family=Sora:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -277,46 +277,7 @@
 
 
   /* ══════════════════════════════════════
-     SLIDE 8 — TRACTION
-  ══════════════════════════════════════ */
-  .s-traction { justify-content: flex-start; padding-top: 8vh; }
-  .s-traction h2 {
-    font-size: clamp(24px, 3vw, 42px); margin-bottom: 5vh; color: var(--text-1);
-  }
-  .s-traction .stats {
-    display: grid; grid-template-columns: repeat(4, 1fr);
-    gap: 16px; max-width: 860px; width: 100%;
-  }
-  .s-traction .stat {
-    background: var(--bg-card); border: 1px solid var(--border);
-    border-radius: 10px; padding: 24px 20px; text-align: center;
-  }
-  .s-traction .stat .num {
-    font-family: 'Fraunces', serif; font-size: clamp(28px, 3vw, 40px);
-    color: var(--amber-bright); margin-bottom: 4px;
-  }
-  .s-traction .stat .label { font-size: 12px; color: var(--text-2); line-height: 1.4; }
-
-  .s-traction .clients {
-    margin-top: 4vh; display: grid; grid-template-columns: repeat(2, 1fr);
-    gap: 12px; max-width: 700px; width: 100%;
-  }
-  .s-traction .client {
-    background: var(--bg-card); border: 1px solid var(--border);
-    border-radius: 8px; padding: 16px 20px;
-    display: flex; align-items: center; gap: 14px;
-  }
-  .s-traction .client .dot {
-    width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
-  }
-  .s-traction .client .dot.green { background: var(--green); }
-  .s-traction .client .dot.amber { background: var(--amber); }
-  .s-traction .client .name { font-size: 14px; font-weight: 500; color: var(--text-1); }
-  .s-traction .client .type { font-size: 12px; color: var(--text-2); }
-
-
-  /* ══════════════════════════════════════
-     SLIDE 9 — COMPOUNDING
+     COMPOUNDING — Hex Module Grid
   ══════════════════════════════════════ */
   .s-compound { }
   .s-compound .ambient { background: var(--amber); opacity: 0.03; }
@@ -326,30 +287,262 @@
   }
   .s-compound .sub {
     font-size: clamp(14px, 1.4vw, 17px); color: var(--text-2);
-    text-align: center; max-width: 600px; margin-bottom: 48px;
+    text-align: center; max-width: 600px; margin-bottom: 36px;
   }
-  .s-compound .visual { display: flex; align-items: center; gap: 20px; }
-  .s-compound .block {
-    background: var(--bg-card); border: 1px solid var(--border);
-    border-radius: 10px; padding: 20px 24px; text-align: center; min-width: 140px;
+
+  /* Honeycomb variables */
+  .s-compound {
+    --hex-w: 110px;
+    --hex-h: calc(var(--hex-w) * 1.1547);
+    --hex-gap: 6px;
+    --hex-row-shift: calc(var(--hex-w) / 2 + var(--hex-gap) / 2);
+    --hex-row-overlap: calc(var(--hex-h) * 0.25 - var(--hex-gap) / 2);
   }
-  .s-compound .block .bl { font-size: 12px; color: var(--text-2); margin-bottom: 4px; }
-  .s-compound .block .bv {
-    font-family: 'Fraunces', serif; font-size: 18px; color: var(--text-1);
+
+  .s-compound .hex-grid {
+    display: flex; flex-direction: column; align-items: center;
   }
-  .s-compound .op { color: var(--text-3); font-size: 16px; flex-shrink: 0; }
-  .s-compound .result {
-    background: var(--amber-dim); border: 1px solid var(--amber-border);
-    border-radius: 10px; padding: 20px 24px; text-align: center; min-width: 160px;
+  .s-compound .hex-row {
+    display: flex; gap: var(--hex-gap); justify-content: center;
   }
-  .s-compound .result .bl { font-size: 12px; color: var(--amber); margin-bottom: 4px; }
-  .s-compound .result .bv {
-    font-family: 'Fraunces', serif; font-size: 18px; color: var(--amber-bright);
+  .s-compound .hex-row + .hex-row {
+    margin-top: calc(var(--hex-row-overlap) * -1);
+  }
+
+  /* The coin cell */
+  .s-compound .hex {
+    width: var(--hex-w); height: var(--hex-h); position: relative;
+    display: flex; align-items: center; justify-content: center;
+    clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+    cursor: default;
+    transform: scale(1) translateY(0);
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
+                filter 0.4s ease;
+    filter: drop-shadow(0 2px 6px rgba(0,0,0,0.5));
+    animation: hexCoinDrop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  }
+  .s-compound .hex:nth-child(1) { animation-delay: 0s; }
+  .s-compound .hex:nth-child(2) { animation-delay: 0.06s; }
+  .s-compound .hex:nth-child(3) { animation-delay: 0.12s; }
+  .s-compound .hex:nth-child(4) { animation-delay: 0.18s; }
+  .s-compound .hex-row:nth-child(2) .hex { animation-delay: calc(0.2s + 0.06s * var(--i, 0)); }
+  .s-compound .hex-row:nth-child(3) .hex { animation-delay: calc(0.4s + 0.06s * var(--i, 0)); }
+  .s-compound .hex-row:nth-child(4) .hex { animation-delay: calc(0.6s + 0.06s * var(--i, 0)); }
+
+  @keyframes hexCoinDrop {
+    0% { opacity: 0; transform: scale(0.5) translateY(-30px) rotateX(40deg); }
+    100% { opacity: 1; transform: scale(1) translateY(0) rotateX(0deg); }
+  }
+
+  .s-compound .hex:hover {
+    transform: scale(1.12) translateY(-4px);
+    filter: drop-shadow(0 8px 20px rgba(200,150,76,0.3));
+    z-index: 10;
+  }
+
+  .s-compound .hex span {
+    font-size: 10.5px; font-weight: 600; letter-spacing: 0.06em;
+    text-transform: uppercase;
+    text-align: center; z-index: 3; line-height: 1.2;
+    position: relative;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+  }
+
+  /* Built coin — thin gold hinge around dark metallic face */
+  .s-compound .hex.built {
+    background: linear-gradient(
+      160deg,
+      rgba(200,150,76,0.18) 0%, rgba(200,150,76,0.10) 50%, rgba(200,150,76,0.15) 100%
+    );
+    color: var(--text-1);
+  }
+  /* Inner face — inset 1.5px so the gold just barely peeks through */
+  .s-compound .hex.built::before {
+    content: ''; position: absolute; inset: 1.5px;
+    clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+    background: linear-gradient(
+      160deg,
+      #1e2028 0%, #14161c 50%, #1a1d25 100%
+    );
+    z-index: 1;
+  }
+  /* Top shine / specular highlight */
+  .s-compound .hex.built::after {
+    content: ''; position: absolute; inset: 3px;
+    clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+    background: linear-gradient(
+      180deg,
+      rgba(255,255,255,0.08) 0%,
+      transparent 40%,
+      transparent 80%,
+      rgba(255,255,255,0.03) 100%
+    );
+    z-index: 2; pointer-events: none;
+  }
+  .s-compound .hex.built span { z-index: 3; position: relative; }
+
+  .s-compound .hex.built:hover {
+    background: linear-gradient(
+      160deg,
+      rgba(200,150,76,0.28) 0%, rgba(200,150,76,0.18) 50%, rgba(200,150,76,0.24) 100%
+    );
+  }
+
+  /* Planned coin — slightly warmer gold hinge */
+  .s-compound .hex.planned {
+    background: linear-gradient(
+      160deg,
+      rgba(228,173,92,0.28) 0%, rgba(228,173,92,0.16) 50%, rgba(228,173,92,0.22) 100%
+    );
+    color: var(--amber-bright);
+  }
+  .s-compound .hex.planned::before {
+    content: ''; position: absolute; inset: 1.5px;
+    clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+    background: linear-gradient(
+      160deg,
+      #261c0e 0%, #1c1408 50%, #22190c 100%
+    );
+    z-index: 1;
+  }
+  .s-compound .hex.planned::after {
+    content: ''; position: absolute; inset: 3px;
+    clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+    background: linear-gradient(
+      180deg,
+      rgba(228,173,92,0.15) 0%,
+      transparent 35%,
+      transparent 75%,
+      rgba(228,173,92,0.06) 100%
+    );
+    z-index: 2; pointer-events: none;
+  }
+  .s-compound .hex.planned span { z-index: 3; position: relative; }
+
+  .s-compound .hex.planned:hover {
+    background: linear-gradient(
+      160deg,
+      rgba(228,173,92,0.38) 0%, rgba(228,173,92,0.24) 50%, rgba(228,173,92,0.32) 100%
+    );
+    filter: drop-shadow(0 8px 24px rgba(228,173,92,0.35));
+  }
+
+  /* Idle shimmer animation on planned coins */
+  .s-compound .hex.planned {
+    animation: hexCoinDrop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both,
+               hexPulse 3s ease-in-out 1.2s infinite;
+  }
+  @keyframes hexPulse {
+    0%, 100% { filter: drop-shadow(0 2px 6px rgba(0,0,0,0.5)); }
+    50% { filter: drop-shadow(0 2px 12px rgba(228,173,92,0.25)); }
+  }
+
+  /* Legend */
+  .s-compound .hex-legend {
+    margin-top: 28px; display: flex; gap: 24px;
+    font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase;
+  }
+  .s-compound .hex-key { display: flex; align-items: center; gap: 8px; }
+  .s-compound .hex-key::before {
+    content: ''; width: 12px; height: 14px;
+    clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+  }
+  .s-compound .built-key { color: var(--text-2); }
+  .s-compound .built-key::before {
+    background: linear-gradient(160deg, #2a2d36, #1a1c24);
+  }
+  .s-compound .planned-key { color: var(--amber); }
+  .s-compound .planned-key::before {
+    background: linear-gradient(160deg, #3d3020, #2a2010);
+  }
+  .s-compound .live-key { color: var(--amber-bright); }
+  .s-compound .live-key::before {
+    background: linear-gradient(160deg, #1e2028, #14161c);
+    outline: 1.5px solid var(--amber);
+    outline-offset: -1px;
+    border-radius: 1px;
+  }
+
+  /* Wrapper for grid + side note */
+  .s-compound .hex-grid-wrapper {
+    position: relative; display: flex; align-items: center; gap: 32px;
+  }
+
+  /* Live gold outline — hidden until reveal */
+  .s-compound .hex.live {
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
+                filter 0.4s ease;
+  }
+  /* The gold outline ring sits behind the coin via drop-shadow on a wrapper approach.
+     Since clip-path kills box-shadow, we use an absolutely-positioned outline element
+     generated by adding a second layer to the outer hex background. */
+  .s-compound.step-1 .hex.live {
+    background:
+      linear-gradient(160deg, rgba(200,150,76,0.18) 0%, rgba(200,150,76,0.10) 50%, rgba(200,150,76,0.15) 100%);
+    filter: drop-shadow(0 0 4px rgba(228,173,92,0.4))
+            drop-shadow(0 0 1px rgba(228,173,92,0.6));
+  }
+  .s-compound.step-1 .hex.live::before {
+    inset: 3px;
+  }
+
+  /* Side note */
+  .s-compound .hex-live-note {
+    position: absolute; right: -200px; top: 50%;
+    display: flex; align-items: center; gap: 10px;
+    opacity: 0; transition: opacity 0.5s ease, transform 0.5s ease;
+    transform: translateY(-50%) translateX(10px);
+    pointer-events: none;
+  }
+  .s-compound.step-1 .hex-live-note {
+    opacity: 1; transform: translateY(-50%) translateX(0);
+  }
+  .s-compound .hex-live-note span {
+    font-size: 12px; color: var(--amber); letter-spacing: 0.04em;
+    white-space: nowrap; line-height: 1.4;
+  }
+  .s-compound .hex-live-arrow {
+    width: 28px; height: 1px; background: var(--amber-border);
+    flex-shrink: 0;
+  }
+
+  /* Legend live key reveal — driven by step-1 class */
+  .s-compound .hex-legend .live-key {
+    opacity: 0; transition: opacity 0.4s ease;
+  }
+  .s-compound.step-1 .hex-legend .live-key {
+    opacity: 1;
   }
 
 
   /* ══════════════════════════════════════
-     SLIDE 10 — EXPANSION
+     SLIDE 10 — WHY NOW
+  ══════════════════════════════════════ */
+  .s-why-now { justify-content: flex-start; padding-top: 8vh; }
+  .s-why-now .ambient { background: var(--amber); opacity: 0.03; }
+  .s-why-now h2 {
+    font-size: clamp(26px, 3.5vw, 48px); text-align: center;
+    max-width: 780px; margin-bottom: 5vh;
+  }
+  .s-why-now h2 em { font-style: italic; color: var(--amber-bright); }
+  .s-why-now .grid {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 16px; max-width: 860px; width: 100%;
+  }
+  .s-why-now .card {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 10px; padding: 28px 24px;
+  }
+  .s-why-now .card .icon { font-size: 28px; margin-bottom: 16px; }
+  .s-why-now .card .label {
+    font-family: 'Fraunces', serif; font-size: clamp(15px, 1.4vw, 18px);
+    color: var(--text-1); margin-bottom: 8px;
+  }
+  .s-why-now .card .desc { font-size: 13px; color: var(--text-2); line-height: 1.5; }
+
+
+  /* ══════════════════════════════════════
+     SLIDE 11 — EXPANSION
   ══════════════════════════════════════ */
   .s-expansion { justify-content: flex-start; padding-top: 8vh; }
   .s-expansion .ambient { background: var(--amber); opacity: 0.03; }
@@ -374,48 +567,260 @@
   }
   .s-expansion .card .desc { font-size: 13px; color: var(--text-2); line-height: 1.5; }
 
+
+
   /* ══════════════════════════════════════
-     SLIDE 11 — TEAM
+     SLIDE — TRACTION v2
+  ══════════════════════════════════════ */
+  .s-traction-v2 { justify-content: flex-start; padding-top: 8vh; }
+  .s-traction-v2 h2 {
+    font-size: clamp(24px, 3vw, 42px); margin-bottom: 8px; color: var(--text-1);
+  }
+  .s-traction-v2 .sub {
+    font-size: clamp(13px, 1.4vw, 16px); color: var(--text-2); margin-bottom: 5vh;
+    text-align: center; max-width: 600px;
+  }
+  .s-traction-v2 .stats {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 16px; max-width: 700px; width: 100%;
+  }
+  .s-traction-v2 .stat {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 10px; padding: 24px 20px; text-align: center;
+  }
+  .s-traction-v2 .stat .num {
+    font-family: 'Fraunces', serif; font-size: clamp(28px, 3vw, 40px);
+    color: var(--amber-bright); margin-bottom: 4px;
+  }
+  .s-traction-v2 .stat .label { font-size: 12px; color: var(--text-2); line-height: 1.4; }
+  .s-traction-v2 .built {
+    margin-top: 4vh; display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px; max-width: 860px; width: 100%;
+  }
+  .s-traction-v2 .built-cell:nth-child(4) { grid-column: 1 / 2; }
+  .s-traction-v2 .built-cell:nth-child(5) { grid-column: 2 / 4; }
+  .s-traction-v2 .built-cell {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 8px; padding: 16px 18px;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .s-traction-v2 .built-cell .cell-top {
+    display: flex; align-items: center; gap: 10px;
+  }
+  .s-traction-v2 .built-cell .dot {
+    width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+  }
+  .s-traction-v2 .built-cell .dot.green { background: var(--green); }
+  .s-traction-v2 .built-cell .dot.amber { background: var(--amber); }
+  .s-traction-v2 .built-cell .name { font-size: 14px; font-weight: 500; color: var(--text-1); }
+  .s-traction-v2 .built-cell .type { font-size: 12px; color: var(--text-2); line-height: 1.4; }
+  .s-traction-v2 .built-cell .tag {
+    font-size: 10px; font-weight: 600;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    padding: 3px 8px; border-radius: 20px; width: fit-content; margin-top: auto;
+  }
+  .s-traction-v2 .built-cell .tag.live {
+    background: var(--green-dim); color: var(--green); border: 1px solid var(--green-border);
+  }
+  .s-traction-v2 .built-cell .tag.pipeline {
+    background: var(--amber-dim); color: var(--amber); border: 1px solid var(--amber-border);
+  }
+
+
+  /* ══════════════════════════════════════
+     SLIDE — GTM v2 (horizontal timeline)
+  ══════════════════════════════════════ */
+  .s-gtm-v2 { justify-content: center; }
+  .s-gtm-v2 .ambient { background: var(--amber); opacity: 0.03; }
+  .s-gtm-v2 h2 {
+    font-size: clamp(24px, 3.2vw, 44px); text-align: center;
+    max-width: 700px; margin-bottom: 10px; color: var(--text-1);
+  }
+  .s-gtm-v2 .sub {
+    font-size: clamp(13px, 1.4vw, 16px); color: var(--text-2);
+    text-align: center; max-width: 620px; margin-bottom: 44px;
+  }
+
+  /* Horizontal timeline rail */
+  .s-gtm-v2 .timeline {
+    position: relative; max-width: 920px; width: 100%;
+    display: flex; align-items: flex-start; gap: 0;
+  }
+  .s-gtm-v2 .timeline::before {
+    content: ''; position: absolute;
+    top: 19px; left: 20px; right: 20px; height: 2px;
+    background: linear-gradient(to right, var(--amber), var(--amber-border) 50%, var(--border) 100%);
+  }
+
+  /* Each node */
+  .s-gtm-v2 .tl-node {
+    display: flex; flex-direction: column; align-items: center;
+    flex: 1; position: relative; padding: 0 12px;
+  }
+
+  /* Dot on the rail */
+  .s-gtm-v2 .tl-dot {
+    width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 600; letter-spacing: 0.05em;
+    z-index: 1; position: relative; margin-bottom: 20px;
+  }
+  .s-gtm-v2 .tl-dot.now {
+    background: var(--amber); color: var(--bg);
+    box-shadow: 0 0 20px rgba(200,150,76,0.25);
+  }
+  .s-gtm-v2 .tl-dot.next {
+    background: var(--bg-elevated); border: 2px solid var(--amber-border);
+    color: var(--amber);
+  }
+  .s-gtm-v2 .tl-dot.later {
+    background: var(--bg-elevated); border: 2px solid var(--border);
+    color: var(--text-3);
+  }
+
+  /* Content below dot */
+  .s-gtm-v2 .tl-content { text-align: center; }
+  .s-gtm-v2 .tl-time {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.15em;
+    text-transform: uppercase; margin-bottom: 6px;
+  }
+  .s-gtm-v2 .tl-time.amber { color: var(--amber); }
+  .s-gtm-v2 .tl-time.muted { color: var(--text-3); }
+  .s-gtm-v2 .tl-title {
+    font-family: 'Fraunces', serif; font-size: clamp(15px, 1.5vw, 19px);
+    color: var(--text-1); margin-bottom: 10px; line-height: 1.3;
+  }
+  .s-gtm-v2 .tl-points {
+    display: flex; flex-direction: column; gap: 5px;
+  }
+  .s-gtm-v2 .tl-point {
+    display: flex; align-items: flex-start; gap: 8px;
+    font-size: 12px; color: var(--text-2); line-height: 1.45;
+    text-align: left;
+  }
+  .s-gtm-v2 .tl-point::before {
+    content: ''; width: 4px; height: 4px; border-radius: 50%;
+    background: var(--text-3); flex-shrink: 0; margin-top: 6px;
+  }
+  .s-gtm-v2 .tl-node.active .tl-point::before { background: var(--amber); }
+
+  .s-gtm-v2 .advisors {
+    margin-top: 36px; font-size: 12px; color: var(--text-3);
+    text-align: center; letter-spacing: 0.02em;
+  }
+  .s-gtm-v2 .advisors strong { color: var(--text-2); font-weight: 500; }
+
+  @media (max-width: 860px) {
+    .s-traction-v2 .stats { grid-template-columns: 1fr; max-width: 300px; }
+    .s-traction-v2 .built { grid-template-columns: 1fr; max-width: 400px; }
+    .s-traction-v2 .built-cell:nth-child(4),
+    .s-traction-v2 .built-cell:nth-child(5) { grid-column: auto; }
+    .s-compound { --hex-w: 78px; }
+    .s-compound .hex span { font-size: 8.5px; }
+    .s-team .avatar { width: 80px; height: 80px; }
+    .s-team .avatar + .avatar { margin-left: -14px; }
+    .s-gtm-v2 .timeline { flex-direction: column; align-items: center; max-width: 400px; margin: 0 auto; }
+    .s-gtm-v2 .timeline::before {
+      top: 20px; bottom: 20px; left: 50%; right: auto;
+      width: 2px; height: auto;
+      background: linear-gradient(to bottom, var(--amber), var(--border) 100%);
+    }
+    .s-gtm-v2 .tl-node { padding: 0 0 28px 0; }
+    .s-gtm-v2 .tl-dot { margin-bottom: 14px; }
+  }
+
+
+  /* ══════════════════════════════════════
+     SLIDE 13 — TEAM
   ══════════════════════════════════════ */
   .s-team { }
   .s-team .ambient { background: var(--amber); opacity: 0.03; }
-  .s-team .avatars {
+  .s-team .team-layout {
+    display: flex; align-items: flex-start; gap: 48px;
+    max-width: 880px; width: 100%;
+  }
+
+  /* Founder card */
+  .s-team .founder-card {
+    flex: 1; display: flex; flex-direction: column; align-items: center;
+    text-align: center;
+  }
+  .s-team .founder-avatars {
     display: flex; align-items: center; justify-content: center;
-    margin-bottom: 32px;
+    margin-bottom: 16px;
   }
   .s-team .avatar {
-    width: 120px; height: 120px; border-radius: 50%;
+    width: 100px; height: 100px; border-radius: 50%;
     border: 2px solid var(--amber); background: var(--bg-elevated);
     overflow: hidden; flex-shrink: 0;
     display: flex; align-items: center; justify-content: center;
   }
-  .s-team .avatar + .avatar { margin-left: -24px; }
+  .s-team .avatar + .avatar { margin-left: -20px; }
   .s-team .avatar img {
     width: 100%; height: 100%; object-fit: cover;
   }
-  .s-team .avatar .placeholder-silhouette {
-    width: 40px; height: 40px; border-radius: 50%;
-    background: var(--text-3); opacity: 0.3;
-  }
   .s-team .member-name {
-    font-family: 'Fraunces', serif; font-size: clamp(20px, 2.4vw, 28px);
+    font-family: 'Fraunces', serif; font-size: clamp(18px, 2vw, 24px);
     color: var(--text-1); margin-bottom: 4px;
   }
   .s-team .member-title {
-    font-size: 14px; color: var(--amber); font-weight: 500;
+    font-size: 13px; color: var(--amber); font-weight: 500;
     letter-spacing: 0.05em; margin-bottom: 4px;
   }
   .s-team .member-uni {
-    font-size: 13px; color: var(--text-2); margin-bottom: 20px;
+    font-size: 12px; color: var(--text-2); margin-bottom: 14px;
   }
   .s-team .member-bio {
-    font-size: 14px; color: var(--text-2); text-align: center;
-    max-width: 480px; line-height: 1.6;
+    font-size: 13px; color: var(--text-2); text-align: center;
+    max-width: 320px; line-height: 1.55;
+  }
+
+  /* Divider */
+  .s-team .team-divider {
+    width: 1px; align-self: stretch;
+    background: var(--border);
+  }
+
+  /* Open roles */
+  .s-team .open-roles { flex: 1; display: flex; flex-direction: column; gap: 12px; }
+  .s-team .roles-label {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.2em;
+    text-transform: uppercase; color: var(--text-3); margin-bottom: 4px;
+  }
+  .s-team .role-card {
+    background: var(--bg-card); border: 1px dashed var(--border-light);
+    border-radius: 10px; padding: 16px 18px;
+    display: flex; align-items: center; gap: 14px;
+  }
+  .s-team .role-avatar {
+    width: 44px; height: 44px; border-radius: 50%;
+    border: 1.5px dashed var(--text-3); flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .s-team .role-avatar svg {
+    width: 18px; height: 18px; stroke: var(--text-3); fill: none;
+    stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round;
+  }
+  .s-team .role-info { }
+  .s-team .role-name {
+    font-family: 'Fraunces', serif; font-size: 15px;
+    color: var(--text-1); margin-bottom: 2px;
+  }
+  .s-team .role-desc {
+    font-size: 12px; color: var(--text-2); line-height: 1.4;
+  }
+
+  @media (max-width: 860px) {
+    .s-team .team-layout { flex-direction: column; align-items: center; gap: 32px; }
+    .s-team .team-divider { width: 60%; height: 1px; align-self: center; }
+    .s-team .open-roles { align-items: center; }
+    .s-team .role-card { max-width: 340px; width: 100%; }
   }
 
 
   /* ══════════════════════════════════════
-     SLIDE 12 — CLOSE
+     SLIDE 14 — CLOSE
   ══════════════════════════════════════ */
   .s-close { }
   .s-close .ambient { background: var(--amber); opacity: 0.035; }
@@ -459,14 +864,13 @@
     .slide { padding: 36px 28px; }
     .s-problem .grid,
     .s-demos .grid { grid-template-columns: 1fr; max-width: 400px; }
-    .s-traction .stats { grid-template-columns: repeat(2, 1fr); }
-    .s-traction .clients { grid-template-columns: 1fr; }
     .s-approach .steps { flex-direction: column; gap: 20px; }
     .s-approach .arrow { transform: rotate(90deg); }
     .s-compound .visual { flex-direction: column; }
     .s-compound .op { transform: rotate(90deg); }
     .s-close .contact { flex-direction: column; gap: 24px; align-items: center; }
     .s-demo .video-placeholder { width: min(400px, 85vw); }
+    .s-why-now .grid { grid-template-columns: 1fr; max-width: 400px; }
     .s-expansion .grid { grid-template-columns: 1fr; max-width: 400px; }
     .s-team .avatar { width: 90px; height: 90px; }
     .s-team .avatar + .avatar { margin-left: -16px; }
@@ -485,7 +889,7 @@
   <div class="slide s-title active">
     <div class="ambient"></div>
     <div class="logo-mark">Ironheart</div>
-    <h1>Custom AI systems for organisations that still run on <em>paper</em></h1>
+    <h1>Custom precision software for organisations that still run on <em>paper</em></h1>
     <div class="sub">We audit operations, find the bottlenecks, and build software that removes them permanently.</div>
     <div class="founder"><strong>Luke Hodges</strong> &middot; Founder</div>
   </div>
@@ -503,7 +907,7 @@
       <div class="card reveal-item">
         <div class="icon">&#128176;</div>
         <div class="label">Wasted spend</div>
-        <div class="desc">Three people doing what one system could. Solutions that are &lsquo;good enough&rsquo; &mdash; meaning slow, manual, and the first thing to break when someone&rsquo;s off sick.</div>
+        <div class="desc">Three people doing what one system could. Solutions that are &lsquo;good enough&rsquo; - meaning slow, manual, and the first thing to break when someone&rsquo;s off sick.</div>
       </div>
       <div class="card reveal-item">
         <div class="icon">&#128683;</div>
@@ -538,181 +942,312 @@
     </div>
   </div>
 
-  <!-- SLIDE 4 — DEMO OVERVIEW -->
+  <!-- DEMO OVERVIEW (commented out — doing live demo instead)
   <div class="slide s-demos">
     <div class="section-tag green">Live Demo</div>
     <h2>What We've Built</h2>
-    <div class="sub">Three systems. Three industries. All built in the last six months.</div>
-    <div class="grid">
+    <div class="sub">We took one vertical live. Then rebuilt the platform to make every module work for any industry.</div>
+    <div class="grid" style="grid-template-columns: repeat(2, 1fr); max-width: 680px;">
       <div class="card">
         <div class="num">Demo 01</div>
-        <div class="title">Compliance &amp; Audit Tracker</div>
-        <div class="desc">Automated compliance monitoring for regulated industries. Tracks obligations, flags risks, generates reports.</div>
-        <span class="tag">Live</span>
+        <div class="title">Booking &amp; Scheduling</div>
+        <div class="desc">Our first vertical — live and in production. Multi-provider scheduling, routing, reminders, and intake forms for a healthcare clinic.</div>
+        <span class="tag">Live · In Production</span>
       </div>
       <div class="card">
         <div class="num">Demo 02</div>
-        <div class="title">Customer Support System</div>
-        <div class="desc">Unified inbox that pulls from email, web, and phone. AI-assisted triage and routing. Full conversation history.</div>
-        <span class="tag">Live</span>
-      </div>
-      <div class="card">
-        <div class="num">Demo 03</div>
-        <div class="title">Booking &amp; Scheduling Engine</div>
-        <div class="desc">Multi-provider scheduling with automated reminders, intake forms, and capacity management.</div>
-        <span class="tag">Live</span>
+        <div class="title">The Modular Platform</div>
+        <div class="desc">What we built next. The same capabilities — plus workflows, AI, pipeline, payments — modular enough to deploy for any organisation.</div>
+        <span class="tag">Live · Multi-Tenant</span>
       </div>
     </div>
   </div>
+  -->
 
-  <!-- SLIDE 5 — DEMO 1: COMPLIANCE -->
+  <!-- DEMO 1: BOOKING (old ironheart, live) -->
   <div class="slide s-demo">
     <div class="ambient"></div>
     <div class="video-placeholder">
       <div class="placeholder-icon"><svg viewBox="0 0 24 24"><polygon points="8,5 19,12 8,19"/></svg></div>
-      <div class="placeholder-label">Demo video</div>
+      <div class="placeholder-label">Live demo</div>
     </div>
-    <div class="demo-label">Demo 01</div>
-    <div class="demo-title">Compliance &amp; Audit Tracker</div>
-    <div class="demo-context">Built for an environmental consultancy handling biodiversity net gain obligations across multiple sites.</div>
+    <div class="demo-label">Demo 01 - The Vertical</div>
+    <div class="demo-title">Booking &amp; Scheduling</div>
+    <div class="demo-context">Built for a mobile healthcare clinic. This is our first vertical - live and handling real bookings every day. It worked, but we hit the ceiling on how modular it could be.</div>
     <div class="demo-points">
-      <div class="demo-point">Automated obligation tracking across regulatory frameworks</div>
-      <div class="demo-point">Real-time compliance status dashboard</div>
-      <div class="demo-point">Audit-ready report generation in one click</div>
-    </div>
-  </div>
-
-  <!-- SLIDE 6 — DEMO 2: SUPPORT -->
-  <div class="slide s-demo">
-    <div class="ambient"></div>
-    <div class="video-placeholder">
-      <div class="placeholder-icon"><svg viewBox="0 0 24 24"><polygon points="8,5 19,12 8,19"/></svg></div>
-      <div class="placeholder-label">Demo video</div>
-    </div>
-    <div class="demo-label">Demo 02</div>
-    <div class="demo-title">Customer Support System</div>
-    <div class="demo-context">Built for a service business managing hundreds of customer interactions per week across email, phone, and web.</div>
-    <div class="demo-points">
-      <div class="demo-point">Unified inbox — every channel in one place</div>
-      <div class="demo-point">AI triage that routes to the right person automatically</div>
-      <div class="demo-point">Full customer history and context on every interaction</div>
-    </div>
-  </div>
-
-  <!-- SLIDE 7 — DEMO 3: BOOKING -->
-  <div class="slide s-demo">
-    <div class="ambient"></div>
-    <div class="video-placeholder">
-      <div class="placeholder-icon"><svg viewBox="0 0 24 24"><polygon points="8,5 19,12 8,19"/></svg></div>
-      <div class="placeholder-label">Demo video</div>
-    </div>
-    <div class="demo-label">Demo 03</div>
-    <div class="demo-title">Booking &amp; Scheduling Engine</div>
-    <div class="demo-context">Built for a mobile healthcare clinic managing multi-provider schedules across multiple locations.</div>
-    <div class="demo-points">
-      <div class="demo-point">Dynamic scheduling with travel time and capacity constraints</div>
-      <div class="demo-point">Automated reminders and intake form collection</div>
+      <div class="demo-point">Multi-provider scheduling with route planning and capacity constraints</div>
+      <div class="demo-point">Public booking portal, automated reminders, intake forms</div>
+      <div class="demo-point">Staff portal with availability, schedule view, and calendar sync</div>
       <div class="demo-point">Eliminated 8+ hours per week of manual admin</div>
     </div>
   </div>
 
-  <!-- SLIDE 8 — TRACTION -->
-  <div class="slide s-traction">
+  <!-- SLIDE 6 — DEMO 2: PLATFORM (refactor) -->
+  <div class="slide s-demo">
+    <div class="ambient"></div>
+    <div class="video-placeholder">
+      <div class="placeholder-icon"><svg viewBox="0 0 24 24"><polygon points="8,5 19,12 8,19"/></svg></div>
+      <div class="placeholder-label">Live demo</div>
+    </div>
+    <div class="demo-label">Demo 02 - The Platform</div>
+    <div class="demo-title">Ironheart - Modular Operations Engine</div>
+    <div class="demo-context">So we rebuilt it. Same capabilities, but every module can be enabled, configured, and deployed independently for any organisation.</div>
+    <div class="demo-points">
+      <div class="demo-point">Dashboard, pipeline, team management, customers, payments</div>
+      <div class="demo-point">Visual workflow builder with conditional logic and automation</div>
+      <div class="demo-point">AI assistant with live tool execution and streaming</div>
+      <div class="demo-point">Multi-tenant - one platform, unlimited organisations</div>
+    </div>
+  </div>
+
+  <!-- TRACTION -->
+  <div class="slide s-traction-v2">
     <div class="section-tag muted">Traction</div>
-    <h2>Early, But Real</h2>
+    <h2>Paying Clients, Live Systems</h2>
+    <div class="sub">Three live clients. Five projects delivered in six months. Pipeline active.</div>
     <div class="stats">
       <div class="stat">
-        <div class="num">4</div>
-        <div class="label">Clients served</div>
+        <div class="num">3</div>
+        <div class="label">Live clients</div>
       </div>
       <div class="stat">
-        <div class="num">4</div>
-        <div class="label">Different industries</div>
+        <div class="num">5</div>
+        <div class="label">Projects delivered</div>
       </div>
       <div class="stat">
         <div class="num">6mo</div>
         <div class="label">Build time total</div>
       </div>
-      <div class="stat">
-        <div class="num">1</div>
-        <div class="label">Platform powering it all</div>
-      </div>
     </div>
-    <div class="clients">
-      <div class="client">
-        <div class="dot green"></div>
-        <div><div class="name">Mobile Healthcare Clinic</div><div class="type">Routing &amp; scheduling system</div></div>
+    <div class="built">
+      <div class="built-cell">
+        <div class="cell-top"><div class="dot green"></div><div class="name">Healthcare Clinic</div></div>
+        <div class="type">Scheduling, routing &amp; capacity management</div>
+        <span class="tag live">Live &middot; Upfront + Monthly</span>
       </div>
-      <div class="client">
-        <div class="dot amber"></div>
-        <div><div class="name">Theatre Company</div><div class="type">Back-office automation</div></div>
+      <div class="built-cell">
+        <div class="cell-top"><div class="dot green"></div><div class="name">Events Company</div></div>
+        <div class="type">Booking engine &amp; back-office automation</div>
+        <span class="tag live">Live &middot; Upfront + Monthly</span>
       </div>
-      <div class="client">
-        <div class="dot amber"></div>
-        <div><div class="name">Events &amp; Hospitality</div><div class="type">Full operational platform</div></div>
+      <div class="built-cell">
+        <div class="cell-top"><div class="dot green"></div><div class="name">Local Roaster - Bath</div></div>
+        <div class="type">E-commerce &amp; online ordering</div>
+        <span class="tag live">Live</span>
       </div>
-      <div class="client">
-        <div class="dot green"></div>
-        <div><div class="name">Environmental Consultancy</div><div class="type">Compliance &amp; brokerage platform</div></div>
+      <div class="built-cell">
+        <div class="cell-top"><div class="dot green"></div><div class="name">File Automation</div></div>
+        <div class="type">10hrs/week of manual uploads replaced with one script</div>
+        <span class="tag live">Delivered</span>
+      </div>
+      <div class="built-cell">
+        <div class="cell-top"><div class="dot amber"></div><div class="name">Environmental Consultancy</div></div>
+        <div class="type">Compliance platform &amp; biodiversity net gain brokerage</div>
+        <span class="tag pipeline">Pipeline</span>
       </div>
     </div>
   </div>
 
-  <!-- SLIDE 9 — COMPOUNDING -->
-  <div class="slide s-compound">
+  <!-- COMPOUNDING (hex modules) -->
+  <div class="slide s-compound" data-steps="1">
     <div class="ambient"></div>
     <div class="section-tag amber">The Model</div>
-    <h2>Every Client Makes the Platform Smarter</h2>
-    <div class="sub">Each module we build for one industry becomes available to the next. We're not starting from scratch — we're compounding.</div>
-    <div class="visual">
-      <div class="block"><div class="bl">Client 1</div><div class="bv">Booking Engine</div></div>
-      <div class="op">+</div>
-      <div class="block"><div class="bl">Client 2</div><div class="bv">Compliance</div></div>
-      <div class="op">+</div>
-      <div class="block"><div class="bl">Client 3</div><div class="bv">Support Inbox</div></div>
-      <div class="op">=</div>
-      <div class="result"><div class="bl">Client 4</div><div class="bv">All three + more</div></div>
+    <h2>Every Client Adds Modules to the Platform</h2>
+    <div class="sub">Each module built for one client becomes available to the next. We&rsquo;re not starting from scratch - we&rsquo;re compounding.</div>
+    <div class="hex-grid-wrapper">
+      <div class="hex-grid">
+        <div class="hex-row">
+          <div class="hex built live" style="--i:0"><span>Scheduling</span></div>
+          <div class="hex built live" style="--i:1"><span>Bookings</span></div>
+          <div class="hex built live" style="--i:2"><span>Customers</span></div>
+        </div>
+        <div class="hex-row offset">
+          <div class="hex built" style="--i:0"><span>Payments</span></div>
+          <div class="hex built live" style="--i:1"><span>Workflows</span></div>
+          <div class="hex built" style="--i:2"><span>Forms</span></div>
+          <div class="hex built" style="--i:3"><span>Reviews</span></div>
+        </div>
+        <div class="hex-row">
+          <div class="hex built" style="--i:0"><span>AI Agent</span></div>
+          <div class="hex built" style="--i:1"><span>Pipeline</span></div>
+          <div class="hex built" style="--i:2"><span>Team</span></div>
+        </div>
+        <div class="hex-row offset">
+          <div class="hex built live" style="--i:0"><span>Portals</span></div>
+          <div class="hex built live" style="--i:1"><span>Approvals</span></div>
+          <div class="hex planned" style="--i:2"><span>Outreach</span></div>
+          <div class="hex planned" style="--i:3"><span>Compliance</span></div>
+        </div>
+      </div>
+      <div class="hex-live-note">
+        <div class="hex-live-arrow"></div>
+        <span>First vertical — live in production</span>
+      </div>
+      <span class="reveal-item" style="display:none"></span>
+    </div>
+    <div class="hex-legend">
+      <span class="hex-key built-key">Built</span>
+      <span class="hex-key planned-key">Next</span>
+      <span class="hex-key live-key">Live</span>
     </div>
   </div>
 
-  <!-- SLIDE 10 — EXPANSION -->
+  <!-- WHY NOW -->
+  <div class="slide s-why-now">
+    <div class="ambient"></div>
+    <div class="section-tag amber">Why Now</div>
+    <h2>The window for <em>precision software</em> is wide open</h2>
+    <div class="grid">
+      <div class="card">
+        <div class="icon">&#9889;</div>
+        <div class="label">Development costs have collapsed</div>
+        <div class="desc">What cost six figures three years ago can be built in weeks for a fraction. Custom software is no longer a luxury - it&rsquo;s accessible.</div>
+      </div>
+      <div class="card">
+        <div class="icon">&#127919;</div>
+        <div class="label">Organisations are waking up</div>
+        <div class="desc">Every sector is realising that optimising workflows isn&rsquo;t optional. The appetite for bespoke systems has never been higher.</div>
+      </div>
+      <div class="card">
+        <div class="icon">&#128300;</div>
+        <div class="label">Depth over breadth</div>
+        <div class="desc">The market is flooded with micro-SaaS chasing 1,000 users at &pound;10/month. Our target is fewer clients, deeper engagements, larger contracts.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- EXPANSION -->
   <div class="slide s-expansion">
     <div class="ambient"></div>
     <div class="section-tag amber">What's Next</div>
     <h2>Where We See the Biggest Opportunity</h2>
-    <div class="sub">Problems we're actively exploring across every sector we work with.</div>
+    <div class="sub">Problems hiding in every large organisation we&rsquo;ve spoken to.</div>
     <div class="grid">
       <div class="card">
         <div class="title">Approval Workflows</div>
-        <div class="desc">Funding requests, sign-offs, and multi-step processes that take weeks when they should take minutes.</div>
+        <div class="desc">Grant applications, funding requests, and multi-step sign-offs that take weeks when they should take minutes. Every department has them.</div>
       </div>
       <div class="card">
-        <div class="title">Internal Support</div>
-        <div class="desc">Staff and stakeholder queries handled through inboxes and spreadsheets instead of a proper system.</div>
+        <div class="title">Internal Enquiries</div>
+        <div class="desc">Staff, students, and stakeholder queries handled through shared inboxes and spreadsheets instead of a proper system with routing and tracking.</div>
       </div>
       <div class="card">
         <div class="title">Operational Tooling</div>
-        <div class="desc">Custom internal tools replacing the spreadsheets, shared drives, and manual trackers that every organisation quietly depends on.</div>
+        <div class="desc">Resource allocation, room bookings, equipment tracking, event management - the internal tools every organisation quietly depends on but never properly builds.</div>
       </div>
     </div>
   </div>
 
-  <!-- SLIDE 11 — TEAM -->
+  <!-- SLIDE — GTM v2 (timeline) -->
+  <div class="slide s-gtm-v2">
+    <div class="ambient"></div>
+    <div class="section-tag amber">Go To Market</div>
+    <h2>Build Deep, Then Scale Wide</h2>
+    <div class="sub">Every module built for one organisation becomes a building block for the next.</div>
+
+    <div class="timeline">
+
+      <div class="tl-node active">
+        <div class="tl-dot now">Q1</div>
+        <div class="tl-content">
+          <div class="tl-time amber">Now</div>
+          <div class="tl-title">Live &amp; Paying</div>
+          <div class="tl-points">
+            <div class="tl-point">3 live clients, 5 projects delivered in 6 months</div>
+            <div class="tl-point">One platform powering every deployment</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tl-node">
+        <div class="tl-dot next">Q2</div>
+        <div class="tl-content">
+          <div class="tl-time amber">Next 3 Months</div>
+          <div class="tl-title">Anchor Partner</div>
+          <div class="tl-points">
+            <div class="tl-point">Land one large organisation</div>
+            <div class="tl-point">Prove it works across multiple departments</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tl-node">
+        <div class="tl-dot next">Q3</div>
+        <div class="tl-content">
+          <div class="tl-time amber">3&ndash;9 Months</div>
+          <div class="tl-title">Prove Modularity</div>
+          <div class="tl-points">
+            <div class="tl-point">New clients buying individual modules</div>
+            <div class="tl-point">Validate that components work standalone</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tl-node">
+        <div class="tl-dot later">Q4</div>
+        <div class="tl-content">
+          <div class="tl-time muted">9&ndash;12 Months</div>
+          <div class="tl-title">Commit to a Direction</div>
+          <div class="tl-points">
+            <div class="tl-point">Use Q1&ndash;Q3 data to pick the strongest path</div>
+            <div class="tl-point">Jan 2027: review, lock in, and scale</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="advisors">Advised by <strong>Geoffrey Moore</strong> &amp; <strong>Kevin McGill</strong> &middot; <em>Crossing the Chasm</em></div>
+  </div>
+
+  <!-- SLIDE 13 — TEAM -->
   <div class="slide s-team">
     <div class="ambient"></div>
     <div class="section-tag muted">The Team</div>
-    <div class="avatars">
-      <div class="avatar"><img src="" alt="Luke Hodges"></div>
-      <div class="avatar"><div class="placeholder-silhouette"></div></div>
-      <div class="avatar"><div class="placeholder-silhouette"></div></div>
+    <div class="team-layout">
+
+      <div class="founder-card">
+        <div class="founder-avatars">
+          <div class="avatar"><img src="assets/judo-team.png" alt="Judo team"></div>
+          <div class="avatar"><img src="assets/luke-hodges.png" alt="Luke Hodges" style="object-position: center 20%;"></div>
+        </div>
+        <div class="member-name">Luke Hodges</div>
+        <div class="member-title">Founder</div>
+        <div class="member-uni">University of Bath &middot; BSc Computer Science</div>
+        <div class="member-bio">Programming since 10, building software since 14, first business at 16. Brown belt judoka with 12 years on the mat. Previously data analyst and engineer at Encyclis and Broadstone.</div>
+      </div>
+
+      <div class="team-divider"></div>
+
+      <div class="open-roles">
+        <div class="roles-label">Hiring Now</div>
+        <div class="role-card">
+          <div class="role-avatar"><svg viewBox="0 0 24 24"><path d="M16 18l2-2-4-4 4-4-2-2-6 6z"/></svg></div>
+          <div class="role-info">
+            <div class="role-name">Software Developer</div>
+            <div class="role-desc">Full-stack builds on real client projects. Ship code that people use from day one.</div>
+          </div>
+        </div>
+        <div class="role-card">
+          <div class="role-avatar"><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg></div>
+          <div class="role-info">
+            <div class="role-name">Operations Consultant</div>
+            <div class="role-desc">Audit workflows, map bottlenecks, and design the systems that fix them.</div>
+          </div>
+        </div>
+        <div class="role-card">
+          <div class="role-avatar"><svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg></div>
+          <div class="role-info">
+            <div class="role-name">Growth &amp; Partnerships</div>
+            <div class="role-desc">Find organisations stuck on manual processes and turn them into clients.</div>
+          </div>
+        </div>
+      </div>
+
     </div>
-    <div class="member-name">Luke Hodges</div>
-    <div class="member-title">Founder</div>
-    <div class="member-uni">University of Bath &middot; Course Name</div>
-    <div class="member-bio">Bio placeholder &mdash; 2-3 sentences about your background, what drives you, and why you started Ironheart.</div>
   </div>
 
-  <!-- SLIDE 12 — CLOSE -->
+  <!-- SLIDE 14 — CLOSE -->
   <div class="slide s-close">
     <div class="ambient"></div>
     <div class="headline">We're looking for our next <em>partner</em></div>
@@ -723,7 +1258,7 @@
         <a href="mailto:luke@theironheart.org">luke@theironheart.org</a>
         <a href="https://theironheart.org" target="_blank">theironheart.org</a>
       </div>
-      <div class="qr">QR</div>
+      <div class="qr"><img src="assets/qr-ironheart.svg" alt="theironheart.org" style="width: 100%; height: 100%; border-radius: 6px;"></div>
     </div>
     <div class="footer">Acceler8 &middot; University of Bath &middot; 2026</div>
   </div>
@@ -761,6 +1296,19 @@
         else item.classList.remove('visible');
       });
     }
+
+    // Toggle step-N classes on compound slide for live hex outlines
+    slides.forEach(function(s) {
+      for (var c = 0; c < 5; c++) s.classList.remove('step-' + c);
+      var st = stepStates[Array.prototype.indexOf.call(slides, s)];
+      if (st) s.classList.add('step-' + st.current);
+    });
+  }
+
+  function syncStepClass() {
+    var s = slides[current], st = stepStates[current];
+    for (var c = 0; c < 5; c++) s.classList.remove('step-' + c);
+    if (st) s.classList.add('step-' + st.current);
   }
 
   function next() {
@@ -768,6 +1316,7 @@
       stepStates[current].current++;
       var items = slides[current].querySelectorAll('.reveal-item');
       items[stepStates[current].current - 1].classList.add('visible');
+      syncStepClass();
       return;
     }
     if (current < total - 1) {
@@ -782,6 +1331,7 @@
       stepStates[current].current--;
       var items = slides[current].querySelectorAll('.reveal-item');
       items[stepStates[current].current].classList.remove('visible');
+      syncStepClass();
       return;
     }
     if (current > 0) {

@@ -14,6 +14,7 @@ import { computeMetricSnapshots } from "@/modules/analytics/analytics.events";
 import { dispatchWebhooks } from "@/modules/developer/developer.events";
 import { aiFunctions } from "@/modules/ai";
 import { pipelineFunctions } from "@/modules/pipeline";
+import { outreachFunctions } from "@/modules/outreach";
 
 /**
  * Inngest serve endpoint.
@@ -55,5 +56,7 @@ export const { GET, POST, PUT } = serve({
     ...aiFunctions,
     // Pipeline module
     ...pipelineFunctions,
+    // Outreach module
+    ...outreachFunctions,
   ],
 });

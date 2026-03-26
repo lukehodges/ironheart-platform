@@ -52,9 +52,17 @@ export default async function AdminLayout({
       // Platform admins without an active impersonation session
       // should use /platform - they have no tenant context here
       const impersonationKey = `impersonate:${workosUser.id}`
-      const impersonation = await redis.get(impersonationKey)
+      const impersonation = await redis.get(impersonationKey) as { tenantId?: string } | null
       if (!impersonation) {
         redirect("/platform")
+      }
+
+      // Use the impersonated tenant's modules, not the platform tenant's
+      if (impersonation?.tenantId) {
+        const modules = await tenantRepository.listModules(impersonation.tenantId)
+        enabledModuleSlugs = modules
+          .filter((m) => m.isEnabled)
+          .map((m) => m.moduleSlug)
       }
     }
 
@@ -83,7 +91,8 @@ export default async function AdminLayout({
     }
 
     // Load enabled modules for sidebar navigation
-    if (dbUser?.tenantId) {
+    // Skip if already loaded from impersonation session above
+    if (dbUser?.tenantId && enabledModuleSlugs.length === 0) {
       const modules = await tenantRepository.listModules(dbUser.tenantId)
       enabledModuleSlugs = modules
         .filter((m) => m.isEnabled)

@@ -4,9 +4,13 @@ import { syncPermissions } from './permission-seeder'
 import { moduleSettingsService } from '@/modules/settings/module-settings.service'
 import { moduleRegistry } from './register-all'
 import { searchProviderRegistry } from './search-registry'
+import { customerSearchProvider } from '@/modules/customer/customer.search-provider'
+import { bookingSearchProvider } from '@/modules/booking/booking.search-provider'
 import { teamSearchProvider } from '@/modules/team/team.search-provider'
 
 // --- Search providers (server-only, import DB) ---
+searchProviderRegistry.register(customerSearchProvider)
+searchProviderRegistry.register(bookingSearchProvider)
 searchProviderRegistry.register(teamSearchProvider)
 
 let startupDone = false

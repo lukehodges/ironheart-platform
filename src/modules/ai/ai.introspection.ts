@@ -57,13 +57,25 @@ function extractInputSchema(procedure: unknown): Record<string, unknown> | null 
     if (!inputs || inputs.length === 0) return null
 
     // tRPC v11 stores input validators in _def.inputs array.
-    // The last entry is typically the user-defined .input() schema.
-    const zodSchema = inputs[inputs.length - 1]
-    if (zodSchema && typeof zodSchema === "object" && "_zod" in (zodSchema as Record<string, unknown>)) {
-      const jsonSchema = z.toJSONSchema(zodSchema as z.ZodType) as Record<string, unknown>
-      // Remove $schema key to save tokens
-      delete jsonSchema["$schema"]
-      return jsonSchema
+    // With middleware chains, the user-defined .input() schema may not be the last entry.
+    // Try from last to first, returning the first valid Zod schema we find.
+    for (let i = inputs.length - 1; i >= 0; i--) {
+      const candidate = inputs[i]
+      if (candidate && typeof candidate === "object" && "_zod" in (candidate as Record<string, unknown>)) {
+        try {
+          const jsonSchema = z.toJSONSchema(candidate as z.ZodType) as Record<string, unknown>
+          // Remove $schema key to save tokens
+          delete jsonSchema["$schema"]
+          // Skip trivially empty schemas (middleware placeholders)
+          const props = jsonSchema.properties as Record<string, unknown> | undefined
+          if (props && Object.keys(props).length > 0) {
+            return jsonSchema
+          }
+        } catch {
+          // This entry failed conversion, try next
+          continue
+        }
+      }
     }
     return null
   } catch (err) {
@@ -115,16 +127,42 @@ export async function getModuleMap(): Promise<Map<string, ModuleMetadata>> {
 }
 
 /**
- * Summarise a JSON Schema input into a compact one-liner like "{ limit?, offset?, status? }".
- * Returns empty string if no meaningful properties.
+ * Map JSON Schema type+format to a compact type hint.
  */
-function summariseInput(schema: Record<string, unknown> | null): string {
+function compactType(prop: Record<string, unknown>): string {
+  const type = prop.type as string | undefined
+  const format = prop.format as string | undefined
+  const enumValues = prop.enum as string[] | undefined
+
+  if (enumValues) return enumValues.map((v) => `"${v}"`).join("|")
+  if (format === "uuid") return "uuid"
+  if (format === "email") return "email"
+  if (format === "date" || format === "date-time" || type === "string" && prop.pattern === "date") return "Date"
+  if (type === "number" || type === "integer") return "number"
+  if (type === "boolean") return "boolean"
+  if (type === "object") return "object"
+  if (type === "array") return "array"
+  return ""
+}
+
+/**
+ * Summarise a JSON Schema input into a compact one-liner like "{ limit?, offset?, status? }".
+ * For mutations, includes type hints for non-obvious fields.
+ */
+function summariseInput(schema: Record<string, unknown> | null, includeTypes = false): string {
   if (!schema) return "()"
-  const props = schema.properties as Record<string, unknown> | undefined
+  const props = schema.properties as Record<string, Record<string, unknown>> | undefined
   if (!props || Object.keys(props).length === 0) return "()"
 
   const required = new Set((schema.required as string[]) ?? [])
-  const parts = Object.keys(props).map((k) => (required.has(k) ? k : `${k}?`))
+  const parts = Object.keys(props).map((k) => {
+    const suffix = required.has(k) ? "" : "?"
+    if (includeTypes) {
+      const hint = compactType(props[k])
+      return hint ? `${k}${suffix}: ${hint}` : `${k}${suffix}`
+    }
+    return `${k}${suffix}`
+  })
   return `({ ${parts.join(", ")} })`
 }
 
@@ -149,7 +187,7 @@ export async function getModuleIndex(): Promise<string> {
     }
   }
 
-  // Mutation procedures with guardrail tier annotations
+  // Mutation procedures with guardrail tier annotations and type hints
   const mutationLines: string[] = []
   for (const [moduleName, meta] of moduleMap) {
     const mutationProcs = meta.procedures.filter((p) => p.type === "mutation")
@@ -158,13 +196,14 @@ export async function getModuleIndex(): Promise<string> {
     mutationLines.push(`\n  ${moduleName}:`)
     for (const proc of mutationProcs) {
       const tier = getDefaultGuardrailTier(`${moduleName}.${proc.name}`)
-      mutationLines.push(`    .${proc.name}${summariseInput(proc.inputSchema)} [${tier}]`)
+      mutationLines.push(`    .${proc.name}${summariseInput(proc.inputSchema, true)} [${tier}]`)
     }
   }
 
   if (mutationLines.length > 0) {
     lines.push("")
-    lines.push("Available mutation procedures (guardrail tier shown — AUTO executes immediately, CONFIRM requires approval, RESTRICT is blocked):")
+    lines.push("Available mutation procedures (guardrail tier shown — use describe_module before calling any CONFIRM mutation):")
+    lines.push("  AUTO = executes immediately | CONFIRM = requires user approval | RESTRICT = blocked")
     lines.push(...mutationLines)
   }
 

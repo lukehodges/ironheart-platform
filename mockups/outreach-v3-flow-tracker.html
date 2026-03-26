@@ -1,0 +1,1095 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Outreach Command — Flow Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #0a0b0f;
+    --card: #13141a;
+    --surface: #1c1d24;
+    --border: #2a2b33;
+    --text: #e4e4e7;
+    --text-muted: #71717a;
+    --text-dim: #52525b;
+    --cyan: #06b6d4;
+    --cyan-dim: rgba(6, 182, 212, 0.15);
+    --lime: #84cc16;
+    --lime-dim: rgba(132, 204, 22, 0.12);
+    --amber: #f59e0b;
+    --amber-dim: rgba(245, 158, 11, 0.12);
+    --rose: #f43f5e;
+    --rose-dim: rgba(244, 63, 94, 0.12);
+    --emerald: #10b981;
+    --emerald-dim: rgba(16, 185, 129, 0.12);
+    --slate: #64748b;
+    --slate-dim: rgba(100, 116, 139, 0.12);
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Grotesk', sans-serif;
+    line-height: 1.5;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .mono { font-family: 'JetBrains Mono', monospace; }
+
+  .container {
+    max-width: 1300px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+
+  /* ── Command Bar ── */
+  .command-bar {
+    border-bottom: 1px solid var(--border);
+    padding: 16px 0;
+    position: sticky;
+    top: 0;
+    background: rgba(10, 11, 15, 0.92);
+    backdrop-filter: blur(12px);
+    z-index: 100;
+  }
+
+  .command-bar .container {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .command-title {
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: -0.3px;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .command-title .dot {
+    width: 8px;
+    height: 8px;
+    background: var(--cyan);
+    border-radius: 50%;
+    animation: pulse-dot 2s ease-in-out infinite;
+    box-shadow: 0 0 8px var(--cyan);
+  }
+
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  .live-clock {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: var(--text-muted);
+    background: var(--surface);
+    padding: 5px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+  }
+
+  .rule-of-100 {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+  }
+
+  .rule-label {
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+
+  .rule-bar {
+    width: 160px;
+    height: 6px;
+    background: var(--surface);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .rule-bar-fill {
+    height: 100%;
+    width: 37%;
+    background: linear-gradient(90deg, var(--cyan), var(--lime));
+    border-radius: 3px;
+    transition: width 0.5s ease;
+  }
+
+  .rule-count {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--cyan);
+  }
+
+  .btn-quick-add {
+    background: var(--cyan);
+    color: #0a0b0f;
+    border: none;
+    padding: 7px 16px;
+    border-radius: 6px;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    transition: opacity 0.15s;
+  }
+
+  .btn-quick-add:hover { opacity: 0.85; }
+
+  /* ── State Machine ── */
+  .state-machine-section {
+    padding: 40px 0 32px;
+  }
+
+  .section-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 20px;
+  }
+
+  .state-machine {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 40px 32px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .state-machine::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+    opacity: 0.4;
+  }
+
+  .flow-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+  }
+
+  /* Main flow row */
+  .flow-main {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    position: relative;
+  }
+
+  .state-node {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 16px 28px;
+    border-radius: 10px;
+    border: 1.5px solid;
+    position: relative;
+    min-width: 130px;
+    text-align: center;
+    z-index: 2;
+  }
+
+  .state-node .state-name {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .state-node .state-count {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 26px;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .state-node.active {
+    border-color: var(--cyan);
+    background: var(--cyan-dim);
+    box-shadow: 0 0 24px rgba(6, 182, 212, 0.12);
+  }
+  .state-node.active .state-name { color: var(--cyan); }
+  .state-node.active .state-count { color: var(--cyan); }
+
+  .state-node.replied {
+    border-color: var(--lime);
+    background: var(--lime-dim);
+    box-shadow: 0 0 24px rgba(132, 204, 22, 0.08);
+  }
+  .state-node.replied .state-name { color: var(--lime); }
+  .state-node.replied .state-count { color: var(--lime); }
+
+  .state-node.converted {
+    border-color: var(--emerald);
+    background: var(--emerald-dim);
+    box-shadow: 0 0 24px rgba(16, 185, 129, 0.08);
+  }
+  .state-node.converted .state-name { color: var(--emerald); }
+  .state-node.converted .state-count { color: var(--emerald); }
+
+  .state-node.bounced {
+    border-color: var(--text-dim);
+    background: rgba(82, 82, 91, 0.1);
+  }
+  .state-node.bounced .state-name { color: var(--text-dim); }
+  .state-node.bounced .state-count { color: var(--slate); }
+
+  .state-node.opted-out {
+    border-color: var(--rose);
+    background: var(--rose-dim);
+  }
+  .state-node.opted-out .state-name { color: var(--rose); }
+  .state-node.opted-out .state-count { color: var(--rose); }
+
+  .state-node.completed {
+    border-color: var(--slate);
+    background: var(--slate-dim);
+  }
+  .state-node.completed .state-name { color: var(--slate); }
+  .state-node.completed .state-count { color: var(--slate); }
+
+  /* Arrows between nodes */
+  .flow-arrow {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 0 6px;
+    z-index: 2;
+  }
+
+  .arrow-line {
+    display: flex;
+    align-items: center;
+    gap: 0;
+  }
+
+  .arrow-line .line {
+    width: 48px;
+    height: 2px;
+    background: var(--border);
+    position: relative;
+  }
+
+  .arrow-line .head {
+    width: 0;
+    height: 0;
+    border-top: 5px solid transparent;
+    border-bottom: 5px solid transparent;
+    border-left: 7px solid var(--border);
+  }
+
+  .arrow-rate {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    white-space: nowrap;
+  }
+
+  /* Branch paths below */
+  .flow-branches {
+    display: flex;
+    align-items: flex-start;
+    gap: 24px;
+    margin-top: 8px;
+    position: relative;
+  }
+
+  .branch {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+  }
+
+  .branch-connector {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .branch-v-line {
+    width: 2px;
+    height: 24px;
+    background: var(--border);
+  }
+
+  .branch-arrow-head {
+    width: 0;
+    height: 0;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 7px solid var(--border);
+  }
+
+  .branch-rate {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-top: 2px;
+    margin-bottom: 2px;
+  }
+
+  .state-node-sm {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 10px 20px;
+    border-radius: 8px;
+    border: 1.5px solid;
+    min-width: 110px;
+    text-align: center;
+  }
+
+  .state-node-sm .state-name {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+  }
+
+  .state-node-sm .state-count {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 20px;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .state-node-sm.bounced {
+    border-color: var(--text-dim);
+    background: rgba(82, 82, 91, 0.1);
+  }
+  .state-node-sm.bounced .state-name { color: var(--text-dim); }
+  .state-node-sm.bounced .state-count { color: var(--slate); }
+
+  .state-node-sm.opted-out {
+    border-color: var(--rose);
+    background: var(--rose-dim);
+  }
+  .state-node-sm.opted-out .state-name { color: var(--rose); }
+  .state-node-sm.opted-out .state-count { color: var(--rose); }
+
+  .state-node-sm.completed {
+    border-color: var(--slate);
+    background: var(--slate-dim);
+  }
+  .state-node-sm.completed .state-name { color: var(--slate); }
+  .state-node-sm.completed .state-count { color: var(--slate); }
+
+  /* Horizontal connector lines from ACTIVE to branch nodes */
+  .branch-area {
+    display: flex;
+    justify-content: center;
+    margin-top: 0;
+    position: relative;
+    width: 100%;
+  }
+
+  .branches-wrapper {
+    display: flex;
+    gap: 28px;
+    align-items: flex-start;
+    position: relative;
+  }
+
+  /* Horizontal trunk line above branches */
+  .branch-trunk {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    margin-top: 0;
+  }
+
+  .branch-trunk-line {
+    position: absolute;
+    top: 0;
+    height: 2px;
+    background: var(--border);
+  }
+
+  /* ── Bottom Panels ── */
+  .panels {
+    display: grid;
+    grid-template-columns: 55fr 45fr;
+    gap: 20px;
+    padding-bottom: 48px;
+  }
+
+  .panel {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  .panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .panel-title {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .panel-badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--cyan);
+    background: var(--cyan-dim);
+    padding: 2px 8px;
+    border-radius: 4px;
+  }
+
+  /* ── Activity Feed ── */
+  .feed-list {
+    list-style: none;
+  }
+
+  .feed-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 20px;
+    border-bottom: 1px solid rgba(42, 43, 51, 0.5);
+    transition: background 0.15s;
+    font-size: 13px;
+  }
+
+  .feed-item:last-child { border-bottom: none; }
+  .feed-item:hover { background: rgba(28, 29, 36, 0.5); }
+
+  .feed-item.recent {
+    background: rgba(6, 182, 212, 0.04);
+    box-shadow: inset 3px 0 0 var(--cyan);
+  }
+
+  .feed-item.replied-glow {
+    background: rgba(132, 204, 22, 0.06);
+    box-shadow: inset 3px 0 0 var(--lime);
+  }
+
+  .feed-item.meeting-glow {
+    background: rgba(16, 185, 129, 0.06);
+    box-shadow: inset 3px 0 0 var(--emerald);
+  }
+
+  .feed-item.bounced-glow {
+    background: rgba(244, 63, 94, 0.04);
+    box-shadow: inset 3px 0 0 var(--rose);
+  }
+
+  .feed-ts {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-dim);
+    min-width: 48px;
+    flex-shrink: 0;
+  }
+
+  .feed-icon {
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    flex-shrink: 0;
+    font-weight: 700;
+  }
+
+  .feed-icon.sent { background: var(--cyan-dim); color: var(--cyan); }
+  .feed-icon.replied { background: var(--lime-dim); color: var(--lime); }
+  .feed-icon.bounced { background: var(--rose-dim); color: var(--rose); }
+  .feed-icon.meeting { background: var(--emerald-dim); color: var(--emerald); }
+
+  .feed-text {
+    flex: 1;
+    color: var(--text);
+    line-height: 1.4;
+  }
+
+  .feed-text strong {
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .feed-text .company {
+    color: var(--text-muted);
+  }
+
+  .feed-sequence {
+    font-size: 11px;
+    color: var(--text-dim);
+    background: var(--surface);
+    padding: 2px 8px;
+    border-radius: 4px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .feed-channel {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 3px;
+    flex-shrink: 0;
+    letter-spacing: 0.5px;
+  }
+
+  .feed-channel.email { background: var(--cyan-dim); color: var(--cyan); }
+  .feed-channel.linkedin { background: rgba(59, 130, 246, 0.15); color: #3b82f6; }
+  .feed-channel.call { background: var(--amber-dim); color: var(--amber); }
+
+  /* ── Right Panel Sub-sections ── */
+  .right-panel {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .right-section {
+    padding: 20px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .right-section:last-child { border-bottom: none; }
+
+  .right-section-title {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 14px;
+  }
+
+  /* Channel Mix Donut */
+  .channel-mix {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+  }
+
+  .donut-container {
+    position: relative;
+    width: 100px;
+    height: 100px;
+    flex-shrink: 0;
+  }
+
+  .donut-svg {
+    transform: rotate(-90deg);
+  }
+
+  .donut-center {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  .donut-center span {
+    font-size: 10px;
+    color: var(--text-dim);
+    display: block;
+    text-align: center;
+    font-weight: 500;
+  }
+
+  .channel-legend {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex: 1;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+  }
+
+  .legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 3px;
+    flex-shrink: 0;
+  }
+
+  .legend-label { color: var(--text-muted); flex: 1; }
+
+  .legend-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .legend-bar {
+    width: 60px;
+    height: 4px;
+    background: var(--surface);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .legend-bar-fill { height: 100%; border-radius: 2px; }
+
+  /* Sector Heatmap */
+  .heatmap {
+    display: grid;
+    grid-template-columns: 1fr repeat(3, 56px);
+    gap: 3px;
+    font-size: 12px;
+  }
+
+  .heatmap-header {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    text-align: center;
+    padding: 4px 0;
+  }
+
+  .heatmap-header:first-child { text-align: left; }
+
+  .heatmap-sector {
+    color: var(--text-muted);
+    font-weight: 500;
+    padding: 6px 0;
+    display: flex;
+    align-items: center;
+  }
+
+  .heatmap-cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 4px;
+    border-radius: 4px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .heat-0 { background: transparent; color: var(--text-dim); }
+  .heat-1 { background: rgba(6, 182, 212, 0.08); color: var(--text-muted); }
+  .heat-2 { background: rgba(6, 182, 212, 0.16); color: var(--cyan); }
+  .heat-3 { background: rgba(6, 182, 212, 0.28); color: var(--cyan); }
+  .heat-4 { background: rgba(6, 182, 212, 0.4); color: #fff; }
+
+  /* Velocity */
+  .velocity-grid {
+    display: flex;
+    gap: 12px;
+  }
+
+  .velocity-step {
+    flex: 1;
+    background: var(--surface);
+    border-radius: 8px;
+    padding: 12px;
+    text-align: center;
+  }
+
+  .velocity-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    color: var(--text-dim);
+    margin-bottom: 4px;
+  }
+
+  .velocity-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1;
+  }
+
+  .velocity-unit {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+
+  .velocity-trend {
+    font-size: 11px;
+    margin-top: 4px;
+    font-weight: 500;
+  }
+
+  .velocity-trend.good { color: var(--lime); }
+  .velocity-trend.neutral { color: var(--text-dim); }
+  .velocity-trend.slow { color: var(--amber); }
+</style>
+</head>
+<body>
+
+<!-- Command Bar -->
+<header class="command-bar">
+  <div class="container">
+    <div class="command-title">
+      <span class="dot"></span>
+      Outreach Command
+    </div>
+    <div class="live-clock" id="liveClock">14:32:08</div>
+    <div class="rule-of-100">
+      <span class="rule-label">Rule of 100</span>
+      <div class="rule-bar">
+        <div class="rule-bar-fill"></div>
+      </div>
+      <span class="rule-count">37/100</span>
+    </div>
+    <button class="btn-quick-add">+ Add Contact</button>
+  </div>
+</header>
+
+<!-- State Machine -->
+<section class="state-machine-section">
+  <div class="container">
+    <div class="section-label">Contact State Machine</div>
+    <div class="state-machine">
+      <div class="flow-container">
+
+        <!-- Main flow: ACTIVE → REPLIED → CONVERTED -->
+        <div class="flow-main">
+          <div class="state-node active">
+            <span class="state-name">Active</span>
+            <span class="state-count">234</span>
+          </div>
+
+          <div class="flow-arrow">
+            <div class="arrow-rate">12%</div>
+            <div class="arrow-line">
+              <div class="line"></div>
+              <div class="head"></div>
+            </div>
+          </div>
+
+          <div class="state-node replied">
+            <span class="state-name">Replied</span>
+            <span class="state-count">28</span>
+          </div>
+
+          <div class="flow-arrow">
+            <div class="arrow-rate">21%</div>
+            <div class="arrow-line">
+              <div class="line"></div>
+              <div class="head"></div>
+            </div>
+          </div>
+
+          <div class="state-node converted">
+            <span class="state-name">Converted</span>
+            <span class="state-count">6</span>
+          </div>
+        </div>
+
+        <!-- Branch paths from ACTIVE -->
+        <div class="branch-area">
+          <div class="branches-wrapper">
+
+            <div class="branch">
+              <div class="branch-connector">
+                <div class="branch-v-line"></div>
+                <div class="branch-arrow-head"></div>
+              </div>
+              <div class="branch-rate">5.1%</div>
+              <div class="state-node-sm bounced">
+                <span class="state-name">Bounced</span>
+                <span class="state-count">12</span>
+              </div>
+            </div>
+
+            <div class="branch">
+              <div class="branch-connector">
+                <div class="branch-v-line"></div>
+                <div class="branch-arrow-head"></div>
+              </div>
+              <div class="branch-rate">1.7%</div>
+              <div class="state-node-sm opted-out">
+                <span class="state-name">Opted Out</span>
+                <span class="state-count">4</span>
+              </div>
+            </div>
+
+            <div class="branch">
+              <div class="branch-connector">
+                <div class="branch-v-line"></div>
+                <div class="branch-arrow-head"></div>
+              </div>
+              <div class="branch-rate">38%</div>
+              <div class="state-node-sm completed">
+                <span class="state-name">Completed</span>
+                <span class="state-count">89</span>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Bottom Panels -->
+<section class="container">
+  <div class="panels">
+
+    <!-- Live Activity Feed -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">Live Activity</span>
+        <span class="panel-badge">12 today</span>
+      </div>
+      <ul class="feed-list">
+        <li class="feed-item recent">
+          <span class="feed-ts mono">14:31</span>
+          <span class="feed-icon sent">S</span>
+          <span class="feed-text">Sent Step 2 to <strong>Sarah Jenkins</strong> <span class="company">at Jani-King Cleaning</span></span>
+          <span class="feed-sequence">Cleaning Q1</span>
+          <span class="feed-channel email">EMAIL</span>
+        </li>
+        <li class="feed-item replied-glow">
+          <span class="feed-ts mono">14:28</span>
+          <span class="feed-icon replied">R</span>
+          <span class="feed-text"><strong>David Owens</strong> <span class="company">at Greensleeves Lawns</span> replied</span>
+          <span class="feed-sequence">Grounds Maint.</span>
+          <span class="feed-channel email">EMAIL</span>
+        </li>
+        <li class="feed-item recent">
+          <span class="feed-ts mono">14:24</span>
+          <span class="feed-icon sent">S</span>
+          <span class="feed-text">Sent Step 1 to <strong>Karen Patel</strong> <span class="company">at Countrywide Signs</span></span>
+          <span class="feed-sequence">Signs & Graphics</span>
+          <span class="feed-channel linkedin">LI</span>
+        </li>
+        <li class="feed-item meeting-glow">
+          <span class="feed-ts mono">14:19</span>
+          <span class="feed-icon meeting">M</span>
+          <span class="feed-text"><strong>Tom Richardson</strong> <span class="company">at ServiceMaster Clean</span> booked a meeting</span>
+          <span class="feed-sequence">Cleaning Q1</span>
+          <span class="feed-channel email">EMAIL</span>
+        </li>
+        <li class="feed-item">
+          <span class="feed-ts mono">14:12</span>
+          <span class="feed-icon sent">S</span>
+          <span class="feed-text">Sent Step 3 to <strong>Rachel Hughes</strong> <span class="company">at ChemDry UK</span></span>
+          <span class="feed-sequence">Cleaning Q1</span>
+          <span class="feed-channel email">EMAIL</span>
+        </li>
+        <li class="feed-item bounced-glow">
+          <span class="feed-ts mono">13:58</span>
+          <span class="feed-icon bounced">B</span>
+          <span class="feed-text">Bounced: <strong>info@brightsparkelectrical.co.uk</strong></span>
+          <span class="feed-sequence">Trades Winter</span>
+          <span class="feed-channel email">EMAIL</span>
+        </li>
+        <li class="feed-item">
+          <span class="feed-ts mono">13:45</span>
+          <span class="feed-icon sent">S</span>
+          <span class="feed-text">Sent Step 1 to <strong>James Whitfield</strong> <span class="company">at Dyno-Rod</span></span>
+          <span class="feed-sequence">Plumbing Ops</span>
+          <span class="feed-channel call">CALL</span>
+        </li>
+        <li class="feed-item replied-glow">
+          <span class="feed-ts mono">13:33</span>
+          <span class="feed-icon replied">R</span>
+          <span class="feed-text"><strong>Priya Sharma</strong> <span class="company">at Merry Maids</span> replied</span>
+          <span class="feed-sequence">Cleaning Q1</span>
+          <span class="feed-channel linkedin">LI</span>
+        </li>
+        <li class="feed-item">
+          <span class="feed-ts mono">13:21</span>
+          <span class="feed-icon sent">S</span>
+          <span class="feed-text">Sent Step 2 to <strong>Ben Carter</strong> <span class="company">at Metro Rod</span></span>
+          <span class="feed-sequence">Plumbing Ops</span>
+          <span class="feed-channel email">EMAIL</span>
+        </li>
+        <li class="feed-item">
+          <span class="feed-ts mono">13:08</span>
+          <span class="feed-icon sent">S</span>
+          <span class="feed-text">Sent Step 1 to <strong>Helen Brooks</strong> <span class="company">at Prestige Washrooms</span></span>
+          <span class="feed-sequence">Hygiene Svc</span>
+          <span class="feed-channel email">EMAIL</span>
+        </li>
+      </ul>
+    </div>
+
+    <!-- Right Panel -->
+    <div class="panel right-panel">
+
+      <!-- Channel Mix -->
+      <div class="right-section">
+        <div class="right-section-title">Channel Mix</div>
+        <div class="channel-mix">
+          <div class="donut-container">
+            <svg class="donut-svg" width="100" height="100" viewBox="0 0 100 100">
+              <!-- Email: 68% -->
+              <circle cx="50" cy="50" r="38" fill="none" stroke="#06b6d4" stroke-width="10"
+                stroke-dasharray="162.1 76.4" stroke-linecap="round" />
+              <!-- LinkedIn: 22% -->
+              <circle cx="50" cy="50" r="38" fill="none" stroke="#3b82f6" stroke-width="10"
+                stroke-dasharray="52.5 186" stroke-dashoffset="-162.1" stroke-linecap="round" />
+              <!-- Call: 10% -->
+              <circle cx="50" cy="50" r="38" fill="none" stroke="#f59e0b" stroke-width="10"
+                stroke-dasharray="23.9 214.6" stroke-dashoffset="-214.6" stroke-linecap="round" />
+            </svg>
+            <div class="donut-center">
+              373
+              <span>total</span>
+            </div>
+          </div>
+          <div class="channel-legend">
+            <div class="legend-item">
+              <div class="legend-dot" style="background: var(--cyan)"></div>
+              <span class="legend-label">Email</span>
+              <div class="legend-bar"><div class="legend-bar-fill" style="width: 68%; background: var(--cyan)"></div></div>
+              <span class="legend-value">68%</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-dot" style="background: #3b82f6"></div>
+              <span class="legend-label">LinkedIn</span>
+              <div class="legend-bar"><div class="legend-bar-fill" style="width: 22%; background: #3b82f6"></div></div>
+              <span class="legend-value">22%</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-dot" style="background: var(--amber)"></div>
+              <span class="legend-label">Call</span>
+              <div class="legend-bar"><div class="legend-bar-fill" style="width: 10%; background: var(--amber)"></div></div>
+              <span class="legend-value">10%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sector Heatmap -->
+      <div class="right-section">
+        <div class="right-section-title">Sector Heatmap</div>
+        <div class="heatmap">
+          <div class="heatmap-header"></div>
+          <div class="heatmap-header">Sent</div>
+          <div class="heatmap-header">Reply</div>
+          <div class="heatmap-header">Bnce</div>
+
+          <div class="heatmap-sector">Cleaning</div>
+          <div class="heatmap-cell heat-4">86</div>
+          <div class="heatmap-cell heat-3">12</div>
+          <div class="heatmap-cell heat-1">3</div>
+
+          <div class="heatmap-sector">Plumbing</div>
+          <div class="heatmap-cell heat-3">52</div>
+          <div class="heatmap-cell heat-2">7</div>
+          <div class="heatmap-cell heat-1">2</div>
+
+          <div class="heatmap-sector">Grounds</div>
+          <div class="heatmap-cell heat-2">34</div>
+          <div class="heatmap-cell heat-2">5</div>
+          <div class="heatmap-cell heat-0">1</div>
+
+          <div class="heatmap-sector">Electrical</div>
+          <div class="heatmap-cell heat-2">28</div>
+          <div class="heatmap-cell heat-1">2</div>
+          <div class="heatmap-cell heat-1">4</div>
+
+          <div class="heatmap-sector">Hygiene</div>
+          <div class="heatmap-cell heat-1">18</div>
+          <div class="heatmap-cell heat-1">2</div>
+          <div class="heatmap-cell heat-0">1</div>
+
+          <div class="heatmap-sector">Signs</div>
+          <div class="heatmap-cell heat-1">16</div>
+          <div class="heatmap-cell heat-0">0</div>
+          <div class="heatmap-cell heat-0">1</div>
+        </div>
+      </div>
+
+      <!-- Velocity -->
+      <div class="right-section">
+        <div class="right-section-title">Sequence Velocity</div>
+        <div class="velocity-grid">
+          <div class="velocity-step">
+            <div class="velocity-label">Step 1 &rarr; 2</div>
+            <div class="velocity-value">3<span class="velocity-unit">d</span></div>
+            <div class="velocity-trend good">&darr; 0.5d faster</div>
+          </div>
+          <div class="velocity-step">
+            <div class="velocity-label">Step 2 &rarr; 3</div>
+            <div class="velocity-value">5<span class="velocity-unit">d</span></div>
+            <div class="velocity-trend neutral">on target</div>
+          </div>
+          <div class="velocity-step">
+            <div class="velocity-label">Step 3 &rarr; 4</div>
+            <div class="velocity-value">7<span class="velocity-unit">d</span></div>
+            <div class="velocity-trend slow">&uarr; 1.2d slower</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<script>
+  // Live clock
+  function updateClock() {
+    const now = new Date();
+    const h = String(now.getHours()).padStart(2, '0');
+    const m = String(now.getMinutes()).padStart(2, '0');
+    const s = String(now.getSeconds()).padStart(2, '0');
+    document.getElementById('liveClock').textContent = h + ':' + m + ':' + s;
+  }
+  setInterval(updateClock, 1000);
+  updateClock();
+</script>
+
+</body>
+</html>

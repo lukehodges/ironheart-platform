@@ -73,7 +73,83 @@ export async function createGuardedCaller(
       // Check if this module has any procedures we know about
       const moduleMeta = moduleMap.get(moduleName)
       if (!moduleMeta) {
-        return moduleValue // Unknown module, pass through
+        // Unknown module — still wrap with CONFIRM-by-default guardrails
+        // so mutations never silently bypass approval
+        log.warn({ moduleName }, "Module not in introspection map — wrapping all functions with CONFIRM guardrail")
+        return new Proxy(moduleValue as Record<string, unknown>, {
+          get(moduleTarget, procedureName: string) {
+            const procedureValue = moduleTarget[procedureName]
+            if (typeof procedureValue !== "function") {
+              return procedureValue
+            }
+
+            // Treat all functions on unknown modules as mutations requiring CONFIRM
+            return async (input: unknown) => {
+              const procedurePath = `${moduleName}.${procedureName}`
+              const tier = await resolveGuardrailTier(options.tenantId, procedurePath)
+
+              if (tier === "RESTRICT") {
+                throw new RestrictedProcedureError(procedurePath)
+              }
+
+              if (tier === "AUTO") {
+                const action = await agentActionsRepository.create({
+                  conversationId: options.conversationId,
+                  tenantId: options.tenantId,
+                  userId: options.userId,
+                  toolName: procedurePath,
+                  toolInput: input,
+                  guardrailTier: "AUTO",
+                  isReversible: false,
+                })
+                try {
+                  const result = await (procedureValue as (input: unknown) => Promise<unknown>)(input)
+                  await agentActionsRepository.updateStatus(action.id, { status: "auto_executed", toolOutput: result })
+                  log.info({ procedurePath, actionId: action.id }, "AUTO mutation executed (unknown module)")
+                  return result
+                } catch (err) {
+                  const errorMsg = err instanceof Error ? err.message : "Execution failed"
+                  await agentActionsRepository.updateStatus(action.id, { status: "failed", error: errorMsg })
+                  throw err
+                }
+              }
+
+              // CONFIRM — check if already approved, otherwise throw for approval
+              if (options.approvedProcedures?.has(procedurePath)) {
+                const action = await agentActionsRepository.create({
+                  conversationId: options.conversationId,
+                  tenantId: options.tenantId,
+                  userId: options.userId,
+                  toolName: procedurePath,
+                  toolInput: input,
+                  guardrailTier: "CONFIRM",
+                  isReversible: false,
+                })
+                try {
+                  const result = await (procedureValue as (input: unknown) => Promise<unknown>)(input)
+                  await agentActionsRepository.updateStatus(action.id, { status: "executed", toolOutput: result, approvedBy: options.userId })
+                  await aiConfigRepository.recordApprovalDecision(options.tenantId, procedurePath, true)
+                  return result
+                } catch (err) {
+                  const errorMsg = err instanceof Error ? err.message : "Execution failed"
+                  await agentActionsRepository.updateStatus(action.id, { status: "failed", error: errorMsg })
+                  throw err
+                }
+              }
+
+              const action = await agentActionsRepository.create({
+                conversationId: options.conversationId,
+                tenantId: options.tenantId,
+                userId: options.userId,
+                toolName: procedurePath,
+                toolInput: input,
+                guardrailTier: "CONFIRM",
+                isReversible: false,
+              })
+              throw new ApprovalRequiredError(action.id, procedurePath, input, `Execute ${procedurePath}`)
+            }
+          },
+        })
       }
 
       // Proxy the module object to intercept procedure calls
@@ -95,6 +171,7 @@ export async function createGuardedCaller(
           // It's a mutation — wrap with guardrail check
           return async (input: unknown) => {
             const tier = await resolveGuardrailTier(options.tenantId, procedurePath)
+            log.info({ procedurePath, tier }, "Guardrail check for mutation")
 
             if (tier === "RESTRICT") {
               throw new RestrictedProcedureError(procedurePath)

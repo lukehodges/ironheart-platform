@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Morning Cockpit — Outreach Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: #fafaf8;
+      color: #1a1a1a;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .container {
+      max-width: 1320px;
+      margin: 0 auto;
+      padding: 40px 32px;
+    }
+
+    /* ── Header ── */
+    .header {
+      margin-bottom: 36px;
+    }
+
+    .header-greeting {
+      font-size: 28px;
+      font-weight: 600;
+      color: #1a1a1a;
+      letter-spacing: -0.3px;
+    }
+
+    .header-date {
+      font-size: 14px;
+      color: #8c8c85;
+      margin-top: 2px;
+      font-weight: 400;
+    }
+
+    .header-summary {
+      margin-top: 8px;
+      font-size: 15px;
+      color: #52524e;
+    }
+
+    .header-summary strong {
+      color: #1a1a1a;
+      font-weight: 600;
+    }
+
+    .header-summary .overdue-count {
+      color: #dc2626;
+      font-weight: 600;
+    }
+
+    /* ── Stats Strip ── */
+    .stats-strip {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 36px;
+    }
+
+    .stat-card {
+      background: #fff;
+      border: 1px solid #e8e8e3;
+      border-radius: 12px;
+      padding: 20px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .stat-label {
+      font-size: 13px;
+      color: #8c8c85;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .stat-value {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 36px;
+      font-weight: 600;
+      color: #1a1a1a;
+      line-height: 1.1;
+    }
+
+    .stat-card--overdue .stat-value {
+      color: #dc2626;
+    }
+
+    .stat-card--overdue {
+      border-color: #fecaca;
+      background: #fef2f2;
+    }
+
+    .stat-card--replies {
+      border-color: #bbf7d0;
+      background: #f0fdf4;
+    }
+
+    .stat-card--replies .stat-value {
+      color: #16a34a;
+    }
+
+    .stat-card--due .stat-value {
+      color: #4f46e5;
+    }
+
+    .stat-sublabel {
+      font-size: 12px;
+      color: #a3a39e;
+      font-weight: 400;
+    }
+
+    /* ── Main Layout ── */
+    .main-layout {
+      display: grid;
+      grid-template-columns: 1fr 420px;
+      gap: 28px;
+      align-items: start;
+    }
+
+    /* ── Queue ── */
+    .queue-section {
+      min-width: 0;
+    }
+
+    .section-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #1a1a1a;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .section-title .badge {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      font-weight: 500;
+      background: #eef2ff;
+      color: #4f46e5;
+      padding: 2px 8px;
+      border-radius: 6px;
+    }
+
+    .contact-card {
+      background: #fff;
+      border: 1px solid #e8e8e3;
+      border-radius: 12px;
+      padding: 18px 22px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      border-left: 4px solid transparent;
+      transition: box-shadow 0.15s ease;
+    }
+
+    .contact-card:hover {
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+    }
+
+    .contact-card--seq-recruitment { border-left-color: #4f46e5; }
+    .contact-card--seq-dental { border-left-color: #0891b2; }
+    .contact-card--seq-trades { border-left-color: #d97706; }
+    .contact-card--seq-cleaning { border-left-color: #16a34a; }
+
+    .contact-card--overdue {
+      background: #fffbeb;
+      border-color: #fde68a;
+    }
+
+    .contact-card--overdue .contact-card-border-left {
+      border-left-color: #dc2626;
+    }
+
+    .contact-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .contact-company {
+      font-size: 15px;
+      font-weight: 600;
+      color: #1a1a1a;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .overdue-badge {
+      font-size: 11px;
+      font-weight: 600;
+      color: #dc2626;
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      padding: 1px 7px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    .contact-person {
+      font-size: 13px;
+      color: #6b6b66;
+      margin-top: 2px;
+    }
+
+    .contact-sequence {
+      font-size: 12px;
+      color: #a3a39e;
+      margin-top: 6px;
+    }
+
+    .contact-step {
+      font-size: 13px;
+      color: #52524e;
+      margin-top: 2px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .channel-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      height: 22px;
+      border-radius: 5px;
+      font-size: 12px;
+      flex-shrink: 0;
+    }
+
+    .channel-icon--email {
+      background: #eef2ff;
+      color: #4f46e5;
+    }
+
+    .channel-icon--linkedin {
+      background: #eff6ff;
+      color: #2563eb;
+    }
+
+    .channel-icon--phone {
+      background: #fef3c7;
+      color: #d97706;
+    }
+
+    .contact-meta {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .contact-time {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: #8c8c85;
+      white-space: nowrap;
+    }
+
+    .contact-time--overdue {
+      color: #dc2626;
+      font-weight: 500;
+    }
+
+    .btn-mark-sent {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      color: #fff;
+      background: #4f46e5;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 18px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.15s ease;
+    }
+
+    .btn-mark-sent:hover {
+      background: #4338ca;
+    }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .sidebar-panel {
+      background: #fff;
+      border: 1px solid #e8e8e3;
+      border-radius: 12px;
+      padding: 22px;
+    }
+
+    .sidebar-panel-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: #1a1a1a;
+      margin-bottom: 16px;
+    }
+
+    /* Recent Replies */
+    .reply-item {
+      padding: 12px 0;
+      border-bottom: 1px solid #f0f0ec;
+    }
+
+    .reply-item:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+
+    .reply-item:first-child {
+      padding-top: 0;
+    }
+
+    .reply-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 4px;
+    }
+
+    .reply-company {
+      font-size: 14px;
+      font-weight: 600;
+      color: #1a1a1a;
+    }
+
+    .reply-time {
+      font-size: 12px;
+      color: #a3a39e;
+    }
+
+    .reply-preview {
+      font-size: 13px;
+      color: #6b6b66;
+      line-height: 1.4;
+      margin-bottom: 8px;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .btn-convert {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 12px;
+      font-weight: 600;
+      color: #16a34a;
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      border-radius: 6px;
+      padding: 5px 12px;
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+
+    .btn-convert:hover {
+      background: #dcfce7;
+    }
+
+    /* Progress Ring */
+    .progress-section {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .progress-ring-wrap {
+      position: relative;
+      width: 80px;
+      height: 80px;
+      flex-shrink: 0;
+    }
+
+    .progress-ring-wrap svg {
+      transform: rotate(-90deg);
+    }
+
+    .progress-ring-bg {
+      fill: none;
+      stroke: #f0f0ec;
+      stroke-width: 6;
+    }
+
+    .progress-ring-fill {
+      fill: none;
+      stroke: #4f46e5;
+      stroke-width: 6;
+      stroke-linecap: round;
+      stroke-dasharray: 207;
+      stroke-dashoffset: 207;
+      transition: stroke-dashoffset 0.6s ease;
+    }
+
+    .progress-ring-label {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 18px;
+      font-weight: 600;
+      color: #1a1a1a;
+    }
+
+    .progress-text {
+      flex: 1;
+    }
+
+    .progress-text-main {
+      font-size: 14px;
+      font-weight: 500;
+      color: #1a1a1a;
+    }
+
+    .progress-text-sub {
+      font-size: 13px;
+      color: #8c8c85;
+      margin-top: 2px;
+    }
+
+    /* Sequence Performance */
+    .perf-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .perf-table th {
+      font-size: 11px;
+      font-weight: 600;
+      color: #a3a39e;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      text-align: left;
+      padding: 0 0 10px;
+    }
+
+    .perf-table th:not(:first-child) {
+      text-align: right;
+    }
+
+    .perf-table td {
+      font-size: 13px;
+      color: #1a1a1a;
+      padding: 8px 0;
+      border-top: 1px solid #f0f0ec;
+    }
+
+    .perf-table td:not(:first-child) {
+      text-align: right;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+    }
+
+    .perf-seq-name {
+      font-weight: 500;
+    }
+
+    .perf-seq-dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-right: 8px;
+    }
+
+    .perf-rate {
+      font-weight: 600;
+    }
+
+    .perf-rate--good { color: #16a34a; }
+    .perf-rate--ok { color: #d97706; }
+    .perf-rate--low { color: #dc2626; }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <!-- Header -->
+    <div class="header">
+      <div class="header-greeting">Good morning, Luke</div>
+      <div class="header-date">Thursday, 20 March 2026</div>
+      <div class="header-summary">
+        You have <strong>12 contacts</strong> due today, <span class="overdue-count">3 overdue</span>
+      </div>
+    </div>
+
+    <!-- Stats Strip -->
+    <div class="stats-strip">
+      <div class="stat-card stat-card--due">
+        <span class="stat-label">Due Today</span>
+        <span class="stat-value">12</span>
+        <span class="stat-sublabel">across 4 sequences</span>
+      </div>
+      <div class="stat-card stat-card--overdue">
+        <span class="stat-label">Overdue</span>
+        <span class="stat-value">3</span>
+        <span class="stat-sublabel">oldest 2 days ago</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Sent Today</span>
+        <span class="stat-value">0</span>
+        <span class="stat-sublabel">of 12 target</span>
+      </div>
+      <div class="stat-card stat-card--replies">
+        <span class="stat-label">Replies Waiting</span>
+        <span class="stat-value">4</span>
+        <span class="stat-sublabel">2 from this week</span>
+      </div>
+    </div>
+
+    <!-- Main Layout -->
+    <div class="main-layout">
+
+      <!-- Due Contacts Queue -->
+      <div class="queue-section">
+        <div class="section-title">
+          Due Contacts
+          <span class="badge">15</span>
+        </div>
+
+        <!-- Overdue Items -->
+        <div class="contact-card contact-card--seq-recruitment contact-card--overdue">
+          <div class="contact-info">
+            <div class="contact-company">
+              Harper Recruitment
+              <span class="overdue-badge">2 days overdue</span>
+            </div>
+            <div class="contact-person">Sarah Harper, Managing Director</div>
+            <div class="contact-sequence">Recruitment Agencies &mdash; Variant A</div>
+            <div class="contact-step">
+              <span class="channel-icon channel-icon--email" title="Email">&#9993;</span>
+              Step 3 of 5 &mdash; Second follow-up email
+            </div>
+          </div>
+          <div class="contact-meta">
+            <span class="contact-time contact-time--overdue">18 Mar</span>
+            <button class="btn-mark-sent">Mark Sent</button>
+          </div>
+        </div>
+
+        <div class="contact-card contact-card--seq-dental contact-card--overdue">
+          <div class="contact-info">
+            <div class="contact-company">
+              Bright Smile Dental
+              <span class="overdue-badge">1 day overdue</span>
+            </div>
+            <div class="contact-person">Dr. James Okafor, Practice Owner</div>
+            <div class="contact-sequence">Dental Practices &mdash; Intro Sequence</div>
+            <div class="contact-step">
+              <span class="channel-icon channel-icon--linkedin" title="LinkedIn">in</span>
+              Step 1 of 4 &mdash; LinkedIn connection request
+            </div>
+          </div>
+          <div class="contact-meta">
+            <span class="contact-time contact-time--overdue">19 Mar</span>
+            <button class="btn-mark-sent">Mark Sent</button>
+          </div>
+        </div>
+
+        <div class="contact-card contact-card--seq-cleaning contact-card--overdue">
+          <div class="contact-info">
+            <div class="contact-company">
+              Prestige Commercial Cleaning
+              <span class="overdue-badge">1 day overdue</span>
+            </div>
+            <div class="contact-person">Mark Evans, Operations Director</div>
+            <div class="contact-sequence">Cleaning Companies &mdash; Cold Email</div>
+            <div class="contact-step">
+              <span class="channel-icon channel-icon--email" title="Email">&#9993;</span>
+              Step 2 of 5 &mdash; Follow-up email
+            </div>
+          </div>
+          <div class="contact-meta">
+            <span class="contact-time contact-time--overdue">19 Mar</span>
+            <button class="btn-mark-sent">Mark Sent</button>
+          </div>
+        </div>
+
+        <!-- Today's Items -->
+        <div class="contact-card contact-card--seq-recruitment">
+          <div class="contact-info">
+            <div class="contact-company">Apex Staffing Solutions</div>
+            <div class="contact-person">David Chen, Business Development Manager</div>
+            <div class="contact-sequence">Recruitment Agencies &mdash; Variant A</div>
+            <div class="contact-step">
+              <span class="channel-icon channel-icon--email" title="Email">&#9993;</span>
+              Step 1 of 5 &mdash; Initial cold email
+            </div>
+          </div>
+          <div class="contact-meta">
+            <span class="contact-time">09:00</span>
+            <button class="btn-mark-sent">Mark Sent</button>
+          </div>
+        </div>
+
+        <div class="contact-card contact-card--seq-trades">
+          <div class="contact-info">
+            <div class="contact-company">Warwick Plumbing &amp; Heating</div>
+            <div class="contact-person">Steve Warwick, Owner</div>
+            <div class="contact-sequence">Trades &amp; Home Services &mdash; Outreach</div>
+            <div class="contact-step">
+              <span class="channel-icon channel-icon--phone" title="Phone">&#9742;</span>
+              Step 3 of 4 &mdash; Follow-up call
+            </div>
+          </div>
+          <div class="contact-meta">
+            <span class="contact-time">09:30</span>
+            <button class="btn-mark-sent">Mark Sent</button>
+          </div>
+        </div>
+
+        <div class="contact-card contact-card--seq-dental">
+          <div class="contact-info">
+            <div class="contact-company">The Smile Clinic</div>
+            <div class="contact-person">Dr. Priya Sharma, Principal Dentist</div>
+            <div class="contact-sequence">Dental Practices &mdash; Intro Sequence</div>
+            <div class="contact-step">
+              <span class="channel-icon channel-icon--email" title="Email">&#9993;</span>
+              Step 2 of 4 &mdash; Follow-up email
+            </div>
+          </div>
+          <div class="contact-meta">
+            <span class="contact-time">10:00</span>
+            <button class="btn-mark-sent">Mark Sent</button>
+          </div>
+        </div>
+
+        <div class="contact-card contact-card--seq-cleaning">
+          <div class="contact-info">
+            <div class="contact-company">GreenLeaf Cleaning Services</div>
+            <div class="contact-person">Karen White, Managing Director</div>
+            <div class="contact-sequence">Cleaning Companies &mdash; Cold Email</div>
+            <div class="contact-step">
+              <span class="channel-icon channel-icon--email" title="Email">&#9993;</span>
+              Step 1 of 5 &mdash; Initial cold email
+            </div>
+          </div>
+          <div class="contact-meta">
+            <span class="contact-time">10:00</span>
+            <button class="btn-mark-sent">Mark Sent</button>
+          </div>
+        </div>
+
+        <div class="contact-card contact-card--seq-recruitment">
+          <div class="contact-info">
+            <div class="contact-company">Northern Talent Group</div>
+            <div class="contact-person">Rachel Foster, CEO</div>
+            <div class="contact-sequence">Recruitment Agencies &mdash; Variant B</div>
+            <div class="contact-step">
+              <span class="channel-icon channel-icon--linkedin" title="LinkedIn">in</span>
+              Step 2 of 5 &mdash; LinkedIn message
+            </div>
+          </div>
+          <div class="contact-meta">
+            <span class="contact-time">10:30</span>
+            <button class="btn-mark-sent">Mark Sent</button>
+          </div>
+        </div>
+
+        <div class="contact-card contact-card--seq-trades">
+          <div class="contact-info">
+            <div class="contact-company">Elite Electrical Contractors</div>
+            <div class="contact-person">Tom Baker, Director</div>
+            <div class="contact-sequence">Trades &amp; Home Services &mdash; Outreach</div>
+            <div class="contact-step">
+              <span class="channel-icon channel-icon--email" title="Email">&#9993;</span>
+              Step 1 of 4 &mdash; Initial cold email
+            </div>
+          </div>
+          <div class="contact-meta">
+            <span class="contact-time">11:00</span>
+            <button class="btn-mark-sent">Mark Sent</button>
+          </div>
+        </div>
+
+        <div class="contact-card contact-card--seq-cleaning">
+          <div class="contact-info">
+            <div class="contact-company">Crystal Clear FM</div>
+            <div class="contact-person">Ian McCready, Commercial Manager</div>
+            <div class="contact-sequence">Cleaning Companies &mdash; Cold Email</div>
+            <div class="contact-step">
+              <span class="channel-icon channel-icon--email" title="Email">&#9993;</span>
+              Step 4 of 5 &mdash; Break-up email
+            </div>
+          </div>
+          <div class="contact-meta">
+            <span class="contact-time">11:30</span>
+            <button class="btn-mark-sent">Mark Sent</button>
+          </div>
+        </div>
+
+        <div class="contact-card contact-card--seq-dental">
+          <div class="contact-info">
+            <div class="contact-company">Parkway Dental Practice</div>
+            <div class="contact-person">Dr. Helen Bridges, Partner</div>
+            <div class="contact-sequence">Dental Practices &mdash; Intro Sequence</div>
+            <div class="contact-step">
+              <span class="channel-icon channel-icon--phone" title="Phone">&#9742;</span>
+              Step 3 of 4 &mdash; Phone call
+            </div>
+          </div>
+          <div class="contact-meta">
+            <span class="contact-time">13:00</span>
+            <button class="btn-mark-sent">Mark Sent</button>
+          </div>
+        </div>
+
+        <div class="contact-card contact-card--seq-recruitment">
+          <div class="contact-info">
+            <div class="contact-company">Swift Personnel Ltd</div>
+            <div class="contact-person">Amira Khan, Head of Sales</div>
+            <div class="contact-sequence">Recruitment Agencies &mdash; Variant A</div>
+            <div class="contact-step">
+              <span class="channel-icon channel-icon--email" title="Email">&#9993;</span>
+              Step 4 of 5 &mdash; Case study email
+            </div>
+          </div>
+          <div class="contact-meta">
+            <span class="contact-time">14:00</span>
+            <button class="btn-mark-sent">Mark Sent</button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Right Sidebar -->
+      <div class="sidebar">
+
+        <!-- Recent Replies -->
+        <div class="sidebar-panel">
+          <div class="sidebar-panel-title">Recent Replies</div>
+
+          <div class="reply-item">
+            <div class="reply-header">
+              <span class="reply-company">Pinnacle Recruitment</span>
+              <span class="reply-time">2h ago</span>
+            </div>
+            <div class="reply-preview">"Hi Luke, thanks for reaching out. We've actually been thinking about this. Could you send over some more details on..."</div>
+            <button class="btn-convert">Convert to Deal</button>
+          </div>
+
+          <div class="reply-item">
+            <div class="reply-header">
+              <span class="reply-company">Spotless Office Services</span>
+              <span class="reply-time">5h ago</span>
+            </div>
+            <div class="reply-preview">"Interesting — we're currently reviewing our systems. Are you free for a quick call next Tuesday afternoon?"</div>
+            <button class="btn-convert">Convert to Deal</button>
+          </div>
+
+          <div class="reply-item">
+            <div class="reply-header">
+              <span class="reply-company">Riverside Dental Care</span>
+              <span class="reply-time">1d ago</span>
+            </div>
+            <div class="reply-preview">"Dr. Patel asked me to reply — she'd like to know more about how this works with our existing booking system."</div>
+            <button class="btn-convert">Convert to Deal</button>
+          </div>
+
+          <div class="reply-item">
+            <div class="reply-header">
+              <span class="reply-company">Henderson &amp; Sons Builders</span>
+              <span class="reply-time">2d ago</span>
+            </div>
+            <div class="reply-preview">"Not for us right now but possibly in the summer. Can you follow up in June?"</div>
+            <button class="btn-convert">Convert to Deal</button>
+          </div>
+        </div>
+
+        <!-- Today's Progress -->
+        <div class="sidebar-panel">
+          <div class="sidebar-panel-title">Today's Progress</div>
+          <div class="progress-section">
+            <div class="progress-ring-wrap">
+              <svg width="80" height="80" viewBox="0 0 80 80">
+                <circle class="progress-ring-bg" cx="40" cy="40" r="33" />
+                <circle class="progress-ring-fill" cx="40" cy="40" r="33" />
+              </svg>
+              <div class="progress-ring-label">0/12</div>
+            </div>
+            <div class="progress-text">
+              <div class="progress-text-main">No messages sent yet</div>
+              <div class="progress-text-sub">12 remaining for today</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sequence Performance -->
+        <div class="sidebar-panel">
+          <div class="sidebar-panel-title">Sequence Performance</div>
+          <table class="perf-table">
+            <thead>
+              <tr>
+                <th>Sequence</th>
+                <th>Sent</th>
+                <th>Replied</th>
+                <th>Rate</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>
+                  <span class="perf-seq-dot" style="background: #4f46e5;"></span>
+                  <span class="perf-seq-name">Recruitment</span>
+                </td>
+                <td>48</td>
+                <td>9</td>
+                <td><span class="perf-rate perf-rate--good">18.7%</span></td>
+              </tr>
+              <tr>
+                <td>
+                  <span class="perf-seq-dot" style="background: #16a34a;"></span>
+                  <span class="perf-seq-name">Cleaning</span>
+                </td>
+                <td>32</td>
+                <td>4</td>
+                <td><span class="perf-rate perf-rate--ok">12.5%</span></td>
+              </tr>
+              <tr>
+                <td>
+                  <span class="perf-seq-dot" style="background: #0891b2;"></span>
+                  <span class="perf-seq-name">Dental</span>
+                </td>
+                <td>21</td>
+                <td>1</td>
+                <td><span class="perf-rate perf-rate--low">4.8%</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</body>
+</html>

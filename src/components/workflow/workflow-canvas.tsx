@@ -64,12 +64,6 @@ interface WorkflowCanvasProps {
   nodeTypes?: NodeTypes
 
   /**
-   * Enable dark theme compatibility
-   * @default true
-   */
-  darkMode?: boolean
-
-  /**
    * CSS class name for additional styling
    */
   className?: string
@@ -93,7 +87,7 @@ interface WorkflowCanvasProps {
  * - MiniMap for navigation
  * - Node selection with callback
  * - Drag-and-drop support from palette
- * - Dark theme compatible
+ * - Theme-aware (respects light/dark via Tailwind dark: variants)
  * - Responsive full-height canvas
  *
  * @example
@@ -103,7 +97,6 @@ interface WorkflowCanvasProps {
  *   initialEdges={edges}
  *   nodeTypes={customNodeTypes}
  *   onNodeSelect={handleNodeSelect}
- *   darkMode={isDarkMode}
  * />
  * ```
  *
@@ -124,7 +117,6 @@ export function WorkflowCanvas({
   onEdgesChange,
   onConnect,
   nodeTypes = {},
-  darkMode = true,
   className,
   onDropNode,
 }: WorkflowCanvasProps) {
@@ -154,7 +146,6 @@ export function WorkflowCanvas({
       nodeTypes={nodeTypes}
       onNodeClick={handleNodeClick}
       onPaneClick={handleCanvasClick}
-      darkMode={darkMode}
       className={className}
       selectedNodeId={selectedNodeId}
       onDropNode={onDropNode}
@@ -175,7 +166,6 @@ function WorkflowCanvasInner({
   nodeTypes,
   onNodeClick,
   onPaneClick,
-  darkMode,
   className,
   selectedNodeId,
   onDropNode,
@@ -188,7 +178,6 @@ function WorkflowCanvasInner({
   nodeTypes: NodeTypes
   onNodeClick: (event: React.MouseEvent, node: Node) => void
   onPaneClick: () => void
-  darkMode: boolean
   className?: string
   selectedNodeId: string | null
   onDropNode?: (template: WorkflowNodeTemplate, position: { x: number; y: number }) => void
@@ -251,9 +240,7 @@ function WorkflowCanvasInner({
       onDrop={handleDrop}
       className={cn(
         "relative w-full h-full overflow-hidden rounded-lg border",
-        darkMode
-          ? "bg-slate-950 border-slate-800"
-          : "bg-white border-slate-200",
+        "bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800",
         className
       )}
       role="region"
@@ -270,20 +257,17 @@ function WorkflowCanvasInner({
         onPaneClick={onPaneClick}
         fitView
         attributionPosition="bottom-right"
+        className="workflow-canvas-flow"
         defaultEdgeOptions={{
           animated: true,
           style: {
-            stroke: darkMode ? "#64748b" : "#cbd5e1",
             strokeWidth: 2,
           },
         }}
       >
         {/* Background grid */}
         <Background
-          color={darkMode ? "#334155" : "#e2e8f0"}
-          style={{
-            backgroundColor: darkMode ? "rgb(15, 23, 42)" : "rgb(255, 255, 255)",
-          }}
+          className="workflow-canvas-bg"
           gap={16}
           size={1}
         />
@@ -293,9 +277,7 @@ function WorkflowCanvasInner({
           position="bottom-left"
           className={cn(
             "flex gap-2 p-2 rounded-lg border",
-            darkMode
-              ? "bg-slate-900 border-slate-700"
-              : "bg-white border-slate-200"
+            "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700"
           )}
           style={{
             display: "flex",
@@ -311,17 +293,15 @@ function WorkflowCanvasInner({
             position="top-right"
             className={cn(
               "rounded-lg border overflow-hidden",
-              darkMode
-                ? "bg-slate-900 border-slate-700"
-                : "bg-white border-slate-200"
+              "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700"
             )}
             nodeColor={(node) => {
               if (selectedNodeId === node.id) {
-                return darkMode ? "#9333ea" : "#7c3aed"
+                return "#7c3aed"
             }
-            return darkMode ? "#475569" : "#cbd5e1"
+            return "#cbd5e1"
           }}
-          maskColor={darkMode ? "rgba(0, 0, 0, 0.5)" : "rgba(0, 0, 0, 0.1)"}
+          maskColor="rgba(0, 0, 0, 0.1)"
           style={{
             width: "200px",
             height: "150px",
@@ -340,15 +320,10 @@ function WorkflowCanvasInner({
           )}
         >
           <div className={cn(
-            "text-center p-8 rounded-lg",
-            darkMode
-              ? "bg-slate-900/50 border border-slate-700"
-              : "bg-slate-50 border border-slate-200"
+            "text-center p-8 rounded-lg border",
+            "bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700"
           )}>
-            <p className={cn(
-              "text-sm font-medium",
-              darkMode ? "text-slate-400" : "text-slate-600"
-            )}>
+            <p className="text-sm font-medium text-slate-600 dark:text-slate-400">
               Drag nodes from the palette to start building your workflow
             </p>
           </div>

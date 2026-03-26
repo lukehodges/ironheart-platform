@@ -66,6 +66,51 @@ async function repairSchema() {
     END$$
   `;
 
+  // Migration 0003: outreach_activities missing columns
+  await client`
+    ALTER TABLE "outreach_activities"
+      ADD COLUMN IF NOT EXISTS "performedByUserId" uuid REFERENCES "users"("id") ON UPDATE CASCADE ON DELETE SET NULL
+  `.catch(() => {});
+  await client`
+    ALTER TABLE "outreach_activities"
+      ADD COLUMN IF NOT EXISTS "previousState" jsonb
+  `.catch(() => {});
+
+  // Migration 0004: outreach_templates table
+  await client`
+    CREATE TABLE IF NOT EXISTS "outreach_templates" (
+      "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+      "tenantId" uuid NOT NULL REFERENCES "tenants"("id") ON UPDATE CASCADE ON DELETE CASCADE,
+      "name" text NOT NULL,
+      "category" text NOT NULL,
+      "channel" text NOT NULL,
+      "subject" text,
+      "bodyMarkdown" text NOT NULL,
+      "tags" text[],
+      "isActive" boolean NOT NULL DEFAULT true,
+      "createdAt" timestamp(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" timestamp(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `;
+  await client`CREATE INDEX IF NOT EXISTS "outreach_templates_tenantId_idx" ON "outreach_templates" ("tenantId")`.catch(() => {});
+  await client`CREATE INDEX IF NOT EXISTS "outreach_templates_tenantId_category_idx" ON "outreach_templates" ("tenantId", "category")`.catch(() => {});
+
+  // Migration 0005: outreach_snippets table
+  await client`
+    CREATE TABLE IF NOT EXISTS "outreach_snippets" (
+      "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+      "tenantId" uuid NOT NULL REFERENCES "tenants"("id") ON UPDATE CASCADE ON DELETE CASCADE,
+      "name" text NOT NULL,
+      "category" text NOT NULL,
+      "bodyMarkdown" text NOT NULL,
+      "isActive" boolean NOT NULL DEFAULT true,
+      "createdAt" timestamp(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" timestamp(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `;
+  await client`CREATE INDEX IF NOT EXISTS "outreach_snippets_tenantId_idx" ON "outreach_snippets" ("tenantId")`.catch(() => {});
+  await client`CREATE INDEX IF NOT EXISTS "outreach_snippets_tenantId_category_idx" ON "outreach_snippets" ("tenantId", "category")`.catch(() => {});
+
   console.log("    ✓ schema integrity verified");
 }
 
@@ -363,7 +408,7 @@ async function seedTenantModules(tenantId: string) {
     "auth", "tenant", "platform", "analytics", "search",
     "customer", "booking", "team", "scheduling", "portal", "staff",
     "notification", "calendar-sync", "forms", "review", "payment",
-    "workflow", "developer", "ai",
+    "workflow", "developer", "ai", "pipeline", "outreach",
   ]);
 
   const now = new Date();
@@ -1153,6 +1198,372 @@ async function seedModuleSettingsFromManifests() {
 }
 
 // ---------------------------------------------------------------------------
+// 12. Outreach
+// ---------------------------------------------------------------------------
+
+async function seedOutreach(tenantId: string, customerIds: string[], staffIds: string[]) {
+  console.log("  → seeding outreach data...");
+
+  // Skip if already seeded
+  const existingSeqs = await db
+    .select({ id: schema.outreachSequences.id })
+    .from(schema.outreachSequences)
+    .where(eq(schema.outreachSequences.tenantId, tenantId));
+
+  if (existingSeqs.length > 0) {
+    console.log("    ✓ outreach already seeded");
+    return;
+  }
+
+  const now = new Date();
+
+  // --- Sequences -----------------------------------------------------------
+
+  const seqColdIntro = uuid();
+  const seqFollowUp = uuid();
+  const seqLinkedIn = uuid();
+  const seqCaseStudy = uuid();
+
+  await db.insert(schema.outreachSequences).values([
+    {
+      id: seqColdIntro,
+      tenantId,
+      name: "Cold Intro — Physio Clinics",
+      description: "Initial outreach to physio clinic owners in the Thames Valley area",
+      sector: "physiotherapy",
+      targetIcp: "Clinic owners with 3-10 practitioners, manual booking systems",
+      isActive: true,
+      steps: [
+        { position: 1, channel: "EMAIL", delayDays: 0, subject: "Quick question about {{company}}", bodyMarkdown: "Hi {{firstName}},\n\nI noticed {{company}} has been growing — congrats on the expansion.\n\nI work with physio clinics in the Oxford area and one thing I keep hearing is how much time gets lost to no-shows and manual booking admin.\n\nWe built something that's cut no-shows by 40% for clinics like yours. Would you be open to a quick 15-min chat to see if it could help?\n\nBest,\nLuke" },
+        { position: 2, channel: "EMAIL", delayDays: 3, subject: "Re: Quick question about {{company}}", bodyMarkdown: "Hi {{firstName}},\n\nJust bumping this up — I know inboxes get busy.\n\nWould next Tuesday or Thursday work for a quick call? Happy to work around your schedule.\n\nLuke" },
+        { position: 3, channel: "LINKEDIN_REQUEST", delayDays: 5, bodyMarkdown: "Hi {{firstName}} — I work with physio clinics on reducing no-shows and admin overhead. Would love to connect." },
+        { position: 4, channel: "EMAIL", delayDays: 10, subject: "One last note, {{firstName}}", bodyMarkdown: "Hi {{firstName}},\n\nI'll keep this short — I put together a quick case study showing how Riverside Wellness cut their no-show rate from 18% to 7%.\n\nHappy to share it if useful. Either way, no hard feelings — I know timing isn't always right.\n\nAll the best,\nLuke" },
+      ] as import("@/modules/outreach/outreach.types").OutreachStep[],
+      createdAt: daysAgo(30),
+      updatedAt: daysAgo(2),
+    },
+    {
+      id: seqFollowUp,
+      tenantId,
+      name: "Warm Follow-Up — Event Leads",
+      description: "Follow-up sequence for contacts met at healthcare expos and networking events",
+      sector: "healthcare",
+      targetIcp: "Practice managers and clinic owners from conference contacts",
+      isActive: true,
+      steps: [
+        { position: 1, channel: "EMAIL", delayDays: 0, subject: "Great meeting you at {{sector}} Expo", bodyMarkdown: "Hi {{firstName}},\n\nReally enjoyed our chat at the expo last week. You mentioned {{company}} was looking at ways to streamline patient intake — that's exactly what we specialise in.\n\nI put together a short demo based on what you described. Fancy a 20-minute walkthrough this week?\n\nLuke" },
+        { position: 2, channel: "LINKEDIN_MESSAGE", delayDays: 2, bodyMarkdown: "Hey {{firstName}} — just sent you an email following up from the expo. Let me know if a quick call works this week!" },
+        { position: 3, channel: "EMAIL", delayDays: 7, subject: "The demo I mentioned, {{firstName}}", bodyMarkdown: "Hi {{firstName}},\n\nI recorded a 3-minute walkthrough of how the intake flow would work for {{company}}. No commitment needed — just thought it might be useful to see it in action.\n\n[Link to demo]\n\nLuke" },
+      ] as import("@/modules/outreach/outreach.types").OutreachStep[],
+      createdAt: daysAgo(14),
+      updatedAt: daysAgo(1),
+    },
+    {
+      id: seqLinkedIn,
+      tenantId,
+      name: "LinkedIn Nurture — Dental Practices",
+      description: "LinkedIn-first approach for dental practice managers",
+      sector: "dental",
+      isActive: true,
+      steps: [
+        { position: 1, channel: "LINKEDIN_REQUEST", delayDays: 0, bodyMarkdown: "Hi {{firstName}} — I help dental practices modernise their booking and patient comms. Would love to connect." },
+        { position: 2, channel: "LINKEDIN_MESSAGE", delayDays: 3, bodyMarkdown: "Thanks for connecting, {{firstName}}! I noticed {{company}} is doing great things. Quick question — are you still using a traditional phone-based booking system, or have you moved to online?" },
+        { position: 3, channel: "EMAIL", delayDays: 7, subject: "Following up from LinkedIn", bodyMarkdown: "Hi {{firstName}},\n\nHope you don't mind me reaching out by email as well — I find LinkedIn messages can get buried.\n\nI'd love to show you how we helped a 6-chair dental practice in Reading save 12 hours a week on admin. Would a quick call work?\n\nBest,\nLuke" },
+        { position: 4, channel: "CALL", delayDays: 14, bodyMarkdown: "Call to follow up on LinkedIn/email outreach. Key talking points:\n- Reference their practice size and location\n- Ask about current booking system pain points\n- Offer the free trial angle", notes: "Only call if they've engaged with at least one prior touchpoint" },
+      ] as import("@/modules/outreach/outreach.types").OutreachStep[],
+      createdAt: daysAgo(21),
+      updatedAt: daysAgo(5),
+    },
+    {
+      id: seqCaseStudy,
+      tenantId,
+      name: "Case Study Drip — Wellness Centres",
+      description: "Content-led sequence sharing relevant case studies",
+      sector: "wellness",
+      isActive: false,
+      archivedAt: daysAgo(3),
+      steps: [
+        { position: 1, channel: "EMAIL", delayDays: 0, subject: "How {{sector}} centres are cutting admin by 60%", bodyMarkdown: "Hi {{firstName}},\n\nI thought you might find this interesting — we recently published a case study on how a wellness centre similar to {{company}} reduced their admin workload by 60%.\n\nHappy to share the full write-up if you're curious.\n\nLuke" },
+        { position: 2, channel: "EMAIL", delayDays: 5, subject: "Another quick win for {{company}}", bodyMarkdown: "Hi {{firstName}},\n\nFollowing up on the case study I mentioned — one specific thing that might resonate: automated review requests after appointments. One centre went from 2 Google reviews/month to 15.\n\nWorth exploring?\n\nLuke" },
+      ] as import("@/modules/outreach/outreach.types").OutreachStep[],
+      createdAt: daysAgo(45),
+      updatedAt: daysAgo(3),
+    },
+  ]);
+
+  console.log("    ✓ created 4 sequences");
+
+  // --- Contacts + Activities ------------------------------------------------
+
+  // Use first 8 customers as outreach contacts
+  const contactDefs: Array<{
+    customerId: string;
+    sequenceId: string;
+    assignedUserIndex: number;
+    status: "ACTIVE" | "REPLIED" | "BOUNCED" | "PAUSED" | "CONVERTED" | "COMPLETED";
+    currentStep: number;
+    daysAgoEnrolled: number;
+    sentiment?: "POSITIVE" | "NEUTRAL" | "NEGATIVE" | "NOT_NOW";
+    replyCategory?: "INTERESTED" | "NOT_NOW" | "NOT_INTERESTED" | "WRONG_PERSON" | "AUTO_REPLY";
+    notes?: string;
+    snoozeDays?: number;
+  }> = [
+    // Active contacts progressing through sequences
+    { customerId: customerIds[0]!, sequenceId: seqColdIntro, assignedUserIndex: 0, status: "ACTIVE", currentStep: 2, daysAgoEnrolled: 8 },
+    { customerId: customerIds[1]!, sequenceId: seqColdIntro, assignedUserIndex: 0, status: "ACTIVE", currentStep: 3, daysAgoEnrolled: 15 },
+    // Replied contacts with various sentiments
+    { customerId: customerIds[2]!, sequenceId: seqColdIntro, assignedUserIndex: 0, status: "REPLIED", currentStep: 2, daysAgoEnrolled: 12, sentiment: "POSITIVE", replyCategory: "INTERESTED", notes: "Very interested — asked about pricing and onboarding timeline" },
+    { customerId: customerIds[3]!, sequenceId: seqFollowUp, assignedUserIndex: 1, status: "REPLIED", currentStep: 1, daysAgoEnrolled: 5, sentiment: "NOT_NOW", replyCategory: "NOT_NOW", notes: "Said they're mid-contract with another provider until September", snoozeDays: 90 },
+    { customerId: customerIds[4]!, sequenceId: seqLinkedIn, assignedUserIndex: 0, status: "REPLIED", currentStep: 3, daysAgoEnrolled: 18, sentiment: "NEGATIVE", replyCategory: "NOT_INTERESTED", notes: "Not interested, happy with current setup" },
+    // Bounced
+    { customerId: customerIds[5]!, sequenceId: seqColdIntro, assignedUserIndex: 1, status: "BOUNCED", currentStep: 1, daysAgoEnrolled: 10 },
+    // Converted
+    { customerId: customerIds[6]!, sequenceId: seqFollowUp, assignedUserIndex: 0, status: "CONVERTED", currentStep: 3, daysAgoEnrolled: 20, sentiment: "POSITIVE", replyCategory: "INTERESTED", notes: "Signed up for the trial after the demo call — now a paying customer" },
+    // Paused
+    { customerId: customerIds[7]!, sequenceId: seqLinkedIn, assignedUserIndex: 1, status: "PAUSED", currentStep: 2, daysAgoEnrolled: 14, notes: "Paused — they're on holiday until April" },
+  ];
+
+  const contactIds: string[] = [];
+
+  for (const c of contactDefs) {
+    const contactId = uuid();
+    contactIds.push(contactId);
+
+    await db.insert(schema.outreachContacts).values({
+      id: contactId,
+      tenantId,
+      customerId: c.customerId,
+      sequenceId: c.sequenceId,
+      assignedUserId: staffIds[c.assignedUserIndex],
+      status: c.status,
+      currentStep: c.currentStep,
+      nextDueAt: c.status === "ACTIVE" ? daysFromNow(Math.floor(Math.random() * 5)) : null,
+      enrolledAt: daysAgo(c.daysAgoEnrolled),
+      completedAt: c.status === "CONVERTED" || c.status === "COMPLETED" ? daysAgo(1) : null,
+      lastActivityAt: daysAgo(Math.max(1, Math.floor(c.daysAgoEnrolled / 2))),
+      notes: c.notes ?? null,
+      sentiment: c.sentiment ?? null,
+      replyCategory: c.replyCategory ?? null,
+      snoozedUntil: c.snoozeDays ? daysFromNow(c.snoozeDays) : null,
+      createdAt: daysAgo(c.daysAgoEnrolled),
+      updatedAt: daysAgo(1),
+    });
+  }
+
+  console.log(`    ✓ created ${contactDefs.length} contacts`);
+
+  // --- Activities (message history) -----------------------------------------
+
+  const activityDefs: Array<{
+    contactIndex: number;
+    sequenceId: string;
+    customerId: string;
+    stepPosition: number;
+    channel: string;
+    activityType: "SENT" | "REPLIED" | "BOUNCED" | "MEETING_BOOKED" | "CONVERTED";
+    daysAgoOccurred: number;
+    deliveredTo?: string;
+    notes?: string;
+  }> = [
+    // Emily Thompson — Cold Intro, step 1 sent, step 2 sent
+    { contactIndex: 0, sequenceId: seqColdIntro, customerId: customerIds[0]!, stepPosition: 1, channel: "EMAIL", activityType: "SENT", daysAgoOccurred: 8, deliveredTo: "emily.thompson@email.co.uk" },
+    { contactIndex: 0, sequenceId: seqColdIntro, customerId: customerIds[0]!, stepPosition: 2, channel: "EMAIL", activityType: "SENT", daysAgoOccurred: 5, deliveredTo: "emily.thompson@email.co.uk" },
+
+    // Michael Davies — Cold Intro, steps 1-3 sent
+    { contactIndex: 1, sequenceId: seqColdIntro, customerId: customerIds[1]!, stepPosition: 1, channel: "EMAIL", activityType: "SENT", daysAgoOccurred: 15, deliveredTo: "michael.davies@email.co.uk" },
+    { contactIndex: 1, sequenceId: seqColdIntro, customerId: customerIds[1]!, stepPosition: 2, channel: "EMAIL", activityType: "SENT", daysAgoOccurred: 12, deliveredTo: "michael.davies@email.co.uk" },
+    { contactIndex: 1, sequenceId: seqColdIntro, customerId: customerIds[1]!, stepPosition: 3, channel: "LINKEDIN_REQUEST", activityType: "SENT", daysAgoOccurred: 10 },
+
+    // Sophie Williams — Cold Intro, sent step 1, REPLIED positively
+    { contactIndex: 2, sequenceId: seqColdIntro, customerId: customerIds[2]!, stepPosition: 1, channel: "EMAIL", activityType: "SENT", daysAgoOccurred: 12, deliveredTo: "sophie.williams@email.co.uk" },
+    { contactIndex: 2, sequenceId: seqColdIntro, customerId: customerIds[2]!, stepPosition: 2, channel: "EMAIL", activityType: "SENT", daysAgoOccurred: 9, deliveredTo: "sophie.williams@email.co.uk" },
+    { contactIndex: 2, sequenceId: seqColdIntro, customerId: customerIds[2]!, stepPosition: 2, channel: "EMAIL", activityType: "REPLIED", daysAgoOccurred: 8, notes: "Hi Luke, this sounds really interesting. We're definitely struggling with no-shows. Could you send over some pricing info? Also, how long does onboarding typically take? Best, Sophie" },
+
+    // James Brown — Follow-Up, sent step 1, replied NOT_NOW
+    { contactIndex: 3, sequenceId: seqFollowUp, customerId: customerIds[3]!, stepPosition: 1, channel: "EMAIL", activityType: "SENT", daysAgoOccurred: 5, deliveredTo: "james.brown@email.co.uk" },
+    { contactIndex: 3, sequenceId: seqFollowUp, customerId: customerIds[3]!, stepPosition: 1, channel: "EMAIL", activityType: "REPLIED", daysAgoOccurred: 4, notes: "Hey Luke, thanks for reaching out. We're actually locked into a 12-month contract with our current provider until September. Could you get back in touch then? Cheers, James" },
+
+    // Olivia Jones — LinkedIn, sent steps 1-3, replied negatively
+    { contactIndex: 4, sequenceId: seqLinkedIn, customerId: customerIds[4]!, stepPosition: 1, channel: "LINKEDIN_REQUEST", activityType: "SENT", daysAgoOccurred: 18 },
+    { contactIndex: 4, sequenceId: seqLinkedIn, customerId: customerIds[4]!, stepPosition: 2, channel: "LINKEDIN_MESSAGE", activityType: "SENT", daysAgoOccurred: 15 },
+    { contactIndex: 4, sequenceId: seqLinkedIn, customerId: customerIds[4]!, stepPosition: 3, channel: "EMAIL", activityType: "SENT", daysAgoOccurred: 11, deliveredTo: "olivia.jones@email.co.uk" },
+    { contactIndex: 4, sequenceId: seqLinkedIn, customerId: customerIds[4]!, stepPosition: 3, channel: "EMAIL", activityType: "REPLIED", daysAgoOccurred: 10, notes: "Hi Luke, appreciate the follow-up but we're happy with our current system. Please remove me from your mailing list. Thanks, Olivia" },
+
+    // Harry Wilson — Cold Intro, bounced on first send
+    { contactIndex: 5, sequenceId: seqColdIntro, customerId: customerIds[5]!, stepPosition: 1, channel: "EMAIL", activityType: "BOUNCED", daysAgoOccurred: 10, deliveredTo: "harry.wilson@email.co.uk", notes: "550 5.1.1 The email account that you tried to reach does not exist" },
+
+    // Amelia Taylor — Follow-Up, full journey to conversion
+    { contactIndex: 6, sequenceId: seqFollowUp, customerId: customerIds[6]!, stepPosition: 1, channel: "EMAIL", activityType: "SENT", daysAgoOccurred: 20, deliveredTo: "amelia.taylor@email.co.uk" },
+    { contactIndex: 6, sequenceId: seqFollowUp, customerId: customerIds[6]!, stepPosition: 1, channel: "EMAIL", activityType: "REPLIED", daysAgoOccurred: 19, notes: "Hi Luke! Yes, I'd love to see a demo. How about Thursday at 2pm? Amelia" },
+    { contactIndex: 6, sequenceId: seqFollowUp, customerId: customerIds[6]!, stepPosition: 2, channel: "LINKEDIN_MESSAGE", activityType: "SENT", daysAgoOccurred: 18 },
+    { contactIndex: 6, sequenceId: seqFollowUp, customerId: customerIds[6]!, stepPosition: 2, channel: "EMAIL", activityType: "MEETING_BOOKED", daysAgoOccurred: 17, notes: "Demo call scheduled for Thursday 2pm — sent calendar invite" },
+    { contactIndex: 6, sequenceId: seqFollowUp, customerId: customerIds[6]!, stepPosition: 3, channel: "EMAIL", activityType: "CONVERTED", daysAgoOccurred: 10, notes: "Signed up for trial after demo. Moving to onboarding." },
+
+    // George Anderson — LinkedIn, paused at step 2
+    { contactIndex: 7, sequenceId: seqLinkedIn, customerId: customerIds[7]!, stepPosition: 1, channel: "LINKEDIN_REQUEST", activityType: "SENT", daysAgoOccurred: 14 },
+    { contactIndex: 7, sequenceId: seqLinkedIn, customerId: customerIds[7]!, stepPosition: 2, channel: "LINKEDIN_MESSAGE", activityType: "SENT", daysAgoOccurred: 11 },
+  ];
+
+  for (const a of activityDefs) {
+    await db.insert(schema.outreachActivities).values({
+      id: uuid(),
+      tenantId,
+      contactId: contactIds[a.contactIndex]!,
+      sequenceId: a.sequenceId,
+      customerId: a.customerId,
+      stepPosition: a.stepPosition,
+      channel: a.channel,
+      activityType: a.activityType,
+      deliveredTo: a.deliveredTo ?? null,
+      notes: a.notes ?? null,
+      performedByUserId: staffIds[0],
+      occurredAt: daysAgo(a.daysAgoOccurred),
+      createdAt: daysAgo(a.daysAgoOccurred),
+    });
+  }
+
+  console.log(`    ✓ created ${activityDefs.length} activities`);
+
+  // --- Templates ------------------------------------------------------------
+
+  await db.insert(schema.outreachTemplates).values([
+    {
+      id: uuid(),
+      tenantId,
+      name: "Cold Intro — Clinic Owner",
+      category: "intro",
+      channel: "EMAIL",
+      subject: "Quick question about {{company}}",
+      bodyMarkdown: "Hi {{firstName}},\n\nI noticed {{company}} has been growing — congrats on the expansion.\n\nI work with clinics in your area and one thing I keep hearing is how much time gets lost to no-shows and manual booking admin.\n\nWe built something that's cut no-shows by 40% for clinics like yours. Would you be open to a quick 15-min chat to see if it could help?\n\nBest,\nLuke",
+      tags: ["cold", "clinic-owner", "no-shows"],
+      isActive: true,
+      createdAt: daysAgo(60),
+      updatedAt: daysAgo(5),
+    },
+    {
+      id: uuid(),
+      tenantId,
+      name: "Follow-Up Bump",
+      category: "follow-up",
+      channel: "EMAIL",
+      subject: "Re: Quick question about {{company}}",
+      bodyMarkdown: "Hi {{firstName}},\n\nJust bumping this up — I know inboxes get busy.\n\nWould next Tuesday or Thursday work for a quick call? Happy to work around your schedule.\n\nLuke",
+      tags: ["follow-up", "bump"],
+      isActive: true,
+      createdAt: daysAgo(60),
+      updatedAt: daysAgo(10),
+    },
+    {
+      id: uuid(),
+      tenantId,
+      name: "Break-Up Email",
+      category: "break-up",
+      channel: "EMAIL",
+      subject: "One last note, {{firstName}}",
+      bodyMarkdown: "Hi {{firstName}},\n\nI'll keep this short — I put together a quick case study showing how Riverside Wellness cut their no-show rate from 18% to 7%.\n\nHappy to share it if useful. Either way, no hard feelings — I know timing isn't always right.\n\nAll the best,\nLuke",
+      tags: ["break-up", "case-study", "last-touch"],
+      isActive: true,
+      createdAt: daysAgo(45),
+      updatedAt: daysAgo(8),
+    },
+    {
+      id: uuid(),
+      tenantId,
+      name: "LinkedIn Connect — Dental",
+      category: "linkedin",
+      channel: "LINKEDIN_REQUEST",
+      bodyMarkdown: "Hi {{firstName}} — I help dental practices modernise their booking and patient comms. Would love to connect.",
+      tags: ["linkedin", "dental"],
+      isActive: true,
+      createdAt: daysAgo(30),
+      updatedAt: daysAgo(15),
+    },
+    {
+      id: uuid(),
+      tenantId,
+      name: "Case Study Share",
+      category: "case-study",
+      channel: "EMAIL",
+      subject: "How {{sector}} practices are cutting admin by 60%",
+      bodyMarkdown: "Hi {{firstName}},\n\nI thought you might find this interesting — we recently published a case study on how a practice similar to {{company}} reduced their admin workload by 60%.\n\nHappy to share the full write-up if you're curious.\n\nLuke",
+      tags: ["case-study", "social-proof"],
+      isActive: true,
+      createdAt: daysAgo(40),
+      updatedAt: daysAgo(12),
+    },
+  ]);
+
+  console.log("    ✓ created 5 templates");
+
+  // --- Snippets -------------------------------------------------------------
+
+  await db.insert(schema.outreachSnippets).values([
+    {
+      id: uuid(),
+      tenantId,
+      name: "Social proof — no-show reduction",
+      category: "social-proof",
+      bodyMarkdown: "We helped Riverside Wellness cut their no-show rate from 18% to 7% within the first 3 months.",
+      isActive: true,
+      createdAt: daysAgo(30),
+      updatedAt: daysAgo(5),
+    },
+    {
+      id: uuid(),
+      tenantId,
+      name: "Social proof — admin hours saved",
+      category: "social-proof",
+      bodyMarkdown: "A 6-chair dental practice in Reading saved 12 hours a week on admin after switching to our platform.",
+      isActive: true,
+      createdAt: daysAgo(30),
+      updatedAt: daysAgo(5),
+    },
+    {
+      id: uuid(),
+      tenantId,
+      name: "CTA — quick call",
+      category: "call-to-action",
+      bodyMarkdown: "Would you be open to a quick 15-minute call this week? I'm flexible on timing.",
+      isActive: true,
+      createdAt: daysAgo(25),
+      updatedAt: daysAgo(8),
+    },
+    {
+      id: uuid(),
+      tenantId,
+      name: "CTA — demo offer",
+      category: "call-to-action",
+      bodyMarkdown: "I put together a short 3-minute demo based on what you described. No commitment — just thought it might be useful to see it in action.",
+      isActive: true,
+      createdAt: daysAgo(20),
+      updatedAt: daysAgo(3),
+    },
+    {
+      id: uuid(),
+      tenantId,
+      name: "Objection — happy with current provider",
+      category: "objection-handling",
+      bodyMarkdown: "Totally understand — sounds like you've got a good setup. Out of curiosity, if you could change one thing about how it handles [booking/reviews/patient comms], what would it be?",
+      isActive: true,
+      createdAt: daysAgo(15),
+      updatedAt: daysAgo(2),
+    },
+    {
+      id: uuid(),
+      tenantId,
+      name: "Objection — not the right time",
+      category: "objection-handling",
+      bodyMarkdown: "No problem at all — timing is everything. Would it be okay if I checked back in with you in [timeframe]? Happy to share any new case studies in the meantime.",
+      isActive: true,
+      createdAt: daysAgo(15),
+      updatedAt: daysAgo(2),
+    },
+  ]);
+
+  console.log("    ✓ created 6 snippets");
+}
+
+// ---------------------------------------------------------------------------
 // Database Reset (optional — run with --reset flag)
 // ---------------------------------------------------------------------------
 
@@ -1173,7 +1584,10 @@ async function resetDemoData() {
 
   const tenantId = demoTenant[0].id;
 
-  // Delete in reverse dependency order
+  // Delete in reverse dependency order (outreach tables may not exist yet)
+  for (const tbl of ["outreach_activities", "outreach_contacts", "outreach_sequences", "outreach_templates", "outreach_snippets"]) {
+    await client.unsafe(`DELETE FROM "${tbl}" WHERE "tenantId" = $1`, [tenantId]).catch(() => {});
+  }
   await client`DELETE FROM resource_assignments WHERE "tenantId" = ${tenantId}`;
   await client`DELETE FROM resource_capacities WHERE "tenantId" = ${tenantId}`;
   await client`DELETE FROM resource_skills WHERE "tenantId" = ${tenantId}`;
@@ -1253,6 +1667,9 @@ async function main() {
 
     console.log("\n── Step 11: Module Settings");
     await seedModuleSettingsFromManifests();
+
+    console.log("\n── Step 12: Outreach");
+    await seedOutreach(demoTenantId, customerIds, staffIds);
 
     console.log("\n✅ Seed complete!\n");
     console.log("  Platform admin:  luke@theironheart.org  (platform-wide access)");

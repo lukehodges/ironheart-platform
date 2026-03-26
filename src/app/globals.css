@@ -257,3 +257,24 @@
     to { opacity: 1; transform: translateX(0); }
   }
 }
+
+/* Workflow canvas — theme-aware React Flow overrides */
+.workflow-canvas-flow .react-flow__edge-path {
+  stroke: #cbd5e1;
+}
+.dark .workflow-canvas-flow .react-flow__edge-path {
+  stroke: #64748b;
+}
+
+.workflow-canvas-bg {
+  background-color: rgb(255, 255, 255);
+}
+.workflow-canvas-bg .react-flow__background-pattern {
+  color: #e2e8f0 !important;
+}
+.dark .workflow-canvas-bg {
+  background-color: rgb(15, 23, 42);
+}
+.dark .workflow-canvas-bg .react-flow__background-pattern {
+  color: #334155 !important;
+}

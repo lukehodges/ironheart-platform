@@ -2,7 +2,7 @@
 
 import { db } from "@/shared/db"
 import { aiConversations, aiMessages } from "@/shared/db/schema"
-import { eq, and, desc } from "drizzle-orm"
+import { eq, and, desc, ne } from "drizzle-orm"
 import { logger } from "@/shared/logger"
 import type { ConversationRecord, MessageRecord, PageContext, TokenUsage, ToolCallRecord, ToolResultRecord } from "./ai.types"
 
@@ -80,6 +80,7 @@ export const aiRepository = {
     const conditions = [
       eq(aiConversations.tenantId, tenantId),
       eq(aiConversations.userId, userId),
+      ne(aiConversations.status, "archived"),
     ]
     // TODO: cursor-based pagination if needed
     const rows = await db

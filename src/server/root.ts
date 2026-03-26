@@ -25,6 +25,7 @@ import { rbacRouter } from "@/modules/rbac";
 import { resourcePoolRouter } from "@/shared/resource-pool/resource-pool.router";
 import { aiRouter } from "@/modules/ai";
 import { pipelineRouter } from "@/modules/pipeline";
+import { outreachRouter } from "@/modules/outreach";
 
 /**
  * Root tRPC router.
@@ -65,6 +66,7 @@ export const appRouter = router({
   resourcePool: resourcePoolRouter,
   ai: aiRouter,
   pipeline: pipelineRouter,
+  outreach: outreachRouter,
 });
 
 export type AppRouter = typeof appRouter;

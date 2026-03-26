@@ -62,6 +62,9 @@ async function seedModules() {
     { slug: "payment",       name: "Payments",        category: "PREMIUM" as const, features: { stripe: true, invoices: true } },
     { slug: "workflow",      name: "Workflows",       category: "PREMIUM" as const, features: { builder: true, triggers: true, actions: true } },
     { slug: "developer",     name: "Developer Tools", category: "PREMIUM" as const, features: { webhooks: true, api: true } },
+    { slug: "ai",             name: "AI Assistant",    category: "PREMIUM" as const, features: { chat: true, workflows: true, mcp: true } },
+    { slug: "pipeline",       name: "Pipeline",        category: "PREMIUM" as const, features: { stages: true, deals: true, analytics: true } },
+    { slug: "outreach",       name: "Outreach",        category: "PREMIUM" as const, features: { sequences: true, contacts: true, analytics: true } },
   ];
 
   const existingSlugs = (

@@ -1,0 +1,1324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ironheart — Acceler8 Demo Day 2026</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg-root:     #0c0d10;
+  --bg-card:     #16171c;
+  --bg-elevated: #1e1f26;
+  --bg-hover:    #1c1d23;
+  --border:      #27282f;
+  --border-sub:  #1f2028;
+  --text-1:      #e8e9ed;
+  --text-2:      #9196a1;
+  --text-3:      #5c6170;
+  --amber:       #f59e0b;
+  --amber-dim:   rgba(245,158,11,0.12);
+  --amber-mid:   rgba(245,158,11,0.25);
+  --emerald:     #10b981;
+  --emerald-dim: rgba(16,185,129,0.12);
+  --blue:        #3b82f6;
+  --blue-dim:    rgba(59,130,246,0.12);
+  --rose:        #f43f5e;
+  --rose-dim:    rgba(244,63,94,0.12);
+  --font: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --mono: 'Geist Mono', 'SF Mono', monospace;
+  --r: 8px;
+  --r-sm: 6px;
+}
+
+html { -webkit-font-smoothing: antialiased; }
+
+body {
+  background: var(--bg-root);
+  color: var(--text-1);
+  font-family: var(--font);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* ─── Shell ─────────────────────────────────────────── */
+.shell {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ─── Sidebar ────────────────────────────────────────── */
+.sidebar {
+  width: 200px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  padding: 24px 0 20px;
+  background: var(--bg-root);
+}
+
+.sidebar-logo {
+  padding: 0 20px 20px;
+  border-bottom: 1px solid var(--border-sub);
+  margin-bottom: 12px;
+}
+
+.logo-mark {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 3px;
+  color: var(--amber);
+  text-transform: uppercase;
+}
+
+.logo-sub {
+  font-size: 11px;
+  color: var(--text-3);
+  margin-top: 3px;
+}
+
+.nav-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--text-3);
+  padding: 0 20px;
+  margin: 8px 0 4px;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 20px;
+  font-size: 13px;
+  color: var(--text-2);
+  cursor: pointer;
+  transition: all 0.12s;
+  border-left: 2px solid transparent;
+  user-select: none;
+}
+
+.nav-item:hover { color: var(--text-1); background: var(--bg-hover); }
+
+.nav-item.active {
+  color: var(--text-1);
+  background: var(--bg-elevated);
+  border-left-color: var(--amber);
+}
+
+.nav-num {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-3);
+  min-width: 18px;
+}
+
+.nav-item.active .nav-num { color: var(--amber); }
+
+.sidebar-footer {
+  margin-top: auto;
+  padding: 16px 20px 0;
+  border-top: 1px solid var(--border-sub);
+}
+
+.sidebar-footer-text {
+  font-size: 11px;
+  color: var(--text-3);
+  line-height: 1.6;
+}
+
+/* ─── Main content ───────────────────────────────────── */
+.main {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+.slides-viewport {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  position: relative;
+}
+
+.slide {
+  position: absolute;
+  inset: 0;
+  padding: 40px 48px 36px;
+  display: flex;
+  flex-direction: column;
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity 0.22s ease, transform 0.22s ease;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.slide.active {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: all;
+}
+
+/* ─── Common slide header ─────────────────────────────── */
+.slide-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 28px;
+  flex-shrink: 0;
+}
+
+.slide-title-block {}
+
+.slide-eyebrow {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 1px;
+  color: var(--amber);
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.slide-title {
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: -0.4px;
+  color: var(--text-1);
+  line-height: 1.2;
+}
+
+.slide-subtitle {
+  font-size: 14px;
+  color: var(--text-2);
+  margin-top: 6px;
+  max-width: 580px;
+  line-height: 1.6;
+}
+
+.slide-meta {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-3);
+  text-align: right;
+  line-height: 1.7;
+}
+
+/* ─── Cards ──────────────────────────────────────────── */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  overflow: hidden;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border-sub);
+}
+
+.card-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-1);
+  letter-spacing: 0.1px;
+}
+
+.card-body { padding: 18px; }
+
+/* ─── Badge ──────────────────────────────────────────── */
+.badge {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 500;
+  padding: 3px 8px;
+  border-radius: 100px;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+}
+
+.badge-amber  { color: var(--amber);   background: var(--amber-dim);   border: 1px solid var(--amber-mid); }
+.badge-emerald{ color: var(--emerald); background: var(--emerald-dim); border: 1px solid rgba(16,185,129,0.25); }
+.badge-blue   { color: var(--blue);    background: var(--blue-dim);    border: 1px solid rgba(59,130,246,0.25); }
+.badge-rose   { color: var(--rose);    background: var(--rose-dim);    border: 1px solid rgba(244,63,94,0.25); }
+.badge-muted  { color: var(--text-2);  background: var(--bg-elevated); border: 1px solid var(--border); }
+
+/* ─── Progress bar ───────────────────────────────────── */
+.progress-track {
+  height: 3px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 24px;
+  flex-shrink: 0;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--amber);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+/* ─── Keyboard hint ──────────────────────────────────── */
+.key-hint {
+  position: fixed;
+  bottom: 20px;
+  right: 24px;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-3);
+  display: flex;
+  gap: 12px;
+  z-index: 100;
+}
+
+.key-hint kbd {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-2);
+}
+
+
+/* ═══════════════════════════════════════════════════════
+   SLIDE 1 — THE HOOK
+═══════════════════════════════════════════════════════ */
+#s1 .hook-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  max-width: 760px;
+}
+
+#s1 .hook-headline {
+  font-size: 48px;
+  font-weight: 600;
+  letter-spacing: -1px;
+  color: var(--text-1);
+  line-height: 1.1;
+  margin-bottom: 24px;
+}
+
+#s1 .hook-headline em {
+  font-style: normal;
+  color: var(--text-2);
+  font-weight: 400;
+}
+
+#s1 .hook-sub {
+  font-size: 20px;
+  color: var(--text-2);
+  line-height: 1.5;
+  font-weight: 400;
+  max-width: 620px;
+  margin-bottom: 12px;
+}
+
+#s1 .hook-detail {
+  font-size: 14px;
+  color: var(--text-3);
+  line-height: 1.6;
+  max-width: 540px;
+}
+
+#s1 .hook-strip {
+  display: flex;
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  overflow: hidden;
+  margin-top: 36px;
+  max-width: 640px;
+}
+
+.hook-stat {
+  background: var(--bg-card);
+  padding: 14px 20px;
+  flex: 1;
+}
+
+.hook-stat-val {
+  font-family: var(--mono);
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--text-1);
+  letter-spacing: -0.5px;
+  margin-bottom: 3px;
+}
+
+.hook-stat-label {
+  font-size: 11px;
+  color: var(--text-3);
+  line-height: 1.4;
+}
+
+/* ═══════════════════════════════════════════════════════
+   SLIDE 2 — COST OF DOING NOTHING
+═══════════════════════════════════════════════════════ */
+#s2 .cost-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  flex: 1;
+}
+
+.cost-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 24px 22px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+
+.cost-card::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+}
+
+.cost-card.c1::after { background: var(--amber); }
+.cost-card.c2::after { background: var(--rose); }
+.cost-card.c3::after { background: var(--blue); }
+
+.cost-icon {
+  width: 32px; height: 32px;
+  margin-bottom: 20px;
+  color: var(--text-3);
+}
+
+.cost-icon svg { width: 100%; height: 100%; }
+
+.cost-val {
+  font-family: var(--mono);
+  font-size: 48px;
+  font-weight: 600;
+  letter-spacing: -1.5px;
+  color: var(--text-1);
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.cost-unit {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-3);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: 20px;
+}
+
+.cost-divider {
+  height: 1px;
+  background: var(--border-sub);
+  margin-bottom: 16px;
+}
+
+.cost-desc {
+  font-size: 13px;
+  color: var(--text-2);
+  line-height: 1.6;
+  flex: 1;
+}
+
+/* ═══════════════════════════════════════════════════════
+   SLIDE 3 — WHAT WE DO
+═══════════════════════════════════════════════════════ */
+#s3 .what-body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  flex: 1;
+}
+
+#s3 .what-left {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 16px;
+}
+
+#s3 .what-statement {
+  font-size: 18px;
+  color: var(--text-2);
+  line-height: 1.65;
+  font-weight: 400;
+}
+
+#s3 .what-statement strong {
+  color: var(--text-1);
+  font-weight: 600;
+}
+
+#s3 .what-pill {
+  background: var(--amber-dim);
+  border: 1px solid var(--amber-mid);
+  border-radius: var(--r-sm);
+  padding: 12px 16px;
+  font-size: 13px;
+  color: var(--amber);
+  line-height: 1.5;
+  font-style: italic;
+}
+
+#s3 .what-right {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.step-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 16px 18px;
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  transition: border-color 0.12s;
+}
+
+.step-card.active {
+  background: var(--bg-elevated);
+  border-color: var(--amber);
+}
+
+.step-num-box {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-3);
+  padding-top: 2px;
+  min-width: 18px;
+}
+
+.step-card.active .step-num-box { color: var(--amber); }
+
+.step-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-1);
+  letter-spacing: 0.1px;
+  margin-bottom: 3px;
+}
+
+.step-desc {
+  font-size: 12px;
+  color: var(--text-2);
+  line-height: 1.5;
+}
+
+/* ═══════════════════════════════════════════════════════
+   SLIDE 4 — PROOF
+═══════════════════════════════════════════════════════ */
+#s4 .proof-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  flex: 1;
+}
+
+.proof-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.proof-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.proof-sector-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.proof-icon {
+  width: 28px; height: 28px;
+  flex-shrink: 0;
+  color: var(--text-3);
+}
+
+.proof-icon svg { width: 100%; height: 100%; }
+
+.proof-sector {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-1);
+  letter-spacing: -0.1px;
+}
+
+.proof-tag {
+  font-size: 12px;
+  color: var(--text-3);
+}
+
+.proof-divider {
+  height: 1px;
+  background: var(--border-sub);
+}
+
+.proof-result {
+  font-size: 13px;
+  color: var(--text-2);
+  line-height: 1.55;
+  flex: 1;
+}
+
+/* ═══════════════════════════════════════════════════════
+   SLIDE 5 — PLATFORM ADVANTAGE
+═══════════════════════════════════════════════════════ */
+#s5 .platform-body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  flex: 1;
+}
+
+#s5 .platform-left {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cap-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  font-size: 12.5px;
+  color: var(--text-2);
+  transition: border-color 0.12s, color 0.12s;
+}
+
+.cap-row.highlight {
+  border-color: var(--amber);
+  color: var(--amber);
+  background: var(--amber-dim);
+  font-weight: 500;
+}
+
+.cap-dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--text-3);
+  flex-shrink: 0;
+}
+
+.cap-row.highlight .cap-dot { background: var(--amber); }
+
+#s5 .platform-right {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ai-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  overflow: hidden;
+  flex: 1;
+}
+
+.ai-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border-sub);
+}
+
+.ai-card-icon {
+  width: 24px; height: 24px;
+  color: var(--amber);
+}
+.ai-card-icon svg { width: 100%; height: 100%; }
+
+.ai-card-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-1);
+}
+
+.ai-card-body {
+  padding: 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ai-card-sub {
+  font-size: 11px;
+  color: var(--text-3);
+  margin-bottom: 4px;
+}
+
+.ai-query {
+  background: var(--bg-root);
+  border: 1px solid var(--border-sub);
+  border-radius: var(--r-sm);
+  padding: 9px 12px;
+  font-size: 12px;
+  color: var(--text-2);
+  font-style: italic;
+  line-height: 1.4;
+}
+
+/* ═══════════════════════════════════════════════════════
+   SLIDE 6 — LEVELLING THE FIELD
+═══════════════════════════════════════════════════════ */
+#s6 .values-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 20px;
+  max-width: 800px;
+}
+
+.value-row {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  padding: 18px 20px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+}
+
+.value-num {
+  font-family: var(--mono);
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--amber);
+  min-width: 28px;
+  line-height: 1;
+  padding-top: 2px;
+}
+
+.value-content {}
+
+.value-headline {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-1);
+  margin-bottom: 4px;
+  letter-spacing: -0.1px;
+}
+
+.value-desc {
+  font-size: 13px;
+  color: var(--text-2);
+  line-height: 1.55;
+}
+
+/* ═══════════════════════════════════════════════════════
+   SLIDE 7 — THE CLOSE
+═══════════════════════════════════════════════════════ */
+#s7 .close-body {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 220px;
+  gap: 32px;
+  align-items: start;
+}
+
+#s7 .close-left {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+#s7 .close-statement {
+  font-size: 28px;
+  font-weight: 500;
+  letter-spacing: -0.5px;
+  color: var(--text-2);
+  line-height: 1.4;
+}
+
+#s7 .close-statement strong {
+  color: var(--text-1);
+  font-weight: 600;
+}
+
+#s7 .close-cta {
+  font-size: 36px;
+  font-weight: 600;
+  letter-spacing: -1px;
+  color: var(--amber);
+  line-height: 1;
+}
+
+#s7 .close-sub {
+  font-size: 14px;
+  color: var(--text-3);
+  line-height: 1.7;
+  max-width: 520px;
+}
+
+#s7 .contact-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 16px 18px;
+}
+
+.contact-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--text-3);
+  margin-bottom: 10px;
+}
+
+.contact-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-1);
+  margin-bottom: 6px;
+}
+
+.contact-line {
+  font-size: 12px;
+  color: var(--text-2);
+  margin-bottom: 3px;
+}
+
+#s7 .close-right {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+#s7 .qr-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.qr-box {
+  width: 100px; height: 100px;
+  border: 1.5px dashed var(--border);
+  border-radius: var(--r-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.qr-box-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--text-3);
+  letter-spacing: 1px;
+}
+
+.qr-cta {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--amber);
+  text-align: center;
+}
+
+.qr-hint {
+  font-size: 11px;
+  color: var(--text-3);
+  text-align: center;
+}
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+  <!-- ── Sidebar ──────────────────────────────────── -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-mark">Ironheart</div>
+      <div class="logo-sub">Acceler8 · Bath · 2026</div>
+    </div>
+
+    <div class="nav-label">Slides</div>
+
+    <div class="nav-item active" onclick="goTo(0)">
+      <span class="nav-num">01</span>The Problem
+    </div>
+    <div class="nav-item" onclick="goTo(1)">
+      <span class="nav-num">02</span>The Cost
+    </div>
+    <div class="nav-item" onclick="goTo(2)">
+      <span class="nav-num">03</span>What We Do
+    </div>
+    <div class="nav-item" onclick="goTo(3)">
+      <span class="nav-num">04</span>Proof
+    </div>
+    <div class="nav-item" onclick="goTo(4)">
+      <span class="nav-num">05</span>Platform
+    </div>
+    <div class="nav-item" onclick="goTo(5)">
+      <span class="nav-num">06</span>Values
+    </div>
+    <div class="nav-item" onclick="goTo(6)">
+      <span class="nav-num">07</span>Close
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="sidebar-footer-text">
+        7-minute pitch<br>+ 5 min Q&A<br>+ networking
+      </div>
+    </div>
+  </aside>
+
+  <!-- ── Main ─────────────────────────────────────── -->
+  <main class="main">
+    <div class="slides-viewport">
+
+      <!-- ── Progress bar ── -->
+      <div class="progress-track" style="margin: 0; border-radius: 0; position: absolute; top: 0; left: 0; right: 0; z-index: 10;">
+        <div class="progress-fill" id="progress" style="width: 14.3%"></div>
+      </div>
+
+      <!-- ═══════════════════════════════════════════
+           SLIDE 1 — THE HOOK
+      ═══════════════════════════════════════════ -->
+      <div class="slide active" id="s1">
+        <div class="slide-header">
+          <div class="slide-title-block">
+            <div class="slide-eyebrow">The Problem</div>
+            <div class="slide-title">Every large organisation<br>has the same problem.</div>
+          </div>
+          <div class="slide-meta">
+            7-min pitch<br>University of Bath
+          </div>
+        </div>
+
+        <div class="hook-body">
+          <div class="hook-sub">
+            Seven systems. None of them talk to each other.
+          </div>
+          <div class="hook-detail">
+            And the team that could fix it — they're brilliant, but they're running five transformation
+            projects already. They're not going to build your department a custom dashboard any time soon.
+            That's not a criticism. That's just how large organisations work.
+          </div>
+
+          <div class="hook-strip">
+            <div class="hook-stat">
+              <div class="hook-stat-val">7+</div>
+              <div class="hook-stat-label">siloed systems per org</div>
+            </div>
+            <div class="hook-stat">
+              <div class="hook-stat-val">18 mo</div>
+              <div class="hook-stat-label">avg internal queue</div>
+            </div>
+            <div class="hook-stat">
+              <div class="hook-stat-val">£200k</div>
+              <div class="hook-stat-label">Big Four starting price</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══════════════════════════════════════════
+           SLIDE 2 — THE COST OF DOING NOTHING
+      ═══════════════════════════════════════════ -->
+      <div class="slide" id="s2">
+        <div class="slide-header">
+          <div class="slide-title-block">
+            <div class="slide-eyebrow">The Cost</div>
+            <div class="slide-title">The cost of doing nothing</div>
+            <div class="slide-subtitle">This isn't a technology problem. It's a resource problem. And it compounds.</div>
+          </div>
+        </div>
+
+        <div class="cost-grid">
+          <div class="cost-card c1">
+            <div class="cost-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+              </svg>
+            </div>
+            <div class="cost-val">10+</div>
+            <div class="cost-unit">hrs / week</div>
+            <div class="cost-divider"></div>
+            <div class="cost-desc">Staff spending time on tasks a system should handle — re-entering data, chasing emails, updating spreadsheets that should update themselves.</div>
+          </div>
+
+          <div class="cost-card c2">
+            <div class="cost-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+              </svg>
+            </div>
+            <div class="cost-val">5%</div>
+            <div class="cost-unit">utilised</div>
+            <div class="cost-divider"></div>
+            <div class="cost-desc">Enterprise software licenses — bought for broad capabilities, used for almost none. Thousands per year, quietly wasted.</div>
+          </div>
+
+          <div class="cost-card c3">
+            <div class="cost-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+              </svg>
+            </div>
+            <div class="cost-val">18mo</div>
+            <div class="cost-unit">average</div>
+            <div class="cost-divider"></div>
+            <div class="cost-desc">"Digital transformation" projects that take 18 months and cost six figures — and the people on the ground say nothing actually changed.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══════════════════════════════════════════
+           SLIDE 3 — WHAT WE DO
+      ═══════════════════════════════════════════ -->
+      <div class="slide" id="s3">
+        <div class="slide-header">
+          <div class="slide-title-block">
+            <div class="slide-eyebrow">What We Do</div>
+            <div class="slide-title">Operational AI Consultancy</div>
+          </div>
+        </div>
+
+        <div class="what-body">
+          <div class="what-left">
+            <div class="what-statement">
+              We find the <strong>20% of your operations</strong> causing 80% of the pain —
+              and build systems that fix it <strong>permanently.</strong>
+            </div>
+            <div class="what-statement" style="font-size: 15px;">
+              We don't hand you a report and walk away. We come in, audit your day-to-day operations —
+              not your IT infrastructure, your <strong>actual processes</strong> — identify the
+              highest-impact problems, and build the systems that solve them.
+            </div>
+            <div class="what-pill">
+              Fast. Focused. Affordable — at the department level.
+            </div>
+          </div>
+
+          <div class="what-right">
+            <div class="step-card">
+              <div class="step-num-box">01</div>
+              <div>
+                <div class="step-label">Audit</div>
+                <div class="step-desc">Map your real operational pain — not IT architecture, actual processes and workflows</div>
+              </div>
+            </div>
+            <div class="step-card active">
+              <div class="step-num-box">02</div>
+              <div>
+                <div class="step-label">Build</div>
+                <div class="step-desc">Deploy targeted systems on our proven platform — in weeks, not months</div>
+              </div>
+            </div>
+            <div class="step-card">
+              <div class="step-num-box">03</div>
+              <div>
+                <div class="step-label">Operate</div>
+                <div class="step-desc">Stay accountable until it works. Transfer capability, not dependency</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══════════════════════════════════════════
+           SLIDE 4 — PROOF
+      ═══════════════════════════════════════════ -->
+      <div class="slide" id="s4">
+        <div class="slide-header">
+          <div class="slide-title-block">
+            <div class="slide-eyebrow">Proof</div>
+            <div class="slide-title">Four clients. Four industries. One approach.</div>
+          </div>
+        </div>
+
+        <div class="proof-grid">
+
+          <div class="proof-card">
+            <div class="proof-top">
+              <div class="proof-sector-row">
+                <div class="proof-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.36 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.64a16 16 0 0 0 6 6l.94-.94a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.73 16l.19.92z"/>
+                  </svg>
+                </div>
+                <div>
+                  <div class="proof-sector">Healthcare</div>
+                  <div class="proof-tag">Patient Routing &amp; Scheduling</div>
+                </div>
+              </div>
+              <span class="badge badge-amber">–8 hrs/wk</span>
+            </div>
+            <div class="proof-divider"></div>
+            <div class="proof-result">8 hours/week of manual scheduling work — eliminated entirely</div>
+          </div>
+
+          <div class="proof-card">
+            <div class="proof-top">
+              <div class="proof-sector-row">
+                <div class="proof-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+                  </svg>
+                </div>
+                <div>
+                  <div class="proof-sector">Theatre Company</div>
+                  <div class="proof-tag">Back-office Automation</div>
+                </div>
+              </div>
+              <span class="badge badge-emerald">–60% admin</span>
+            </div>
+            <div class="proof-divider"></div>
+            <div class="proof-result">60% reduction in admin overhead across the operation</div>
+          </div>
+
+          <div class="proof-card">
+            <div class="proof-top">
+              <div class="proof-sector-row">
+                <div class="proof-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+                  </svg>
+                </div>
+                <div>
+                  <div class="proof-sector">Events Management</div>
+                  <div class="proof-tag">Full Operational Platform</div>
+                </div>
+              </div>
+              <span class="badge badge-blue">Live in prod</span>
+            </div>
+            <div class="proof-divider"></div>
+            <div class="proof-result">First paying client — still running on the system we built</div>
+          </div>
+
+          <div class="proof-card">
+            <div class="proof-top">
+              <div class="proof-sector-row">
+                <div class="proof-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                  </svg>
+                </div>
+                <div>
+                  <div class="proof-sector">Environmental Consultancy</div>
+                  <div class="proof-tag">Compliance &amp; Brokerage Platform</div>
+                </div>
+              </div>
+              <span class="badge badge-muted">Audit-ready</span>
+            </div>
+            <div class="proof-divider"></div>
+            <div class="proof-result">Regulated industry — audit-ready, compliant from day one</div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ═══════════════════════════════════════════
+           SLIDE 5 — PLATFORM ADVANTAGE
+      ═══════════════════════════════════════════ -->
+      <div class="slide" id="s5">
+        <div class="slide-header">
+          <div class="slide-title-block">
+            <div class="slide-eyebrow">Platform</div>
+            <div class="slide-title">The platform advantage</div>
+            <div class="slide-subtitle">Already built for four industries. Adapting it to yours takes weeks, not months.</div>
+          </div>
+        </div>
+
+        <div class="platform-body">
+          <div class="platform-left">
+            <div class="cap-row"><div class="cap-dot"></div>Bookings &amp; scheduling</div>
+            <div class="cap-row"><div class="cap-dot"></div>Customer / student management</div>
+            <div class="cap-row"><div class="cap-dot"></div>Workflow automation</div>
+            <div class="cap-row"><div class="cap-dot"></div>Compliance tracking &amp; forms</div>
+            <div class="cap-row"><div class="cap-dot"></div>Payments processing</div>
+            <div class="cap-row"><div class="cap-dot"></div>SSO &amp; access control</div>
+            <div class="cap-row"><div class="cap-dot"></div>Analytics dashboards</div>
+            <div class="cap-row highlight"><div class="cap-dot"></div>AI-powered natural language interface</div>
+          </div>
+
+          <div class="platform-right">
+            <div class="ai-card" style="flex: 1;">
+              <div class="ai-card-header">
+                <div class="ai-card-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/>
+                    <path d="M12 7v4"/>
+                  </svg>
+                </div>
+                <div class="ai-card-title">AI-powered interface</div>
+                <span class="badge badge-amber" style="margin-left: auto;">New</span>
+              </div>
+              <div class="ai-card-body">
+                <div class="ai-card-sub">Ask your system in plain English:</div>
+                <div class="ai-query">"How many bookings do we have this week?"</div>
+                <div class="ai-query">"Show all overdue compliance items."</div>
+                <div class="ai-query">"Which students haven't submitted their DBS check?"</div>
+                <div class="ai-query">"Cancel tomorrow's 2pm and rebook for Thursday."</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══════════════════════════════════════════
+           SLIDE 6 — LEVELLING THE FIELD
+      ═══════════════════════════════════════════ -->
+      <div class="slide" id="s6">
+        <div class="slide-header">
+          <div class="slide-title-block">
+            <div class="slide-eyebrow">Values</div>
+            <div class="slide-title">Built for the organisations<br>big consultancies won't touch.</div>
+          </div>
+        </div>
+
+        <div class="values-body">
+
+          <div class="value-row">
+            <div class="value-num">01</div>
+            <div class="value-content">
+              <div class="value-headline">Enterprise-grade AI, accessible pricing</div>
+              <div class="value-desc">The same calibre of technology the Fortune 500 uses — without the enterprise price tag. First engagements start under £10k.</div>
+            </div>
+          </div>
+
+          <div class="value-row">
+            <div class="value-num">02</div>
+            <div class="value-content">
+              <div class="value-headline">Workforce upskilling, not replacement</div>
+              <div class="value-desc">Every build includes training and handover. We transfer capability, not create dependency.</div>
+            </div>
+          </div>
+
+          <div class="value-row">
+            <div class="value-num">03</div>
+            <div class="value-content">
+              <div class="value-headline">Designed for accessibility from day one</div>
+              <div class="value-desc">WCAG-compliant, SSO-ready, built to meet your data governance requirements. We've delivered for regulated industries.</div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ═══════════════════════════════════════════
+           SLIDE 7 — THE CLOSE
+      ═══════════════════════════════════════════ -->
+      <div class="slide" id="s7">
+        <div class="slide-header">
+          <div class="slide-title-block">
+            <div class="slide-eyebrow">Let's talk</div>
+          </div>
+        </div>
+
+        <div class="close-body">
+          <div class="close-left">
+            <div class="close-statement">
+              If your department spends more time on admin<br>
+              than on the work that actually matters —
+            </div>
+            <div class="close-cta">we should talk.</div>
+            <div class="close-sub">
+              Free 20-minute diagnostic call. No sales pitch. No obligation.<br>
+              I'll tell you where the biggest wins are and what it would cost to fix them.
+            </div>
+            <div class="contact-card">
+              <div class="contact-label">Contact</div>
+              <div class="contact-name">Luke Hodges</div>
+              <div class="contact-line">luke@theironheart.org</div>
+              <div class="contact-line">theironheart.org</div>
+            </div>
+          </div>
+
+          <div class="close-right">
+            <div class="qr-card">
+              <div class="qr-box">
+                <div class="qr-box-label">QR CODE</div>
+              </div>
+              <div class="qr-cta">Book a call</div>
+              <div class="qr-hint">Calendly · 20 min · free</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /slides-viewport -->
+  </main>
+
+</div><!-- /shell -->
+
+<div class="key-hint">
+  <span><kbd>←</kbd><kbd>→</kbd> navigate</span>
+  <span><kbd>1–7</kbd> jump to slide</span>
+</div>
+
+<script>
+  const slides = Array.from(document.querySelectorAll('.slide'));
+  const navItems = Array.from(document.querySelectorAll('.nav-item'));
+  const progress = document.getElementById('progress');
+  let current = 0;
+
+  function goTo(i) {
+    if (i < 0 || i >= slides.length) return;
+    slides[current].classList.remove('active');
+    navItems[current].classList.remove('active');
+    current = i;
+    slides[current].classList.add('active');
+    navItems[current].classList.add('active');
+    progress.style.width = ((current + 1) / slides.length * 100).toFixed(1) + '%';
+  }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') { e.preventDefault(); goTo(current + 1); }
+    if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')  { e.preventDefault(); goTo(current - 1); }
+    if (e.key >= '1' && e.key <= '7') goTo(parseInt(e.key) - 1);
+  });
+</script>
+
+</body>
+</html>

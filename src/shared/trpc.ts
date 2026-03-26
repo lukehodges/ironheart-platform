@@ -178,6 +178,19 @@ export async function createContext({
       }
     } catch (err) {
       logger.error({ tenantSlug, err, requestId }, "Failed to resolve tenantId from slug");
+      // Redis unreachable — fall back to DB lookup
+      try {
+        const tenant = await db.query.tenants.findFirst({
+          where: eq(tenants.slug, tenantSlug),
+          columns: { id: true },
+        });
+        if (tenant) {
+          resolvedTenantId = tenant.id;
+          logger.info({ tenantSlug, tenantId: resolvedTenantId, requestId }, "Tenant resolved from DB (Redis fallback)");
+        }
+      } catch (dbErr) {
+        logger.error({ tenantSlug, dbErr, requestId }, "DB fallback also failed for tenant resolution");
+      }
     }
 
     if (resolvedTenantId) {
