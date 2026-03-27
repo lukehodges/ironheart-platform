@@ -152,7 +152,7 @@ export default function CompareProductsPage() {
                 <div className="grid grid-cols-3 gap-4">
                   {comparison.map((c, i) => {
                     const uniqueKey = i === 0 ? "onlyA" : i === 1 ? "onlyB" : "onlyC"
-                    const unique = (venn as Record<string, string[]>)[uniqueKey] ?? []
+                    const unique = (venn as unknown as Record<string, string[]>)[uniqueKey] ?? []
                     return (
                       <div key={c.productId}>
                         <p className={`font-medium mb-2 ${PRODUCT_COLORS[i].text}`}>Only {c.productName}</p>
