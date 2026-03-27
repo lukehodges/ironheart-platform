@@ -13,6 +13,10 @@ import {
   Settings,
   ChevronLeft,
   Shield,
+  Package,
+  CreditCard,
+  TrendingUp,
+  FileText,
 } from "lucide-react"
 
 interface NavItem {
@@ -21,21 +25,38 @@ interface NavItem {
   icon: any
 }
 
-const NAV_ITEMS: NavItem[] = [
+interface NavSection {
+  title: string
+  items: NavItem[]
+}
+
+const NAV_SECTIONS: NavSection[] = [
   {
-    title: "Tenants",
-    href: "/platform/tenants",
-    icon: Building2,
+    title: "Products",
+    items: [
+      { title: "All Products", href: "/platform/products", icon: Package },
+    ],
   },
   {
-    title: "Analytics",
-    href: "/platform/analytics",
-    icon: BarChart3,
+    title: "Customers",
+    items: [
+      { title: "Tenants", href: "/platform/tenants", icon: Building2 },
+    ],
   },
   {
-    title: "Platform Settings",
-    href: "/platform/settings",
-    icon: Settings,
+    title: "Revenue",
+    items: [
+      { title: "Subscriptions", href: "/platform/subscriptions", icon: CreditCard },
+      { title: "Revenue", href: "/platform/revenue", icon: TrendingUp },
+    ],
+  },
+  {
+    title: "Operations",
+    items: [
+      { title: "Analytics", href: "/platform/analytics", icon: BarChart3 },
+      { title: "Audit Log", href: "/platform/audit", icon: FileText },
+      { title: "Settings", href: "/platform/settings", icon: Settings },
+    ],
   },
 ]
 
@@ -60,26 +81,36 @@ export function PlatformSidebar({ user }: PlatformSidebarProps) {
 
       {/* Navigation */}
       <ScrollArea className="flex-1 px-4 py-4">
-        <nav className="space-y-1">
-          {NAV_ITEMS.map((item) => {
-            const Icon = item.icon
-            const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
-
-            return (
-              <Link key={item.href} href={item.href}>
-                <Button
-                  variant="ghost"
-                  className={cn(
-                    "w-full justify-start gap-3 text-zinc-400 hover:bg-zinc-800 hover:text-white",
-                    isActive && "bg-zinc-800 text-white"
-                  )}
-                >
-                  <Icon className="h-4 w-4" />
-                  {item.title}
-                </Button>
-              </Link>
-            )
-          })}
+        <nav className="space-y-6">
+          {NAV_SECTIONS.map((section) => (
+            <div key={section.title}>
+              <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+                {section.title}
+              </p>
+              <div className="space-y-1">
+                {section.items.map((item) => {
+                  const Icon = item.icon
+                  const isActive =
+                    pathname === item.href ||
+                    pathname.startsWith(item.href + "/")
+                  return (
+                    <Link key={item.href} href={item.href}>
+                      <Button
+                        variant="ghost"
+                        className={cn(
+                          "w-full justify-start gap-3 text-zinc-400 hover:bg-zinc-800 hover:text-white",
+                          isActive && "bg-zinc-800 text-white"
+                        )}
+                      >
+                        <Icon className="h-4 w-4" />
+                        {item.title}
+                      </Button>
+                    </Link>
+                  )
+                })}
+              </div>
+            </div>
+          ))}
         </nav>
 
         {/* Back to Tenant Admin */}
