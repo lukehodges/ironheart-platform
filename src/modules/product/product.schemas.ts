@@ -48,3 +48,30 @@ export const updatePlanSchema = z.object({
 export const productSlugSchema = z.object({
   slug: z.string(),
 });
+
+export const listProductsSchema = z.object({
+  search: z.string().optional(),
+  status: z.enum(["live", "draft", "archived"]).optional(),
+  moduleSlug: z.string().optional(),
+});
+
+export const cloneProductSchema = z.object({
+  id: z.uuid(),
+});
+
+export const archiveProductSchema = z.object({
+  id: z.uuid(),
+});
+
+export const productAnalyticsSchema = z.object({
+  id: z.uuid(),
+});
+
+export const productComparisonSchema = z.object({
+  ids: z.array(z.uuid()).min(2).max(3),
+});
+
+export const reorderPlansSchema = z.object({
+  productId: z.uuid(),
+  planIds: z.array(z.uuid()).min(1),
+});
