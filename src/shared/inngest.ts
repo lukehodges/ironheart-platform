@@ -253,6 +253,30 @@ type IronheartEvents = {
       tenantId: string;
     };
   };
+  "subscription/checkout.completed": {
+    data: {
+      stripeSessionId: string;
+      stripeCustomerId: string;
+      stripeSubscriptionId: string;
+      productSlug: string;
+      businessName: string;
+      email: string;
+      planId: string;
+    };
+  };
+  "subscription/payment.failed": {
+    data: {
+      stripeSubscriptionId: string;
+      tenantId: string;
+      stripeCustomerId: string;
+    };
+  };
+  "subscription/cancelled": {
+    data: {
+      stripeSubscriptionId: string;
+      tenantId: string;
+    };
+  };
 };
 
 /**
