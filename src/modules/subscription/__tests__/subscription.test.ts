@@ -82,6 +82,7 @@ const mockProduct = {
   domain: null,
   moduleSlugs: ["booking", "customer"],
   isPublished: true,
+  archivedAt: null,
   createdAt: new Date(),
   updatedAt: new Date(),
   plans: [
@@ -197,6 +198,7 @@ describe("subscriptionService", () => {
         domain: null,
         moduleSlugs: ["booking", "customer"],
         isPublished: true,
+        archivedAt: null,
         createdAt: new Date(),
         updatedAt: new Date(),
       });

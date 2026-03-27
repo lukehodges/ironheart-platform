@@ -43,6 +43,13 @@ vi.mock("../product.repository", () => ({
     findDefaultPlan: vi.fn(),
     findPlanById: vi.fn(),
     deletePlan: vi.fn(),
+    listWithStats: vi.fn(),
+    updatePlan: vi.fn(),
+    cloneProduct: vi.fn(),
+    archiveProduct: vi.fn(),
+    unarchiveProduct: vi.fn(),
+    getProductAnalytics: vi.fn(),
+    getProductComparison: vi.fn(),
   },
 }));
 
@@ -74,6 +81,30 @@ const mockPlan = {
   isDefault: true,
   createdAt: new Date(),
 };
+
+const mockProductWithStats = {
+  ...mockProduct,
+  tenantCount: 24,
+  activeTenantCount: 20,
+  trialTenantCount: 4,
+  mrr: 58000,
+  planCount: 3,
+  tenantGrowthThisMonth: 3,
+};
+
+const mockAnalytics = {
+  mrr: 58000,
+  mrrChange: 12.5,
+  totalTenants: 24,
+  trialConversionRate: 83.3,
+  churnRate: 4.2,
+  tenantsByPlan: [{ planId: "plan-001", planName: "Starter", count: 24 }],
+};
+
+const mockComparison = [
+  { productId: "prod-001", productName: "IronBook", moduleSlugs: ["booking", "customer", "scheduling"] },
+  { productId: "prod-002", productName: "IronReview", moduleSlugs: ["booking", "customer", "review"] },
+];
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -162,6 +193,93 @@ describe("productService", () => {
       await expect(
         productService.getDefaultPlan("prod-001")
       ).rejects.toThrow(NotFoundError);
+    });
+  });
+
+  describe("listProductsWithStats", () => {
+    it("returns products with stats", async () => {
+      vi.mocked(productRepository.listWithStats).mockResolvedValue([mockProductWithStats]);
+      const result = await productService.listProductsWithStats({});
+      expect(result).toHaveLength(1);
+      expect(result[0].mrr).toBe(58000);
+      expect(result[0].tenantCount).toBe(24);
+    });
+
+    it("passes filters through to repository", async () => {
+      vi.mocked(productRepository.listWithStats).mockResolvedValue([]);
+      await productService.listProductsWithStats({ status: "live", search: "barber" });
+      expect(productRepository.listWithStats).toHaveBeenCalledWith({ status: "live", search: "barber" });
+    });
+  });
+
+  describe("cloneProduct", () => {
+    it("clones a product", async () => {
+      vi.mocked(productRepository.cloneProduct).mockResolvedValue({
+        ...mockProduct,
+        id: "prod-002",
+        slug: "ironbook-copy",
+        name: "IronBook (Copy)",
+        isPublished: false,
+      });
+      const result = await productService.cloneProduct("prod-001");
+      expect(result.slug).toBe("ironbook-copy");
+      expect(result.isPublished).toBe(false);
+      expect(productRepository.cloneProduct).toHaveBeenCalledWith("prod-001");
+    });
+  });
+
+  describe("archiveProduct", () => {
+    it("archives a product", async () => {
+      vi.mocked(productRepository.archiveProduct).mockResolvedValue({
+        ...mockProduct,
+        archivedAt: new Date(),
+      });
+      const result = await productService.archiveProduct("prod-001");
+      expect(result.archivedAt).toBeTruthy();
+      expect(productRepository.archiveProduct).toHaveBeenCalledWith("prod-001");
+    });
+  });
+
+  describe("unarchiveProduct", () => {
+    it("unarchives a product", async () => {
+      vi.mocked(productRepository.unarchiveProduct).mockResolvedValue({
+        ...mockProduct,
+        archivedAt: null,
+      });
+      const result = await productService.unarchiveProduct("prod-001");
+      expect(result.archivedAt).toBeNull();
+      expect(productRepository.unarchiveProduct).toHaveBeenCalledWith("prod-001");
+    });
+  });
+
+  describe("getProductAnalytics", () => {
+    it("returns analytics for a product", async () => {
+      vi.mocked(productRepository.getProductAnalytics).mockResolvedValue(mockAnalytics);
+      const result = await productService.getProductAnalytics("prod-001");
+      expect(result.mrr).toBe(58000);
+      expect(result.tenantsByPlan).toHaveLength(1);
+    });
+  });
+
+  describe("getProductComparison", () => {
+    it("returns comparison data for multiple products", async () => {
+      vi.mocked(productRepository.getProductComparison).mockResolvedValue(mockComparison);
+      const result = await productService.getProductComparison(["prod-001", "prod-002"]);
+      expect(result).toHaveLength(2);
+      expect(result[0].moduleSlugs).toContain("booking");
+    });
+  });
+
+  describe("updatePlan", () => {
+    it("updates a plan", async () => {
+      vi.mocked(productRepository.updatePlan).mockResolvedValue({
+        ...mockPlan,
+        name: "Pro",
+        priceMonthly: 4900,
+      });
+      const result = await productService.updatePlan("plan-001", { id: "plan-001", name: "Pro", priceMonthly: 4900 });
+      expect(result.name).toBe("Pro");
+      expect(result.priceMonthly).toBe(4900);
     });
   });
 });
