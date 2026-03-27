@@ -9,6 +9,7 @@ export const createTenantSchema = z.object({
   email: z.string().email(),
   plan: tenantPlanSchema.default('TRIAL'),
   slug: z.string().min(2).max(63).regex(/^[a-z0-9-]+$/).optional(),
+  moduleSlugs: z.array(z.string()).optional(),
 })
 
 export const updateTenantSchema = z.object({

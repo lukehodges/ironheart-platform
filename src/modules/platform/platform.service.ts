@@ -127,7 +127,7 @@ export const platformService = {
       // tenantModules uses moduleId (UUID FK → modules.id), NOT a text slug column
       // Platform layer modules are all isCore: true and don't need tenantModules rows.
       // Vertical modules will be re-enabled here once the platform layer is solid.
-      const defaultSlugs: string[] = [];
+      const defaultSlugs: string[] = input.moduleSlugs ?? [];
       const moduleRows = defaultSlugs.length > 0
         ? await tx
             .select({ id: modules.id, slug: modules.slug })
