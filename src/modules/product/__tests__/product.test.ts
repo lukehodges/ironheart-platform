@@ -58,6 +58,7 @@ const mockProduct = {
   isPublished: true,
   createdAt: new Date(),
   updatedAt: new Date(),
+  archivedAt: null,
 };
 
 const mockPlan = {

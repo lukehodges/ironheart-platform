@@ -23,6 +23,7 @@ export const products = pgTable("products", {
     .default(sql`CURRENT_TIMESTAMP`)
     .notNull(),
   updatedAt: timestamp({ precision: 3, mode: "date" }).notNull(),
+  archivedAt: timestamp({ precision: 3, mode: "date" }),
 });
 
 export const productPlans = pgTable("product_plans", {

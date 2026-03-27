@@ -27,6 +27,7 @@ function toProductRecord(row: typeof products.$inferSelect): ProductRecord {
     isPublished: row.isPublished,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
+    archivedAt: row.archivedAt ?? null,
   };
 }
 
