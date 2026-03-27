@@ -17,6 +17,7 @@ import {
   CreditCard,
   TrendingUp,
   FileText,
+  GitCompare,
 } from "lucide-react"
 
 interface NavItem {
@@ -35,6 +36,7 @@ const NAV_SECTIONS: NavSection[] = [
     title: "Products",
     items: [
       { title: "All Products", href: "/platform/products", icon: Package },
+      { title: "Compare", href: "/platform/products/compare", icon: GitCompare },
     ],
   },
   {
