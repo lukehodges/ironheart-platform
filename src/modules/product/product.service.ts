@@ -4,6 +4,8 @@ import { productRepository } from "./product.repository";
 import type {
   ProductRecord, ProductWithPlans, ProductPlanRecord,
   CreateProductInput, UpdateProductInput, CreatePlanInput,
+  ProductWithStats, ProductAnalytics, ProductComparison,
+  ProductListFilters, UpdatePlanInput,
 } from "./product.types";
 
 const log = logger.child({ module: "product.service" });
@@ -52,8 +54,38 @@ async function deletePlan(id: string): Promise<void> {
   return productRepository.deletePlan(id);
 }
 
+async function listProductsWithStats(filters: ProductListFilters): Promise<ProductWithStats[]> {
+  return productRepository.listWithStats(filters);
+}
+
+async function cloneProduct(id: string): Promise<ProductRecord> {
+  return productRepository.cloneProduct(id);
+}
+
+async function archiveProduct(id: string): Promise<ProductRecord> {
+  return productRepository.archiveProduct(id);
+}
+
+async function unarchiveProduct(id: string): Promise<ProductRecord> {
+  return productRepository.unarchiveProduct(id);
+}
+
+async function getProductAnalytics(id: string): Promise<ProductAnalytics> {
+  return productRepository.getProductAnalytics(id);
+}
+
+async function getProductComparison(ids: string[]): Promise<ProductComparison[]> {
+  return productRepository.getProductComparison(ids);
+}
+
+async function updatePlan(id: string, input: UpdatePlanInput): Promise<ProductPlanRecord> {
+  return productRepository.updatePlan(id, input);
+}
+
 export const productService = {
   listProducts, getProduct, getPublishedProduct,
   createProduct, updateProduct, deleteProduct,
   createPlan, getDefaultPlan, deletePlan,
+  listProductsWithStats, cloneProduct, archiveProduct, unarchiveProduct,
+  getProductAnalytics, getProductComparison, updatePlan,
 };
