@@ -48,6 +48,8 @@ export const tenants = pgTable("tenants", {
 	createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	updatedAt: timestamp({ precision: 3, mode: 'date' }).notNull(),
 	trialEndsAt: timestamp({ precision: 3, mode: 'date' }),
+	productId: uuid(),
+	planId: uuid(),
 	deletedAt: timestamp({ precision: 3, mode: 'date' }),
 }, (table) => [
 	uniqueIndex("tenants_domain_key").on( table.domain),
