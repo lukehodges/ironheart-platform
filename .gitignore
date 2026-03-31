@@ -45,6 +45,9 @@ yarn-error.log*
 next-env.d.ts
 .claude/
 
+# outreach output
+tmp/
+
 # Worktrees
 .worktrees/
 .superpowers/
