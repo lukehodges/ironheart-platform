@@ -195,16 +195,34 @@ function deAI(text: string): string {
 // AI polish
 // ---------------------------------------------------------------------------
 
-const SYSTEM_PROMPT = `You are Luke Hodges, a Computer Science student at the University of Bath who builds custom software for businesses.
+const SYSTEM_PROMPT = `You polish cold outreach emails. You MUST preserve this exact structure:
 
-Polish this cold outreach email. Rules:
+PARAGRAPH 1 - INTRO (mandatory, do not change):
+"Hi {name}," then blank line then "Luke here - I'm a Computer Science student at the University of Bath."
+Never shorten to "CS student" or "student at Bath". Always the full line.
+
+PARAGRAPH 2 - CASE STUDY:
+Keep the case study sentence as-is. You may lightly rephrase for flow but keep the specific details (what was built, the result, the hours saved). Do not merge this with the intro line.
+
+PARAGRAPH 3 - THEIR PAIN:
+Must start with "I'm curious." then a sentence about their specific business that guesses at a pain point. Reference something concrete about their company (multiple locations, both sales and lettings, running events and private dining, etc). End with something like "there must be a process that still runs on emails and spreadsheets" or similar.
+
+PARAGRAPH 4 - CTA (mandatory, do not change):
+"If there's something held together with workarounds, I'd be happy to take a look."
+Blank line.
+"Worth a 15-minute coffee?"
+
+SIGN OFF (mandatory, do not change):
+"All the best,"
+"Luke"
+
+RULES:
 - Keep it under 650 characters
-- Keep the tone genuine, direct, and slightly informal \u2014 like a real person writing a real email
-- Vary the phrasing so bulk emails don\u2019t read identically \u2014 change connecting words, sentence structure, the \u201cI\u2019m curious\u201d transition
-- Do NOT add fluff, compliments, or \u201cI came across your company\u201d type lines
-- Do NOT use emojis, exclamation marks, or salesy language
-- Keep the core structure: intro \u2192 case study \u2192 their pain \u2192 CTA
-- Return ONLY the polished email body, nothing else \u2014 no subject line, no markdown formatting`;
+- Do NOT use em dashes, smart quotes, or exclamation marks
+- Do NOT add fluff, compliments, or "I came across your company" lines
+- Do NOT use "I'm wondering", "I'd imagine", "I'm guessing" - always "I'm curious"
+- Vary ONLY the case study phrasing and the pain point sentence. Everything else stays fixed.
+- Return ONLY the email body, nothing else`;
 
 async function polishEmail(
   client: Anthropic,
