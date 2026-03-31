@@ -1,0 +1,125 @@
+{
+  "defaults": {
+    "senderName": "Luke",
+    "senderTitle": "Computer Science student at the University of Bath",
+    "signOff": "All the best,\nLuke",
+    "maxChars": 650,
+    "subject": "Quick question — {company}"
+  },
+  "caseStudies": {
+    "healthcare-scheduling": {
+      "summary": "Recently built a scheduling and capacity system for a healthcare provider managing staff across multiple sites",
+      "result": "Cut their daily coordination time by about 8 hours a week"
+    },
+    "events-booking": {
+      "summary": "Just finished a booking engine and back-office platform for an events company — scheduling, team management, customer portal",
+      "result": "Cut their admin by about 10 hours a week"
+    },
+    "coffee-automation": {
+      "summary": "Built an AI customer service agent for a coffee roaster — handles enquiries, bookings, and review management automatically",
+      "result": "Freed up about 15 hours a week of staff time"
+    },
+    "ops-platform": {
+      "summary": "Recently built an ops platform for an environmental brokerage company — document workflows, deadline tracking, audit trails across dozens of concurrent projects",
+      "result": "Saved about 12 hours a week on admin"
+    }
+  },
+  "industries": {
+    "property": {
+      "caseStudy": "ops-platform",
+      "painPoints": [
+        "managing listings and viewings across offices still runs on spreadsheets",
+        "tenant onboarding and compliance docs involve more manual chasing than they should",
+        "property management coordination still relies on email chains and shared drives"
+      ]
+    },
+    "hospitality": {
+      "caseStudy": "events-booking",
+      "painPoints": [
+        "multi-site staff scheduling and coordination still involves WhatsApp groups and spreadsheets",
+        "reservation and event booking management eats more time than it should",
+        "supplier management across locations still runs on email chains"
+      ]
+    },
+    "construction": {
+      "caseStudy": "ops-platform",
+      "painPoints": [
+        "project pipeline and subcontractor scheduling still lives in spreadsheets",
+        "client approvals and sign-offs involve more manual steps than anyone would like",
+        "compliance docs and job tracking across multiple sites still runs on workarounds"
+      ]
+    },
+    "professional-services": {
+      "caseStudy": "ops-platform",
+      "painPoints": [
+        "client onboarding and document collection still involves too much manual chasing",
+        "cross-office coordination and handoffs rely on email chains",
+        "compliance and deadline tracking still runs on spreadsheets"
+      ]
+    },
+    "healthcare": {
+      "caseStudy": "healthcare-scheduling",
+      "painPoints": [
+        "multi-practitioner scheduling still eats more time than it should",
+        "patient intake and reminders involve manual follow-ups",
+        "coordination across clinics or sites still relies on phone calls and shared calendars"
+      ]
+    },
+    "recruitment": {
+      "caseStudy": "events-booking",
+      "painPoints": [
+        "candidate pipeline and tracking still involves a fair few spreadsheets",
+        "compliance and timesheet management still runs on manual processes",
+        "client CRM and placement tracking relies on workarounds"
+      ]
+    },
+    "education": {
+      "caseStudy": "events-booking",
+      "painPoints": [
+        "parent comms and session bookings still involve more manual coordination than anyone would like",
+        "staff scheduling across sites still runs on spreadsheets",
+        "compliance docs and enrolment management still relies on workarounds"
+      ]
+    },
+    "tech": {
+      "caseStudy": "ops-platform",
+      "painPoints": [
+        "internal tooling problems that sit outside your core offering",
+        "client delivery coordination still involves manual processes",
+        "internal ops that could use a dedicated system rather than a workaround"
+      ]
+    },
+    "saas": {
+      "caseStudy": "ops-platform",
+      "painPoints": [
+        "customer onboarding still involves manual steps that don't scale",
+        "internal ops processes still run on spreadsheets and workarounds",
+        "reporting and data workflows still eat more time than they should"
+      ]
+    },
+    "dental": {
+      "caseStudy": "healthcare-scheduling",
+      "painPoints": [
+        "patient intake and appointment management still eats more time than it should",
+        "review collection and follow-ups rely on manual processes",
+        "reminders and scheduling coordination still runs on workarounds"
+      ]
+    },
+    "fitness": {
+      "caseStudy": "events-booking",
+      "painPoints": [
+        "member onboarding and retention follow-up still involves manual processes",
+        "class scheduling and booking management eats more time than it should",
+        "dormant member re-engagement still relies on spreadsheets"
+      ]
+    },
+    "default": {
+      "caseStudy": "events-booking",
+      "painPoints": [
+        "a process still held together with spreadsheets or workarounds",
+        "manual coordination that eats more time than it should",
+        "something that could use a proper system behind it"
+      ]
+    }
+  }
+}
