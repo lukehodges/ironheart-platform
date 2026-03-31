@@ -4,7 +4,7 @@
     "senderTitle": "Computer Science student at the University of Bath",
     "signOff": "All the best,\nLuke",
     "maxChars": 650,
-    "subject": "Quick question - {company}"
+    "subject": "{name}, quick question"
   },
   "caseStudies": {
     "healthcare-scheduling": {

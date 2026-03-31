@@ -177,7 +177,7 @@ function buildEmail(lead: Lead): { subject: string; body: string } {
     config.defaults.signOff,
   ].join("\n");
 
-  const subject = config.defaults.subject.replace("{company}", lead.company);
+  const subject = config.defaults.subject.replace("{name}", lead.name).replace("{company}", lead.company);
 
   return { subject: deAI(subject), body: deAI(body) };
 }
