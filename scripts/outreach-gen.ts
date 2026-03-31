@@ -24,7 +24,8 @@ interface Lead {
   email: string;
   company: string;
   industry: string;
-  detail: string;
+  detail: string;       // woven into email body (manual CSV only)
+  apolloMeta: string;   // shown on card for context, NOT in email (Apollo only)
 }
 
 interface GeneratedEmail {
@@ -96,6 +97,48 @@ function parseCSV(raw: string): Record<string, string>[] {
 // ---------------------------------------------------------------------------
 // Template filling
 // ---------------------------------------------------------------------------
+
+/** Map Apollo's verbose industry names to our template keys */
+const APOLLO_INDUSTRY_MAP: Record<string, string> = {
+  "real estate": "property",
+  "architecture & planning": "construction",
+  "construction": "construction",
+  "hospitality": "hospitality",
+  "leisure, travel & tourism": "hospitality",
+  "events services": "hospitality",
+  "food & beverages": "hospitality",
+  "restaurants": "hospitality",
+  "accounting": "professional-services",
+  "financial services": "professional-services",
+  "legal services": "professional-services",
+  "management consulting": "professional-services",
+  "professional training & coaching": "professional-services",
+  "staffing & recruiting": "recruitment",
+  "human resources": "recruitment",
+  "information technology & services": "tech",
+  "computer software": "tech",
+  "internet": "tech",
+  "marketing & advertising": "tech",
+  "design": "tech",
+  "media production": "tech",
+  "health, wellness & fitness": "healthcare",
+  "hospital & health care": "healthcare",
+  "medical practice": "healthcare",
+  "alternative medicine": "healthcare",
+  "mental health care": "healthcare",
+  "cosmetics": "healthcare",
+  "education management": "education",
+  "primary/secondary education": "education",
+  "higher education": "education",
+  "consumer services": "default",
+  "defense & space": "default",
+  "retail": "default",
+};
+
+function mapApolloIndustry(raw: string): string {
+  const key = raw.toLowerCase().trim();
+  return APOLLO_INDUSTRY_MAP[key] ?? key;
+}
 
 function matchIndustry(industry: string): IndustryKey {
   const key = industry.toLowerCase().replace(/\s+/g, "-") as IndustryKey;
@@ -198,6 +241,7 @@ function generateHTML(emails: GeneratedEmail[], dateStr: string): string {
       email: e.lead.email,
       company: e.lead.company,
       industry: e.lead.industry,
+      apolloMeta: e.lead.apolloMeta,
       subject: e.subject,
       body: e.body,
       polished: e.polished,
@@ -232,6 +276,7 @@ function generateHTML(emails: GeneratedEmail[], dateStr: string): string {
   .card-meta .name { color: #fff; font-weight: 600; font-size: 1rem; }
   .card-meta .email { color: #888; }
   .card-meta .company { color: #aaa; }
+  .card-meta .apollo-meta { color: #666; font-size: 0.8rem; margin-top: 2px; }
   .card-meta .tags { margin-top: 4px; }
   .tag { display: inline-block; background: #2a2a2a; color: #aaa; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; margin-right: 4px; }
   .tag.polished { background: #1a3a1a; color: #4ade80; }
@@ -310,6 +355,7 @@ function render() {
           '<div class="name">' + escHtml(em.name) + '</div>' +
           '<div class="email">' + escHtml(em.email) + '</div>' +
           '<div class="company">' + escHtml(em.company) + ' &mdash; ' + escHtml(em.industry) + '</div>' +
+          (em.apolloMeta ? '<div class="apollo-meta">' + escHtml(em.apolloMeta) + '</div>' : '') +
           '<div class="tags">' + polishedTag + '</div>' +
         '</div>' +
         '<div class="card-actions">' +
@@ -421,21 +467,49 @@ async function main() {
   const rows = parseCSV(raw);
   console.log(`Parsed ${rows.length} rows from ${path.basename(resolvedPath)}`);
 
-  // Map to leads, validate
+  // Detect CSV format (Apollo vs simple) and map to leads
+  const isApollo = rows.length > 0 && "first name" in rows[0]! && "company name" in rows[0]!;
+  if (isApollo) console.log("Detected Apollo export format");
+
   const leads: Lead[] = [];
   for (const row of rows) {
-    const name = row["name"] ?? "";
-    const email = row["email"] ?? "";
-    const company = row["company"] ?? "";
-    const industry = row["industry"] ?? "";
-    const detail = row["detail"] ?? "";
+    let name: string, email: string, company: string, industry: string, detail: string;
+
+    let apolloMeta = "";
+
+    if (isApollo) {
+      name = row["first name"] ?? "";
+      email = row["email"] ?? "";
+      company = row["company name"] ?? "";
+      industry = mapApolloIndustry(row["industry"] ?? "");
+      detail = ""; // Apollo doesn't have manual detail - use company name in email
+      const employees = row["# employees"] ?? "";
+      const title = row["title"] ?? "";
+      const city = row["city"] ?? "";
+      const keywords = row["keywords"] ?? "";
+      const website = row["website"] ?? "";
+      // Build context string for the review card (not the email)
+      const parts: string[] = [];
+      if (title) parts.push(title);
+      if (employees && employees !== "1") parts.push(`${employees} employees`);
+      if (city) parts.push(city);
+      // Only show first 3 keywords to keep meta readable
+      if (keywords) parts.push(keywords.split(",").slice(0, 3).map(k => k.trim()).join(", "));
+      if (website) parts.push(website);
+      apolloMeta = parts.join(" | ");
+    } else {
+      name = row["name"] ?? "";
+      email = row["email"] ?? "";
+      company = row["company"] ?? "";
+      industry = row["industry"] ?? "";
+      detail = row["detail"] ?? "";
+    }
 
     if (!name || !email) {
-      console.warn(`  [skip] Missing name or email: ${JSON.stringify(row)}`);
       continue;
     }
 
-    leads.push({ name, email, company, industry, detail });
+    leads.push({ name, email, company, industry, detail, apolloMeta });
   }
 
   const toProcess = leads.slice(0, limit);
