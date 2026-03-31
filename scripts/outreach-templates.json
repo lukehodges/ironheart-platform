@@ -4,7 +4,7 @@
     "senderTitle": "Computer Science student at the University of Bath",
     "signOff": "All the best,\nLuke",
     "maxChars": 650,
-    "subject": "Quick question — {company}"
+    "subject": "Quick question - {company}"
   },
   "caseStudies": {
     "healthcare-scheduling": {
@@ -12,15 +12,15 @@
       "result": "Cut their daily coordination time by about 8 hours a week"
     },
     "events-booking": {
-      "summary": "Just finished a booking engine and back-office platform for an events company — scheduling, team management, customer portal",
+      "summary": "Just finished a booking engine and back-office platform for an events company - scheduling, team management, customer portal",
       "result": "Cut their admin by about 10 hours a week"
     },
     "coffee-automation": {
-      "summary": "Built an AI customer service agent for a coffee roaster — handles enquiries, bookings, and review management automatically",
+      "summary": "Built an AI customer service agent for a coffee roaster - handles enquiries, bookings, and review management automatically",
       "result": "Freed up about 15 hours a week of staff time"
     },
     "ops-platform": {
-      "summary": "Recently built an ops platform for an environmental brokerage company — document workflows, deadline tracking, audit trails across dozens of concurrent projects",
+      "summary": "Recently built an ops platform for an environmental brokerage company - document workflows, deadline tracking, audit trails across dozens of concurrent projects",
       "result": "Saved about 12 hours a week on admin"
     }
   },

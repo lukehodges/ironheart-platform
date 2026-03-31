@@ -136,7 +136,16 @@ function buildEmail(lead: Lead): { subject: string; body: string } {
 
   const subject = config.defaults.subject.replace("{company}", lead.company);
 
-  return { subject, body };
+  return { subject: deAI(subject), body: deAI(body) };
+}
+
+/** Replace em dashes and smart quotes with plain equivalents */
+function deAI(text: string): string {
+  return text
+    .replace(/\u2014/g, "-")  // em dash
+    .replace(/\u2013/g, "-")  // en dash
+    .replace(/[\u2018\u2019]/g, "'")  // smart single quotes
+    .replace(/[\u201C\u201D]/g, '"');  // smart double quotes
 }
 
 // ---------------------------------------------------------------------------
@@ -167,7 +176,7 @@ async function polishEmail(
     });
     const block = response.content[0];
     if (block && block.type === "text") {
-      return block.text.trim();
+      return deAI(block.text.trim());
     }
     return null;
   } catch (err) {
