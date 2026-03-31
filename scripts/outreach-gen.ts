@@ -308,6 +308,11 @@ function generateHTML(emails: GeneratedEmail[], dateStr: string): string {
   .subject-line { font-size: 0.9rem; color: #ccc; margin-bottom: 8px; font-style: italic; }
   .email-body { background: #111; border: 1px solid #333; border-radius: 8px; padding: 16px; white-space: pre-wrap; font-size: 0.9rem; line-height: 1.6; color: #ddd; min-height: 120px; outline: none; }
   .email-body:focus { border-color: #2563eb; }
+  .export-bar { background: #1a1a2e; border: 1px solid #333; border-radius: 8px; padding: 16px; margin-bottom: 16px; display: flex; gap: 12px; align-items: center; }
+  .btn-export { background: #166534; color: #fff; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-size: 0.9rem; font-weight: 600; }
+  .btn-export:hover { background: #15803d; }
+  .btn-export-all { background: #1e293b; color: #94a3b8; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-size: 0.9rem; }
+  .btn-export-all:hover { background: #334155; }
 </style>
 </head>
 <body>
@@ -318,6 +323,10 @@ function generateHTML(emails: GeneratedEmail[], dateStr: string): string {
   <span><span class="dot dot-done"></span> Done: <strong id="countDone">0</strong></span>
   <span><span class="dot dot-skip"></span> Skipped: <strong id="countSkip">0</strong></span>
   <span><span class="dot dot-rem"></span> Remaining: <strong id="countRem">${emails.length}</strong></span>
+</div>
+<div id="export-bar" class="export-bar" style="display:none;">
+  <button class="btn btn-export" onclick="exportCSV('done')">Download sent leads (CSV)</button>
+  <button class="btn btn-export-all" onclick="exportCSV('all')">Download all with status (CSV)</button>
 </div>
 <div class="cards" id="cards"></div>
 
@@ -348,6 +357,7 @@ function updateStats(state) {
   document.getElementById('countRem').textContent = rem;
   const pct = EMAILS.length > 0 ? ((done + skipped) / EMAILS.length * 100) : 0;
   document.getElementById('progressBar').style.width = pct + '%';
+  document.getElementById('export-bar').style.display = done > 0 ? 'flex' : 'none';
 }
 
 function buildMailto(email, subject, bodyEl) {
@@ -399,6 +409,30 @@ function escHtml(s) {
 
 function escJs(s) {
   return s.replace(/\\\\/g,'\\\\\\\\').replace(/'/g,"\\\\'").replace(/"/g,'\\\\"');
+}
+
+function exportCSV(mode) {
+  var state = loadState();
+  var rows = [['name','email','company','industry','subject','body','status']];
+  EMAILS.forEach(function(em) {
+    var s = state[em.id] || 'remaining';
+    if (mode === 'done' && s !== 'done') return;
+    var bodyEl = document.getElementById('body-' + em.id);
+    var body = bodyEl ? bodyEl.innerText : em.body;
+    rows.push([em.name, em.email, em.company, em.industry, em.subject, body, s]);
+  });
+  var csv = rows.map(function(r) {
+    return r.map(function(cell) {
+      return '"' + String(cell).replace(/"/g, '""') + '"';
+    }).join(',');
+  }).join('\\n');
+  var blob = new Blob([csv], { type: 'text/csv' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'outreach-' + (mode === 'done' ? 'sent' : 'all') + '-' + STORAGE_KEY.replace('outreach-','') + '.csv';
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 function markCard(id, status) {
