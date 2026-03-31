@@ -193,7 +193,7 @@ function generateHTML(emails: GeneratedEmail[], dateStr: string): string {
       body: e.body,
       polished: e.polished,
     })),
-  );
+  ).replace(/</g, "\\u003c");
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -304,7 +304,7 @@ function render() {
           '<div class="tags">' + polishedTag + '</div>' +
         '</div>' +
         '<div class="card-actions">' +
-          '<a class="btn btn-primary" id="mailto-' + em.id + '" href="#" onclick="this.href=buildMailto(\\''+escJs(em.email)+'\\',\\''+escJs(em.subject)+'\\',document.getElementById(\\'body-'+em.id+'\\'))" target="_blank">Open in Outlook</a>' +
+          '<a class="btn btn-primary" id="mailto-' + em.id + '" href="#" onmousedown="this.href=buildMailto(\\''+escJs(em.email)+'\\',\\''+escJs(em.subject)+'\\',document.getElementById(\\'body-'+em.id+'\\'))" target="_blank">Open in Outlook</a>' +
           '<button class="btn btn-done" onclick="markCard('+em.id+',\\'done\\')">Done</button>' +
           '<button class="btn btn-skip" onclick="markCard('+em.id+',\\'skipped\\')">Skip</button>' +
         '</div>' +
