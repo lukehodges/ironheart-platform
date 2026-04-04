@@ -334,19 +334,18 @@ export const clientPortalService = {
     if (!proposal) throw new NotFoundError("Proposal", input.proposalId);
     if (proposal.status !== "SENT") throw new BadRequestError("Proposal cannot be approved");
 
-    // Update proposal
-    const updated = await clientPortalRepository.updateProposal(proposal.id, {
-      status: "APPROVED",
-      approvedAt: new Date(),
-    });
-
-    // Activate engagement
-    // Need to find engagement tenant to update
+    // Verify client owns this engagement BEFORE updating proposal
     const engagement = await clientPortalRepository.findEngagementByCustomer(
       portalCtx.portalCustomerId,
       proposal.engagementId,
     );
     if (!engagement) throw new NotFoundError("Engagement", proposal.engagementId);
+
+    // Update proposal
+    const updated = await clientPortalRepository.updateProposal(proposal.id, {
+      status: "APPROVED",
+      approvedAt: new Date(),
+    });
 
     await clientPortalRepository.updateEngagement(engagement.tenantId, engagement.id, {
       status: "ACTIVE",
@@ -372,16 +371,17 @@ export const clientPortalService = {
     if (!proposal) throw new NotFoundError("Proposal", input.proposalId);
     if (proposal.status !== "SENT") throw new BadRequestError("Proposal cannot be declined");
 
-    const updated = await clientPortalRepository.updateProposal(proposal.id, {
-      status: "DECLINED",
-      declinedAt: new Date(),
-    });
-
+    // Verify client owns this engagement BEFORE updating proposal
     const engagement = await clientPortalRepository.findEngagementByCustomer(
       portalCtx.portalCustomerId,
       proposal.engagementId,
     );
     if (!engagement) throw new NotFoundError("Engagement", proposal.engagementId);
+
+    const updated = await clientPortalRepository.updateProposal(proposal.id, {
+      status: "DECLINED",
+      declinedAt: new Date(),
+    });
 
     await inngest.send({
       name: "portal/proposal:declined",
@@ -572,7 +572,7 @@ export const clientPortalService = {
       return;
     }
     const { token } = await this.createMagicLinkSession(customer.id);
-    // TODO: Send magic link email via notification module
-    log.info({ customerId: customer.id }, "Magic link created");
+    // TODO: Emit portal/magic-link:requested event to send email (needs new event type in inngest.ts)
+    log.info({ customerId: customer.id, token }, "Magic link created — email delivery pending event wiring");
   },
 };
