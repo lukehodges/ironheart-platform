@@ -277,6 +277,80 @@ type IronheartEvents = {
       tenantId: string;
     };
   };
+  "portal/proposal:sent": {
+    data: {
+      proposalId: string;
+      engagementId: string;
+      customerId: string;
+      tenantId: string;
+    };
+  };
+  "portal/proposal:approved": {
+    data: {
+      proposalId: string;
+      engagementId: string;
+      customerId: string;
+      tenantId: string;
+    };
+  };
+  "portal/proposal:declined": {
+    data: {
+      proposalId: string;
+      engagementId: string;
+      customerId: string;
+      tenantId: string;
+      feedback: string | null;
+    };
+  };
+  "portal/deliverable:shared": {
+    data: {
+      deliverableId: string;
+      engagementId: string;
+      customerId: string;
+      tenantId: string;
+    };
+  };
+  "portal/approval:requested": {
+    data: {
+      approvalId: string;
+      engagementId: string;
+      customerId: string;
+      tenantId: string;
+    };
+  };
+  "portal/approval:responded": {
+    data: {
+      approvalId: string;
+      engagementId: string;
+      customerId: string;
+      tenantId: string;
+      approved: boolean;
+    };
+  };
+  "portal/invoice:sent": {
+    data: {
+      invoiceId: string;
+      engagementId: string;
+      customerId: string;
+      tenantId: string;
+    };
+  };
+  "portal/invoice:paid": {
+    data: {
+      invoiceId: string;
+      engagementId: string;
+      customerId: string;
+      tenantId: string;
+    };
+  };
+  "portal/invoice:overdue": {
+    data: {
+      invoiceId: string;
+      engagementId: string;
+      customerId: string;
+      tenantId: string;
+    };
+  };
 };
 
 /**
