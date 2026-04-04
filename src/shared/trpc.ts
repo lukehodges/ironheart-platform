@@ -832,3 +832,74 @@ export function createModuleMiddleware(moduleSlug: string) {
     return next();
   });
 }
+
+// ---------------------------------------------------------------------------
+// Portal procedure - client-facing auth via magic links
+// ---------------------------------------------------------------------------
+
+// ── Portal context (client-facing, separate from WorkOS auth) ──────────
+
+export type PortalContext = Context & {
+  portalCustomerId: string;
+};
+
+/**
+ * portalProcedure — validates a portal session token from cookie or query.
+ * Injects portalCustomerId into context. No WorkOS auth needed.
+ */
+export const portalProcedure = publicProcedure.use(
+  async ({ ctx, next }) => {
+    // Read session token from cookie header
+    const cookieHeader = ctx.req.headers.get("cookie") ?? "";
+    const cookies = Object.fromEntries(
+      cookieHeader.split(";").map((c) => {
+        const [key, ...rest] = c.trim().split("=");
+        return [key, rest.join("=")];
+      })
+    );
+    const sessionToken = cookies["portal_session"] ?? null;
+
+    if (!sessionToken) {
+      throw new TRPCError({
+        code: "UNAUTHORIZED",
+        message: "Portal session required",
+      });
+    }
+
+    // Validate against portalSessions table
+    const { portalSessions } = await import("@/shared/db/schema");
+    const session = await ctx.db
+      .select()
+      .from(portalSessions)
+      .where(eq(portalSessions.sessionToken, sessionToken))
+      .limit(1)
+      .then((rows) => rows[0] ?? null);
+
+    if (!session) {
+      throw new TRPCError({
+        code: "UNAUTHORIZED",
+        message: "Invalid portal session",
+      });
+    }
+
+    if (session.sessionExpiresAt && session.sessionExpiresAt < new Date()) {
+      throw new TRPCError({
+        code: "UNAUTHORIZED",
+        message: "Portal session expired",
+      });
+    }
+
+    // Update last accessed
+    await ctx.db
+      .update(portalSessions)
+      .set({ lastAccessedAt: new Date() })
+      .where(eq(portalSessions.id, session.id));
+
+    return next({
+      ctx: {
+        ...ctx,
+        portalCustomerId: session.customerId,
+      } satisfies PortalContext,
+    });
+  }
+);
