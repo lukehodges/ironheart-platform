@@ -82,6 +82,7 @@ export function ProposalDeclined({ customerName, proposalToken, onSubmitFeedback
               Completely optional — but it helps me improve.
             </p>
             <textarea
+              aria-label="Feedback"
               value={feedback}
               onChange={(e) => setFeedback(e.target.value)}
               placeholder="Your thoughts..."

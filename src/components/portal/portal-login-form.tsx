@@ -91,10 +91,11 @@ export function PortalLoginForm() {
         <form onSubmit={handleLogin}>
           {/* Email */}
           <div className="mb-4">
-            <label className="mb-1.5 block text-[12px] font-medium" style={{ color: "var(--text-2)" }}>
+            <label htmlFor="portal-email" className="mb-1.5 block text-[12px] font-medium" style={{ color: "var(--text-2)" }}>
               Email
             </label>
             <input
+              id="portal-email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -116,10 +117,11 @@ export function PortalLoginForm() {
 
           {/* Password */}
           <div className="mb-2">
-            <label className="mb-1.5 block text-[12px] font-medium" style={{ color: "var(--text-2)" }}>
+            <label htmlFor="portal-password" className="mb-1.5 block text-[12px] font-medium" style={{ color: "var(--text-2)" }}>
               Password
             </label>
             <input
+              id="portal-password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}

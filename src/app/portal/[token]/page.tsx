@@ -1,7 +1,8 @@
 "use client";
 
-import { use, useState, useCallback } from "react";
+import { use, useState } from "react";
 import { api } from "@/lib/trpc/react";
+import { toast } from "sonner";
 import { ProposalLayout } from "@/components/portal/proposal/proposal-layout";
 import { ProposalView } from "@/components/portal/proposal/proposal-view";
 import { ProposalApproved } from "@/components/portal/proposal/proposal-approved";
@@ -29,25 +30,32 @@ export default function ProposalPage({
       setShowConfirm(false);
       refetch();
     },
+    onError: (error) => {
+      setShowConfirm(false);
+      toast.error(error.message || "Failed to approve proposal");
+    },
   });
 
   const declineMutation = api.clientPortal.portal.declineProposal.useMutation({
     onSuccess: () => refetch(),
+    onError: (error) => {
+      toast.error(error.message || "Failed to decline proposal");
+    },
   });
 
   const magicLinkMutation = api.clientPortal.portal.requestMagicLink.useMutation();
 
-  const handleApproveConfirm = useCallback(() => {
+  function handleApproveConfirm() {
     approveMutation.mutate({ token });
-  }, [approveMutation, token]);
+  }
 
-  const handleDeclineFeedback = useCallback((feedback: string) => {
+  function handleDeclineFeedback(feedback: string) {
     declineMutation.mutate({ token, feedback });
-  }, [declineMutation, token]);
+  }
 
-  const handleRequestNewLink = useCallback(async (email: string) => {
+  async function handleRequestNewLink(email: string) {
     await magicLinkMutation.mutateAsync({ email });
-  }, [magicLinkMutation]);
+  }
 
   // Loading
   if (isLoading) {

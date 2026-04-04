@@ -92,6 +92,7 @@ export function ProposalExpired({ onRequestNewLink }: ProposalExpiredProps) {
             </p>
             <input
               type="email"
+              aria-label="Email address"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="your@email.com"
