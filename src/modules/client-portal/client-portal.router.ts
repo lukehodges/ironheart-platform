@@ -22,8 +22,8 @@ import {
   sendInvoiceSchema,
   markInvoicePaidSchema,
   getProposalByTokenSchema,
-  approveProposalSchema,
-  declineProposalSchema,
+  approveProposalByTokenSchema,
+  declineProposalByTokenSchema,
   getDashboardSchema,
   listByEngagementSchema,
   acceptDeliverableSchema,
@@ -117,16 +117,16 @@ const portalRouter = router({
     .input(requestMagicLinkSchema)
     .mutation(({ input }) => clientPortalService.requestMagicLink(input)),
 
-  // Session-gated
-  approveProposal: portalProcedure
-    .input(approveProposalSchema)
-    .mutation(({ ctx, input }) =>
-      clientPortalService.approveProposal(ctx as PortalContext, input)),
+  // Token-based (no session needed)
+  approveProposal: publicProcedure
+    .input(approveProposalByTokenSchema)
+    .mutation(({ input }) =>
+      clientPortalService.approveProposalByToken(input.token)),
 
-  declineProposal: portalProcedure
-    .input(declineProposalSchema)
-    .mutation(({ ctx, input }) =>
-      clientPortalService.declineProposal(ctx as PortalContext, input)),
+  declineProposal: publicProcedure
+    .input(declineProposalByTokenSchema)
+    .mutation(({ input }) =>
+      clientPortalService.declineProposalByToken(input.token, input.feedback)),
 
   getDashboard: portalProcedure
     .input(getDashboardSchema)

@@ -324,9 +324,86 @@ export const clientPortalService = {
   async getProposalByToken(token: string) {
     const proposal = await clientPortalRepository.findProposalByToken(token);
     if (!proposal) throw new NotFoundError("Proposal", token);
+
+    const engagement = await clientPortalRepository.findEngagementById(proposal.engagementId);
+    if (!engagement) throw new NotFoundError("Engagement", proposal.engagementId);
+
+    const milestones = await clientPortalRepository.listMilestones(engagement.id);
+
+    return {
+      ...proposal,
+      engagement: {
+        id: engagement.id,
+        title: engagement.title,
+        customerId: engagement.customerId,
+        status: engagement.status,
+      },
+      milestones,
+    };
+  },
+
+  async approveProposalByToken(token: string) {
+    const proposal = await clientPortalRepository.findProposalByToken(token);
+    if (!proposal) throw new NotFoundError("Proposal", token);
+    if (proposal.status !== "SENT") throw new BadRequestError("Proposal cannot be approved");
     if (proposal.tokenExpiresAt < new Date()) throw new BadRequestError("Proposal link has expired");
-    if (proposal.status !== "SENT") throw new BadRequestError("Proposal is no longer available");
-    return proposal;
+
+    const engagement = await clientPortalRepository.findEngagementById(proposal.engagementId);
+    if (!engagement) throw new NotFoundError("Engagement", proposal.engagementId);
+
+    const updated = await clientPortalRepository.updateProposal(proposal.id, {
+      status: "APPROVED",
+      approvedAt: new Date(),
+    });
+
+    await clientPortalRepository.updateEngagement(engagement.tenantId, engagement.id, {
+      status: "ACTIVE",
+      startDate: new Date(),
+    });
+
+    const session = await this.createMagicLinkSession(engagement.customerId);
+
+    await inngest.send({
+      name: "portal/proposal:approved",
+      data: {
+        proposalId: proposal.id,
+        engagementId: engagement.id,
+        customerId: engagement.customerId,
+        tenantId: engagement.tenantId,
+      },
+    });
+
+    log.info({ proposalId: proposal.id }, "Proposal approved by client via token");
+    return { proposal: updated, sessionToken: session.sessionToken };
+  },
+
+  async declineProposalByToken(token: string, feedback?: string | null) {
+    const proposal = await clientPortalRepository.findProposalByToken(token);
+    if (!proposal) throw new NotFoundError("Proposal", token);
+    if (proposal.status !== "SENT") throw new BadRequestError("Proposal cannot be declined");
+    if (proposal.tokenExpiresAt < new Date()) throw new BadRequestError("Proposal link has expired");
+
+    const engagement = await clientPortalRepository.findEngagementById(proposal.engagementId);
+    if (!engagement) throw new NotFoundError("Engagement", proposal.engagementId);
+
+    const updated = await clientPortalRepository.updateProposal(proposal.id, {
+      status: "DECLINED",
+      declinedAt: new Date(),
+    });
+
+    await inngest.send({
+      name: "portal/proposal:declined",
+      data: {
+        proposalId: proposal.id,
+        engagementId: engagement.id,
+        customerId: engagement.customerId,
+        tenantId: engagement.tenantId,
+        feedback: feedback ?? null,
+      },
+    });
+
+    log.info({ proposalId: proposal.id }, "Proposal declined by client via token");
+    return updated;
   },
 
   async approveProposal(portalCtx: PortalContext, input: z.infer<typeof approveProposalSchema>) {

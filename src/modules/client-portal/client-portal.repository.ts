@@ -170,6 +170,15 @@ export const clientPortalRepository = {
     return result[0] ? toEngagement(result[0]) : null;
   },
 
+  async findEngagementById(engagementId: string): Promise<EngagementRecord | null> {
+    const rows = await db
+      .select()
+      .from(engagements)
+      .where(eq(engagements.id, engagementId))
+      .limit(1);
+    return rows[0] ? toEngagement(rows[0]) : null;
+  },
+
   async findEngagementByCustomer(customerId: string, engagementId: string): Promise<EngagementRecord | null> {
     const result = await db
       .select()

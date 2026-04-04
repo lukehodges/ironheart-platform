@@ -136,6 +136,16 @@ export const declineProposalSchema = z.object({
   feedback: z.string().optional().nullable(),
 });
 
+// Token-based versions for public proposal flow (no session required)
+export const approveProposalByTokenSchema = z.object({
+  token: z.string().min(1),
+});
+
+export const declineProposalByTokenSchema = z.object({
+  token: z.string().min(1),
+  feedback: z.string().optional().nullable(),
+});
+
 export const respondToApprovalSchema = z.object({
   approvalId: z.uuid(),
   approved: z.boolean(),

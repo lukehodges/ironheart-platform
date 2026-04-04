@@ -6,6 +6,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 vi.mock("../client-portal.repository", () => ({
   clientPortalRepository: {
     findEngagement: vi.fn(),
+    findEngagementById: vi.fn(),
     findEngagementByCustomer: vi.fn(),
     listEngagements: vi.fn(),
     createEngagement: vi.fn(),
@@ -410,6 +411,68 @@ describe("clientPortalService", () => {
       await expect(
         clientPortalService.acceptDeliverable(makePortalCtx(), { deliverableId: "del-1" })
       ).rejects.toThrow(BadRequestError);
+    });
+  });
+
+  // ── Token-based Approve/Decline ──────────────────────────────────
+
+  describe("approveProposalByToken", () => {
+    it("should approve a proposal by token and return session", async () => {
+      const proposal = makeProposal({ status: "SENT" });
+      const engagement = makeEngagement({ status: "PROPOSED" });
+      vi.mocked(clientPortalRepository.findProposalByToken).mockResolvedValue(proposal);
+      vi.mocked(clientPortalRepository.findEngagementById).mockResolvedValue(engagement);
+      vi.mocked(clientPortalRepository.updateProposal).mockResolvedValue({
+        ...proposal, status: "APPROVED", approvedAt: new Date(),
+      });
+      vi.mocked(clientPortalRepository.updateEngagement).mockResolvedValue({
+        ...engagement, status: "ACTIVE",
+      });
+      vi.mocked(clientPortalRepository.createSession).mockResolvedValue({
+        id: "session-1", customerId: CUSTOMER_ID, token: "tok",
+        tokenExpiresAt: new Date(), sessionToken: "sess-tok",
+        sessionExpiresAt: new Date(), lastAccessedAt: new Date(), createdAt: new Date(),
+      });
+
+      const result = await clientPortalService.approveProposalByToken("test-token");
+
+      expect(result.proposal.status).toBe("APPROVED");
+      expect(result.sessionToken).toBeDefined();
+      expect(inngest.send).toHaveBeenCalledWith(
+        expect.objectContaining({ name: "portal/proposal:approved" })
+      );
+    });
+
+    it("should reject expired token", async () => {
+      vi.mocked(clientPortalRepository.findProposalByToken).mockResolvedValue(
+        makeProposal({ status: "SENT", tokenExpiresAt: new Date(Date.now() - 86400000) })
+      );
+
+      await expect(
+        clientPortalService.approveProposalByToken("expired-token")
+      ).rejects.toThrow(BadRequestError);
+    });
+  });
+
+  describe("declineProposalByToken", () => {
+    it("should decline a proposal by token with feedback", async () => {
+      const proposal = makeProposal({ status: "SENT" });
+      const engagement = makeEngagement();
+      vi.mocked(clientPortalRepository.findProposalByToken).mockResolvedValue(proposal);
+      vi.mocked(clientPortalRepository.findEngagementById).mockResolvedValue(engagement);
+      vi.mocked(clientPortalRepository.updateProposal).mockResolvedValue({
+        ...proposal, status: "DECLINED", declinedAt: new Date(),
+      });
+
+      const result = await clientPortalService.declineProposalByToken("test-token", "Too expensive");
+
+      expect(result.status).toBe("DECLINED");
+      expect(inngest.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: "portal/proposal:declined",
+          data: expect.objectContaining({ feedback: "Too expensive" }),
+        })
+      );
     });
   });
 
