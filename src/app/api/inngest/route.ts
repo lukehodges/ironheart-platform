@@ -15,6 +15,7 @@ import { dispatchWebhooks } from "@/modules/developer/developer.events";
 import { aiFunctions } from "@/modules/ai";
 import { pipelineFunctions } from "@/modules/pipeline";
 import { outreachFunctions } from "@/modules/outreach";
+import { clientPortalFunctions } from "@/modules/client-portal";
 
 /**
  * Inngest serve endpoint.
@@ -58,5 +59,7 @@ export const { GET, POST, PUT } = serve({
     ...pipelineFunctions,
     // Outreach module
     ...outreachFunctions,
+    // Client Portal module
+    ...clientPortalFunctions,
   ],
 });

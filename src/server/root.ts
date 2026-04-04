@@ -28,6 +28,7 @@ import { pipelineRouter } from "@/modules/pipeline";
 import { outreachRouter } from "@/modules/outreach";
 import { productRouter } from "@/modules/product";
 import { subscriptionRouter } from "@/modules/subscription";
+import { clientPortalRouter } from "@/modules/client-portal";
 
 /**
  * Root tRPC router.
@@ -71,6 +72,7 @@ export const appRouter = router({
   outreach: outreachRouter,
   product: productRouter,
   subscription: subscriptionRouter,
+  clientPortal: clientPortalRouter,
 });
 
 export type AppRouter = typeof appRouter;
