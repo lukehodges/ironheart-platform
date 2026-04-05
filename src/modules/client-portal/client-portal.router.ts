@@ -11,6 +11,7 @@ import {
   createEngagementSchema,
   updateEngagementSchema,
   listEngagementsSchema,
+  searchCustomersSchema,
   createProposalSchema,
   sendProposalSchema,
   createMilestoneSchema,
@@ -53,6 +54,10 @@ const adminRouter = router({
   updateEngagement: permissionProcedure("engagement:update")
     .input(updateEngagementSchema)
     .mutation(({ ctx, input }) => clientPortalService.updateEngagement(ctx, input)),
+
+  searchCustomers: permissionProcedure("engagement:read")
+    .input(searchCustomersSchema)
+    .query(({ ctx, input }) => clientPortalService.searchCustomers(ctx, input)),
 
   // Proposals
   createProposal: permissionProcedure("proposal:create")

@@ -39,6 +39,11 @@ export interface EngagementRecord {
   updatedAt: Date;
 }
 
+export interface EngagementWithCustomer extends EngagementRecord {
+  customerName: string;
+  customerEmail: string;
+}
+
 export interface ProposalRecord {
   id: string;
   engagementId: string;

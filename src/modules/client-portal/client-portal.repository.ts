@@ -13,9 +13,10 @@ import {
   portalSessions,
   customers,
 } from "@/shared/db/schema";
-import { eq, and, desc, ilike } from "drizzle-orm";
+import { eq, and, desc, ilike, sql } from "drizzle-orm";
 import type {
   EngagementRecord,
+  EngagementWithCustomer,
   ProposalRecord,
   MilestoneRecord,
   DeliverableRecord,
@@ -191,24 +192,38 @@ export const clientPortalRepository = {
   async listEngagements(
     tenantId: string,
     opts: { status?: string; type?: string; search?: string; limit: number; cursor?: string }
-  ): Promise<{ rows: EngagementRecord[]; hasMore: boolean }> {
+  ): Promise<{ rows: EngagementWithCustomer[]; hasMore: boolean }> {
     const conditions = [eq(engagements.tenantId, tenantId)];
     if (opts.status) conditions.push(eq(engagements.status, opts.status as any));
     if (opts.type) conditions.push(eq(engagements.type, opts.type as any));
     if (opts.search) {
-      conditions.push(ilike(engagements.title, `%${opts.search}%`));
+      conditions.push(
+        sql`(${ilike(engagements.title, `%${opts.search}%`)} OR ${ilike(customers.firstName, `%${opts.search}%`)} OR ${ilike(customers.lastName, `%${opts.search}%`)})`
+      );
     }
 
     const rows = await db
-      .select()
+      .select({
+        engagement: engagements,
+        customerFirstName: customers.firstName,
+        customerLastName: customers.lastName,
+        customerEmail: customers.email,
+      })
       .from(engagements)
+      .innerJoin(customers, eq(engagements.customerId, customers.id))
       .where(and(...conditions))
       .orderBy(desc(engagements.createdAt))
       .limit(opts.limit + 1);
 
     const hasMore = rows.length > opts.limit;
+    const sliced = hasMore ? rows.slice(0, opts.limit) : rows;
+
     return {
-      rows: (hasMore ? rows.slice(0, opts.limit) : rows).map(toEngagement),
+      rows: sliced.map((r) => ({
+        ...toEngagement(r.engagement),
+        customerName: [r.customerFirstName, r.customerLastName].filter(Boolean).join(" "),
+        customerEmail: r.customerEmail ?? "",
+      })),
       hasMore,
     };
   },
@@ -597,6 +612,30 @@ export const clientPortalRepository = {
       .where(eq(customers.email, email))
       .limit(1);
     return result[0] ?? null;
+  },
+
+  async searchCustomers(
+    tenantId: string,
+    query: string,
+    limit: number = 10
+  ): Promise<{ id: string; firstName: string | null; lastName: string | null; email: string | null }[]> {
+    const rows = await db
+      .select({
+        id: customers.id,
+        firstName: customers.firstName,
+        lastName: customers.lastName,
+        email: customers.email,
+      })
+      .from(customers)
+      .where(
+        and(
+          eq(customers.tenantId, tenantId),
+          sql`(${ilike(customers.firstName, `%${query}%`)} OR ${ilike(customers.lastName, `%${query}%`)} OR ${ilike(customers.email, `%${query}%`)})`
+        )
+      )
+      .orderBy(customers.lastName)
+      .limit(limit);
+    return rows;
   },
 
   // ── Engagement detail (for admin get) ────────────────────────────────

@@ -41,6 +41,11 @@ export const listEngagementsSchema = z.object({
   cursor: z.string().optional(),
 });
 
+export const searchCustomersSchema = z.object({
+  query: z.string().min(1),
+  limit: z.number().int().max(20).default(10),
+});
+
 // ── Admin: Proposals ─────────────────────────────────────────────────────
 
 export const createProposalSchema = z.object({

@@ -85,6 +85,10 @@ export const clientPortalService = {
     });
   },
 
+  async searchCustomers(ctx: { tenantId: string }, input: { query: string; limit: number }) {
+    return clientPortalRepository.searchCustomers(ctx.tenantId, input.query, input.limit);
+  },
+
   // ── Admin: Proposals ───────────────────────────────────────────────
 
   async createProposal(ctx: Context, input: z.infer<typeof createProposalSchema>) {
