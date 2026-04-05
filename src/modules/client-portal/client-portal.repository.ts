@@ -328,7 +328,7 @@ export const clientPortalRepository = {
   async updateEngagement(
     tenantId: string,
     id: string,
-    updates: Partial<{ type: string; status: string; title: string; description: string | null; startDate: Date | null; endDate: Date | null }>
+    updates: Partial<{ type: string; status: string; title: string; description: string | null; startDate: Date | null; endDate: Date | null; activeProposalId: string | null }>
   ): Promise<EngagementRecord> {
     const [row] = await db
       .update(engagements)

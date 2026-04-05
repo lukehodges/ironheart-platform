@@ -175,7 +175,56 @@ export const clientPortalService = {
     if (input.sortOrder !== undefined) updates.sortOrder = input.sortOrder;
     if (input.dueDate !== undefined) updates.dueDate = input.dueDate;
 
-    return clientPortalRepository.updateMilestone(input.id, updates);
+    const milestone = await clientPortalRepository.updateMilestone(input.id, updates);
+
+    // If milestone completed and has a source section, check for milestone-triggered payment rules
+    if (input.status === "COMPLETED" && milestone.sourceSectionId) {
+      const rules = await clientPortalRepository.findRulesBySectionId(milestone.sourceSectionId);
+
+      if (rules.length > 0) {
+        const engagement = await clientPortalRepository.findEngagement(ctx.tenantId, milestone.engagementId);
+        if (engagement) {
+          let nextInvoiceNumber = await clientPortalRepository.getNextInvoiceNumber(ctx.tenantId);
+          const now = new Date();
+
+          const invoiceInputs = rules.map((rule) => {
+            const invoiceNumber = nextInvoiceNumber;
+            const seq = parseInt(nextInvoiceNumber.split("-").pop()!, 10);
+            const year = now.getFullYear();
+            nextInvoiceNumber = `INV-${year}-${String(seq + 1).padStart(4, "0")}`;
+
+            return {
+              engagementId: milestone.engagementId,
+              amount: rule.amount,
+              description: rule.label,
+              dueDate: addDays(now, rule.relativeDays ?? 14),
+              token: randomUUID(),
+              sourcePaymentRuleId: rule.id,
+              invoiceNumber,
+            };
+          });
+
+          const invoices = await clientPortalRepository.createInvoiceBulk(invoiceInputs);
+
+          // Auto-send if configured
+          for (let i = 0; i < rules.length; i++) {
+            if (rules[i].autoSend && invoices[i]) {
+              await clientPortalRepository.updateInvoice(invoices[i].id, {
+                status: "SENT",
+                sentAt: new Date(),
+              });
+            }
+          }
+
+          log.info(
+            { milestoneId: milestone.id, invoiceCount: invoices.length },
+            "Milestone-triggered invoices generated"
+          );
+        }
+      }
+    }
+
+    return milestone;
   },
 
   // ── Admin: Deliverables ────────────────────────────────────────────
@@ -355,18 +404,123 @@ export const clientPortalService = {
     const engagement = await clientPortalRepository.findEngagementById(proposal.engagementId);
     if (!engagement) throw new NotFoundError("Engagement", proposal.engagementId);
 
+    const enriched = await clientPortalRepository.getProposalWithSections(proposal.id);
+    if (!enriched) throw new NotFoundError("Proposal", proposal.id);
+
+    // 1. Update proposal status
     const updated = await clientPortalRepository.updateProposal(proposal.id, {
       status: "APPROVED",
       approvedAt: new Date(),
     });
 
+    // 2. Infer engagement type from sections
+    const sectionTypes = new Set(enriched.sections.map((s) => s.type));
+    let engagementType: string = engagement.type;
+    if (sectionTypes.has("PHASE") && sectionTypes.has("RECURRING")) {
+      engagementType = "HYBRID";
+    } else if (sectionTypes.has("RECURRING") && !sectionTypes.has("PHASE")) {
+      engagementType = "RETAINER";
+    } else if (sectionTypes.has("PHASE")) {
+      engagementType = "PROJECT";
+    }
+
+    // 3. Activate engagement
     await clientPortalRepository.updateEngagement(engagement.tenantId, engagement.id, {
       status: "ACTIVE",
+      type: engagementType,
       startDate: new Date(),
+      activeProposalId: proposal.id,
     });
 
+    // 4. Materialize PHASE sections -> milestones
+    const phaseSections = enriched.sections.filter((s) => s.type === "PHASE");
+    const milestones = await clientPortalRepository.createMilestoneBulk(
+      phaseSections.map((section) => ({
+        engagementId: engagement.id,
+        title: section.title,
+        description: section.description,
+        sortOrder: section.sortOrder,
+        sourceSectionId: section.id,
+      }))
+    );
+
+    const sectionToMilestone = new Map<string, string>();
+    phaseSections.forEach((section, i) => {
+      if (milestones[i]) sectionToMilestone.set(section.id, milestones[i].id);
+    });
+
+    // 5. Materialize items -> deliverables (skip RECURRING section items)
+    const deliverableInputs: {
+      engagementId: string;
+      milestoneId?: string | null;
+      title: string;
+      description?: string | null;
+      sourceProposalItemId?: string | null;
+    }[] = [];
+
+    for (const section of enriched.sections) {
+      if (section.type === "RECURRING") continue;
+      const milestoneId = sectionToMilestone.get(section.id) ?? null;
+      for (const item of section.items) {
+        deliverableInputs.push({
+          engagementId: engagement.id,
+          milestoneId,
+          title: item.title,
+          description: item.description,
+          sourceProposalItemId: item.id,
+        });
+      }
+    }
+
+    await clientPortalRepository.createDeliverableBulk(deliverableInputs);
+
+    // 6. Materialize payment rules -> invoices (only immediate triggers)
+    const now = new Date();
+    const invoiceInputs: {
+      engagementId: string;
+      amount: number;
+      description: string;
+      dueDate: Date;
+      token: string;
+      sourcePaymentRuleId: string;
+      invoiceNumber: string;
+    }[] = [];
+
+    let nextInvoiceNumber = await clientPortalRepository.getNextInvoiceNumber(engagement.tenantId);
+
+    for (const rule of enriched.paymentRules) {
+      let dueDate: Date | null = null;
+
+      if (rule.trigger === "ON_APPROVAL") {
+        dueDate = addDays(now, rule.relativeDays ?? 14);
+      } else if (rule.trigger === "FIXED_DATE" && rule.fixedDate) {
+        dueDate = rule.fixedDate;
+      } else if (rule.trigger === "RELATIVE_DATE") {
+        dueDate = addDays(now, rule.relativeDays ?? 14);
+      }
+
+      if (dueDate) {
+        invoiceInputs.push({
+          engagementId: engagement.id,
+          amount: rule.amount,
+          description: rule.label,
+          dueDate,
+          token: randomUUID(),
+          sourcePaymentRuleId: rule.id,
+          invoiceNumber: nextInvoiceNumber,
+        });
+        const seq = parseInt(nextInvoiceNumber.split("-").pop()!, 10);
+        const year = new Date().getFullYear();
+        nextInvoiceNumber = `INV-${year}-${String(seq + 1).padStart(4, "0")}`;
+      }
+    }
+
+    await clientPortalRepository.createInvoiceBulk(invoiceInputs);
+
+    // 7. Create portal session
     const session = await this.createMagicLinkSession(engagement.customerId);
 
+    // 8. Emit events
     await inngest.send({
       name: "portal/proposal:approved",
       data: {
@@ -377,7 +531,11 @@ export const clientPortalService = {
       },
     });
 
-    log.info({ proposalId: proposal.id }, "Proposal approved by client via token");
+    log.info(
+      { proposalId: proposal.id, engagementId: engagement.id, milestones: milestones.length, deliverables: deliverableInputs.length, invoices: invoiceInputs.length },
+      "Proposal approved and materialized"
+    );
+
     return { proposal: updated, sessionToken: session.sessionToken };
   },
 
@@ -477,6 +635,23 @@ export const clientPortalService = {
 
     log.info({ proposalId: proposal.id }, "Proposal declined by client");
     return updated;
+  },
+
+  // ── Admin: Preview portal as client ────────────────────────────────
+
+  async createPreviewSession(ctx: Context, engagementId: string): Promise<{ sessionToken: string }> {
+    const engagement = await clientPortalRepository.findEngagement(ctx.tenantId, engagementId);
+    if (!engagement) throw new NotFoundError("Engagement", engagementId);
+
+    const { sessionToken } = await this.createMagicLinkSession(engagement.customerId);
+    log.info({ engagementId, adminUserId: ctx.user?.id }, "Admin preview session created");
+    return { sessionToken };
+  },
+
+  // ── Portal: My Engagements ─────────────────────────────────────────
+
+  async listMyEngagements(portalCtx: PortalContext) {
+    return clientPortalRepository.listEngagementsByCustomer(portalCtx.portalCustomerId);
   },
 
   // ── Portal: Dashboard ──────────────────────────────────────────────

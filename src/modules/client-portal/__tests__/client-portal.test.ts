@@ -32,6 +32,12 @@ vi.mock("../client-portal.repository", () => ({
     listInvoices: vi.fn(),
     createInvoice: vi.fn(),
     updateInvoice: vi.fn(),
+    getProposalWithSections: vi.fn(),
+    createMilestoneBulk: vi.fn(),
+    createDeliverableBulk: vi.fn(),
+    createInvoiceBulk: vi.fn(),
+    getNextInvoiceNumber: vi.fn(),
+    findRulesBySectionId: vi.fn(),
     createSession: vi.fn(),
     findSessionByToken: vi.fn(),
     findSessionBySessionToken: vi.fn(),
@@ -422,12 +428,19 @@ describe("clientPortalService", () => {
       const engagement = makeEngagement({ status: "PROPOSED" });
       vi.mocked(clientPortalRepository.findProposalByToken).mockResolvedValue(proposal);
       vi.mocked(clientPortalRepository.findEngagementById).mockResolvedValue(engagement);
+      vi.mocked(clientPortalRepository.getProposalWithSections).mockResolvedValue({
+        ...proposal, sections: [], paymentRules: [],
+      });
       vi.mocked(clientPortalRepository.updateProposal).mockResolvedValue({
         ...proposal, status: "APPROVED", approvedAt: new Date(),
       });
       vi.mocked(clientPortalRepository.updateEngagement).mockResolvedValue({
         ...engagement, status: "ACTIVE",
       });
+      vi.mocked(clientPortalRepository.createMilestoneBulk).mockResolvedValue([]);
+      vi.mocked(clientPortalRepository.createDeliverableBulk).mockResolvedValue([]);
+      vi.mocked(clientPortalRepository.createInvoiceBulk).mockResolvedValue([]);
+      vi.mocked(clientPortalRepository.getNextInvoiceNumber).mockResolvedValue("INV-2026-0001");
       vi.mocked(clientPortalRepository.createSession).mockResolvedValue({
         id: "session-1", customerId: CUSTOMER_ID, token: "tok",
         tokenExpiresAt: new Date(), sessionToken: "sess-tok",
