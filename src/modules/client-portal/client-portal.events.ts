@@ -1,5 +1,7 @@
+import crypto from "node:crypto";
 import { inngest } from "@/shared/inngest";
 import { logger } from "@/shared/logger";
+import { clientPortalRepository } from "./client-portal.repository";
 
 const log = logger.child({ module: "client-portal.events" });
 
@@ -93,6 +95,72 @@ const onInvoiceOverdue = inngest.createFunction(
   }
 );
 
+const dailyInvoiceCheck = inngest.createFunction(
+  { id: "portal-daily-invoice-check", retries: 3 },
+  { cron: "0 9 * * *" },
+  async ({ step, logger }) => {
+    // 1. Generate recurring invoices
+    await step.run("generate-recurring-invoices", async () => {
+      const rules = await clientPortalRepository.findActiveRecurringRules();
+
+      for (const rule of rules) {
+        const lastInvoice = await clientPortalRepository.findLastInvoiceForRule(rule.id);
+        const now = new Date();
+        let isDue = false;
+
+        if (!lastInvoice) {
+          isDue = true;
+        } else {
+          const daysSinceLastInvoice = Math.floor(
+            (now.getTime() - lastInvoice.createdAt.getTime()) / (1000 * 60 * 60 * 24)
+          );
+          if (rule.recurringInterval === "MONTHLY" && daysSinceLastInvoice >= 30) isDue = true;
+          if (rule.recurringInterval === "QUARTERLY" && daysSinceLastInvoice >= 90) isDue = true;
+        }
+
+        if (isDue) {
+          const invoiceNumber = await clientPortalRepository.getNextInvoiceNumber(rule.tenantId);
+          const dueDate = new Date();
+          dueDate.setDate(dueDate.getDate() + 14);
+
+          await clientPortalRepository.createInvoiceBulk([{
+            engagementId: rule.engagementId,
+            amount: rule.amount,
+            description: rule.label,
+            dueDate,
+            token: crypto.randomUUID(),
+            sourcePaymentRuleId: rule.id,
+            invoiceNumber,
+          }]);
+
+          logger.info({ ruleId: rule.id, engagementId: rule.engagementId }, "Recurring invoice generated");
+        }
+      }
+    });
+
+    // 2. Detect and mark overdue invoices
+    await step.run("detect-overdue-invoices", async () => {
+      const overdueInvoices = await clientPortalRepository.findOverdueInvoices();
+
+      for (const invoice of overdueInvoices) {
+        await clientPortalRepository.updateInvoice(invoice.id, { status: "OVERDUE" });
+
+        await inngest.send({
+          name: "portal/invoice:overdue",
+          data: {
+            invoiceId: invoice.id,
+            engagementId: invoice.engagementId,
+            customerId: invoice.customerId,
+            tenantId: invoice.tenantId,
+          },
+        });
+
+        logger.info({ invoiceId: invoice.id }, "Invoice marked overdue");
+      }
+    });
+  }
+);
+
 /** All client-portal Inngest functions - register in src/app/api/inngest/route.ts */
 export const clientPortalFunctions = [
   onProposalSent,
@@ -104,4 +172,5 @@ export const clientPortalFunctions = [
   onInvoiceSent,
   onInvoicePaid,
   onInvoiceOverdue,
+  dailyInvoiceCheck,
 ];

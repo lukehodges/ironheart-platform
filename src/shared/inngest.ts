@@ -351,6 +351,18 @@ type IronheartEvents = {
       tenantId: string;
     };
   };
+  "portal/engagement:activated": {
+    data: { engagementId: string; tenantId: string; customerId: string };
+  };
+  "portal/invoices:generated": {
+    data: { invoiceIds: string[]; engagementId: string; tenantId: string };
+  };
+  "portal/invoice:reminder": {
+    data: { invoiceId: string; engagementId: string; tenantId: string; customerId: string; reminderType: string };
+  };
+  "portal/milestone:completed": {
+    data: { milestoneId: string; engagementId: string; tenantId: string; customerId: string };
+  };
 };
 
 /**
