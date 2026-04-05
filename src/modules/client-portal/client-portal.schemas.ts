@@ -17,7 +17,7 @@ const paymentScheduleItemSchema = z.object({
 
 export const createEngagementSchema = z.object({
   customerId: z.uuid(),
-  type: z.enum(["PROJECT", "RETAINER"]),
+  type: z.enum(["PROJECT", "RETAINER", "HYBRID"]),
   title: z.string().min(1),
   description: z.string().optional().nullable(),
   startDate: z.date().optional().nullable(),
@@ -25,8 +25,8 @@ export const createEngagementSchema = z.object({
 
 export const updateEngagementSchema = z.object({
   id: z.uuid(),
-  type: z.enum(["PROJECT", "RETAINER"]).optional(),
-  status: z.enum(["DRAFT", "PROPOSED", "ACTIVE", "COMPLETED", "CANCELLED"]).optional(),
+  type: z.enum(["PROJECT", "RETAINER", "HYBRID"]).optional(),
+  status: z.enum(["DRAFT", "PROPOSED", "ACTIVE", "COMPLETED", "CANCELLED", "PAUSED"]).optional(),
   title: z.string().min(1).optional(),
   description: z.string().optional().nullable(),
   startDate: z.date().optional().nullable(),
@@ -34,8 +34,8 @@ export const updateEngagementSchema = z.object({
 });
 
 export const listEngagementsSchema = z.object({
-  status: z.enum(["DRAFT", "PROPOSED", "ACTIVE", "COMPLETED", "CANCELLED"]).optional(),
-  type: z.enum(["PROJECT", "RETAINER"]).optional(),
+  status: z.enum(["DRAFT", "PROPOSED", "ACTIVE", "COMPLETED", "CANCELLED", "PAUSED"]).optional(),
+  type: z.enum(["PROJECT", "RETAINER", "HYBRID"]).optional(),
   search: z.string().optional(),
   limit: z.number().int().max(100).default(50),
   cursor: z.string().optional(),
@@ -51,14 +51,93 @@ export const searchCustomersSchema = z.object({
 export const createProposalSchema = z.object({
   engagementId: z.uuid(),
   scope: z.string().min(1),
-  deliverables: z.array(proposalDeliverableSchema).min(1),
-  price: z.number().int().positive(),
-  paymentSchedule: z.array(paymentScheduleItemSchema),
+  deliverables: z.array(proposalDeliverableSchema).default([]),
+  price: z.number().int().default(0),
+  paymentSchedule: z.array(paymentScheduleItemSchema).default([]),
   terms: z.string().optional().nullable(),
 });
 
 export const sendProposalSchema = z.object({
   proposalId: z.uuid(),
+});
+
+// ── Admin: Proposal Sections ────────────────────────────────────────────
+
+export const createProposalSectionSchema = z.object({
+  proposalId: z.uuid(),
+  title: z.string().min(1),
+  description: z.string().optional().nullable(),
+  type: z.enum(["PHASE", "RECURRING", "AD_HOC"]),
+  sortOrder: z.number().int().default(0),
+  estimatedDuration: z.string().optional().nullable(),
+});
+
+export const updateProposalSectionSchema = z.object({
+  id: z.uuid(),
+  title: z.string().min(1).optional(),
+  description: z.string().optional().nullable(),
+  type: z.enum(["PHASE", "RECURRING", "AD_HOC"]).optional(),
+  sortOrder: z.number().int().optional(),
+  estimatedDuration: z.string().optional().nullable(),
+});
+
+export const deleteProposalSectionSchema = z.object({
+  id: z.uuid(),
+});
+
+// ── Admin: Proposal Items ───────────────────────────────────────────────
+
+export const createProposalItemSchema = z.object({
+  sectionId: z.uuid(),
+  proposalId: z.uuid(),
+  title: z.string().min(1),
+  description: z.string().optional().nullable(),
+  acceptanceCriteria: z.string().optional().nullable(),
+  sortOrder: z.number().int().default(0),
+});
+
+export const updateProposalItemSchema = z.object({
+  id: z.uuid(),
+  title: z.string().min(1).optional(),
+  description: z.string().optional().nullable(),
+  acceptanceCriteria: z.string().optional().nullable(),
+  sortOrder: z.number().int().optional(),
+});
+
+export const deleteProposalItemSchema = z.object({
+  id: z.uuid(),
+});
+
+// ── Admin: Payment Rules ────────────────────────────────────────────────
+
+export const createPaymentRuleSchema = z.object({
+  proposalId: z.uuid(),
+  sectionId: z.uuid().optional().nullable(),
+  label: z.string().min(1),
+  amount: z.number().int().positive(),
+  trigger: z.enum(["MILESTONE_COMPLETE", "RECURRING", "RELATIVE_DATE", "FIXED_DATE", "ON_APPROVAL"]),
+  recurringInterval: z.enum(["MONTHLY", "QUARTERLY"]).optional().nullable(),
+  relativeDays: z.number().int().optional().nullable(),
+  fixedDate: z.date().optional().nullable(),
+  autoSend: z.boolean().default(false),
+  sortOrder: z.number().int().default(0),
+});
+
+export const updatePaymentRuleSchema = z.object({
+  id: z.uuid(),
+  sectionId: z.uuid().optional().nullable(),
+  label: z.string().min(1).optional(),
+  amount: z.number().int().positive().optional(),
+  trigger: z.enum(["MILESTONE_COMPLETE", "RECURRING", "RELATIVE_DATE", "FIXED_DATE", "ON_APPROVAL"]).optional(),
+  recurringInterval: z.enum(["MONTHLY", "QUARTERLY"]).optional().nullable(),
+  relativeDays: z.number().int().optional().nullable(),
+  fixedDate: z.date().optional().nullable(),
+  autoSend: z.boolean().optional(),
+  sortOrder: z.number().int().optional(),
+});
+
+export const deletePaymentRuleSchema = z.object({
+  id: z.uuid(),
 });
 
 // ── Admin: Milestones ────────────────────────────────────────────────────
@@ -124,6 +203,10 @@ export const markInvoicePaidSchema = z.object({
   invoiceId: z.uuid(),
   paymentMethod: z.enum(["STRIPE", "BANK_TRANSFER"]),
   paymentReference: z.string().optional().nullable(),
+});
+
+export const voidInvoiceSchema = z.object({
+  invoiceId: z.uuid(),
 });
 
 // ── Portal: Client-facing ────────────────────────────────────────────────
