@@ -32,6 +32,16 @@ import {
   setPasswordSchema,
   portalLoginSchema,
   requestMagicLinkSchema,
+  createProposalSectionSchema,
+  updateProposalSectionSchema,
+  deleteProposalSectionSchema,
+  createProposalItemSchema,
+  updateProposalItemSchema,
+  deleteProposalItemSchema,
+  createPaymentRuleSchema,
+  updatePaymentRuleSchema,
+  deletePaymentRuleSchema,
+  voidInvoiceSchema,
 } from "./client-portal.schemas";
 import type { PortalContext } from "@/shared/trpc";
 
@@ -103,6 +113,54 @@ const adminRouter = router({
   markInvoicePaid: permissionProcedure("invoice:update")
     .input(markInvoicePaidSchema)
     .mutation(({ ctx, input }) => clientPortalService.markInvoicePaid(ctx, input)),
+
+  // Proposal Sections
+  createProposalSection: permissionProcedure("proposal:create")
+    .input(createProposalSectionSchema)
+    .mutation(({ ctx, input }) => clientPortalService.createProposalSection(ctx, input)),
+
+  updateProposalSection: permissionProcedure("proposal:update")
+    .input(updateProposalSectionSchema)
+    .mutation(({ ctx, input }) => clientPortalService.updateProposalSection(ctx, input)),
+
+  deleteProposalSection: permissionProcedure("proposal:update")
+    .input(deleteProposalSectionSchema)
+    .mutation(({ ctx, input }) => clientPortalService.deleteProposalSection(ctx, input)),
+
+  // Proposal Items
+  createProposalItem: permissionProcedure("proposal:create")
+    .input(createProposalItemSchema)
+    .mutation(({ ctx, input }) => clientPortalService.createProposalItem(ctx, input)),
+
+  updateProposalItem: permissionProcedure("proposal:update")
+    .input(updateProposalItemSchema)
+    .mutation(({ ctx, input }) => clientPortalService.updateProposalItem(ctx, input)),
+
+  deleteProposalItem: permissionProcedure("proposal:update")
+    .input(deleteProposalItemSchema)
+    .mutation(({ ctx, input }) => clientPortalService.deleteProposalItem(ctx, input)),
+
+  // Payment Rules
+  createPaymentRule: permissionProcedure("invoice:create")
+    .input(createPaymentRuleSchema)
+    .mutation(({ ctx, input }) => clientPortalService.createPaymentRule(ctx, input)),
+
+  updatePaymentRule: permissionProcedure("invoice:update")
+    .input(updatePaymentRuleSchema)
+    .mutation(({ ctx, input }) => clientPortalService.updatePaymentRule(ctx, input)),
+
+  deletePaymentRule: permissionProcedure("invoice:update")
+    .input(deletePaymentRuleSchema)
+    .mutation(({ ctx, input }) => clientPortalService.deletePaymentRule(ctx, input)),
+
+  // Void Invoice
+  voidInvoice: permissionProcedure("invoice:update")
+    .input(voidInvoiceSchema)
+    .mutation(({ ctx, input }) => clientPortalService.voidInvoice(ctx, input)),
+
+  createPreviewSession: permissionProcedure("engagement:read")
+    .input(z.object({ engagementId: z.uuid() }))
+    .mutation(({ ctx, input }) => clientPortalService.createPreviewSession(ctx, input.engagementId)),
 });
 
 // ── Portal procedures (client-facing) ────────────────────────────────────
@@ -132,6 +190,10 @@ const portalRouter = router({
     .input(declineProposalByTokenSchema)
     .mutation(({ input }) =>
       clientPortalService.declineProposalByToken(input.token, input.feedback)),
+
+  listMyEngagements: portalProcedure
+    .query(({ ctx }) =>
+      clientPortalService.listMyEngagements(ctx as PortalContext)),
 
   getDashboard: portalProcedure
     .input(getDashboardSchema)
