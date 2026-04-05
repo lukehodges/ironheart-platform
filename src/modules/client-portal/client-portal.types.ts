@@ -1,14 +1,18 @@
 // ── Enums as string unions ───────────────────────────────────────────────
 
-export type EngagementType = "PROJECT" | "RETAINER";
-export type EngagementStatus = "DRAFT" | "PROPOSED" | "ACTIVE" | "COMPLETED" | "CANCELLED";
+export type EngagementType = "PROJECT" | "RETAINER" | "HYBRID";
+export type EngagementStatus = "DRAFT" | "PROPOSED" | "ACTIVE" | "COMPLETED" | "CANCELLED" | "PAUSED";
 export type ProposalStatus = "DRAFT" | "SENT" | "APPROVED" | "DECLINED" | "SUPERSEDED";
 export type MilestoneStatus = "UPCOMING" | "IN_PROGRESS" | "COMPLETED";
-export type DeliverableStatus = "PENDING" | "DELIVERED" | "ACCEPTED";
+export type DeliverableStatus = "PENDING" | "DELIVERED" | "ACCEPTED" | "CANCELLED";
 export type ApprovalRequestStatus = "PENDING" | "APPROVED" | "REJECTED";
-export type PortalInvoiceStatus = "DRAFT" | "SENT" | "PAID" | "OVERDUE";
+export type PortalInvoiceStatus = "DRAFT" | "SENT" | "PAID" | "OVERDUE" | "VOID";
 export type PortalPaymentMethod = "STRIPE" | "BANK_TRANSFER";
 export type PaymentDueType = "ON_APPROVAL" | "ON_DATE" | "ON_MILESTONE" | "ON_COMPLETION";
+
+export type ProposalSectionType = "PHASE" | "RECURRING" | "AD_HOC";
+export type PaymentRuleTrigger = "MILESTONE_COMPLETE" | "RECURRING" | "RELATIVE_DATE" | "FIXED_DATE" | "ON_APPROVAL";
+export type RecurringInterval = "MONTHLY" | "QUARTERLY";
 
 // ── JSONB shapes ─────────────────────────────────────────────────────────
 
@@ -35,6 +39,7 @@ export interface EngagementRecord {
   description: string | null;
   startDate: Date | null;
   endDate: Date | null;
+  activeProposalId: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -58,6 +63,49 @@ export interface ProposalRecord {
   sentAt: Date | null;
   approvedAt: Date | null;
   declinedAt: Date | null;
+  version: number;
+  revisionOf: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface ProposalSectionRecord {
+  id: string;
+  proposalId: string;
+  title: string;
+  description: string | null;
+  type: ProposalSectionType;
+  sortOrder: number;
+  estimatedDuration: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface ProposalItemRecord {
+  id: string;
+  sectionId: string;
+  proposalId: string;
+  title: string;
+  description: string | null;
+  acceptanceCriteria: string | null;
+  sortOrder: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface PaymentRuleRecord {
+  id: string;
+  proposalId: string;
+  tenantId: string;
+  sectionId: string | null;
+  label: string;
+  amount: number;
+  trigger: PaymentRuleTrigger;
+  recurringInterval: RecurringInterval | null;
+  relativeDays: number | null;
+  fixedDate: Date | null;
+  autoSend: boolean;
+  sortOrder: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -71,6 +119,7 @@ export interface MilestoneRecord {
   sortOrder: number;
   dueDate: Date | null;
   completedAt: Date | null;
+  sourceSectionId: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -87,6 +136,7 @@ export interface DeliverableRecord {
   fileSize: number | null;
   deliveredAt: Date | null;
   acceptedAt: Date | null;
+  sourceProposalItemId: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -119,6 +169,10 @@ export interface PortalInvoiceRecord {
   paymentReference: string | null;
   token: string;
   sentAt: Date | null;
+  sourcePaymentRuleId: string | null;
+  stripePaymentIntentId: string | null;
+  stripePaymentUrl: string | null;
+  invoiceNumber: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -156,6 +210,20 @@ export interface ActivityItem {
   metadata?: Record<string, unknown>;
 }
 
+// ── Composite types ─────────────────────────────────────────────────────
+
+export interface ProposalWithSections extends ProposalRecord {
+  sections: (ProposalSectionRecord & { items: ProposalItemRecord[] })[];
+  paymentRules: PaymentRuleRecord[];
+}
+
+export interface FinancialSummary {
+  totalValue: number;
+  totalPaid: number;
+  totalOutstanding: number;
+  overdueCount: number;
+}
+
 // ── Dashboard ────────────────────────────────────────────────────────────
 
 export interface PortalDashboard {
@@ -163,5 +231,7 @@ export interface PortalDashboard {
   pendingApprovals: ApprovalRequestRecord[];
   pendingInvoices: PortalInvoiceRecord[];
   milestones: MilestoneRecord[];
+  deliverables: DeliverableRecord[];
+  financials: FinancialSummary;
   activity: ActivityItem[];
 }
