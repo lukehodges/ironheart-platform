@@ -30,6 +30,16 @@ import type {
   requestMagicLinkSchema,
   getDashboardSchema,
   listByEngagementSchema,
+  createProposalSectionSchema,
+  updateProposalSectionSchema,
+  deleteProposalSectionSchema,
+  createProposalItemSchema,
+  updateProposalItemSchema,
+  deleteProposalItemSchema,
+  createPaymentRuleSchema,
+  updatePaymentRuleSchema,
+  deletePaymentRuleSchema,
+  voidInvoiceSchema,
 } from "./client-portal.schemas";
 import type { ActivityItem, PortalDashboard } from "./client-portal.types";
 
@@ -370,6 +380,122 @@ export const clientPortalService = {
 
     log.info({ invoiceId: invoice.id }, "Invoice marked as paid");
     return updated;
+  },
+
+  // ── Admin: Proposal Sections ──────────────────────────────────────
+
+  async createProposalSection(ctx: Context, input: z.infer<typeof createProposalSectionSchema>) {
+    const proposal = await clientPortalRepository.findProposal(input.proposalId);
+    if (!proposal) throw new NotFoundError("Proposal", input.proposalId);
+    if (proposal.status !== "DRAFT") throw new BadRequestError("Cannot modify a sent proposal");
+
+    const engagement = await clientPortalRepository.findEngagement(ctx.tenantId, proposal.engagementId);
+    if (!engagement) throw new NotFoundError("Engagement", proposal.engagementId);
+
+    return clientPortalRepository.createSection({
+      proposalId: input.proposalId,
+      title: input.title,
+      description: input.description,
+      type: input.type,
+      sortOrder: input.sortOrder,
+      estimatedDuration: input.estimatedDuration,
+    });
+  },
+
+  async updateProposalSection(ctx: Context, input: z.infer<typeof updateProposalSectionSchema>) {
+    return clientPortalRepository.updateSection(input.id, {
+      title: input.title,
+      description: input.description,
+      type: input.type,
+      sortOrder: input.sortOrder,
+      estimatedDuration: input.estimatedDuration,
+    });
+  },
+
+  async deleteProposalSection(ctx: Context, input: z.infer<typeof deleteProposalSectionSchema>) {
+    await clientPortalRepository.deleteSection(input.id);
+  },
+
+  // ── Admin: Proposal Items ─────────────────────────────────────────
+
+  async createProposalItem(ctx: Context, input: z.infer<typeof createProposalItemSchema>) {
+    const proposal = await clientPortalRepository.findProposal(input.proposalId);
+    if (!proposal) throw new NotFoundError("Proposal", input.proposalId);
+    if (proposal.status !== "DRAFT") throw new BadRequestError("Cannot modify a sent proposal");
+
+    return clientPortalRepository.createItem({
+      sectionId: input.sectionId,
+      proposalId: input.proposalId,
+      title: input.title,
+      description: input.description,
+      acceptanceCriteria: input.acceptanceCriteria,
+      sortOrder: input.sortOrder,
+    });
+  },
+
+  async updateProposalItem(ctx: Context, input: z.infer<typeof updateProposalItemSchema>) {
+    return clientPortalRepository.updateItem(input.id, {
+      title: input.title,
+      description: input.description,
+      acceptanceCriteria: input.acceptanceCriteria,
+      sortOrder: input.sortOrder,
+    });
+  },
+
+  async deleteProposalItem(ctx: Context, input: z.infer<typeof deleteProposalItemSchema>) {
+    await clientPortalRepository.deleteItem(input.id);
+  },
+
+  // ── Admin: Payment Rules ──────────────────────────────────────────
+
+  async createPaymentRule(ctx: Context, input: z.infer<typeof createPaymentRuleSchema>) {
+    const proposal = await clientPortalRepository.findProposal(input.proposalId);
+    if (!proposal) throw new NotFoundError("Proposal", input.proposalId);
+    if (proposal.status !== "DRAFT") throw new BadRequestError("Cannot modify a sent proposal");
+
+    const engagement = await clientPortalRepository.findEngagement(ctx.tenantId, proposal.engagementId);
+    if (!engagement) throw new NotFoundError("Engagement", proposal.engagementId);
+
+    return clientPortalRepository.createRule({
+      proposalId: input.proposalId,
+      tenantId: ctx.tenantId,
+      sectionId: input.sectionId,
+      label: input.label,
+      amount: input.amount,
+      trigger: input.trigger,
+      recurringInterval: input.recurringInterval,
+      relativeDays: input.relativeDays,
+      fixedDate: input.fixedDate,
+      autoSend: input.autoSend,
+      sortOrder: input.sortOrder,
+    });
+  },
+
+  async updatePaymentRule(ctx: Context, input: z.infer<typeof updatePaymentRuleSchema>) {
+    return clientPortalRepository.updateRule(input.id, {
+      sectionId: input.sectionId,
+      label: input.label,
+      amount: input.amount,
+      trigger: input.trigger,
+      recurringInterval: input.recurringInterval,
+      relativeDays: input.relativeDays,
+      fixedDate: input.fixedDate,
+      autoSend: input.autoSend,
+      sortOrder: input.sortOrder,
+    });
+  },
+
+  async deletePaymentRule(ctx: Context, input: z.infer<typeof deletePaymentRuleSchema>) {
+    await clientPortalRepository.deleteRule(input.id);
+  },
+
+  async voidInvoice(ctx: Context, input: z.infer<typeof voidInvoiceSchema>) {
+    const invoice = await clientPortalRepository.findInvoice(input.invoiceId);
+    if (!invoice) throw new NotFoundError("PortalInvoice", input.invoiceId);
+    if (invoice.status === "PAID") throw new BadRequestError("Cannot void a paid invoice");
+    if (invoice.status === "VOID") throw new BadRequestError("Invoice is already voided");
+
+    return clientPortalRepository.updateInvoice(invoice.id, { status: "VOID" });
   },
 
   // ── Portal: Proposals ──────────────────────────────────────────────
