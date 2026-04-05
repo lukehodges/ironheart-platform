@@ -111,6 +111,7 @@ function makeEngagement(overrides = {}) {
     description: null,
     startDate: new Date(),
     endDate: null,
+    activeProposalId: null,
     createdAt: new Date(),
     updatedAt: new Date(),
     ...overrides,
@@ -129,6 +130,8 @@ function makeProposal(overrides = {}) {
     terms: "Standard terms",
     token: "test-token",
     tokenExpiresAt: new Date(Date.now() + 86400000 * 30),
+    version: 1,
+    revisionOf: null,
     sentAt: new Date(),
     approvedAt: null,
     declinedAt: null,
@@ -379,6 +382,7 @@ describe("clientPortalService", () => {
         fileSize: null,
         deliveredAt: new Date(),
         acceptedAt: null,
+        sourceProposalItemId: null,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
@@ -410,6 +414,7 @@ describe("clientPortalService", () => {
         fileSize: null,
         deliveredAt: null,
         acceptedAt: null,
+        sourceProposalItemId: null,
         createdAt: new Date(),
         updatedAt: new Date(),
       });
