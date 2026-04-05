@@ -7,6 +7,7 @@ import {
   timestamp,
   date,
   jsonb,
+  boolean,
   index,
   uniqueIndex,
   foreignKey,
@@ -20,6 +21,7 @@ import { customers } from "./customer.schema";
 export const engagementType = pgEnum("EngagementType", [
   "PROJECT",
   "RETAINER",
+  "HYBRID",
 ]);
 
 export const engagementStatus = pgEnum("EngagementStatus", [
@@ -28,6 +30,7 @@ export const engagementStatus = pgEnum("EngagementStatus", [
   "ACTIVE",
   "COMPLETED",
   "CANCELLED",
+  "PAUSED",
 ]);
 
 export const proposalStatus = pgEnum("ProposalStatus", [
@@ -48,6 +51,7 @@ export const deliverableStatus = pgEnum("DeliverableStatus", [
   "PENDING",
   "DELIVERED",
   "ACCEPTED",
+  "CANCELLED",
 ]);
 
 export const approvalRequestStatus = pgEnum("ApprovalRequestStatus", [
@@ -61,11 +65,31 @@ export const portalInvoiceStatus = pgEnum("PortalInvoiceStatus", [
   "SENT",
   "PAID",
   "OVERDUE",
+  "VOID",
 ]);
 
 export const portalPaymentMethod = pgEnum("PortalPaymentMethod", [
   "STRIPE",
   "BANK_TRANSFER",
+]);
+
+export const proposalSectionType = pgEnum("ProposalSectionType", [
+  "PHASE",
+  "RECURRING",
+  "AD_HOC",
+]);
+
+export const paymentRuleTrigger = pgEnum("PaymentRuleTrigger", [
+  "MILESTONE_COMPLETE",
+  "RECURRING",
+  "RELATIVE_DATE",
+  "FIXED_DATE",
+  "ON_APPROVAL",
+]);
+
+export const recurringInterval = pgEnum("RecurringInterval", [
+  "MONTHLY",
+  "QUARTERLY",
 ]);
 
 // ── Tables ───────────────────────────────────────────────────────────────
@@ -82,6 +106,7 @@ export const engagements = pgTable(
     description: text(),
     startDate: date({ mode: "date" }),
     endDate: date({ mode: "date" }),
+    activeProposalId: uuid(),
     createdAt: timestamp({ precision: 3, mode: "date" })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
@@ -124,6 +149,8 @@ export const proposals = pgTable(
     sentAt: timestamp({ precision: 3, mode: "date" }),
     approvedAt: timestamp({ precision: 3, mode: "date" }),
     declinedAt: timestamp({ precision: 3, mode: "date" }),
+    version: integer().notNull().default(1),
+    revisionOf: uuid(),
     createdAt: timestamp({ precision: 3, mode: "date" })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
@@ -142,6 +169,115 @@ export const proposals = pgTable(
   ]
 );
 
+export const proposalSections = pgTable(
+  "proposal_sections",
+  {
+    id: uuid().primaryKey().notNull().default(sql`gen_random_uuid()`),
+    proposalId: uuid().notNull(),
+    title: text().notNull(),
+    description: text(),
+    type: proposalSectionType().notNull(),
+    sortOrder: integer().notNull().default(0),
+    estimatedDuration: text(),
+    createdAt: timestamp({ precision: 3, mode: "date" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    updatedAt: timestamp({ precision: 3, mode: "date" }).notNull(),
+  },
+  (table) => [
+    index("proposal_sections_proposalId_idx").on(table.proposalId),
+    foreignKey({
+      columns: [table.proposalId],
+      foreignColumns: [proposals.id],
+      name: "proposal_sections_proposalId_fkey",
+    })
+      .onUpdate("cascade")
+      .onDelete("cascade"),
+  ]
+);
+
+export const proposalItems = pgTable(
+  "proposal_items",
+  {
+    id: uuid().primaryKey().notNull().default(sql`gen_random_uuid()`),
+    sectionId: uuid().notNull(),
+    proposalId: uuid().notNull(),
+    title: text().notNull(),
+    description: text(),
+    acceptanceCriteria: text(),
+    sortOrder: integer().notNull().default(0),
+    createdAt: timestamp({ precision: 3, mode: "date" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    updatedAt: timestamp({ precision: 3, mode: "date" }).notNull(),
+  },
+  (table) => [
+    index("proposal_items_sectionId_idx").on(table.sectionId),
+    index("proposal_items_proposalId_idx").on(table.proposalId),
+    foreignKey({
+      columns: [table.sectionId],
+      foreignColumns: [proposalSections.id],
+      name: "proposal_items_sectionId_fkey",
+    })
+      .onUpdate("cascade")
+      .onDelete("cascade"),
+    foreignKey({
+      columns: [table.proposalId],
+      foreignColumns: [proposals.id],
+      name: "proposal_items_proposalId_fkey",
+    })
+      .onUpdate("cascade")
+      .onDelete("cascade"),
+  ]
+);
+
+export const paymentRules = pgTable(
+  "payment_rules",
+  {
+    id: uuid().primaryKey().notNull().default(sql`gen_random_uuid()`),
+    proposalId: uuid().notNull(),
+    tenantId: uuid().notNull(),
+    sectionId: uuid(),
+    label: text().notNull(),
+    amount: integer().notNull(),
+    trigger: paymentRuleTrigger().notNull(),
+    recurringInterval: recurringInterval(),
+    relativeDays: integer(),
+    fixedDate: date({ mode: "date" }),
+    autoSend: boolean().notNull().default(false),
+    sortOrder: integer().notNull().default(0),
+    createdAt: timestamp({ precision: 3, mode: "date" })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    updatedAt: timestamp({ precision: 3, mode: "date" }).notNull(),
+  },
+  (table) => [
+    index("payment_rules_proposalId_idx").on(table.proposalId),
+    index("payment_rules_tenantId_idx").on(table.tenantId),
+    foreignKey({
+      columns: [table.proposalId],
+      foreignColumns: [proposals.id],
+      name: "payment_rules_proposalId_fkey",
+    })
+      .onUpdate("cascade")
+      .onDelete("cascade"),
+    foreignKey({
+      columns: [table.tenantId],
+      foreignColumns: [tenants.id],
+      name: "payment_rules_tenantId_fkey",
+    })
+      .onUpdate("cascade")
+      .onDelete("cascade"),
+    foreignKey({
+      columns: [table.sectionId],
+      foreignColumns: [proposalSections.id],
+      name: "payment_rules_sectionId_fkey",
+    })
+      .onUpdate("cascade")
+      .onDelete("set null"),
+  ]
+);
+
 export const engagementMilestones = pgTable(
   "engagement_milestones",
   {
@@ -153,6 +289,7 @@ export const engagementMilestones = pgTable(
     sortOrder: integer().notNull().default(0),
     dueDate: date({ mode: "date" }),
     completedAt: timestamp({ precision: 3, mode: "date" }),
+    sourceSectionId: uuid(),
     createdAt: timestamp({ precision: 3, mode: "date" })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
@@ -184,6 +321,7 @@ export const deliverables = pgTable(
     fileSize: integer(),
     deliveredAt: timestamp({ precision: 3, mode: "date" }),
     acceptedAt: timestamp({ precision: 3, mode: "date" }),
+    sourceProposalItemId: uuid(),
     createdAt: timestamp({ precision: 3, mode: "date" })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
@@ -268,6 +406,10 @@ export const portalInvoices = pgTable(
     paymentReference: text(),
     token: text().notNull(),
     sentAt: timestamp({ precision: 3, mode: "date" }),
+    sourcePaymentRuleId: uuid(),
+    stripePaymentIntentId: text(),
+    stripePaymentUrl: text(),
+    invoiceNumber: text(),
     createdAt: timestamp({ precision: 3, mode: "date" })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
