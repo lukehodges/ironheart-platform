@@ -107,6 +107,7 @@ function buildStaticDashboardSection(): NavSection {
   return {
     items: [
       { title: "Dashboard", href: "/admin", icon: "LayoutDashboard" },
+      { title: "Clients", href: "/admin/clients", icon: "Users" },
     ],
   }
 }
