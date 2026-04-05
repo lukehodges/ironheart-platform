@@ -12,12 +12,18 @@ import {
   portalCredentials,
   portalSessions,
   customers,
+  proposalSections,
+  proposalItems,
+  paymentRules,
 } from "@/shared/db/schema";
 import { eq, and, desc, ilike, sql } from "drizzle-orm";
 import type {
   EngagementRecord,
   EngagementWithCustomer,
   ProposalRecord,
+  ProposalSectionRecord,
+  ProposalItemRecord,
+  PaymentRuleRecord,
   MilestoneRecord,
   DeliverableRecord,
   ApprovalRequestRecord,
@@ -50,6 +56,7 @@ function toEngagement(row: EngagementRow): EngagementRecord {
     description: row.description ?? null,
     startDate: row.startDate ?? null,
     endDate: row.endDate ?? null,
+    activeProposalId: row.activeProposalId ?? null,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
@@ -70,6 +77,8 @@ function toProposal(row: ProposalRow): ProposalRecord {
     sentAt: row.sentAt ?? null,
     approvedAt: row.approvedAt ?? null,
     declinedAt: row.declinedAt ?? null,
+    version: row.version,
+    revisionOf: row.revisionOf ?? null,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
@@ -85,6 +94,7 @@ function toMilestone(row: MilestoneRow): MilestoneRecord {
     sortOrder: row.sortOrder,
     dueDate: row.dueDate ?? null,
     completedAt: row.completedAt ?? null,
+    sourceSectionId: row.sourceSectionId ?? null,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
@@ -103,6 +113,7 @@ function toDeliverable(row: DeliverableRow): DeliverableRecord {
     fileSize: row.fileSize ?? null,
     deliveredAt: row.deliveredAt ?? null,
     acceptedAt: row.acceptedAt ?? null,
+    sourceProposalItemId: row.sourceProposalItemId ?? null,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
@@ -139,6 +150,10 @@ function toInvoice(row: InvoiceRow): PortalInvoiceRecord {
     paymentReference: row.paymentReference ?? null,
     token: row.token,
     sentAt: row.sentAt ?? null,
+    sourcePaymentRuleId: row.sourcePaymentRuleId ?? null,
+    stripePaymentIntentId: row.stripePaymentIntentId ?? null,
+    stripePaymentUrl: row.stripePaymentUrl ?? null,
+    invoiceNumber: row.invoiceNumber ?? null,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
@@ -154,6 +169,57 @@ function toSession(row: SessionRow): PortalSessionRecord {
     sessionExpiresAt: row.sessionExpiresAt ?? null,
     lastAccessedAt: row.lastAccessedAt,
     createdAt: row.createdAt,
+  };
+}
+
+type SectionRow = typeof proposalSections.$inferSelect;
+type ItemRow = typeof proposalItems.$inferSelect;
+type RuleRow = typeof paymentRules.$inferSelect;
+
+function toSection(row: SectionRow): ProposalSectionRecord {
+  return {
+    id: row.id,
+    proposalId: row.proposalId,
+    title: row.title,
+    description: row.description ?? null,
+    type: row.type,
+    sortOrder: row.sortOrder,
+    estimatedDuration: row.estimatedDuration ?? null,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
+}
+
+function toItem(row: ItemRow): ProposalItemRecord {
+  return {
+    id: row.id,
+    sectionId: row.sectionId,
+    proposalId: row.proposalId,
+    title: row.title,
+    description: row.description ?? null,
+    acceptanceCriteria: row.acceptanceCriteria ?? null,
+    sortOrder: row.sortOrder,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
+}
+
+function toRule(row: RuleRow): PaymentRuleRecord {
+  return {
+    id: row.id,
+    proposalId: row.proposalId,
+    tenantId: row.tenantId,
+    sectionId: row.sectionId ?? null,
+    label: row.label,
+    amount: row.amount,
+    trigger: row.trigger,
+    recurringInterval: row.recurringInterval ?? null,
+    relativeDays: row.relativeDays ?? null,
+    fixedDate: row.fixedDate ?? null,
+    autoSend: row.autoSend,
+    sortOrder: row.sortOrder,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
   };
 }
 
@@ -187,6 +253,15 @@ export const clientPortalRepository = {
       .where(and(eq(engagements.id, engagementId), eq(engagements.customerId, customerId)))
       .limit(1);
     return result[0] ? toEngagement(result[0]) : null;
+  },
+
+  async listEngagementsByCustomer(customerId: string): Promise<EngagementRecord[]> {
+    const rows = await db
+      .select()
+      .from(engagements)
+      .where(eq(engagements.customerId, customerId))
+      .orderBy(desc(engagements.createdAt));
+    return rows.map(toEngagement);
   },
 
   async listEngagements(
@@ -661,5 +736,414 @@ export const clientPortalRepository = {
       approvals: approvalList,
       invoices: invoiceList,
     };
+  },
+
+  // ── Proposal Sections ───────────────────────────────────────────────
+
+  async listSections(proposalId: string): Promise<ProposalSectionRecord[]> {
+    const rows = await db
+      .select()
+      .from(proposalSections)
+      .where(eq(proposalSections.proposalId, proposalId))
+      .orderBy(proposalSections.sortOrder);
+    return rows.map(toSection);
+  },
+
+  async createSection(input: {
+    proposalId: string;
+    title: string;
+    description?: string | null;
+    type: string;
+    sortOrder: number;
+    estimatedDuration?: string | null;
+  }): Promise<ProposalSectionRecord> {
+    const now = new Date();
+    const [row] = await db
+      .insert(proposalSections)
+      .values({
+        proposalId: input.proposalId,
+        title: input.title,
+        description: input.description ?? null,
+        type: input.type as any,
+        sortOrder: input.sortOrder,
+        estimatedDuration: input.estimatedDuration ?? null,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning();
+    log.info({ sectionId: row!.id, proposalId: input.proposalId }, "Proposal section created");
+    return toSection(row!);
+  },
+
+  async updateSection(
+    id: string,
+    updates: Partial<{ title: string; description: string | null; type: string; sortOrder: number; estimatedDuration: string | null }>
+  ): Promise<ProposalSectionRecord> {
+    const [row] = await db
+      .update(proposalSections)
+      .set({ ...updates, updatedAt: new Date() } as any)
+      .where(eq(proposalSections.id, id))
+      .returning();
+    if (!row) throw new NotFoundError("ProposalSection", id);
+    return toSection(row);
+  },
+
+  async deleteSection(id: string): Promise<void> {
+    const result = await db
+      .delete(proposalSections)
+      .where(eq(proposalSections.id, id))
+      .returning({ id: proposalSections.id });
+    if (!result.length) throw new NotFoundError("ProposalSection", id);
+    log.info({ sectionId: id }, "Proposal section deleted");
+  },
+
+  // ── Proposal Items ──────────────────────────────────────────────────
+
+  async listItems(proposalId: string): Promise<ProposalItemRecord[]> {
+    const rows = await db
+      .select()
+      .from(proposalItems)
+      .where(eq(proposalItems.proposalId, proposalId))
+      .orderBy(proposalItems.sortOrder);
+    return rows.map(toItem);
+  },
+
+  async listItemsBySection(sectionId: string): Promise<ProposalItemRecord[]> {
+    const rows = await db
+      .select()
+      .from(proposalItems)
+      .where(eq(proposalItems.sectionId, sectionId))
+      .orderBy(proposalItems.sortOrder);
+    return rows.map(toItem);
+  },
+
+  async createItem(input: {
+    sectionId: string;
+    proposalId: string;
+    title: string;
+    description?: string | null;
+    acceptanceCriteria?: string | null;
+    sortOrder: number;
+  }): Promise<ProposalItemRecord> {
+    const now = new Date();
+    const [row] = await db
+      .insert(proposalItems)
+      .values({
+        sectionId: input.sectionId,
+        proposalId: input.proposalId,
+        title: input.title,
+        description: input.description ?? null,
+        acceptanceCriteria: input.acceptanceCriteria ?? null,
+        sortOrder: input.sortOrder,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning();
+    log.info({ itemId: row!.id, sectionId: input.sectionId }, "Proposal item created");
+    return toItem(row!);
+  },
+
+  async updateItem(
+    id: string,
+    updates: Partial<{ title: string; description: string | null; acceptanceCriteria: string | null; sortOrder: number }>
+  ): Promise<ProposalItemRecord> {
+    const [row] = await db
+      .update(proposalItems)
+      .set({ ...updates, updatedAt: new Date() } as any)
+      .where(eq(proposalItems.id, id))
+      .returning();
+    if (!row) throw new NotFoundError("ProposalItem", id);
+    return toItem(row);
+  },
+
+  async deleteItem(id: string): Promise<void> {
+    const result = await db
+      .delete(proposalItems)
+      .where(eq(proposalItems.id, id))
+      .returning({ id: proposalItems.id });
+    if (!result.length) throw new NotFoundError("ProposalItem", id);
+    log.info({ itemId: id }, "Proposal item deleted");
+  },
+
+  // ── Payment Rules ───────────────────────────────────────────────────
+
+  async listRules(proposalId: string): Promise<PaymentRuleRecord[]> {
+    const rows = await db
+      .select()
+      .from(paymentRules)
+      .where(eq(paymentRules.proposalId, proposalId))
+      .orderBy(paymentRules.sortOrder);
+    return rows.map(toRule);
+  },
+
+  async createRule(input: {
+    proposalId: string;
+    tenantId: string;
+    sectionId?: string | null;
+    label: string;
+    amount: number;
+    trigger: string;
+    recurringInterval?: string | null;
+    relativeDays?: number | null;
+    fixedDate?: Date | null;
+    autoSend: boolean;
+    sortOrder: number;
+  }): Promise<PaymentRuleRecord> {
+    const now = new Date();
+    const [row] = await db
+      .insert(paymentRules)
+      .values({
+        proposalId: input.proposalId,
+        tenantId: input.tenantId,
+        sectionId: input.sectionId ?? null,
+        label: input.label,
+        amount: input.amount,
+        trigger: input.trigger as any,
+        recurringInterval: input.recurringInterval as any ?? null,
+        relativeDays: input.relativeDays ?? null,
+        fixedDate: input.fixedDate ?? null,
+        autoSend: input.autoSend,
+        sortOrder: input.sortOrder,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning();
+    log.info({ ruleId: row!.id, proposalId: input.proposalId }, "Payment rule created");
+    return toRule(row!);
+  },
+
+  async updateRule(
+    id: string,
+    updates: Partial<{
+      sectionId: string | null;
+      label: string;
+      amount: number;
+      trigger: string;
+      recurringInterval: string | null;
+      relativeDays: number | null;
+      fixedDate: Date | null;
+      autoSend: boolean;
+      sortOrder: number;
+    }>
+  ): Promise<PaymentRuleRecord> {
+    const [row] = await db
+      .update(paymentRules)
+      .set({ ...updates, updatedAt: new Date() } as any)
+      .where(eq(paymentRules.id, id))
+      .returning();
+    if (!row) throw new NotFoundError("PaymentRule", id);
+    return toRule(row);
+  },
+
+  async deleteRule(id: string): Promise<void> {
+    const result = await db
+      .delete(paymentRules)
+      .where(eq(paymentRules.id, id))
+      .returning({ id: paymentRules.id });
+    if (!result.length) throw new NotFoundError("PaymentRule", id);
+    log.info({ ruleId: id }, "Payment rule deleted");
+  },
+
+  async findActiveRecurringRules(): Promise<(PaymentRuleRecord & { engagementId: string })[]> {
+    const rows = await db
+      .select({
+        rule: paymentRules,
+        engagementId: engagements.id,
+      })
+      .from(paymentRules)
+      .innerJoin(proposals, eq(paymentRules.proposalId, proposals.id))
+      .innerJoin(engagements, eq(proposals.engagementId, engagements.id))
+      .where(
+        and(
+          eq(paymentRules.trigger, "RECURRING"),
+          eq(proposals.status, "APPROVED"),
+          eq(engagements.status, "ACTIVE")
+        )
+      );
+    return rows.map((r) => ({
+      ...toRule(r.rule),
+      engagementId: r.engagementId,
+    }));
+  },
+
+  async findRulesBySectionId(sectionId: string): Promise<PaymentRuleRecord[]> {
+    const rows = await db
+      .select()
+      .from(paymentRules)
+      .where(
+        and(
+          eq(paymentRules.sectionId, sectionId),
+          eq(paymentRules.trigger, "MILESTONE_COMPLETE")
+        )
+      );
+    return rows.map(toRule);
+  },
+
+  async findLastInvoiceForRule(ruleId: string): Promise<PortalInvoiceRecord | null> {
+    const rows = await db
+      .select()
+      .from(portalInvoices)
+      .where(eq(portalInvoices.sourcePaymentRuleId, ruleId))
+      .orderBy(desc(portalInvoices.createdAt))
+      .limit(1);
+    return rows[0] ? toInvoice(rows[0]) : null;
+  },
+
+  // ── Enriched Proposal Query ─────────────────────────────────────────
+
+  async getProposalWithSections(proposalId: string) {
+    const proposal = await this.findProposal(proposalId);
+    if (!proposal) return null;
+
+    const [sectionList, itemList, ruleList] = await Promise.all([
+      this.listSections(proposalId),
+      this.listItems(proposalId),
+      this.listRules(proposalId),
+    ]);
+
+    const sections = sectionList.map((section) => ({
+      ...section,
+      items: itemList.filter((item) => item.sectionId === section.id),
+    }));
+
+    return { ...proposal, sections, paymentRules: ruleList };
+  },
+
+  // ── Bulk Create Methods ─────────────────────────────────────────────
+
+  async createMilestoneBulk(
+    inputs: {
+      engagementId: string;
+      title: string;
+      description?: string | null;
+      sortOrder: number;
+      dueDate?: Date | null;
+      sourceSectionId?: string | null;
+    }[]
+  ): Promise<MilestoneRecord[]> {
+    if (inputs.length === 0) return [];
+    const now = new Date();
+    const rows = await db
+      .insert(engagementMilestones)
+      .values(
+        inputs.map((input) => ({
+          engagementId: input.engagementId,
+          title: input.title,
+          description: input.description ?? null,
+          sortOrder: input.sortOrder,
+          dueDate: input.dueDate ?? null,
+          sourceSectionId: input.sourceSectionId ?? null,
+          createdAt: now,
+          updatedAt: now,
+        }))
+      )
+      .returning();
+    return rows.map(toMilestone);
+  },
+
+  async createDeliverableBulk(
+    inputs: {
+      engagementId: string;
+      milestoneId?: string | null;
+      title: string;
+      description?: string | null;
+      sourceProposalItemId?: string | null;
+    }[]
+  ): Promise<DeliverableRecord[]> {
+    if (inputs.length === 0) return [];
+    const now = new Date();
+    const rows = await db
+      .insert(deliverables)
+      .values(
+        inputs.map((input) => ({
+          engagementId: input.engagementId,
+          milestoneId: input.milestoneId ?? null,
+          title: input.title,
+          description: input.description ?? null,
+          sourceProposalItemId: input.sourceProposalItemId ?? null,
+          createdAt: now,
+          updatedAt: now,
+        }))
+      )
+      .returning();
+    return rows.map(toDeliverable);
+  },
+
+  async createInvoiceBulk(
+    inputs: {
+      engagementId: string;
+      milestoneId?: string | null;
+      amount: number;
+      description: string;
+      dueDate: Date;
+      token: string;
+      sourcePaymentRuleId?: string | null;
+      invoiceNumber?: string | null;
+    }[]
+  ): Promise<PortalInvoiceRecord[]> {
+    if (inputs.length === 0) return [];
+    const now = new Date();
+    const rows = await db
+      .insert(portalInvoices)
+      .values(
+        inputs.map((input) => ({
+          engagementId: input.engagementId,
+          milestoneId: input.milestoneId ?? null,
+          amount: input.amount,
+          description: input.description,
+          dueDate: input.dueDate,
+          token: input.token,
+          sourcePaymentRuleId: input.sourcePaymentRuleId ?? null,
+          invoiceNumber: input.invoiceNumber ?? null,
+          createdAt: now,
+          updatedAt: now,
+        }))
+      )
+      .returning();
+    return rows.map(toInvoice);
+  },
+
+  async getNextInvoiceNumber(tenantId: string): Promise<string> {
+    const year = new Date().getFullYear();
+    const prefix = `INV-${year}-`;
+    const result = await db
+      .select({ invoiceNumber: portalInvoices.invoiceNumber })
+      .from(portalInvoices)
+      .innerJoin(engagements, eq(portalInvoices.engagementId, engagements.id))
+      .where(
+        and(
+          eq(engagements.tenantId, tenantId),
+          sql`${portalInvoices.invoiceNumber} LIKE ${prefix + '%'}`
+        )
+      )
+      .orderBy(desc(portalInvoices.invoiceNumber))
+      .limit(1);
+
+    if (!result[0]?.invoiceNumber) return `${prefix}0001`;
+    const lastSeq = parseInt(result[0].invoiceNumber.replace(prefix, ""), 10);
+    return `${prefix}${String(lastSeq + 1).padStart(4, "0")}`;
+  },
+
+  async findOverdueInvoices(): Promise<(PortalInvoiceRecord & { tenantId: string; customerId: string })[]> {
+    const now = new Date();
+    const rows = await db
+      .select({
+        invoice: portalInvoices,
+        tenantId: engagements.tenantId,
+        customerId: engagements.customerId,
+      })
+      .from(portalInvoices)
+      .innerJoin(engagements, eq(portalInvoices.engagementId, engagements.id))
+      .where(
+        and(
+          eq(portalInvoices.status, "SENT"),
+          sql`${portalInvoices.dueDate} < ${now}`
+        )
+      );
+    return rows.map((r) => ({
+      ...toInvoice(r.invoice),
+      tenantId: r.tenantId,
+      customerId: r.customerId,
+    }));
   },
 };
