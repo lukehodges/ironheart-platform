@@ -800,6 +800,13 @@ export const clientPortalService = {
     const pendingApprovals = allApprovals.filter((a) => a.status === "PENDING");
     const pendingInvoices = allInvoices.filter((i) => i.status === "SENT" || i.status === "OVERDUE");
 
+    // Financial summary
+    const nonVoidInvoices = allInvoices.filter((i) => i.status !== "VOID");
+    const totalValue = nonVoidInvoices.reduce((sum, i) => sum + i.amount, 0);
+    const totalPaid = nonVoidInvoices.filter((i) => i.status === "PAID").reduce((sum, i) => sum + i.amount, 0);
+    const totalOutstanding = nonVoidInvoices.filter((i) => i.status === "SENT" || i.status === "OVERDUE").reduce((sum, i) => sum + i.amount, 0);
+    const overdueCount = nonVoidInvoices.filter((i) => i.status === "OVERDUE").length;
+
     // Build activity feed from all entities
     const activity: ActivityItem[] = [];
 
@@ -833,6 +840,8 @@ export const clientPortalService = {
       pendingApprovals,
       pendingInvoices,
       milestones,
+      deliverables: allDeliverables,
+      financials: { totalValue, totalPaid, totalOutstanding, overdueCount },
       activity,
     };
   },
