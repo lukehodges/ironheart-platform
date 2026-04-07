@@ -6,9 +6,11 @@ interface ProposalDeclinedProps {
   customerName: string;
   proposalToken: string;
   onSubmitFeedback: (feedback: string) => void;
+  consultantName?: string;
+  consultantEmail?: string;
 }
 
-export function ProposalDeclined({ customerName, proposalToken, onSubmitFeedback }: ProposalDeclinedProps) {
+export function ProposalDeclined({ customerName, proposalToken, onSubmitFeedback, consultantName, consultantEmail }: ProposalDeclinedProps) {
   const firstName = customerName.split(" ")[0];
   const [feedback, setFeedback] = useState("");
   const [submitted, setSubmitted] = useState(false);
@@ -157,10 +159,14 @@ export function ProposalDeclined({ customerName, proposalToken, onSubmitFeedback
           opacity: 0,
         }}
       >
-        <p className="font-[var(--font-heading)] text-[18px]" style={{ color: "var(--text-1)" }}>Luke Hodges</p>
+        <p className="font-[var(--font-heading)] text-[18px]" style={{ color: "var(--text-1)" }}>{consultantName ?? "Your Consultant"}</p>
         <div className="mt-2 flex flex-col items-center gap-1 text-[13px]" style={{ color: "var(--text-3)" }}>
-          <a href="mailto:luke@lukehodges.uk" className="transition-colors hover:underline" style={{ color: "var(--text-3)" }}>luke@lukehodges.uk</a>
-          <a href="tel:+447000000000" className="transition-colors hover:underline" style={{ color: "var(--text-3)" }}>07XXX XXXXXX</a>
+          {consultantEmail && (
+            <a href={`mailto:${consultantEmail}`} className="transition-colors hover:underline" style={{ color: "var(--text-3)" }}>{consultantEmail}</a>
+          )}
+          {process.env.NEXT_PUBLIC_CONTACT_PHONE && (
+            <a href={`tel:${process.env.NEXT_PUBLIC_CONTACT_PHONE.replace(/\s/g, "")}`} className="transition-colors hover:underline" style={{ color: "var(--text-3)" }}>{process.env.NEXT_PUBLIC_CONTACT_PHONE}</a>
+          )}
         </div>
       </div>
     </div>
