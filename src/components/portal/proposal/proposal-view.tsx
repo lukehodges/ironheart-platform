@@ -92,7 +92,7 @@ export function ProposalView({ proposal, customerName, onApprove, onDecline }: P
           <div className="flex items-center justify-center gap-4 text-[13px]" style={{ color: "var(--text-3)" }}>
             <span>Prepared {new Date(proposal.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}</span>
             <span style={{ color: "var(--border)" }}>|</span>
-            <span>Ref: {proposal.id.slice(0, 8).toUpperCase()}</span>
+            <span>Ref: PRO-{new Date(proposal.createdAt).getFullYear()}-{proposal.id.slice(-4).toUpperCase()}</span>
             <span style={{ color: "var(--border)" }}>|</span>
             <span>Valid for 30 days</span>
           </div>
