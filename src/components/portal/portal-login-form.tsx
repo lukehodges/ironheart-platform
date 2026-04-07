@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { api } from "@/lib/trpc/react";
 import { toast } from "sonner";
 
@@ -10,10 +11,13 @@ export function PortalLoginForm() {
   const [magicLinkSent, setMagicLinkSent] = useState(false);
   const [loggingIn, setLoggingIn] = useState(false);
 
+  const searchParams = useSearchParams();
+  const redirectTo = searchParams.get("redirectTo") ?? "/portal/dashboard";
+
   const loginMutation = api.clientPortal.portal.login.useMutation({
     onSuccess: (data) => {
-      // Cookie is set server-side; redirect to portal
-      window.location.href = "/portal/dashboard";
+      document.cookie = `portal_session=${data.sessionToken}; path=/; max-age=${30 * 24 * 60 * 60}; samesite=lax`;
+      window.location.href = redirectTo;
     },
     onError: (error) => {
       setLoggingIn(false);
@@ -64,9 +68,9 @@ export function PortalLoginForm() {
             boxShadow: "0 4px 16px rgba(184,134,62,0.3)",
           }}
         >
-          L
+          {process.env.NEXT_PUBLIC_BRAND_INITIAL ?? "C"}
         </div>
-        <p className="text-[14px] font-medium" style={{ color: "var(--text-1)" }}>Luke Hodges</p>
+        <p className="text-[14px] font-medium" style={{ color: "var(--text-1)" }}>{process.env.NEXT_PUBLIC_BRAND_NAME ?? "Client Portal"}</p>
         <p className="text-[12px]" style={{ color: "var(--text-3)" }}>Client Portal</p>
       </div>
 
@@ -209,7 +213,12 @@ export function PortalLoginForm() {
           opacity: 0,
         }}
       >
-        Need help? <a href="mailto:luke@lukehodges.uk" className="underline" style={{ color: "var(--text-3)" }}>luke@lukehodges.uk</a>
+        Need help?{" "}
+        {process.env.NEXT_PUBLIC_CONTACT_EMAIL ? (
+          <a href={`mailto:${process.env.NEXT_PUBLIC_CONTACT_EMAIL}`} className="underline" style={{ color: "var(--text-3)" }}>
+            {process.env.NEXT_PUBLIC_CONTACT_EMAIL}
+          </a>
+        ) : "contact us"}
       </p>
     </div>
   );

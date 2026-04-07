@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { PortalLoginForm } from "@/components/portal/portal-login-form";
 
 export const metadata = {
@@ -5,5 +6,9 @@ export const metadata = {
 };
 
 export default function PortalLoginPage() {
-  return <PortalLoginForm />;
+  return (
+    <Suspense>
+      <PortalLoginForm />
+    </Suspense>
+  );
 }
