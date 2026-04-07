@@ -119,7 +119,15 @@ export const clientPortalService = {
       problemStatement: input.problemStatement,
       exclusions: input.exclusions,
       requirements: input.requirements,
-      roiData: input.roiData,
+      roiData: input.roiData
+        ? {
+            hoursPerWeek: input.roiData.hoursPerWeek,
+            automationPct: input.roiData.automationPct,
+            hourlyRate: input.roiData.hourlyRate,
+            additionalValueLabel: input.roiData.additionalValueLabel ?? null,
+            additionalValue: input.roiData.additionalValue ?? null,
+          }
+        : input.roiData,
     });
   },
 
