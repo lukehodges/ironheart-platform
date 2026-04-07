@@ -26,6 +26,8 @@ export default function ProposalPage({
 
   const approveMutation = api.clientPortal.portal.approveProposal.useMutation({
     onSuccess: (data) => {
+      // Set the portal session cookie so the client can access the dashboard
+      document.cookie = `portal_session=${data.sessionToken}; path=/; max-age=${30 * 24 * 60 * 60}; samesite=lax`;
       setSessionToken(data.sessionToken);
       setShowConfirm(false);
       refetch();
@@ -98,16 +100,20 @@ export default function ProposalPage({
 
   // Approved
   if (proposal.status === "APPROVED") {
-    const depositItem = proposal.paymentSchedule?.find(
-      (p) => p.dueType === "ON_APPROVAL"
-    );
+    // Check new relational paymentRules first, fall back to legacy JSONB
+    const depositRule = proposal.paymentRules?.find((r) => r.trigger === "ON_APPROVAL");
+    const depositAmount = depositRule?.amount ?? proposal.paymentSchedule?.find((p) => p.dueType === "ON_APPROVAL")?.amount;
+    const depositInvoice = depositRule
+      ? proposal.depositInvoices?.find((i) => i.sourcePaymentRuleId === depositRule.id)
+      : undefined;
     return (
       <ProposalLayout>
         <ProposalApproved
-          customerName="Client"
+          customerName={proposal.customerName ?? "Client"}
           engagementTitle={proposal.engagement.title}
-          depositAmount={depositItem?.amount}
+          depositAmount={depositAmount}
           sessionToken={sessionToken ?? undefined}
+          depositInvoiceId={depositInvoice?.id}
         />
       </ProposalLayout>
     );
@@ -118,7 +124,7 @@ export default function ProposalPage({
     return (
       <ProposalLayout>
         <ProposalDeclined
-          customerName="Client"
+          customerName={proposal.customerName ?? "Client"}
           proposalToken={token}
           onSubmitFeedback={handleDeclineFeedback}
         />
@@ -126,15 +132,17 @@ export default function ProposalPage({
     );
   }
 
-  // Draft (not yet sent)
+  // Draft — show preview with disabled actions
   if (proposal.status === "DRAFT") {
     return (
-      <ProposalLayout>
-        <div className="flex min-h-[60vh] items-center justify-center text-center">
-          <p className="text-[14px]" style={{ color: "var(--text-3)" }}>
-            This proposal hasn&apos;t been sent yet.
-          </p>
-        </div>
+      <ProposalLayout statusPill="Draft Preview" statusVariant="gray">
+        <ProposalView
+          proposal={proposal}
+          customerName={proposal.customerName ?? "Client"}
+          onApprove={() => {}}
+          onDecline={() => {}}
+          disabled
+        />
       </ProposalLayout>
     );
   }
@@ -144,7 +152,7 @@ export default function ProposalPage({
     <ProposalLayout statusPill="Awaiting Approval" statusVariant="amber">
       <ProposalView
         proposal={proposal}
-        customerName="Client"
+        customerName={proposal.customerName ?? "Client"}
         onApprove={() => setShowConfirm(true)}
         onDecline={() => declineMutation.mutate({ token })}
       />

@@ -73,6 +73,7 @@ export function EditEngagementSheet({ engagement, open, onOpenChange, onSuccess 
               <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="PROJECT">Project</SelectItem>
+                <SelectItem value="HYBRID">Hybrid</SelectItem>
                 <SelectItem value="RETAINER">Retainer</SelectItem>
               </SelectContent>
             </Select>
@@ -85,6 +86,7 @@ export function EditEngagementSheet({ engagement, open, onOpenChange, onSuccess 
                 <SelectItem value="DRAFT">Draft</SelectItem>
                 <SelectItem value="PROPOSED">Proposed</SelectItem>
                 <SelectItem value="ACTIVE">Active</SelectItem>
+                <SelectItem value="PAUSED">Paused</SelectItem>
                 <SelectItem value="COMPLETED">Completed</SelectItem>
                 <SelectItem value="CANCELLED">Cancelled</SelectItem>
               </SelectContent>

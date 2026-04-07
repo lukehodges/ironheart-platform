@@ -1,10 +1,13 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+
 interface ProposalApprovedProps {
   customerName: string;
   engagementTitle: string;
   depositAmount?: number;
   sessionToken?: string;
+  depositInvoiceId?: string;
 }
 
 export function ProposalApproved({
@@ -12,7 +15,9 @@ export function ProposalApproved({
   engagementTitle,
   depositAmount,
   sessionToken,
+  depositInvoiceId,
 }: ProposalApprovedProps) {
+  const router = useRouter();
   const firstName = customerName.split(" ")[0];
   const formattedDeposit = depositAmount
     ? new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP", minimumFractionDigits: 0 }).format(depositAmount / 100)
@@ -150,6 +155,13 @@ export function ProposalApproved({
             {formattedDeposit}
           </p>
           <button
+            onClick={() => {
+              if (depositInvoiceId) {
+                router.push(`/portal/invoices/${depositInvoiceId}/pay`);
+              } else {
+                router.push("/portal/dashboard");
+              }
+            }}
             className="mx-auto rounded-lg px-8 py-3 text-[14px] font-semibold text-white transition-transform hover:-translate-y-0.5"
             style={{
               background: "linear-gradient(135deg, var(--amber) 0%, var(--amber-bright) 100%)",
@@ -195,7 +207,7 @@ export function ProposalApproved({
       {/* Footer */}
       <footer className="mt-12 text-[13px]" style={{ color: "var(--text-4)" }}>
         <p>
-          Questions? <a href="mailto:luke@lukehodges.uk" className="underline transition-colors" style={{ color: "var(--amber)" }}>luke@lukehodges.uk</a>
+          Questions? Contact us.
         </p>
       </footer>
 

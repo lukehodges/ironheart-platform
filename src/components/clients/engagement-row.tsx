@@ -17,6 +17,7 @@ const STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive" | "
   ACTIVE: "default",
   PROPOSED: "secondary",
   DRAFT: "outline",
+  PAUSED: "outline",
   COMPLETED: "secondary",
   CANCELLED: "destructive",
 }
@@ -50,7 +51,7 @@ export function EngagementRow({ engagement }: EngagementRowProps) {
       <TableCell className="text-muted-foreground">{engagement.title}</TableCell>
       <TableCell>
         <Badge variant={engagement.type === "PROJECT" ? "default" : "outline"}>
-          {engagement.type === "PROJECT" ? "Project" : "Retainer"}
+          {engagement.type === "PROJECT" ? "Project" : engagement.type === "HYBRID" ? "Hybrid" : "Retainer"}
         </Badge>
       </TableCell>
       <TableCell>

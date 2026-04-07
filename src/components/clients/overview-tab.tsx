@@ -78,7 +78,7 @@ export function OverviewTab({
         </CardHeader>
         <CardContent className="space-y-0">
           {[
-            ["Type", engagement.type === "PROJECT" ? "Project (Fixed Price)" : "Retainer (Monthly)"],
+            ["Type", engagement.type === "PROJECT" ? "Project (Fixed Price)" : engagement.type === "HYBRID" ? "Hybrid" : "Retainer (Monthly)"],
             ["Start Date", formatDate(engagement.startDate)],
             ["Target Completion", formatDate(engagement.endDate)],
             ["Total Value", totalValue ? formatCurrency(totalValue) : "\u2014"],

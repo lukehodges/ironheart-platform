@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
-import { ChevronLeft, Pencil } from "lucide-react"
+import { ChevronLeft, Pencil, ExternalLink } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -29,6 +29,7 @@ const STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive" | "
   ACTIVE: "default",
   PROPOSED: "secondary",
   DRAFT: "outline",
+  PAUSED: "outline",
   COMPLETED: "secondary",
   CANCELLED: "destructive",
 }
@@ -88,17 +89,24 @@ export default function EngagementDetailPage() {
           <div className="flex items-center gap-2 mt-1">
             <span className="text-sm text-muted-foreground">{(engagement as any).customerName ?? "Client"}</span>
             <span className="text-border">|</span>
-            <Badge variant={engagement.type === "PROJECT" ? "default" : "outline"}>
-              {engagement.type === "PROJECT" ? "Project" : "Retainer"}
+            <Badge variant={engagement.type === "PROJECT" ? "default" : engagement.type === "HYBRID" ? "default" : "outline"}>
+              {engagement.type === "PROJECT" ? "Project" : engagement.type === "HYBRID" ? "Hybrid" : "Retainer"}
             </Badge>
             <Badge variant={STATUS_VARIANT[engagement.status] ?? "secondary"}>
               {engagement.status.charAt(0) + engagement.status.slice(1).toLowerCase()}
             </Badge>
           </div>
         </div>
-        <Button variant="outline" size="sm" onClick={() => setOpenDialog("editEngagement")}>
-          <Pencil className="h-3.5 w-3.5 mr-1.5" /> Edit
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" asChild>
+            <a href={`/portal/preview/${params.engagementId}`} target="_blank" rel="noopener noreferrer">
+              <ExternalLink className="h-3.5 w-3.5 mr-1.5" /> Client View
+            </a>
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setOpenDialog("editEngagement")}>
+            <Pencil className="h-3.5 w-3.5 mr-1.5" /> Edit
+          </Button>
+        </div>
       </div>
 
       {/* Tabs */}

@@ -21,8 +21,6 @@ import type {
   createInvoiceSchema,
   sendInvoiceSchema,
   markInvoicePaidSchema,
-  approveProposalSchema,
-  declineProposalSchema,
   respondToApprovalSchema,
   acceptDeliverableSchema,
   setPasswordSchema,
@@ -507,17 +505,34 @@ export const clientPortalService = {
     const engagement = await clientPortalRepository.findEngagementById(proposal.engagementId);
     if (!engagement) throw new NotFoundError("Engagement", proposal.engagementId);
 
-    const milestones = await clientPortalRepository.listMilestones(engagement.id);
+    const customer = await clientPortalRepository.findCustomerById(engagement.customerId);
+
+    const [milestones, enriched, invoices] = await Promise.all([
+      clientPortalRepository.listMilestones(engagement.id),
+      clientPortalRepository.getProposalWithSections(proposal.id),
+      proposal.status === "APPROVED"
+        ? clientPortalRepository.listInvoices(engagement.id)
+        : Promise.resolve([]),
+    ]);
 
     return {
       ...proposal,
+      sections: enriched?.sections ?? [],
+      paymentRules: enriched?.paymentRules ?? [],
       engagement: {
         id: engagement.id,
         title: engagement.title,
         customerId: engagement.customerId,
         status: engagement.status,
       },
+      customerName: customer ? [customer.firstName, customer.lastName].filter(Boolean).join(" ") || "Client" : "Client",
+      customerEmail: customer?.email ?? "",
       milestones,
+      depositInvoices: invoices.map((i) => ({
+        id: i.id,
+        amount: i.amount,
+        sourcePaymentRuleId: i.sourcePaymentRuleId,
+      })),
     };
   },
 
@@ -694,75 +709,6 @@ export const clientPortalService = {
     return updated;
   },
 
-  async approveProposal(portalCtx: PortalContext, input: z.infer<typeof approveProposalSchema>) {
-    const proposal = await clientPortalRepository.findProposal(input.proposalId);
-    if (!proposal) throw new NotFoundError("Proposal", input.proposalId);
-    if (proposal.status !== "SENT") throw new BadRequestError("Proposal cannot be approved");
-
-    // Verify client owns this engagement BEFORE updating proposal
-    const engagement = await clientPortalRepository.findEngagementByCustomer(
-      portalCtx.portalCustomerId,
-      proposal.engagementId,
-    );
-    if (!engagement) throw new NotFoundError("Engagement", proposal.engagementId);
-
-    // Update proposal
-    const updated = await clientPortalRepository.updateProposal(proposal.id, {
-      status: "APPROVED",
-      approvedAt: new Date(),
-    });
-
-    await clientPortalRepository.updateEngagement(engagement.tenantId, engagement.id, {
-      status: "ACTIVE",
-      startDate: new Date(),
-    });
-
-    await inngest.send({
-      name: "portal/proposal:approved",
-      data: {
-        proposalId: proposal.id,
-        engagementId: engagement.id,
-        customerId: engagement.customerId,
-        tenantId: engagement.tenantId,
-      },
-    });
-
-    log.info({ proposalId: proposal.id }, "Proposal approved by client");
-    return updated;
-  },
-
-  async declineProposal(portalCtx: PortalContext, input: z.infer<typeof declineProposalSchema>) {
-    const proposal = await clientPortalRepository.findProposal(input.proposalId);
-    if (!proposal) throw new NotFoundError("Proposal", input.proposalId);
-    if (proposal.status !== "SENT") throw new BadRequestError("Proposal cannot be declined");
-
-    // Verify client owns this engagement BEFORE updating proposal
-    const engagement = await clientPortalRepository.findEngagementByCustomer(
-      portalCtx.portalCustomerId,
-      proposal.engagementId,
-    );
-    if (!engagement) throw new NotFoundError("Engagement", proposal.engagementId);
-
-    const updated = await clientPortalRepository.updateProposal(proposal.id, {
-      status: "DECLINED",
-      declinedAt: new Date(),
-    });
-
-    await inngest.send({
-      name: "portal/proposal:declined",
-      data: {
-        proposalId: proposal.id,
-        engagementId: engagement.id,
-        customerId: engagement.customerId,
-        tenantId: engagement.tenantId,
-        feedback: input.feedback ?? null,
-      },
-    });
-
-    log.info({ proposalId: proposal.id }, "Proposal declined by client");
-    return updated;
-  },
-
   // ── Admin: Preview portal as client ────────────────────────────────
 
   async createPreviewSession(ctx: Context, engagementId: string): Promise<{ sessionToken: string }> {
@@ -788,6 +734,8 @@ export const clientPortalService = {
       input.engagementId,
     );
     if (!engagement) throw new NotFoundError("Engagement", input.engagementId);
+
+    const customer = await clientPortalRepository.findCustomerById(engagement.customerId);
 
     const [milestones, allDeliverables, allApprovals, allInvoices, proposalList] = await Promise.all([
       clientPortalRepository.listMilestones(engagement.id),
@@ -837,6 +785,8 @@ export const clientPortalService = {
 
     return {
       engagement,
+      customerName: customer ? [customer.firstName, customer.lastName].filter(Boolean).join(" ") || "Client" : "Client",
+      customerEmail: customer?.email ?? "",
       pendingApprovals,
       pendingInvoices,
       milestones,
@@ -963,7 +913,17 @@ export const clientPortalService = {
       return;
     }
     const { token } = await this.createMagicLinkSession(customer.id);
-    // TODO: Emit portal/magic-link:requested event to send email (needs new event type in inngest.ts)
-    log.info({ customerId: customer.id, token }, "Magic link created — email delivery pending event wiring");
+
+    await inngest.send({
+      name: "portal/magic-link:requested",
+      data: {
+        customerId: customer.id,
+        tenantId: customer.tenantId,
+        token,
+        email: input.email,
+      },
+    });
+
+    log.info({ customerId: customer.id }, "Magic link requested");
   },
 };
