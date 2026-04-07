@@ -79,10 +79,6 @@ function toProposal(row: ProposalRow): ProposalRecord {
     declinedAt: row.declinedAt ?? null,
     version: row.version,
     revisionOf: row.revisionOf ?? null,
-    problemStatement: row.problemStatement ?? null,
-    exclusions: (row.exclusions ?? []) as string[],
-    requirements: (row.requirements ?? []) as string[],
-    roiData: (row.roiData ?? null) as import("./client-portal.types").RoiData | null,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
@@ -693,15 +689,6 @@ export const clientPortalRepository = {
     return result[0] ?? null;
   },
 
-  async findCustomerById(id: string): Promise<{ id: string; firstName: string | null; lastName: string | null; email: string | null; tenantId: string } | null> {
-    const result = await db
-      .select({ id: customers.id, firstName: customers.firstName, lastName: customers.lastName, email: customers.email, tenantId: customers.tenantId })
-      .from(customers)
-      .where(eq(customers.id, id))
-      .limit(1);
-    return result[0] ?? null;
-  },
-
   async searchCustomers(
     tenantId: string,
     query: string,
@@ -741,19 +728,9 @@ export const clientPortalRepository = {
         this.listInvoices(id),
       ]);
 
-    // Enrich proposals with sections/items/rules
-    const enrichedProposals = await Promise.all(
-      proposalList.map(async (proposal) => {
-        const enriched = await this.getProposalWithSections(proposal.id);
-        return enriched
-          ? { ...proposal, sections: enriched.sections, paymentRules: enriched.paymentRules }
-          : proposal;
-      })
-    );
-
     return {
       ...engagement,
-      proposals: enrichedProposals,
+      proposals: proposalList,
       milestones: milestoneList,
       deliverables: deliverableList,
       approvals: approvalList,
