@@ -116,6 +116,10 @@ export const clientPortalService = {
       terms: input.terms,
       token,
       tokenExpiresAt,
+      problemStatement: input.problemStatement,
+      exclusions: input.exclusions,
+      requirements: input.requirements,
+      roiData: input.roiData,
     });
   },
 
