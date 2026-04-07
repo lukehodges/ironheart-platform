@@ -15,7 +15,7 @@ const paymentScheduleItemSchema = z.object({
 
 const roiDataSchema = z.object({
   hoursPerWeek: z.number().positive(),
-  automationPct: z.number().min(1).max(100),
+  automationPct: z.number().min(0).max(100),
   hourlyRate: z.number().int().positive(),
   additionalValueLabel: z.string().optional().nullable(),
   additionalValue: z.number().int().optional().nullable(),
