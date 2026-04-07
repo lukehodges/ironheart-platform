@@ -151,6 +151,10 @@ export const proposals = pgTable(
     declinedAt: timestamp({ precision: 3, mode: "date" }),
     version: integer().notNull().default(1),
     revisionOf: uuid(),
+    problemStatement: text(),
+    exclusions: jsonb().notNull().default(sql`'[]'::jsonb`),
+    requirements: jsonb().notNull().default(sql`'[]'::jsonb`),
+    roiData: jsonb(),
     createdAt: timestamp({ precision: 3, mode: "date" })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),

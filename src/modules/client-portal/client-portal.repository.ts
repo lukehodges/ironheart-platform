@@ -31,6 +31,7 @@ import type {
   PortalSessionRecord,
   ProposalDeliverable,
   PaymentScheduleItem,
+  RoiData,
 } from "./client-portal.types";
 
 const log = logger.child({ module: "client-portal.repository" });
@@ -79,6 +80,10 @@ function toProposal(row: ProposalRow): ProposalRecord {
     declinedAt: row.declinedAt ?? null,
     version: row.version,
     revisionOf: row.revisionOf ?? null,
+    problemStatement: row.problemStatement ?? null,
+    exclusions: (row.exclusions ?? []) as string[],
+    requirements: (row.requirements ?? []) as string[],
+    roiData: (row.roiData ?? null) as RoiData | null,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
