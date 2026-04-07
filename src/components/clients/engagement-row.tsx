@@ -1,17 +1,20 @@
 "use client"
 
 import { useRouter } from "next/navigation"
+import { toast } from "sonner"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { MoreHorizontal, Eye, Pencil, Archive } from "lucide-react"
+import { MoreHorizontal, Eye, Pencil, Archive, ExternalLink } from "lucide-react"
 import { TableRow, TableCell } from "@/components/ui/table"
 import type { EngagementWithCustomer } from "@/modules/client-portal/client-portal.types"
+import { api } from "@/lib/trpc/react"
 
 const STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
   ACTIVE: "default",
@@ -37,10 +40,28 @@ function formatRelativeTime(date: Date): string {
 
 interface EngagementRowProps {
   engagement: EngagementWithCustomer
+  onArchived?: () => void
 }
 
-export function EngagementRow({ engagement }: EngagementRowProps) {
+export function EngagementRow({ engagement, onArchived }: EngagementRowProps) {
   const router = useRouter()
+  const utils = api.useUtils()
+
+  const archiveMutation = api.clientPortal.admin.updateEngagement.useMutation({
+    onSuccess: () => {
+      toast.success("Engagement archived")
+      utils.clientPortal.admin.listEngagements.invalidate()
+      onArchived?.()
+    },
+    onError: (err) => toast.error(err.message),
+  })
+
+  function handleArchive(e: React.MouseEvent) {
+    e.stopPropagation()
+    if (window.confirm(`Archive "${engagement.title}"? This will set the status to Cancelled.`)) {
+      archiveMutation.mutate({ id: engagement.id, status: "CANCELLED" })
+    }
+  }
 
   return (
     <TableRow
@@ -70,13 +91,23 @@ export function EngagementRow({ engagement }: EngagementRowProps) {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => router.push(`/admin/clients/${engagement.id}`)}>
+            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); router.push(`/admin/clients/${engagement.id}`) }}>
               <Eye className="mr-2 h-4 w-4" /> View
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => router.push(`/admin/clients/${engagement.id}`)}>
+            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); router.push(`/admin/clients/${engagement.id}`) }}>
               <Pencil className="mr-2 h-4 w-4" /> Edit
             </DropdownMenuItem>
-            <DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={(e) => { e.stopPropagation(); window.open(`/portal/preview/${engagement.id}`, "_blank") }}
+            >
+              <ExternalLink className="mr-2 h-4 w-4" /> View Portal
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              className="text-destructive focus:text-destructive"
+              onClick={handleArchive}
+              disabled={archiveMutation.isPending || engagement.status === "CANCELLED"}
+            >
               <Archive className="mr-2 h-4 w-4" /> Archive
             </DropdownMenuItem>
           </DropdownMenuContent>
