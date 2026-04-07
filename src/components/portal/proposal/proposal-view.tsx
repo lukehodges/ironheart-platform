@@ -109,6 +109,33 @@ export function ProposalView({ proposal, customerName, onApprove, onDecline }: P
         />
       </div>
 
+      {/* Problem Statement section */}
+      {proposal.problemStatement && (
+        <section className="reveal mb-12 opacity-0 transition-all duration-700 ease-out translate-y-5 [&.visible]:opacity-100 [&.visible]:translate-y-0">
+          <h2
+            className="mb-4 text-[12px] font-semibold uppercase tracking-[0.15em]"
+            style={{ color: "var(--amber)" }}
+          >
+            The Problem
+          </h2>
+          <blockquote
+            className="border-l-2 pl-5 text-[16px] leading-[1.85]"
+            style={{
+              borderColor: "var(--amber)",
+              color: "var(--text-1)",
+              fontFamily: "var(--font-heading)",
+              fontStyle: "italic",
+              fontWeight: 300,
+              background: "rgba(184,134,62,0.04)",
+              padding: "20px 20px 20px 24px",
+              borderRadius: "0 6px 6px 0",
+            }}
+          >
+            &ldquo;{proposal.problemStatement}&rdquo;
+          </blockquote>
+        </section>
+      )}
+
       {/* Scope section */}
       {proposal.scope && (
         <section className="reveal mb-12 opacity-0 transition-all duration-700 ease-out translate-y-5 [&.visible]:opacity-100 [&.visible]:translate-y-0">
@@ -166,6 +193,73 @@ export function ProposalView({ proposal, customerName, onApprove, onDecline }: P
                 </div>
               </div>
             ))}
+          </div>
+        </section>
+      )}
+
+      {/* Exclusions section */}
+      {proposal.exclusions && proposal.exclusions.length > 0 && (
+        <section className="reveal mb-12 opacity-0 transition-all duration-700 ease-out translate-y-5 [&.visible]:opacity-100 [&.visible]:translate-y-0">
+          <h2
+            className="mb-4 text-[12px] font-semibold uppercase tracking-[0.15em]"
+            style={{ color: "var(--amber)" }}
+          >
+            What&apos;s Not Included
+          </h2>
+          <div
+            className="rounded-xl border p-5"
+            style={{ borderColor: "var(--border)", background: "var(--bg-card)" }}
+          >
+            <ul className="flex flex-col gap-2.5">
+              {proposal.exclusions.map((ex, i) => (
+                <li key={i} className="flex items-start gap-3 text-[14px]" style={{ color: "var(--text-3)" }}>
+                  <span className="mt-0.5 shrink-0" style={{ color: "var(--text-4)" }}>—</span>
+                  {ex}
+                </li>
+              ))}
+            </ul>
+            <p
+              className="mt-4 pt-4 text-[12px] leading-[1.6]"
+              style={{ borderTop: "1px solid var(--border)", color: "var(--text-4)" }}
+            >
+              Any additional work identified during the project will be discussed and priced separately before proceeding.
+            </p>
+          </div>
+        </section>
+      )}
+
+      {/* Requirements section */}
+      {proposal.requirements && proposal.requirements.length > 0 && (
+        <section className="reveal mb-12 opacity-0 transition-all duration-700 ease-out translate-y-5 [&.visible]:opacity-100 [&.visible]:translate-y-0">
+          <h2
+            className="mb-4 text-[12px] font-semibold uppercase tracking-[0.15em]"
+            style={{ color: "var(--amber)" }}
+          >
+            What We Need From You
+          </h2>
+          <div
+            className="rounded-xl border p-5"
+            style={{ borderColor: "var(--border)", background: "var(--bg-card)" }}
+          >
+            <ul className="flex flex-col gap-3">
+              {proposal.requirements.map((req, i) => (
+                <li key={i} className="flex items-start gap-3 text-[14px]" style={{ color: "var(--text-2)" }}>
+                  <div
+                    className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold"
+                    style={{ border: "1.5px solid var(--amber-border)", color: "var(--amber)", background: "var(--amber-dim)", marginTop: "1px" }}
+                  >
+                    {i + 1}
+                  </div>
+                  {req}
+                </li>
+              ))}
+            </ul>
+            <p
+              className="mt-4 pt-4 text-[12px]"
+              style={{ borderTop: "1px solid var(--border)", color: "var(--text-4)" }}
+            >
+              Please provide the above within 2 business days of kickoff. Delays may affect the timeline.
+            </p>
           </div>
         </section>
       )}
@@ -230,6 +324,68 @@ export function ProposalView({ proposal, customerName, onApprove, onDecline }: P
                 );
               })}
             </div>
+          </div>
+        </section>
+      )}
+
+      {/* ROI section */}
+      {proposal.roiData && (
+        <section className="reveal mb-12 opacity-0 transition-all duration-700 ease-out translate-y-5 [&.visible]:opacity-100 [&.visible]:translate-y-0">
+          <h2
+            className="mb-6 text-[12px] font-semibold uppercase tracking-[0.15em]"
+            style={{ color: "var(--amber)" }}
+          >
+            Return on Investment
+          </h2>
+          <div
+            className="overflow-hidden rounded-xl border"
+            style={{ borderColor: "var(--border)" }}
+          >
+            {(() => {
+              const roi = proposal.roiData!;
+              const annualValue = Math.round(roi.hoursPerWeek * roi.hourlyRate * 52 * (roi.automationPct / 100));
+              const totalValue = annualValue + (roi.additionalValue ?? 0);
+              const feeRatio = proposal.price > 0 && totalValue > 0 ? Math.round((proposal.price / totalValue) * 100) : null;
+              const paybackMonths = proposal.price > 0 && totalValue > 0 ? Math.ceil((proposal.price / totalValue) * 12) : null;
+              return (
+                <>
+                  <div style={{ borderBottom: "1px solid var(--border)" }}>
+                    {[
+                      ["Time currently spent", `${roi.hoursPerWeek} hrs / week`],
+                      ["Percentage automated", `${roi.automationPct}%`],
+                      ["Staff hourly cost", formattedPrice.format(roi.hourlyRate / 100)],
+                      ["Annual time value recovered", `~${formattedPrice.format(annualValue / 100)} / year`],
+                      ...(roi.additionalValue && roi.additionalValueLabel
+                        ? [[roi.additionalValueLabel, `+${formattedPrice.format(roi.additionalValue / 100)} / year`]]
+                        : []),
+                    ].map(([label, value], i, arr) => (
+                      <div
+                        key={i}
+                        className="flex items-center justify-between px-5 py-3"
+                        style={{ borderBottom: i < arr.length - 1 ? "1px solid var(--border-light)" : undefined }}
+                      >
+                        <span className="text-[13px]" style={{ color: "var(--text-3)" }}>{label}</span>
+                        <span className="text-[13px]" style={{ color: "var(--text-1)" }}>{value}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="px-5 py-4" style={{ background: "rgba(184,134,62,0.04)" }}>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-[13px] font-semibold" style={{ color: "var(--text-1)" }}>
+                          Total annual value: {formattedPrice.format(totalValue / 100)}
+                        </p>
+                        {feeRatio !== null && paybackMonths !== null && (
+                          <p className="text-[12px] mt-0.5" style={{ color: "var(--text-4)" }}>
+                            Project fee is ~{feeRatio}% of year-one value — pays for itself in {paybackMonths} month{paybackMonths !== 1 ? "s" : ""}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </>
+              );
+            })()}
           </div>
         </section>
       )}
