@@ -200,6 +200,51 @@ describe("clientPortalService", () => {
 
   // ── Proposals ──────────────────────────────────────────────────────
 
+  describe("createProposal", () => {
+    it("passes problem statement, exclusions, requirements and ROI data through to the repository", async () => {
+      const engagement = makeEngagement();
+      const roiData = {
+        hoursPerWeek: 8,
+        automationPct: 80,
+        hourlyRate: 2200,
+        additionalValueLabel: "Error reduction",
+        additionalValue: 200000,
+      };
+      vi.mocked(clientPortalRepository.findEngagement).mockResolvedValue(engagement);
+      vi.mocked(clientPortalRepository.createProposal).mockResolvedValue({
+        ...makeProposal(),
+        problemStatement: "Staff spend 8 hours a week on manual onboarding",
+        exclusions: ["CRM changes", "New branding"],
+        requirements: ["Admin access to Airtable", "Sample data"],
+        roiData,
+      });
+
+      const result = await clientPortalService.createProposal(makeCtx(), {
+        engagementId: engagement.id,
+        scope: "Automate client onboarding",
+        deliverables: [],
+        price: 0,
+        paymentSchedule: [],
+        problemStatement: "Staff spend 8 hours a week on manual onboarding",
+        exclusions: ["CRM changes", "New branding"],
+        requirements: ["Admin access to Airtable", "Sample data"],
+        roiData,
+      });
+
+      expect(clientPortalRepository.createProposal).toHaveBeenCalledWith(
+        expect.objectContaining({
+          problemStatement: "Staff spend 8 hours a week on manual onboarding",
+          exclusions: ["CRM changes", "New branding"],
+          requirements: ["Admin access to Airtable", "Sample data"],
+          roiData,
+        })
+      );
+      expect(result.problemStatement).toBe("Staff spend 8 hours a week on manual onboarding");
+      expect(result.exclusions).toEqual(["CRM changes", "New branding"]);
+      expect(result.roiData?.hoursPerWeek).toBe(8);
+    });
+  });
+
   describe("sendProposal", () => {
     it("should send a draft proposal and emit event", async () => {
       const proposal = makeProposal({ status: "DRAFT" });
