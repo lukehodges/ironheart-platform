@@ -680,6 +680,15 @@ export const clientPortalRepository = {
       });
   },
 
+  async findCustomerById(id: string): Promise<{ id: string; firstName: string | null; lastName: string | null; email: string | null; tenantId: string } | null> {
+    const result = await db
+      .select({ id: customers.id, firstName: customers.firstName, lastName: customers.lastName, email: customers.email, tenantId: customers.tenantId })
+      .from(customers)
+      .where(eq(customers.id, id))
+      .limit(1);
+    return result[0] ?? null;
+  },
+
   async findCustomerByEmail(email: string): Promise<{ id: string; tenantId: string } | null> {
     const result = await db
       .select({ id: customers.id, tenantId: customers.tenantId })

@@ -68,7 +68,7 @@ export default function PortalDashboardLayout({
 
   // Customer info from dashboard data
   const customerInitials = customerName !== "Client"
-    ? customerName.split(" ").map(n => n.charAt(0).toUpperCase()).join("").slice(0, 2)
+    ? customerName.split(" ").map((n: string) => n.charAt(0).toUpperCase()).join("").slice(0, 2)
     : "C";
 
   return (

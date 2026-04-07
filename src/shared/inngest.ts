@@ -363,6 +363,9 @@ type IronheartEvents = {
   "portal/milestone:completed": {
     data: { milestoneId: string; engagementId: string; tenantId: string; customerId: string };
   };
+  "portal/magic-link:requested": {
+    data: { customerId: string; email: string; token: string; tenantId: string };
+  };
 };
 
 /**

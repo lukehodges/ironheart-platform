@@ -17,6 +17,7 @@ interface ProposalViewProps {
   customerName: string;
   onApprove: () => void;
   onDecline: () => void;
+  disabled?: boolean;
 }
 
 export function ProposalView({ proposal, customerName, onApprove, onDecline }: ProposalViewProps) {

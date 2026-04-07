@@ -228,6 +228,8 @@ export interface FinancialSummary {
 
 export interface PortalDashboard {
   engagement: EngagementRecord;
+  customerName: string;
+  customerEmail: string;
   pendingApprovals: ApprovalRequestRecord[];
   pendingInvoices: PortalInvoiceRecord[];
   milestones: MilestoneRecord[];
