@@ -271,6 +271,14 @@ describe("clientPortalService", () => {
         expect.objectContaining({ name: "portal/proposal:approved" })
       );
     });
+
+    it("should throw NotFoundError when proposal does not exist", async () => {
+      vi.mocked(clientPortalRepository.findProposal).mockResolvedValue(null);
+
+      await expect(
+        clientPortalService.approveProposal(makePortalCtx(), { proposalId: "missing-id" })
+      ).rejects.toThrow(NotFoundError);
+    });
   });
 
   // ── Portal: Auth ───────────────────────────────────────────────────

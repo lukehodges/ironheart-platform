@@ -38,6 +38,7 @@ import type {
   updatePaymentRuleSchema,
   deletePaymentRuleSchema,
   voidInvoiceSchema,
+  approveProposalSchema,
 } from "./client-portal.schemas";
 import type { ActivityItem, PortalDashboard } from "./client-portal.types";
 
@@ -534,6 +535,41 @@ export const clientPortalService = {
         sourcePaymentRuleId: i.sourcePaymentRuleId,
       })),
     };
+  },
+
+  async approveProposal(portalCtx: PortalContext, input: z.infer<typeof approveProposalSchema>) {
+    const proposal = await clientPortalRepository.findProposal(input.proposalId);
+    if (!proposal) throw new NotFoundError("Proposal", input.proposalId);
+    if (proposal.status !== "SENT") throw new BadRequestError("Proposal cannot be approved");
+
+    const engagement = await clientPortalRepository.findEngagementByCustomer(
+      portalCtx.portalCustomerId,
+      proposal.engagementId,
+    );
+    if (!engagement) throw new NotFoundError("Engagement", proposal.engagementId);
+
+    const updated = await clientPortalRepository.updateProposal(proposal.id, {
+      status: "APPROVED",
+      approvedAt: new Date(),
+    });
+
+    await clientPortalRepository.updateEngagement(engagement.tenantId, engagement.id, {
+      status: "ACTIVE",
+      activeProposalId: proposal.id,
+    });
+
+    await inngest.send({
+      name: "portal/proposal:approved",
+      data: {
+        proposalId: proposal.id,
+        engagementId: engagement.id,
+        customerId: engagement.customerId,
+        tenantId: engagement.tenantId,
+      },
+    });
+
+    log.info({ proposalId: proposal.id, engagementId: engagement.id }, "Proposal approved via portal session");
+    return updated;
   },
 
   async approveProposalByToken(token: string) {
