@@ -27,6 +27,14 @@ export interface PaymentScheduleItem {
   dueType: PaymentDueType;
 }
 
+export interface RoiData {
+  hoursPerWeek: number;
+  automationPct: number;    // e.g. 80 (not 0.8)
+  hourlyRate: number;       // in pence, consistent with rest of system
+  additionalValueLabel: string | null;
+  additionalValue: number | null;  // in pence
+}
+
 // ── Domain records ───────────────────────────────────────────────────────
 
 export interface EngagementRecord {
@@ -65,6 +73,10 @@ export interface ProposalRecord {
   declinedAt: Date | null;
   version: number;
   revisionOf: string | null;
+  problemStatement: string | null;
+  exclusions: string[];
+  requirements: string[];
+  roiData: RoiData | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -228,6 +240,8 @@ export interface FinancialSummary {
 
 export interface PortalDashboard {
   engagement: EngagementRecord;
+  customerName: string;
+  customerEmail: string;
   pendingApprovals: ApprovalRequestRecord[];
   pendingInvoices: PortalInvoiceRecord[];
   milestones: MilestoneRecord[];

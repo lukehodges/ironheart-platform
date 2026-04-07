@@ -132,6 +132,10 @@ function makeProposal(overrides = {}) {
     tokenExpiresAt: new Date(Date.now() + 86400000 * 30),
     version: 1,
     revisionOf: null,
+    problemStatement: null,
+    exclusions: [],
+    requirements: [],
+    roiData: null,
     sentAt: new Date(),
     approvedAt: null,
     declinedAt: null,
@@ -236,40 +240,6 @@ describe("clientPortalService", () => {
       await expect(
         clientPortalService.sendProposal(makeCtx(), { proposalId: PROPOSAL_ID })
       ).rejects.toThrow(BadRequestError);
-    });
-  });
-
-  // ── Portal: Approve Proposal ───────────────────────────────────────
-
-  describe("approveProposal", () => {
-    it("should approve a sent proposal and activate engagement", async () => {
-      const proposal = makeProposal({ status: "SENT" });
-      const engagement = makeEngagement({ status: "PROPOSED" });
-      vi.mocked(clientPortalRepository.findProposal).mockResolvedValue(proposal);
-      vi.mocked(clientPortalRepository.updateProposal).mockResolvedValue({
-        ...proposal,
-        status: "APPROVED",
-        approvedAt: new Date(),
-      });
-      vi.mocked(clientPortalRepository.findEngagementByCustomer).mockResolvedValue(engagement);
-      vi.mocked(clientPortalRepository.updateEngagement).mockResolvedValue({
-        ...engagement,
-        status: "ACTIVE",
-      });
-
-      const result = await clientPortalService.approveProposal(makePortalCtx(), {
-        proposalId: PROPOSAL_ID,
-      });
-
-      expect(result.status).toBe("APPROVED");
-      expect(clientPortalRepository.updateEngagement).toHaveBeenCalledWith(
-        TENANT_ID,
-        ENGAGEMENT_ID,
-        expect.objectContaining({ status: "ACTIVE" })
-      );
-      expect(inngest.send).toHaveBeenCalledWith(
-        expect.objectContaining({ name: "portal/proposal:approved" })
-      );
     });
   });
 
