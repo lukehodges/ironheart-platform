@@ -106,7 +106,7 @@ export default function NewProposalPage() {
     problemStatement: problemStatement.trim() || undefined,
     exclusions: exclusions.filter(e => e.trim()).map(e => e.trim()),
     requirements: requirements.filter(r => r.trim()).map(r => r.trim()),
-    roiData: roiData.hoursPerWeek && roiData.hourlyRate ? {
+    roiData: roiData.hoursPerWeek && roiData.hourlyRate && parseFloat(roiData.automationPct) > 0 ? {
       hoursPerWeek: parseFloat(roiData.hoursPerWeek),
       automationPct: parseFloat(roiData.automationPct),
       hourlyRate: parseCurrencyInput(roiData.hourlyRate),
