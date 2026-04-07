@@ -374,6 +374,10 @@ export const clientPortalRepository = {
     terms?: string | null;
     token: string;
     tokenExpiresAt: Date;
+    problemStatement?: string | null;
+    exclusions?: string[];
+    requirements?: string[];
+    roiData?: RoiData | null;
   }): Promise<ProposalRecord> {
     const now = new Date();
     const [row] = await db
@@ -387,6 +391,10 @@ export const clientPortalRepository = {
         terms: input.terms ?? null,
         token: input.token,
         tokenExpiresAt: input.tokenExpiresAt,
+        problemStatement: input.problemStatement ?? null,
+        exclusions: input.exclusions ?? [],
+        requirements: input.requirements ?? [],
+        roiData: input.roiData ?? null,
         createdAt: now,
         updatedAt: now,
       })
@@ -397,7 +405,16 @@ export const clientPortalRepository = {
 
   async updateProposal(
     id: string,
-    updates: Partial<{ status: string; sentAt: Date; approvedAt: Date; declinedAt: Date }>
+    updates: Partial<{
+      status: string;
+      sentAt: Date;
+      approvedAt: Date;
+      declinedAt: Date;
+      problemStatement: string | null;
+      exclusions: string[];
+      requirements: string[];
+      roiData: RoiData | null;
+    }>
   ): Promise<ProposalRecord> {
     const [row] = await db
       .update(proposals)
