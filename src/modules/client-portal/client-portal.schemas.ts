@@ -13,6 +13,14 @@ const paymentScheduleItemSchema = z.object({
   dueType: z.enum(["ON_APPROVAL", "ON_DATE", "ON_MILESTONE", "ON_COMPLETION"]),
 });
 
+const roiDataSchema = z.object({
+  hoursPerWeek: z.number().positive(),
+  automationPct: z.number().min(1).max(100),
+  hourlyRate: z.number().int().positive(),
+  additionalValueLabel: z.string().optional().nullable(),
+  additionalValue: z.number().int().optional().nullable(),
+});
+
 // ── Admin: Engagements ───────────────────────────────────────────────────
 
 export const createEngagementSchema = z.object({
@@ -55,6 +63,10 @@ export const createProposalSchema = z.object({
   price: z.number().int().default(0),
   paymentSchedule: z.array(paymentScheduleItemSchema).default([]),
   terms: z.string().optional().nullable(),
+  problemStatement: z.string().optional().nullable(),
+  exclusions: z.array(z.string()).default([]),
+  requirements: z.array(z.string()).default([]),
+  roiData: roiDataSchema.optional().nullable(),
 });
 
 export const sendProposalSchema = z.object({
