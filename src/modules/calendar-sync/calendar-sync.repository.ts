@@ -31,10 +31,11 @@
  */
 
 import { db } from '@/shared/db'
-import { eq, and, lt, isNotNull } from 'drizzle-orm'
+import { eq, and, lt, isNotNull, desc } from 'drizzle-orm'
 import {
   userIntegrations,
   userExternalEvents,
+  userIntegrationSyncLogs,
   bookings,
   customers,
   services,
@@ -415,6 +416,31 @@ export const calendarSyncRepository = {
         : null,
       tenant: row.tenantName ? { name: row.tenantName } : null,
     }
+  },
+
+  /**
+   * Find the most recent successful BOOKING_PUSH sync log for a booking.
+   * Used by cancelBookingFromCalendar to look up the external calendar event ID.
+   */
+  async findSyncLogByBooking(
+    bookingId: string,
+    userIntegrationId: string
+  ): Promise<{ externalId: string | null } | null> {
+    const [row] = await db
+      .select({ externalId: userIntegrationSyncLogs.externalId })
+      .from(userIntegrationSyncLogs)
+      .where(
+        and(
+          eq(userIntegrationSyncLogs.userIntegrationId, userIntegrationId),
+          eq(userIntegrationSyncLogs.entityId, bookingId),
+          eq(userIntegrationSyncLogs.syncType, 'BOOKING_PUSH'),
+          eq(userIntegrationSyncLogs.status, 'SUCCESS')
+        )
+      )
+      .orderBy(desc(userIntegrationSyncLogs.startedAt))
+      .limit(1)
+
+    return row ?? null
   },
 }
 

@@ -13,6 +13,8 @@
  */
 
 import { logger } from '@/shared/logger'
+import { db } from '@/shared/db'
+import { userIntegrationSyncLogs } from '@/shared/db/schema'
 import { calendarSyncRepository } from './calendar-sync.repository'
 import { getCalendarProvider } from './lib/provider-factory'
 import { bookingToCalendarEvent } from './lib/calendar-event-mapper'
@@ -90,12 +92,68 @@ export const calendarSyncService = {
       rawData: calendarEvent.raw,
     })
 
+    // Write audit sync log so we can find this event ID later (e.g. for cancellation)
+    const syncedAt = new Date()
+    await db.insert(userIntegrationSyncLogs).values({
+      id: crypto.randomUUID(),
+      userIntegrationId: integration.id,
+      syncType: 'BOOKING_PUSH',
+      direction: 'PUSH',
+      status: 'SUCCESS',
+      entityType: 'booking',
+      entityId: bookingId,
+      externalId: calendarEvent.externalId,
+      itemsProcessed: 1,
+      itemsSucceeded: 1,
+      itemsFailed: 0,
+      startedAt: syncedAt,
+      completedAt: syncedAt,
+      durationMs: 0,
+    }).onConflictDoNothing()
+
     log.info({ bookingId, externalEventId: calendarEvent.externalId }, 'Booking pushed to calendar')
 
     return {
       externalEventId: calendarEvent.externalId,
       calendarId,
       provider: integration.provider,
+    }
+  },
+
+  /**
+   * Delete a booking's calendar event when the booking is cancelled.
+   * Looks up the external event ID from the sync log written by pushBookingToCalendar.
+   */
+  async cancelBookingFromCalendar(
+    bookingId: string,
+    userId: string,
+    tenantId: string
+  ): Promise<{ deleted: boolean }> {
+    const integration = await calendarSyncRepository.findUserIntegration(userId, tenantId)
+    if (!integration || (integration.status as string) !== 'CONNECTED') {
+      log.info({ userId, tenantId }, 'No active calendar integration — skipping cancel')
+      return { deleted: false }
+    }
+
+    const syncLog = await calendarSyncRepository.findSyncLogByBooking(bookingId, integration.id)
+    if (!syncLog?.externalId) {
+      log.info({ bookingId }, 'No sync log found for booking — event may not have been pushed')
+      return { deleted: false }
+    }
+
+    const tokens = await getValidTokens(integration)
+    if (!tokens) return { deleted: false }
+
+    const provider = await getCalendarProvider(integration.provider)
+    const calendarId = integration.calendarId ?? 'primary'
+
+    try {
+      await provider.deleteEvent(tokens, calendarId, syncLog.externalId)
+      log.info({ bookingId, externalId: syncLog.externalId }, 'Calendar event deleted for cancelled booking')
+      return { deleted: true }
+    } catch (err) {
+      log.warn({ bookingId, err }, 'Failed to delete calendar event for cancelled booking')
+      return { deleted: false }
     }
   },
 
