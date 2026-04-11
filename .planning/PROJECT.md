@@ -1,121 +1,87 @@
-# Ironheart Refactor — Project Brief
+# Ironheart — Project Brief
 
 ## What This Is
 
-A fresh, clean implementation of the Ironheart SaaS platform using a modular monolith architecture. The legacy codebase (`/Users/lukehodges/Documents/ironheart`) remains in production for existing clients. This new codebase will become the platform that scales to multiple industry verticals (booking, carbon credits, cricket stadium ERP, etc.).
+A universal SaaS platform for any service business. Started as a party entertainment booking tool (Cotswold Entertainers), now being transformed into a multi-vertical platform where engines + config replace features + clients. New verticals are onboarded through configuration, not code.
 
-## Reference Codebase
+## Core Value
 
-The legacy codebase at `/Users/lukehodges/Documents/ironheart` contains:
-- 112k LOC, 42 Prisma models, 27 tRPC routers
-- Correct business logic — booking flows, slot locking, RBAC, Google Calendar two-way sync, multi-tenant isolation
-- Everything can be read for reference and copied where it saves time
-- **Do not modify the legacy codebase**
+**Engines + config, never features + clients.** Every piece of client-specific logic must become a row in a database table.
 
-## Target Stack
+## Current Milestone: v2.0 Universal Platform
 
-| Layer | Technology |
-|-------|-----------|
-| Framework | Next.js 16 (App Router) |
-| API | tRPC 11 |
-| ORM | Drizzle ORM + drizzle-kit |
-| Database | PostgreSQL (same DB as legacy) |
-| Auth | WorkOS AuthKit (replaces NextAuth + custom JWT) |
-| Background Jobs | Inngest (replaces 6 Vercel crons) |
-| Cache / Rate Limiting | Upstash Redis |
-| Email | Resend + React Email |
-| SMS | Twilio |
-| Monitoring | Sentry + Pino structured logging |
-| Frontend | React 19, Tailwind CSS 4 |
-| Hosting | Vercel |
+**Goal:** Replace the booking-centric, Cotswold-specific data model with a universal platform capable of handling any service business type, any resource type, any job pattern, and any billing model.
 
-## Module Structure (target)
+**Target features:**
+- Universal data model (jobs, resources, addresses, customerContacts)
+- Rule-based payment split engine (no hardcode)
+- DB-driven notification engine (no hardcode)
+- Route jobs with multi-stop optimisation
+- Recurring contracts with rrule scheduling
+- Classes & memberships with capacity management
+- Field service billing (time & materials)
+- Projects & CRM pipeline
 
-```
-src/
-  modules/
-    booking/
-      booking.router.ts         ← thin: validate → call service → return
-      booking.service.ts         ← business logic
-      booking.repository.ts      ← all Prisma calls
-      booking.events.ts          ← Inngest event handlers
-      booking.schemas.ts         ← Zod schemas
-    scheduling/
-    notification/
-    calendar-sync/
-    workflow/
-    tenant/
-    auth/
-    customer/
-    review/
-    forms/
-    staff/
-    portal/
-  shared/
-    db.ts                        ← Prisma client
-    inngest.ts                   ← Inngest client + typed event catalog
-    redis.ts                     ← Upstash Redis client
-    logger.ts                    ← Pino structured logging
-    errors.ts                    ← Custom error types
-    trpc.ts                      ← tRPC context + middleware
-```
+## Requirements
 
-## Architectural Rules
+### Validated
 
-1. **Routers are thin** — validate input, call service, return result. No business logic, no DB calls.
-2. **Services contain business logic** — orchestrate repository calls, emit Inngest events.
-3. **Repositories isolate DB access** — only place Prisma is called. Testable in isolation.
-4. **Side effects are async** — email, SMS, calendar sync, analytics all happen via Inngest handlers, not in the request path.
-5. **Modules communicate via events** — booking module emits `booking/created`, notification module listens. No direct cross-module imports.
-6. **Tenant isolation via row-level filtering** — tenantId on every query (same as legacy, no schema-per-tenant).
+<!-- Shipped in v1.0: modular monolith foundation -->
 
-## Event Catalog (Inngest)
+- ✓ Next.js 16 + tRPC 11 + Drizzle ORM scaffold — v1.0
+- ✓ WorkOS AuthKit auth with RBAC and tenant isolation — v1.0
+- ✓ Booking module (jobs, slot locking, Google Calendar sync) — v1.0
+- ✓ Scheduling module (availability, smart assignment, slot locking) — v1.0
+- ✓ Notification module (Inngest-driven, Resend + Twilio) — v1.0
+- ✓ Workflow engine (linear + graph, visual designer) — v1.0
+- ✓ Team, customer, forms, review, tenant, platform modules — v1.0
+- ✓ 224 tests passing, tsc clean, build passing — v1.0
+- ✓ Inngest integration hub wired into root router — v1.0
 
-```typescript
-type IronheartEvents = {
-  "booking/created":             { bookingId: string; tenantId: string }
-  "booking/confirmed":           { bookingId: string; tenantId: string }
-  "booking/cancelled":           { bookingId: string; tenantId: string; reason?: string }
-  "booking/completed":           { bookingId: string; tenantId: string }
-  "booking/reservation.expired": { bookingId: string; tenantId: string }
-  "slot/reserved":               { slotId: string; tenantId: string; expiresAt: string }
-  "slot/released":               { slotId: string; tenantId: string }
-  "notification/send.email":     { to: string; templateId: string; variables: Record<string, string> }
-  "notification/send.sms":       { to: string; templateId: string; variables: Record<string, string> }
-  "calendar/sync.push":          { bookingId: string; userId: string }
-  "calendar/sync.pull":          { userId: string }
-  "calendar/webhook.received":   { channelId: string; resourceId: string }
-  "workflow/trigger":            { workflowId: string; event: string; data: Record<string, unknown> }
-  "review/request.send":         { bookingId: string; customerId: string; delay?: string }
-}
-```
+### Active
 
-## Cron → Inngest Migration
+<!-- v2.0 Universal Platform scope -->
 
-| Legacy Vercel Cron | Inngest Replacement |
-|-------------------|---------------------|
-| release-slots (every 1min) | Delayed event at exact expiry time |
-| send-reminders (every 15min) | Scheduled on booking confirm |
-| sync-calendars (every 5min) | Inngest cron with per-user concurrency |
-| pull-calendar-events (every 15min) | Inngest cron with pagination + retry |
-| refresh-calendar-tokens (every 30min) | Inngest cron |
-| renew-watch-channels (daily 2am) | Inngest cron |
+See `.planning/REQUIREMENTS.md` for full REQ-ID list.
 
-## What NOT to Do
+### Out of Scope
 
-- No microservices — single deployable unit
-- No Convex — wrong data model for 42 relational entities
-- No schema-per-tenant — row-level isolation is correct
-- No GraphQL — tRPC already gives type safety
-- No BullMQ — requires separate worker process outside Vercel
-- No rewriting business logic that already works — copy from legacy codebase
+- Mobile-native apps — web-first, mobile PWA only
+- AI/ML features — not in v2.0 scope
+- Multi-region DB sharding — row-level isolation is sufficient
+- GraphQL — tRPC already gives type safety
+- BullMQ — requires separate worker, incompatible with Vercel
 
-## Phase Plan
+## Context
 
-- **Phase 0**: Scaffolding + Foundation (current focus)
-- **Phase 1**: Booking module
-- **Phase 2**: Scheduling module + remaining crons
-- **Phase 3**: Auth migration (WorkOS AuthKit)
-- **Phase 4**: Notification + Calendar-sync modules
-- **Phase 5**: Remaining modules
-- **Phase 6**: Hardening
+**Reference codebase:** `/Users/lukehodges/Documents/ironheart` — 112k LOC, 42 Prisma models, 27 tRPC routers. Contains correct business logic. Read for reference, never modify.
+
+**Existing clients:** Cotswold Entertainers is on the legacy codebase. No obligation to port UI gaps or maintain parity. Build for the long term.
+
+**Phase sequencing:** Phases 1→2→3 must be sequential (each is a dependency). Phases 4–8 are independent and can be parallelised after Phase 1 completes.
+
+**Phase 1 scope:** Wide — touches every module that references `bookings` or `staffId`. The 224 existing tests are the safety net.
+
+## Constraints
+
+- **Tech stack**: Next.js 16, tRPC 11, Drizzle ORM, postgres.js, WorkOS AuthKit, Inngest, Upstash Redis, Sentry, Pino, React 19, Tailwind 4 — locked
+- **Database**: PostgreSQL shared with legacy codebase — same DB, different schema evolution
+- **Migration**: All changes must be additive first (nullable columns, old columns kept), then backfill, then drop — zero-downtime
+- **Tests**: All 224 existing tests must pass after each phase — non-negotiable safety net
+- **Build**: tsc --noEmit + next build must pass — CI gate
+
+## Key Decisions
+
+| Decision | Rationale | Outcome |
+|----------|-----------|---------|
+| Universal platform over feature parity | Existing clients have working software in legacy; build for long term | ✓ Good |
+| Drizzle ORM over Prisma | Better DX, type safety, no N+1 footguns, faster queries | ✓ Good |
+| WorkOS AuthKit over NextAuth | Enterprise RBAC, SSO-ready, managed auth infra | ✓ Good |
+| Inngest over Vercel Crons | Reliable retries, fan-out, step functions, no cron drift | ✓ Good |
+| Row-level tenant isolation | Compatible with shared DB; no schema-per-tenant complexity | ✓ Good |
+| Additive migrations only (nullable first) | Zero-downtime on shared prod DB | — Pending |
+| `bookings` → `jobs` rename | Universal term for any service job type | — Pending |
+| `staffId` → `resourceId` via resources table | Resources can be people, vehicles, rooms, equipment | — Pending |
+
+---
+*Last updated: 2026-04-11 after milestone v2.0 Universal Platform initialized*
