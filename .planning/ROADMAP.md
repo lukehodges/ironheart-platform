@@ -33,12 +33,12 @@ Phases 1–3 are sequential foundations. Phases 4–8 are independent and can be
   4. `customerContacts` table exists for multi-contact customers
   5. All existing tests pass against the new schema
   6. `tsc --noEmit` passes with 0 errors
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 01-01: Schema migration — new tables, Drizzle schema, migration scripts
-- [ ] 01-02: Repository layer — update all repos to use new tables
-- [ ] 01-03: Service + router layer — update services, wire everything, fix tests
+- [ ] 01-01-PLAN.md — Schema: new tables (resources, addresses, customerContacts), rename bookings→jobs, generate migration, write backfill script
+- [ ] 01-02-PLAN.md — Repository: rename booking→jobs module, create resources module, update all cross-module references
+- [ ] 01-03-PLAN.md — Tests: update all test files, write resources tests, verify 224/224 pass, build clean
 
 ### Phase 2: Payment Split Engine
 **Goal**: Replace every hardcoded payment split calculation with a rule-based engine. The Cotswold 258-line split file, the mileage lookup table, and the approval-config business-type switch are all deleted. Their logic becomes rows in the database.
@@ -50,7 +50,7 @@ Plans:
   3. All Cotswold-specific hardcode removed (`grep -r "cotswold\|mileageCost\|258" src/` returns 0 results)
   4. Existing payment flows produce identical line items to before
   5. Tests cover: FIXED, PERCENTAGE, LOOKUP, REMAINDER, FORMULA rule types
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
 - [ ] 02-01: New tables + split engine core (evaluator, rule types, lookup)
@@ -66,7 +66,7 @@ Plans:
   3. Notification engine evaluates all active triggers on every Inngest event
   4. Zero notification send logic remains in module service files
   5. Adding a new trigger requires only a DB insert, no code change
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
 - [ ] 03-01: `notificationTriggers` + `notificationTemplates` schema, variable resolver
@@ -82,7 +82,7 @@ Plans:
   3. Fleet dispatch finds nearest available resource in real time
   4. Resources track actual arrival/departure per stop
   5. Travel cost calculated per tenant routing config
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
 - [ ] 04-01: `jobLocations` table, routing engine (point-to-point + optimisation)
@@ -98,7 +98,7 @@ Plans:
   3. Invoices generated per `invoicingSchedule` config (per-job, weekly, monthly, on-completion)
   4. Contract pause/resume/cancel flows work
   5. Preferred resource assignment honoured when available
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
 - [ ] 05-01: `serviceContracts` table, rrule job generation engine
@@ -114,7 +114,7 @@ Plans:
   3. `customerMemberships` table tracks active memberships and usage
   4. QR check-in flow works end-to-end
   5. Membership discount applied automatically at participant booking
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
 - [ ] 06-01: `jobParticipants`, `membershipPlans`, `customerMemberships` tables + capacity engine
@@ -130,7 +130,7 @@ Plans:
   3. Invoice auto-calculated on job completion (TIME_AND_MATERIALS formula)
   4. `resourceCertifications` blocks assignment if cert is expired
   5. Field engineer mobile view shows active job, time entry controls, materials log
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
 - [ ] 07-01: `jobTimeEntries`, `jobMaterials`, `resourceCertifications` tables + billing calculator
@@ -146,7 +146,7 @@ Plans:
   3. CRM pipeline tracks prospects from first contact to active contract
   4. Time-and-materials billing rolls up from job entries to project invoice
   5. Project dashboard shows progress, spend, and remaining scope
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
 - [ ] 08-01: `projects`, `projectPhases`, `crmContacts`, `crmDeals` tables
