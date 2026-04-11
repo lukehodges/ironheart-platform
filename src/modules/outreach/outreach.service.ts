@@ -273,8 +273,8 @@ export const outreachService = {
       updatePayload,
     );
 
-    // 7. Emit event
-    await inngest.send({
+    // 7. Emit event (non-blocking — don't fail the mutation if Inngest is unavailable)
+    inngest.send({
       name: "outreach/activity.logged",
       data: {
         contactId: contact.id,
@@ -284,7 +284,7 @@ export const outreachService = {
         sector: sequence.sector,
         tenantId: ctx.tenantId,
       },
-    });
+    }).catch((err) => log.warn({ err }, "Failed to send outreach activity event"));
 
     log.info(
       { tenantId: ctx.tenantId, contactId: contact.id, activityType: input.activityType },

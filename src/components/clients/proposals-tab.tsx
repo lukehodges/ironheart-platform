@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
-import { Plus, Send } from "lucide-react"
+import { Copy, ExternalLink, Plus, Send } from "lucide-react"
 import { formatCurrency } from "@/lib/format-currency"
 import { toast } from "sonner"
 import { api } from "@/lib/trpc/react"
@@ -87,6 +87,24 @@ export function ProposalsTab({ engagementId, proposals, onInvalidate }: Proposal
                       <Send className="h-3.5 w-3.5 mr-1.5" /> Send
                     </Button>
                   )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const url = `${window.location.origin}/portal/${proposal.token}`
+                      void navigator.clipboard.writeText(url)
+                      toast.success("Link copied")
+                    }}
+                  >
+                    <Copy className="h-3.5 w-3.5 mr-1.5" /> Copy Link
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => window.open(`/portal/${proposal.token}`, "_blank")}
+                  >
+                    <ExternalLink className="h-3.5 w-3.5 mr-1.5" /> View
+                  </Button>
                 </div>
               </div>
             </CardContent>

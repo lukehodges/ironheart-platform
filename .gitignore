@@ -1,5 +1,7 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
+demos
+.playwright-mcp
+docs/playbook
 # dependencies
 /node_modules
 /.pnp
@@ -47,6 +49,12 @@ next-env.d.ts
 
 # outreach output
 tmp/
+bath-*.md
+uk-b2b-*.md
+*.png
+
+# MCP config
+.mcp.json
 
 # Worktrees
 .worktrees/

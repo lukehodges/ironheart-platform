@@ -3,6 +3,8 @@
 import { logger } from "@/shared/logger"
 import { getModuleMap } from "../ai.introspection"
 import { createCallerFactory } from "@/shared/trpc"
+import type { Context } from "@/shared/trpc"
+import type { UserWithRoles } from "@/modules/auth/rbac"
 import type { JsonRpcRequest, JsonRpcResponse, MCPToolDefinition, MCPToolCallResult } from "./types"
 
 const log = logger.child({ module: "ai.mcp.server" })
@@ -101,8 +103,14 @@ async function handleToolsList(id: string | number, ctx: ApiKeyContext): Promise
 /**
  * Execute a tool call using a tRPC caller.
  * The tool name is a procedure path (e.g., "booking.list").
- * A tRPC caller is built with the API key's tenant/user context,
- * so all auth, RBAC, and tenant isolation is enforced.
+ *
+ * Builds a tRPC context that matches what tenantProcedure/platformAdminProcedure
+ * expect: a WorkOS-shaped session with the user's workosUserId (or internal ID
+ * as fallback) and email, plus the pre-loaded user with roles.
+ *
+ * The middleware pipeline (tenantProcedure) will re-fetch the user from DB using
+ * session.user.id (workosUserId) → fallback to session.user.email + tenantId.
+ * We set both so at least one lookup path succeeds.
  */
 async function handleToolsCall(
   id: string | number,
@@ -114,7 +122,7 @@ async function handleToolsCall(
     return { jsonrpc: "2.0", id, error: { code: -32602, message: "Missing tool name" } }
   }
 
-  // Parse procedure path: "module.procedure"
+  // Parse procedure path: "module.procedure" or "module.sub.procedure"
   const dotIndex = params.name.indexOf(".")
   if (dotIndex === -1) {
     return { jsonrpc: "2.0", id, error: { code: -32602, message: `Invalid tool name format: ${params.name}. Expected "module.procedure".` } }
@@ -128,18 +136,37 @@ async function handleToolsCall(
     return { jsonrpc: "2.0", id, error: { code: -32602, message: `Module not in allowed scope: ${moduleName}` } }
   }
 
-  // Build a tRPC caller with the API key's context
+  // Build a tRPC caller with the resolved context
   const { db } = await import("@/shared/db")
   const createCaller = await getCreateCaller()
-  const trpc = createCaller({
+
+  const trpcContext: Context = {
     db,
-    session: { user: { id: ctx.userId } } as any,
+    session: {
+      user: {
+        // workosUserId is the primary lookup key in tenantProcedure.
+        // Fall back to internal userId so the email fallback path fires.
+        id: ctx.session.workosUserId ?? ctx.session.userId,
+        email: ctx.session.email,
+        firstName: ctx.session.firstName,
+        lastName: ctx.session.lastName,
+        profilePictureUrl: null,
+        emailVerified: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      // MCP callers don't go through WorkOS OAuth — no real access token.
+      // The tRPC middleware only uses session.user fields, not accessToken.
+      accessToken: "mcp-internal",
+    },
     tenantId: ctx.tenantId,
     tenantSlug: ctx.tenantSlug,
-    user: ctx.userWithRoles as any,
+    user: ctx.user,
     requestId: crypto.randomUUID(),
     req: req ?? new Request("https://localhost/api/mcp"),
-  })
+  }
+
+  const trpc = createCaller(trpcContext)
 
   try {
     // Call the tRPC procedure via the caller
@@ -149,7 +176,7 @@ async function handleToolsCall(
     }
 
     const result = await moduleObj[procedureName](params.arguments ?? {})
-    const text = JSON.stringify(result, null, 2)
+    const text = JSON.stringify(truncateMcpResult(result))
     log.info({ procedure: params.name, tenantId: ctx.tenantId }, "MCP tool call executed")
 
     return {
@@ -166,6 +193,66 @@ async function handleToolsCall(
       id,
       result: { content: [{ type: "text", text: JSON.stringify({ error: message }) }], isError: true } as MCPToolCallResult,
     }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Result Truncation (keeps MCP responses within token budget)
+// ---------------------------------------------------------------------------
+
+const MAX_MCP_RESULT_BYTES = 8192
+
+function truncateMcpResult(result: unknown): unknown {
+  if (result === undefined || result === null) return result
+
+  try {
+    const json = JSON.stringify(result)
+    if (json.length <= MAX_MCP_RESULT_BYTES) return result
+
+    // Object with rows array (paginated list) — trim rows
+    if (typeof result === "object" && result !== null && "rows" in result) {
+      const obj = result as Record<string, unknown>
+      if (Array.isArray(obj.rows)) {
+        const total = obj.rows.length
+        let shown = Math.min(total, 20)
+        while (shown > 1) {
+          const slice = obj.rows.slice(0, shown)
+          if (JSON.stringify(slice).length <= MAX_MCP_RESULT_BYTES - 200) break
+          shown = Math.floor(shown * 0.7)
+        }
+        return { ...obj, rows: obj.rows.slice(0, shown), _truncated: { total, shown } }
+      }
+    }
+
+    // Plain array
+    if (Array.isArray(result)) {
+      const total = result.length
+      let shown = Math.min(total, 20)
+      while (shown > 1) {
+        const slice = result.slice(0, shown)
+        if (JSON.stringify(slice).length <= MAX_MCP_RESULT_BYTES - 200) break
+        shown = Math.floor(shown * 0.7)
+      }
+      return { items: result.slice(0, shown), _truncated: { total, shown } }
+    }
+
+    // Large object — truncate keys
+    if (typeof result === "object" && result !== null) {
+      const keys = Object.keys(result as Record<string, unknown>)
+      const trimmed: Record<string, unknown> = {}
+      for (const key of keys) {
+        trimmed[key] = (result as Record<string, unknown>)[key]
+        if (JSON.stringify(trimmed).length > MAX_MCP_RESULT_BYTES - 100) {
+          delete trimmed[key]
+          break
+        }
+      }
+      return { ...trimmed, _truncated: { totalKeys: keys.length, shownKeys: Object.keys(trimmed).length } }
+    }
+
+    return result
+  } catch {
+    return { _error: "Result too large", _sizeBytes: JSON.stringify(result).length }
   }
 }
 
@@ -187,11 +274,25 @@ async function checkMcpRateLimit(apiKey: string, limit: number): Promise<boolean
 // API Key Resolution
 // ---------------------------------------------------------------------------
 
+/**
+ * Session fields needed to build a WorkOS-compatible tRPC context.
+ * tenantProcedure uses session.user.id (workosUserId) for its primary DB
+ * lookup, then falls back to session.user.email + ctx.tenantId.
+ */
+interface McpSession {
+  userId: string       // Internal Ironheart user ID
+  workosUserId: string | null // WorkOS user ID (may be null for seeded users)
+  email: string
+  firstName: string | null
+  lastName: string | null
+}
+
 interface ApiKeyContext {
   tenantId: string
   tenantSlug: string
-  userId: string
-  userWithRoles: unknown // User object with roles for tRPC context
+  session: McpSession
+  /** Pre-loaded user with roles — used as ctx.user in tRPC context. */
+  user: UserWithRoles | null
   permissions: string[]
   allowedModules: string[]
   rateLimit: number
@@ -199,12 +300,117 @@ interface ApiKeyContext {
 
 /**
  * Resolve an API key to tenant context and permissions.
- * This should integrate with the developer module's API key system.
- * Read the developer module before implementing.
+ * Supports a dev-mode key for local MCP access (Claude Code, etc.).
+ * Production should integrate with the developer module's API key system.
  */
 async function resolveApiKey(apiKey: string): Promise<ApiKeyContext | null> {
+  // Dev-mode key: allows local tools (Claude Code) to access tRPC procedures
+  const devKey = process.env.IRONHEART_MCP_DEV_KEY
+  if (devKey && apiKey === devKey) {
+    return resolveDevApiKey()
+  }
+
   // TODO: Integrate with developer module's API key validation
-  // For now, return null to reject all keys until developer module integration
   // The developer module should have: developerRepository.validateApiKey(key) -> { tenantId, userId, scopes }
   return null
+}
+
+/**
+ * Build an ApiKeyContext for the dev key using DEFAULT_TENANT_SLUG.
+ * Grants full access to all modules — only for local development.
+ *
+ * Loads the full user record with roles using the same relational query
+ * that tenantProcedure uses, so ctx.user is a real UserWithRoles object.
+ * This means procedures that access ctx.user.roles, ctx.user.tenantId,
+ * ctx.user.isPlatformAdmin etc. all work correctly.
+ */
+async function resolveDevApiKey(): Promise<ApiKeyContext | null> {
+  const { db } = await import("@/shared/db")
+  const { tenants, users } = await import("@/shared/db/schema")
+  const { eq } = await import("drizzle-orm")
+
+  const tenantSlug = process.env.DEFAULT_TENANT_SLUG ?? "demo"
+  const adminEmail = process.env.PLATFORM_ADMIN_EMAILS?.split(",")[0]?.trim()
+
+  // Resolve tenant
+  const [tenant] = await db.select().from(tenants).where(eq(tenants.slug, tenantSlug)).limit(1)
+  if (!tenant) {
+    log.warn({ tenantSlug }, "Dev MCP key: tenant not found")
+    return null
+  }
+
+  // Load user with full role/permission graph — same shape as tenantProcedure
+  const userWithRolesQuery = {
+    with: {
+      userRoles: {
+        with: {
+          role: {
+            with: {
+              rolePermissions: {
+                with: {
+                  permission: true,
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  } as const
+
+  type DrizzleUserWithRoles = Awaited<ReturnType<typeof db.query.users.findFirst<typeof userWithRolesQuery>>>
+
+  let rawUser: DrizzleUserWithRoles | undefined
+
+  // Prefer platform admin, fall back to first tenant member
+  if (adminEmail) {
+    rawUser = await db.query.users.findFirst({
+      where: eq(users.email, adminEmail),
+      ...userWithRolesQuery,
+    })
+  }
+  if (!rawUser) {
+    rawUser = await db.query.users.findFirst({
+      where: eq(users.tenantId, tenant.id),
+      ...userWithRolesQuery,
+    })
+  }
+  if (!rawUser) {
+    log.warn({ tenantSlug }, "Dev MCP key: no user found for tenant")
+    return null
+  }
+
+  // Reshape to UserWithRoles (same as reshapeUserWithRoles in trpc.ts)
+  const user: UserWithRoles = {
+    ...rawUser,
+    roles: (rawUser.userRoles ?? []).map((ur) => ({
+      role: {
+        ...ur.role,
+        permissions: ur.role.rolePermissions.map((rp) => ({
+          permission: rp.permission,
+        })),
+      },
+    })),
+  }
+
+  log.info(
+    { tenantSlug, userId: user.id, email: user.email, isPlatformAdmin: user.isPlatformAdmin },
+    "Dev MCP key resolved"
+  )
+
+  return {
+    tenantId: tenant.id,
+    tenantSlug: tenant.slug,
+    session: {
+      userId: user.id,
+      workosUserId: user.workosUserId,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+    },
+    user,
+    permissions: [], // empty = no RBAC filtering in MCP layer
+    allowedModules: [], // empty = all modules
+    rateLimit: 600, // generous for dev
+  }
 }

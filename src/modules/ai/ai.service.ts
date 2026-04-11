@@ -356,7 +356,7 @@ export const aiService = {
           toolResultBlocks.push({
             type: "tool_result",
             tool_use_id: toolUse.id,
-            content: JSON.stringify(result, null, 2),
+            content: JSON.stringify(result),
           })
 
           if (toolUse.name === "execute_code") {
@@ -563,7 +563,7 @@ export const aiService = {
           toolResultBlocks.push({ type: "tool_result", tool_use_id: toolUse.id, content: JSON.stringify({ error }), is_error: true })
         } else {
           allToolResults.push({ toolCallId: toolUse.id, output: result })
-          toolResultBlocks.push({ type: "tool_result", tool_use_id: toolUse.id, content: JSON.stringify(result, null, 2) })
+          toolResultBlocks.push({ type: "tool_result", tool_use_id: toolUse.id, content: JSON.stringify(result) })
         }
 
         circleDetector.record(toolUse.name, toolUse.input, error ?? null)
@@ -671,7 +671,7 @@ function rebuildAnthropicMessages(
           tool_use_id: tr.toolCallId,
           content: tr.error
             ? JSON.stringify({ error: tr.error })
-            : JSON.stringify(tr.output, null, 2),
+            : JSON.stringify(tr.output),
           ...(tr.error ? { is_error: true } : {}),
         }))
         msgs.push({ role: "user", content: resultBlocks })

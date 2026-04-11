@@ -13,8 +13,14 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { api } from "@/lib/trpc/react"
 import { toast } from "sonner"
 import { parseCurrencyInput, formatCurrency } from "@/lib/format-currency"
-import { DeliverableListBuilder } from "@/components/clients/deliverable-list-builder"
-import { PaymentScheduleBuilder } from "@/components/clients/payment-schedule-builder"
+import {
+  ProposalSectionsBuilder,
+  type LocalSection,
+} from "@/components/clients/proposal-sections-builder"
+import {
+  ProposalPaymentRulesBuilder,
+  type LocalPaymentRule,
+} from "@/components/clients/proposal-payment-rules-builder"
 
 const DEFAULT_TERMS = `1. This proposal is valid for 30 days from the date of issue.
 2. Payment terms are as outlined in the payment schedule above.
@@ -40,9 +46,9 @@ export default function NewProposalPage() {
   })
 
   const [scope, setScope] = useState("")
-  const [deliverables, setDeliverables] = useState([{ title: "", description: "" }])
+  const [sections, setSections] = useState<LocalSection[]>([])
   const [priceInput, setPriceInput] = useState("")
-  const [schedule, setSchedule] = useState([{ label: "", amount: "", dueType: "ON_APPROVAL" }])
+  const [paymentRules, setPaymentRules] = useState<LocalPaymentRule[]>([])
   const [terms, setTerms] = useState(DEFAULT_TERMS)
   const [problemStatement, setProblemStatement] = useState("")
   const [exclusions, setExclusions] = useState<string[]>([""])
@@ -54,25 +60,17 @@ export default function NewProposalPage() {
     additionalValueLabel: "",
     additionalValue: "",
   })
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const createMutation = api.clientPortal.admin.createProposal.useMutation({
-    onError: (err) => toast.error(err.message),
-  })
-
-  const sendMutation = api.clientPortal.admin.sendProposal.useMutation({
-    onError: (err) => toast.error(err.message),
-  })
+  const createMutation = api.clientPortal.admin.createProposal.useMutation()
+  const sendMutation = api.clientPortal.admin.sendProposal.useMutation()
+  const createSectionMutation = api.clientPortal.admin.createProposalSection.useMutation()
+  const createItemMutation = api.clientPortal.admin.createProposalItem.useMutation()
+  const createRuleMutation = api.clientPortal.admin.createPaymentRule.useMutation()
 
   const validate = (): boolean => {
     if (!scope.trim()) { toast.error("Scope is required"); return false }
-    if (!deliverables.some((d) => d.title.trim())) { toast.error("At least one deliverable with a title is required"); return false }
     if (parseCurrencyInput(priceInput) <= 0) { toast.error("Price must be greater than 0"); return false }
-    for (const item of schedule) {
-      if (!item.label.trim() || !item.amount.trim()) {
-        toast.error("Each payment schedule item needs a description and amount")
-        return false
-      }
-    }
     return true
   }
 
@@ -89,54 +87,111 @@ export default function NewProposalPage() {
   const roiAdditional = parseCurrencyInput(roiData.additionalValue)
   const roiTotal = roiAnnualValue !== null ? roiAnnualValue + roiAdditional : null
 
-  const buildInput = () => ({
-    engagementId: params.engagementId,
-    scope: scope.trim(),
-    deliverables: deliverables.filter((d) => d.title.trim()).map((d) => ({
-      title: d.title.trim(),
-      description: d.description.trim(),
-    })),
-    price: parseCurrencyInput(priceInput),
-    paymentSchedule: schedule.filter((s) => s.label.trim()).map((s) => ({
-      label: s.label.trim(),
-      amount: parseCurrencyInput(s.amount),
-      dueType: s.dueType as "ON_APPROVAL" | "ON_DATE" | "ON_MILESTONE" | "ON_COMPLETION",
-    })),
-    terms: terms.trim() || undefined,
-    problemStatement: problemStatement.trim() || undefined,
-    exclusions: exclusions.filter(e => e.trim()).map(e => e.trim()),
-    requirements: requirements.filter(r => r.trim()).map(r => r.trim()),
-    roiData: roiData.hoursPerWeek && roiData.hourlyRate && parseFloat(roiData.automationPct) > 0 ? {
-      hoursPerWeek: parseFloat(roiData.hoursPerWeek),
-      automationPct: parseFloat(roiData.automationPct),
-      hourlyRate: parseCurrencyInput(roiData.hourlyRate),
-      additionalValueLabel: roiData.additionalValueLabel.trim() || null,
-      additionalValue: roiAdditional || null,
-    } : undefined,
-  })
-
-  const handleSaveDraft = () => {
+  const handleSubmit = async (send: boolean) => {
     if (!validate()) return
-    createMutation.mutate(buildInput(), {
-      onSuccess: () => {
-        toast.success("Proposal saved as draft")
-        router.push(`/admin/clients/${params.engagementId}`)
-      },
-    })
-  }
+    setIsSubmitting(true)
 
-  const handleSend = () => {
-    if (!validate()) return
-    createMutation.mutate(buildInput(), {
-      onSuccess: (proposal) => {
-        sendMutation.mutate({ proposalId: proposal.id }, {
-          onSuccess: () => {
-            toast.success("Proposal sent to client")
-            router.push(`/admin/clients/${params.engagementId}`)
-          },
+    try {
+      // 1. Create the proposal shell
+      const proposal = await createMutation.mutateAsync({
+        engagementId: params.engagementId,
+        scope: scope.trim(),
+        deliverables: [],
+        price: totalPrice,
+        paymentSchedule: [],
+        terms: terms.trim() || undefined,
+        problemStatement: problemStatement.trim() || undefined,
+        exclusions: exclusions.filter((e) => e.trim()).map((e) => e.trim()),
+        requirements: requirements.filter((r) => r.trim()).map((r) => r.trim()),
+        roiData:
+          roiData.hoursPerWeek && roiData.hourlyRate && parseFloat(roiData.automationPct) > 0
+            ? {
+                hoursPerWeek: parseFloat(roiData.hoursPerWeek),
+                automationPct: parseFloat(roiData.automationPct),
+                hourlyRate: parseCurrencyInput(roiData.hourlyRate),
+                additionalValueLabel: roiData.additionalValueLabel.trim() || null,
+                additionalValue: roiAdditional || null,
+              }
+            : undefined,
+      })
+
+      // 2. Create sections and items — track local _id → created DB id
+      const sectionIdMap = new Map<string, string>()
+
+      for (let si = 0; si < sections.length; si++) {
+        const section = sections[si]!
+        const created = await createSectionMutation.mutateAsync({
+          proposalId: proposal.id,
+          title: section.title || `Section ${si + 1}`,
+          type: section.type,
+          estimatedDuration: section.estimatedDuration.trim() || null,
+          sortOrder: si,
         })
-      },
-    })
+        sectionIdMap.set(section._id, created.id)
+
+        for (let ii = 0; ii < section.items.length; ii++) {
+          const item = section.items[ii]!
+          if (!item.title.trim()) continue
+          await createItemMutation.mutateAsync({
+            sectionId: created.id,
+            proposalId: proposal.id,
+            title: item.title.trim(),
+            description: item.description.trim() || null,
+            acceptanceCriteria: item.acceptanceCriteria.trim() || null,
+            sortOrder: ii,
+          })
+        }
+      }
+
+      // 3. Create payment rules
+      for (let ri = 0; ri < paymentRules.length; ri++) {
+        const rule = paymentRules[ri]!
+        if (!rule.label.trim() || !rule.amount.trim()) continue
+
+        const amount = parseCurrencyInput(rule.amount)
+        if (amount <= 0) continue
+
+        const resolvedSectionId =
+          rule.trigger === "MILESTONE_COMPLETE" && rule.sectionId
+            ? (sectionIdMap.get(rule.sectionId) ?? null)
+            : null
+
+        await createRuleMutation.mutateAsync({
+          proposalId: proposal.id,
+          sectionId: resolvedSectionId,
+          label: rule.label.trim(),
+          amount,
+          trigger: rule.trigger,
+          relativeDays:
+            rule.trigger === "RELATIVE_DATE" || rule.trigger === "ON_APPROVAL"
+              ? parseInt(rule.relativeDays) || 14
+              : null,
+          fixedDate:
+            rule.trigger === "FIXED_DATE" && rule.fixedDate ? new Date(rule.fixedDate) : null,
+          recurringInterval:
+            rule.trigger === "RECURRING" && rule.recurringInterval
+              ? (rule.recurringInterval as "MONTHLY" | "QUARTERLY")
+              : null,
+          autoSend: rule.autoSend,
+          sortOrder: ri,
+        })
+      }
+
+      // 4. Optionally send
+      if (send) {
+        await sendMutation.mutateAsync({ proposalId: proposal.id })
+        toast.success("Proposal sent to client")
+      } else {
+        toast.success("Proposal saved as draft")
+      }
+
+      router.push(`/admin/clients/${params.engagementId}`)
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Something went wrong"
+      toast.error(message)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   if (isLoading) {
@@ -150,14 +205,19 @@ export default function NewProposalPage() {
 
   return (
     <div className="max-w-[800px] mx-auto animate-fade-in">
-      <Link href={`/admin/clients/${params.engagementId}`} className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
+      <Link
+        href={`/admin/clients/${params.engagementId}`}
+        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+      >
         <ChevronLeft className="h-3.5 w-3.5" /> Back to {engagement?.title ?? "Engagement"}
       </Link>
 
       <div className="flex items-center justify-between mt-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Create Proposal</h1>
-          {engagement && <p className="text-sm text-muted-foreground mt-0.5">{engagement.title}</p>}
+          {engagement && (
+            <p className="text-sm text-muted-foreground mt-0.5">{engagement.title}</p>
+          )}
         </div>
       </div>
 
@@ -169,7 +229,8 @@ export default function NewProposalPage() {
           <AlertCircle className="h-4 w-4 text-muted-foreground" /> Problem Statement
         </Label>
         <p className="text-xs text-muted-foreground mt-0.5 mb-1.5">
-          The client&apos;s problem in their own words — this appears as a pull quote at the top of the proposal
+          The client&apos;s problem in their own words — appears as a pull quote at the top of the
+          proposal
         </p>
         <Textarea
           value={problemStatement}
@@ -184,13 +245,18 @@ export default function NewProposalPage() {
       {/* Scope */}
       <div>
         <Label>Scope of Work</Label>
-        <Textarea value={scope} onChange={(e) => setScope(e.target.value)} className="mt-1.5 min-h-[140px]" placeholder="Describe the scope of work..." />
+        <Textarea
+          value={scope}
+          onChange={(e) => setScope(e.target.value)}
+          className="mt-1.5 min-h-[140px]"
+          placeholder="Describe the scope of work..."
+        />
       </div>
 
       <Separator className="my-6" />
 
-      {/* Deliverables */}
-      <DeliverableListBuilder items={deliverables} onChange={setDeliverables} />
+      {/* Phases & Deliverables */}
+      <ProposalSectionsBuilder sections={sections} onChange={setSections} />
 
       <Separator className="my-6" />
 
@@ -198,16 +264,28 @@ export default function NewProposalPage() {
       <div>
         <Label>Total Price</Label>
         <div className="relative mt-1.5 w-[200px]">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground font-medium">&pound;</span>
-          <Input value={priceInput} onChange={(e) => setPriceInput(e.target.value)} className="pl-7 tabular-nums font-medium" placeholder="0" />
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground font-medium">
+            &pound;
+          </span>
+          <Input
+            value={priceInput}
+            onChange={(e) => setPriceInput(e.target.value)}
+            className="pl-7 tabular-nums font-medium"
+            placeholder="0"
+          />
         </div>
         <p className="text-xs text-muted-foreground mt-1">Excluding VAT</p>
       </div>
 
       <Separator className="my-6" />
 
-      {/* Payment Schedule */}
-      <PaymentScheduleBuilder items={schedule} onChange={setSchedule} />
+      {/* Payment Rules */}
+      <ProposalPaymentRulesBuilder
+        rules={paymentRules}
+        sections={sections}
+        totalPrice={totalPrice}
+        onChange={setPaymentRules}
+      />
 
       <Separator className="my-6" />
 
@@ -218,9 +296,15 @@ export default function NewProposalPage() {
             <p className="text-sm font-medium flex items-center gap-2">
               <AlertCircle className="h-4 w-4 text-muted-foreground" /> What&apos;s Not Included
             </p>
-            <p className="text-xs text-muted-foreground">Explicit exclusions — protects against scope creep</p>
+            <p className="text-xs text-muted-foreground">
+              Explicit exclusions — protects against scope creep
+            </p>
           </div>
-          <Button variant="outline" size="sm" onClick={() => setExclusions([...exclusions, ""])}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setExclusions([...exclusions, ""])}
+          >
             <Plus className="h-3.5 w-3.5 mr-1.5" /> Add
           </Button>
         </div>
@@ -230,7 +314,9 @@ export default function NewProposalPage() {
               <span className="text-muted-foreground text-sm shrink-0">—</span>
               <Input
                 value={ex}
-                onChange={(e) => setExclusions(exclusions.map((v, j) => j === i ? e.target.value : v))}
+                onChange={(e) =>
+                  setExclusions(exclusions.map((v, j) => (j === i ? e.target.value : v)))
+                }
                 placeholder="e.g. Changes to existing CRM setup"
                 className="text-sm flex-1"
               />
@@ -256,9 +342,15 @@ export default function NewProposalPage() {
             <p className="text-sm font-medium flex items-center gap-2">
               <Users className="h-4 w-4 text-muted-foreground" /> What We Need From You
             </p>
-            <p className="text-xs text-muted-foreground">Client responsibilities — access, data, response times</p>
+            <p className="text-xs text-muted-foreground">
+              Client responsibilities — access, data, response times
+            </p>
           </div>
-          <Button variant="outline" size="sm" onClick={() => setRequirements([...requirements, ""])}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setRequirements([...requirements, ""])}
+          >
             <Plus className="h-3.5 w-3.5 mr-1.5" /> Add
           </Button>
         </div>
@@ -270,7 +362,9 @@ export default function NewProposalPage() {
               </div>
               <Input
                 value={req}
-                onChange={(e) => setRequirements(requirements.map((v, j) => j === i ? e.target.value : v))}
+                onChange={(e) =>
+                  setRequirements(requirements.map((v, j) => (j === i ? e.target.value : v)))
+                }
                 placeholder="e.g. Admin access to Airtable base within 2 business days of kickoff"
                 className="text-sm flex-1"
               />
@@ -324,7 +418,9 @@ export default function NewProposalPage() {
           <div>
             <Label className="text-xs text-muted-foreground">Hourly rate (£)</Label>
             <div className="relative mt-1">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">&pound;</span>
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                &pound;
+              </span>
               <Input
                 value={roiData.hourlyRate}
                 onChange={(e) => setRoiData({ ...roiData, hourlyRate: e.target.value })}
@@ -342,7 +438,9 @@ export default function NewProposalPage() {
             className="text-sm"
           />
           <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">&pound;</span>
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+              &pound;
+            </span>
             <Input
               value={roiData.additionalValue}
               onChange={(e) => setRoiData({ ...roiData, additionalValue: e.target.value })}
@@ -369,7 +467,9 @@ export default function NewProposalPage() {
             </div>
             <div className="flex justify-between text-muted-foreground mt-0.5">
               <span>Fee as % of year-one value</span>
-              <span>{totalPrice > 0 ? `${Math.round((totalPrice / roiTotal) * 100)}%` : "—"}</span>
+              <span>
+                {totalPrice > 0 ? `${Math.round((totalPrice / roiTotal) * 100)}%` : "—"}
+              </span>
             </div>
           </div>
         )}
@@ -379,20 +479,33 @@ export default function NewProposalPage() {
 
       {/* Terms */}
       <div>
-        <Label>Terms & Conditions</Label>
-        <Textarea value={terms} onChange={(e) => setTerms(e.target.value)} className="mt-1.5 min-h-[120px]" />
+        <Label>Terms &amp; Conditions</Label>
+        <Textarea
+          value={terms}
+          onChange={(e) => setTerms(e.target.value)}
+          className="mt-1.5 min-h-[120px]"
+        />
       </div>
 
       {/* Footer */}
       <div className="flex items-center justify-between mt-6 pt-6 border-t">
-        <Button variant="ghost" size="sm" className="text-muted-foreground" onClick={() => router.back()}>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="text-muted-foreground"
+          onClick={() => router.back()}
+        >
           Cancel
         </Button>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={handleSaveDraft} disabled={createMutation.isPending || sendMutation.isPending}>
+          <Button
+            variant="outline"
+            onClick={() => void handleSubmit(false)}
+            disabled={isSubmitting}
+          >
             Save Draft
           </Button>
-          <Button onClick={handleSend} disabled={createMutation.isPending || sendMutation.isPending}>
+          <Button onClick={() => void handleSubmit(true)} disabled={isSubmitting}>
             <Send className="h-4 w-4 mr-1.5" /> Send to Client
           </Button>
         </div>

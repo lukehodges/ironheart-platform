@@ -169,7 +169,6 @@ function Step1Customer({ onSelect, selected }: Step1Props) {
   const [newForm, setNewForm] = useState<NewCustomerForm>({ name: "", email: "", phone: "" })
 
   const debouncedSearch = useDebounce(search, 300)
-
   const { data: customerData, isLoading: searchLoading } = api.customer.list.useQuery(
     { search: debouncedSearch, limit: 10 },
     { enabled: mode === "search" && debouncedSearch.length >= 2, staleTime: 30_000 }

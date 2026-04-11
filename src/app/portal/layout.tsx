@@ -50,6 +50,25 @@ export default function PortalLayout({
         "--shadow-sm": "0 1px 3px rgba(0,0,0,0.04)",
         "--shadow-md": "0 4px 20px rgba(0,0,0,0.06)",
         "--shadow-lg": "0 12px 48px rgba(0,0,0,0.08)",
+        // Portal component tokens
+        "--portal-bg": "#faf9f7",
+        "--portal-text": "#1a1a1a",
+        "--portal-text-secondary": "#5a5a5a",
+        "--portal-text-muted": "#8a8a8a",
+        "--portal-surface": "#ffffff",
+        "--portal-warm": "#f5f3ef",
+        "--portal-border": "#e8e5e0",
+        "--portal-border-light": "#f0ede8",
+        "--portal-shadow": "0 1px 3px rgba(0,0,0,0.04)",
+        "--portal-radius": "10px",
+        "--portal-accent": "#3d8a5a",
+        "--portal-accent-light": "#e8f5ee",
+        "--portal-amber": "#b8863e",
+        "--portal-amber-light": "rgba(184,134,62,0.1)",
+        "--portal-red": "#c0392b",
+        "--portal-red-light": "rgba(192,57,43,0.08)",
+        "--portal-blue": "#2563eb",
+        "--portal-blue-light": "rgba(37,99,235,0.08)",
       } as React.CSSProperties}
     >
       <div

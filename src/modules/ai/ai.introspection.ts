@@ -69,7 +69,7 @@ function extractInputSchema(procedure: unknown): Record<string, unknown> | null 
           // Skip trivially empty schemas (middleware placeholders)
           const props = jsonSchema.properties as Record<string, unknown> | undefined
           if (props && Object.keys(props).length > 0) {
-            return jsonSchema
+            return compactSchema(jsonSchema)
           }
         } catch {
           // This entry failed conversion, try next
@@ -82,6 +82,50 @@ function extractInputSchema(procedure: unknown): Record<string, unknown> | null 
     log.warn({ err }, "Failed to convert input schema to JSON Schema")
     return null
   }
+}
+
+/**
+ * Strip verbose noise from JSON Schema to reduce token count.
+ * - Removes UUID regex patterns (format: "uuid" is sufficient)
+ * - Removes `additionalProperties: false` (default assumption)
+ * - Simplifies `anyOf: [{type: X}, {type: "null"}]` to `{type: X, nullable: true}`
+ * - Removes `maximum: 9007199254740991` (JS MAX_SAFE_INTEGER, not useful)
+ */
+function compactSchema(schema: Record<string, unknown>): Record<string, unknown> {
+  if (typeof schema !== "object" || schema === null) return schema
+
+  const result: Record<string, unknown> = {}
+
+  for (const [key, value] of Object.entries(schema)) {
+    // Drop verbose keys that waste tokens
+    if (key === "additionalProperties" && value === false) continue
+    if (key === "pattern" && typeof value === "string" && value.includes("0-9a-fA-F")) continue
+    if (key === "maximum" && value === 9007199254740991) continue
+
+    // Simplify anyOf nullable wrappers: anyOf: [{type: X, ...}, {type: "null"}] → {type: X, nullable: true, ...}
+    if (key === "anyOf" && Array.isArray(value) && value.length === 2) {
+      const nullVariant = value.find((v: Record<string, unknown>) => v.type === "null")
+      const realVariant = value.find((v: Record<string, unknown>) => v.type !== "null")
+      if (nullVariant && realVariant) {
+        const compacted = compactSchema(realVariant as Record<string, unknown>)
+        Object.assign(result, compacted, { nullable: true })
+        continue
+      }
+    }
+
+    // Recurse into objects and arrays
+    if (Array.isArray(value)) {
+      result[key] = value.map((item) =>
+        typeof item === "object" && item !== null ? compactSchema(item as Record<string, unknown>) : item
+      )
+    } else if (typeof value === "object" && value !== null) {
+      result[key] = compactSchema(value as Record<string, unknown>)
+    } else {
+      result[key] = value
+    }
+  }
+
+  return result
 }
 
 /**
@@ -166,6 +210,39 @@ function summariseInput(schema: Record<string, unknown> | null, includeTypes = f
   return `({ ${parts.join(", ")} })`
 }
 
+// ---------------------------------------------------------------------------
+// Route → primary modules mapping for page-context filtering
+// ---------------------------------------------------------------------------
+
+const PAGE_MODULE_RELEVANCE: Record<string, string[]> = {
+  booking: ["booking", "customer", "service", "scheduling", "staff"],
+  customer: ["customer", "booking", "forms", "review"],
+  staff: ["staff", "team", "scheduling"],
+  scheduling: ["scheduling", "booking", "staff"],
+  invoice: ["invoice", "payment", "customer"],
+  review: ["review", "customer", "booking"],
+  workflow: ["workflow"],
+  setting: ["tenant", "organization"],
+  outreach: ["outreach", "customer"],
+  analytic: ["analytics"],
+  product: ["product"],
+  form: ["forms", "customer", "booking"],
+  deal: ["booking", "customer"],
+  dashboard: ["booking", "customer", "analytics", "invoice"],
+  platform: ["platform", "tenant"],
+}
+
+function getPrimaryModules(route?: string): Set<string> | null {
+  if (!route) return null
+  const segment = route.split("/").filter(Boolean)[0]?.toLowerCase() ?? ""
+  for (const [prefix, modules] of Object.entries(PAGE_MODULE_RELEVANCE)) {
+    if (segment.startsWith(prefix) || segment.includes(prefix)) {
+      return new Set(modules)
+    }
+  }
+  return null
+}
+
 /**
  * Get the compact module index for the system prompt.
  * Shows query procedures with compact input signatures so the model
@@ -209,6 +286,49 @@ export async function getModuleIndex(): Promise<string> {
 
   cachedIndex = lines.join("\n")
   return cachedIndex
+}
+
+/**
+ * Get a page-context-filtered module index.
+ * When the user is on a specific page, shows full detail for relevant modules
+ * and a condensed "Other modules" list for the rest — saving significant tokens.
+ * Falls back to the full index when no page context or no route match.
+ */
+export async function getFilteredModuleIndex(pageContext?: { route: string }): Promise<string> {
+  const primaryModules = getPrimaryModules(pageContext?.route)
+
+  // No page context or no match → full index
+  if (!primaryModules) return getModuleIndex()
+
+  const moduleMap = await getModuleMap()
+  const primaryLines: string[] = []
+  const otherModuleNames: string[] = []
+
+  for (const [moduleName, meta] of moduleMap) {
+    if (primaryModules.has(moduleName)) {
+      primaryLines.push(`\n  ${moduleName}:`)
+      for (const proc of meta.procedures.filter((p) => p.type === "query")) {
+        primaryLines.push(`    .${proc.name}${summariseInput(proc.inputSchema)}`)
+      }
+      for (const proc of meta.procedures.filter((p) => p.type === "mutation")) {
+        const tier = getDefaultGuardrailTier(`${moduleName}.${proc.name}`)
+        primaryLines.push(`    .${proc.name}${summariseInput(proc.inputSchema, true)} [${tier}] m`)
+      }
+    } else {
+      otherModuleNames.push(moduleName)
+    }
+  }
+
+  const lines: string[] = [
+    "Procedures for current page (AUTO = immediate | CONFIRM = needs approval | m = mutation):",
+    ...primaryLines,
+  ]
+
+  if (otherModuleNames.length > 0) {
+    lines.push(`\nOther modules (use describe_module for details): ${otherModuleNames.join(", ")}`)
+  }
+
+  return lines.join("\n")
 }
 
 /**
