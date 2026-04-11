@@ -1,0 +1,5 @@
+export * from './resources.types'
+export * from './resources.schemas'
+export { resourceRepository } from './resources.repository'
+export { resourceService } from './resources.service'
+export { resourcesRouter } from './resources.router'
