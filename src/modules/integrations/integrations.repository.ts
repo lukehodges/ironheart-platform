@@ -1,0 +1,61 @@
+// src/modules/integrations/integrations.repository.ts
+import { db } from '@/shared/db'
+import { bookings, userIntegrations } from '@/shared/db/schema'
+import { and, eq } from 'drizzle-orm'
+import { logger } from '@/shared/logger'
+
+const log = logger.child({ module: 'integrations.repository' })
+
+/**
+ * A minimal record from user_integrations — just what the hub needs for routing.
+ */
+export interface ConnectedIntegrationRecord {
+  id: string
+  userId: string
+  /** DB enum value e.g. 'GOOGLE_CALENDAR' */
+  provider: string
+  status: string
+}
+
+export const integrationsRepository = {
+  /**
+   * Find all user_integrations rows that are CONNECTED for the staff member
+   * assigned to the given booking.
+   *
+   * Only looks at bookings.staffId (primary staff). For multi-staff bookings,
+   * extend this to join booking_assignments when needed.
+   */
+  async findConnectedUsersForBooking(
+    bookingId: string,
+    tenantId: string
+  ): Promise<ConnectedIntegrationRecord[]> {
+    // Step 1: get the booking's staffId
+    const [booking] = await db
+      .select({ staffId: bookings.staffId })
+      .from(bookings)
+      .where(and(eq(bookings.id, bookingId), eq(bookings.tenantId, tenantId)))
+      .limit(1)
+
+    if (!booking?.staffId) {
+      log.info({ bookingId }, 'No staffId on booking — skipping integration routing')
+      return []
+    }
+
+    // Step 2: find all CONNECTED integrations for that staff member
+    return db
+      .select({
+        id: userIntegrations.id,
+        userId: userIntegrations.userId,
+        provider: userIntegrations.provider,
+        status: userIntegrations.status,
+      })
+      .from(userIntegrations)
+      .where(
+        and(
+          eq(userIntegrations.userId, booking.staffId),
+          eq(userIntegrations.tenantId, tenantId),
+          eq(userIntegrations.status, 'CONNECTED')
+        )
+      )
+  },
+}
