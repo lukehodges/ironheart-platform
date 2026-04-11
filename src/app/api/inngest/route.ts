@@ -1,6 +1,7 @@
 import { serve } from "inngest/next";
 import { inngest } from "@/shared/inngest";
 import { bookingFunctions } from "@/modules/booking/booking.events";
+import { jobsFunctions } from "@/modules/jobs/jobs.events";
 import { schedulingFunctions } from "@/modules/scheduling";
 import { notificationFunctions } from "@/modules/notification";
 import { calendarSyncFunctions } from "@/modules/calendar-sync";
@@ -40,6 +41,7 @@ export const { GET, POST, PUT } = serve({
   functions: [
     // Phase 1-4 functions
     ...bookingFunctions,
+    ...jobsFunctions,
     ...schedulingFunctions,
     ...notificationFunctions,
     ...calendarSyncFunctions,

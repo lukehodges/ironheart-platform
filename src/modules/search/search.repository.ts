@@ -1,7 +1,7 @@
 import { db } from '@/shared/db'
 import { and, eq, sql, isNull } from 'drizzle-orm'
 import { customers } from '@/shared/db/schemas/customer.schema'
-import { bookings } from '@/shared/db/schemas/booking.schema'
+import { jobs } from '@/shared/db/schemas/booking.schema'
 import { users, staffProfiles } from '@/shared/db/schemas/auth.schema'
 
 export async function fullTextSearchCustomers(
@@ -58,32 +58,32 @@ export async function fullTextSearchBookings(
   try {
     return await db
       .select({
-        id:            bookings.id,
-        bookingNumber: bookings.bookingNumber,
-        scheduledDate: bookings.scheduledDate,
+        id:            jobs.id,
+        bookingNumber: jobs.bookingNumber,
+        scheduledDate: jobs.scheduledDate,
       })
-      .from(bookings)
+      .from(jobs)
       .where(
         and(
-          eq(bookings.tenantId, tenantId),
-          sql`bookings.search_vector @@ plainto_tsquery('english', ${query})`
+          eq(jobs.tenantId, tenantId),
+          sql`jobs.search_vector @@ plainto_tsquery('english', ${query})`
         )
       )
-      .orderBy(sql`ts_rank(bookings.search_vector, plainto_tsquery('english', ${query})) DESC`)
+      .orderBy(sql`ts_rank(jobs.search_vector, plainto_tsquery('english', ${query})) DESC`)
       .limit(limit)
   } catch {
     // Fallback to ILIKE on booking number
     return db
       .select({
-        id:            bookings.id,
-        bookingNumber: bookings.bookingNumber,
-        scheduledDate: bookings.scheduledDate,
+        id:            jobs.id,
+        bookingNumber: jobs.bookingNumber,
+        scheduledDate: jobs.scheduledDate,
       })
-      .from(bookings)
+      .from(jobs)
       .where(
         and(
-          eq(bookings.tenantId, tenantId),
-          sql`COALESCE(${bookings.bookingNumber}, '') ILIKE ${'%' + query + '%'}`
+          eq(jobs.tenantId, tenantId),
+          sql`COALESCE(${jobs.bookingNumber}, '') ILIKE ${'%' + query + '%'}`
         )
       )
       .limit(limit)

@@ -26,8 +26,8 @@ export const releaseExpiredReservation = inngest.createFunction(
   {
     id: "release-expired-reservation",
     cancelOn: [
-      { event: "booking/confirmed", match: "data.bookingId" },
-      { event: "booking/cancelled", match: "data.bookingId" },
+      { event: "job/confirmed", match: "data.jobId" },
+      { event: "job/cancelled", match: "data.jobId" },
     ],
   },
   { event: "slot/reserved" },

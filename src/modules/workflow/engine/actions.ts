@@ -97,20 +97,20 @@ export async function executeAction(
 
       case 'CREATE_CALENDAR_EVENT': {
         const cfg = config as CreateCalendarEventActionConfig
-        const bookingId = String(data.bookingId ?? '')
+        const jobId = String(data.jobId ?? data.bookingId ?? '')
         const userId = cfg.userIdField
-          ? String(resolveField(cfg.userIdField, data) ?? data.staffId ?? '')
-          : String(data.staffId ?? '')
+          ? String(resolveField(cfg.userIdField, data) ?? data.resourceId ?? data.staffId ?? '')
+          : String(data.resourceId ?? data.staffId ?? '')
         await inngest.send({
           name: 'calendar/sync.push',
           data: {
-            bookingId,
+            jobId,
             userId,
             tenantId: String(data.tenantId ?? ''),
           },
         })
-        log.info({ bookingId, userId, actionType }, 'CREATE_CALENDAR_EVENT dispatched')
-        return { success: true, bookingId, userId }
+        log.info({ jobId, userId, actionType }, 'CREATE_CALENDAR_EVENT dispatched')
+        return { success: true, jobId, userId }
       }
 
       case 'UPDATE_BOOKING_STATUS': {

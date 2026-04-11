@@ -15,15 +15,15 @@ const log = logger.child({ module: 'workflow.events' })
  */
 const triggerOnBookingCreated = inngest.createFunction(
   { id: 'workflow-trigger-booking-created', retries: 2 },
-  { event: 'booking/created' },
+  { event: 'job/created' },
   async ({ event, step }) => {
-    const { bookingId, tenantId } = event.data
+    const { jobId, tenantId } = event.data
 
     const workflows = await step.run('find-workflows', () =>
       workflowRepository.findByTrigger(tenantId, 'BOOKING_CREATED')
     )
 
-    log.info({ tenantId, bookingId, count: workflows.length }, 'Dispatching BOOKING_CREATED workflows')
+    log.info({ tenantId, jobId, count: workflows.length }, 'Dispatching BOOKING_CREATED workflows')
 
     await step.run('dispatch-workflows', () =>
       Promise.all(
@@ -34,7 +34,7 @@ const triggerOnBookingCreated = inngest.createFunction(
               workflowId: wf.id,
               tenantId,
               triggerEvent: 'BOOKING_CREATED',
-              triggerData: { bookingId, tenantId },
+              triggerData: { jobId, tenantId },
             },
           })
         )
@@ -48,15 +48,15 @@ const triggerOnBookingCreated = inngest.createFunction(
  */
 const triggerOnBookingConfirmed = inngest.createFunction(
   { id: 'workflow-trigger-booking-confirmed', retries: 2 },
-  { event: 'booking/confirmed' },
+  { event: 'job/confirmed' },
   async ({ event, step }) => {
-    const { bookingId, tenantId } = event.data
+    const { jobId, tenantId } = event.data
 
     const workflows = await step.run('find-workflows', () =>
       workflowRepository.findByTrigger(tenantId, 'BOOKING_CONFIRMED')
     )
 
-    log.info({ tenantId, bookingId, count: workflows.length }, 'Dispatching BOOKING_CONFIRMED workflows')
+    log.info({ tenantId, jobId, count: workflows.length }, 'Dispatching BOOKING_CONFIRMED workflows')
 
     await step.run('dispatch-workflows', () =>
       Promise.all(
@@ -67,7 +67,7 @@ const triggerOnBookingConfirmed = inngest.createFunction(
               workflowId: wf.id,
               tenantId,
               triggerEvent: 'BOOKING_CONFIRMED',
-              triggerData: { bookingId, tenantId },
+              triggerData: { jobId, tenantId },
             },
           })
         )
@@ -82,15 +82,15 @@ const triggerOnBookingConfirmed = inngest.createFunction(
  */
 const triggerOnBookingCancelled = inngest.createFunction(
   { id: 'workflow-trigger-booking-cancelled', retries: 2 },
-  { event: 'booking/cancelled' },
+  { event: 'job/cancelled' },
   async ({ event, step }) => {
-    const { bookingId, tenantId, reason } = event.data
+    const { jobId, tenantId, reason } = event.data
 
     const workflows = await step.run('find-workflows', () =>
       workflowRepository.findByTrigger(tenantId, 'BOOKING_CANCELLED')
     )
 
-    log.info({ tenantId, bookingId, count: workflows.length }, 'Dispatching BOOKING_CANCELLED workflows')
+    log.info({ tenantId, jobId, count: workflows.length }, 'Dispatching BOOKING_CANCELLED workflows')
 
     await step.run('dispatch-workflows', () =>
       Promise.all(
@@ -101,7 +101,7 @@ const triggerOnBookingCancelled = inngest.createFunction(
               workflowId: wf.id,
               tenantId,
               triggerEvent: 'BOOKING_CANCELLED',
-              triggerData: { bookingId, tenantId, reason: reason ?? null },
+              triggerData: { jobId, tenantId, reason: reason ?? null },
             },
           })
         )
@@ -115,15 +115,15 @@ const triggerOnBookingCancelled = inngest.createFunction(
  */
 const triggerOnBookingCompleted = inngest.createFunction(
   { id: 'workflow-trigger-booking-completed', retries: 2 },
-  { event: 'booking/completed' },
+  { event: 'job/completed' },
   async ({ event, step }) => {
-    const { bookingId, tenantId } = event.data
+    const { jobId, tenantId } = event.data
 
     const workflows = await step.run('find-workflows', () =>
       workflowRepository.findByTrigger(tenantId, 'BOOKING_COMPLETED')
     )
 
-    log.info({ tenantId, bookingId, count: workflows.length }, 'Dispatching BOOKING_COMPLETED workflows')
+    log.info({ tenantId, jobId, count: workflows.length }, 'Dispatching BOOKING_COMPLETED workflows')
 
     await step.run('dispatch-workflows', () =>
       Promise.all(
@@ -134,7 +134,7 @@ const triggerOnBookingCompleted = inngest.createFunction(
               workflowId: wf.id,
               tenantId,
               triggerEvent: 'BOOKING_COMPLETED',
-              triggerData: { bookingId, tenantId },
+              triggerData: { jobId, tenantId },
             },
           })
         )

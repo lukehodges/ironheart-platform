@@ -15,18 +15,18 @@ export const onBookingConfirmed = inngest.createFunction(
     name: 'Integrations: Route booking.confirmed',
     retries: 3,
   },
-  { event: 'booking/confirmed' },
+  { event: 'job/confirmed' },
   async ({ event, step }) => {
-    const { bookingId, tenantId } = event.data
+    const { jobId, tenantId } = event.data
 
     await step.run('route-to-providers', async () => {
       await integrationsService.routeEvent(
-        { type: 'booking.confirmed', data: { bookingId, tenantId } },
+        { type: 'booking.confirmed', data: { bookingId: jobId, tenantId } },
         tenantId
       )
     })
 
-    log.info({ bookingId, tenantId }, 'Integration routing complete for booking.confirmed')
+    log.info({ jobId, tenantId }, 'Integration routing complete for job.confirmed')
   }
 )
 
@@ -39,18 +39,18 @@ export const onBookingCancelled = inngest.createFunction(
     name: 'Integrations: Route booking.cancelled',
     retries: 3,
   },
-  { event: 'booking/cancelled' },
+  { event: 'job/cancelled' },
   async ({ event, step }) => {
-    const { bookingId, tenantId, reason } = event.data
+    const { jobId, tenantId, reason } = event.data
 
     await step.run('route-to-providers', async () => {
       await integrationsService.routeEvent(
-        { type: 'booking.cancelled', data: { bookingId, tenantId, reason } },
+        { type: 'booking.cancelled', data: { bookingId: jobId, tenantId, reason } },
         tenantId
       )
     })
 
-    log.info({ bookingId, tenantId }, 'Integration routing complete for booking.cancelled')
+    log.info({ jobId, tenantId }, 'Integration routing complete for job.cancelled')
   }
 )
 

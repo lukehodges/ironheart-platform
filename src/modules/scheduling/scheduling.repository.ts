@@ -1,11 +1,11 @@
 import { db } from "@/shared/db";
 import {
   availableSlots,
-  bookings,
+  jobs,
   users,
   userIntegrations,
   userExternalEvents,
-  userAvailability,
+  resourceAvailability,
   sentMessages,
   messageTemplates,
 } from "@/shared/db/schema";
@@ -215,51 +215,51 @@ export const schedulingRepository = {
     tenantId: string,
     userId: string,
     date: Date,
-  ): Promise<Array<typeof bookings.$inferSelect>> {
+  ): Promise<Array<typeof jobs.$inferSelect>> {
     return db
       .select()
-      .from(bookings)
+      .from(jobs)
       .where(
         and(
-          eq(bookings.tenantId, tenantId),
-          eq(bookings.staffId, userId),
-          eq(bookings.scheduledDate, date),
+          eq(jobs.tenantId, tenantId),
+          eq(jobs.staffId, userId),
+          eq(jobs.scheduledDate, date),
           // Exclude terminal statuses
-          sql`${bookings.status} NOT IN ('CANCELLED', 'REJECTED')`,
+          sql`${jobs.status} NOT IN ('CANCELLED', 'REJECTED')`,
         ),
       )
-      .orderBy(bookings.scheduledTime);
+      .orderBy(jobs.scheduledTime);
   },
 
   async getUserAvailabilityWindows(
     _tenantId: string,
     userId: string,
     date: Date,
-  ): Promise<Array<typeof userAvailability.$inferSelect>> {
-    // userAvailability has no tenantId column - queried by userId only
+  ): Promise<Array<typeof resourceAvailability.$inferSelect>> {
+    // resourceAvailability has no tenantId column - queried by userId only
     const dayOfWeek = date.getDay(); // 0=Sun, 6=Sat
 
     return db
       .select()
-      .from(userAvailability)
+      .from(resourceAvailability)
       .where(
         and(
-          eq(userAvailability.userId, userId),
+          eq(resourceAvailability.userId, userId),
           or(
             // Recurring windows that apply on this day of week
             and(
-              eq(userAvailability.type, "RECURRING"),
-              eq(userAvailability.dayOfWeek, dayOfWeek),
+              eq(resourceAvailability.type, "RECURRING"),
+              eq(resourceAvailability.dayOfWeek, dayOfWeek),
             ),
             // Specific date windows
             and(
-              eq(userAvailability.type, "SPECIFIC"),
-              eq(userAvailability.specificDate, date),
+              eq(resourceAvailability.type, "SPECIFIC"),
+              eq(resourceAvailability.specificDate, date),
             ),
             // Blocked periods on this specific date
             and(
-              eq(userAvailability.type, "BLOCKED"),
-              eq(userAvailability.specificDate, date),
+              eq(resourceAvailability.type, "BLOCKED"),
+              eq(resourceAvailability.specificDate, date),
             ),
           ),
         ),
@@ -327,20 +327,20 @@ export const schedulingRepository = {
     // and compare against the target window
     const rows = await db
       .select({
-        id: bookings.id,
-        tenantId: bookings.tenantId,
-        scheduledDate: bookings.scheduledDate,
-        scheduledTime: bookings.scheduledTime,
+        id: jobs.id,
+        tenantId: jobs.tenantId,
+        scheduledDate: jobs.scheduledDate,
+        scheduledTime: jobs.scheduledTime,
       })
-      .from(bookings)
+      .from(jobs)
       .where(
         and(
-          eq(bookings.status, "CONFIRMED"),
-          gte(bookings.scheduledDate, windowStartDate),
-          lte(bookings.scheduledDate, windowEndDate),
+          eq(jobs.status, "CONFIRMED"),
+          gte(jobs.scheduledDate, windowStartDate),
+          lte(jobs.scheduledDate, windowEndDate),
           // Combine date + time into a timestamptz and check it falls in the window
-          sql`(${bookings.scheduledDate}::date + ${bookings.scheduledTime}::time)::timestamptz >= ${windowStart}`,
-          sql`(${bookings.scheduledDate}::date + ${bookings.scheduledTime}::time)::timestamptz <= ${windowEnd}`,
+          sql`(${jobs.scheduledDate}::date + ${jobs.scheduledTime}::time)::timestamptz >= ${windowStart}`,
+          sql`(${jobs.scheduledDate}::date + ${jobs.scheduledTime}::time)::timestamptz <= ${windowEnd}`,
         ),
       );
 
@@ -365,7 +365,7 @@ export const schedulingRepository = {
       .innerJoin(messageTemplates, eq(sentMessages.templateId, messageTemplates.id))
       .where(
         and(
-          eq(sentMessages.bookingId, bookingId),
+          eq(sentMessages.jobId, bookingId),
           eq(messageTemplates.trigger, triggerValue),
         ),
       )
@@ -405,21 +405,21 @@ export const schedulingRepository = {
   async findRecentlyUpdatedBookings(
     sinceMinutes: number,
     tenantId?: string,
-  ): Promise<Array<typeof bookings.$inferSelect>> {
+  ): Promise<Array<typeof jobs.$inferSelect>> {
     const since = new Date(Date.now() - sinceMinutes * 60 * 1000);
 
-    const conditions = [gte(bookings.updatedAt, since)];
+    const conditions = [gte(jobs.updatedAt, since)];
 
     if (tenantId) {
-      conditions.push(eq(bookings.tenantId, tenantId));
+      conditions.push(eq(jobs.tenantId, tenantId));
     }
     // Cross-tenant when tenantId is undefined
 
     return db
       .select()
-      .from(bookings)
+      .from(jobs)
       .where(and(...conditions))
-      .orderBy(bookings.updatedAt);
+      .orderBy(jobs.updatedAt);
   },
 
   async findExpiringTokens(

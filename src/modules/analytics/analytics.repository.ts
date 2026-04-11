@@ -1,7 +1,7 @@
 import { db } from '@/shared/db'
 import { and, eq, gte, lte, sql, count, avg, sum, min, max, isNull, desc } from 'drizzle-orm'
 import { metricSnapshots } from '@/shared/db/schemas/phase6.schema'
-import { bookings } from '@/shared/db/schemas/booking.schema'
+import { jobs } from '@/shared/db/schemas/booking.schema'
 import { payments, invoices, reviews } from '@/shared/db/schemas/shared.schema'
 import { customers } from '@/shared/db/schemas/customer.schema'
 import { services } from '@/shared/db/schemas/services.schema'
@@ -83,17 +83,17 @@ export async function getLatestSnapshotAge(tenantId: string): Promise<number | n
 export async function getBookingCounts(tenantId: string, periodStart: Date) {
   const rows = await db
     .select({
-      status: bookings.status,
+      status: jobs.status,
       total: count(),
     })
-    .from(bookings)
+    .from(jobs)
     .where(
       and(
-        eq(bookings.tenantId, tenantId),
-        gte(bookings.createdAt, periodStart)
+        eq(jobs.tenantId, tenantId),
+        gte(jobs.createdAt, periodStart)
       )
     )
-    .groupBy(bookings.status)
+    .groupBy(jobs.status)
 
   const result = { created: 0, confirmed: 0, cancelled: 0, completed: 0, noShow: 0 }
   let totalCreated = 0
@@ -200,16 +200,16 @@ export async function getCustomerBookingStats(
   const [agg] = await db
     .select({
       totalBookings:     count(),
-      completedBookings: sql<number>`count(*) filter (where ${bookings.status} = 'COMPLETED')`,
-      noShowBookings:    sql<number>`count(*) filter (where ${bookings.status} = 'NO_SHOW')`,
-      firstBookingDate:  min(bookings.scheduledDate),
-      lastBookingDate:   max(bookings.scheduledDate),
+      completedBookings: sql<number>`count(*) filter (where ${jobs.status} = 'COMPLETED')`,
+      noShowBookings:    sql<number>`count(*) filter (where ${jobs.status} = 'NO_SHOW')`,
+      firstBookingDate:  min(jobs.scheduledDate),
+      lastBookingDate:   max(jobs.scheduledDate),
     })
-    .from(bookings)
+    .from(jobs)
     .where(
       and(
-        eq(bookings.tenantId, tenantId),
-        eq(bookings.customerId, customerId)
+        eq(jobs.tenantId, tenantId),
+        eq(jobs.customerId, customerId)
       )
     )
 
@@ -229,16 +229,16 @@ export async function getCustomerBookingStats(
   // Fetch all scheduled dates (sorted) for interval computation
   // Exclude cancelled/rejected bookings from interval calculation
   const dateRows = await db
-    .select({ scheduledDate: bookings.scheduledDate })
-    .from(bookings)
+    .select({ scheduledDate: jobs.scheduledDate })
+    .from(jobs)
     .where(
       and(
-        eq(bookings.tenantId, tenantId),
-        eq(bookings.customerId, customerId),
-        sql`${bookings.status} NOT IN ('CANCELLED', 'REJECTED')`
+        eq(jobs.tenantId, tenantId),
+        eq(jobs.customerId, customerId),
+        sql`${jobs.status} NOT IN ('CANCELLED', 'REJECTED')`
       )
     )
-    .orderBy(bookings.scheduledDate)
+    .orderBy(jobs.scheduledDate)
 
   return {
     totalBookings:     Number(agg?.totalBookings ?? 0),
@@ -263,13 +263,13 @@ export async function getTenantCohortStats(tenantId: string): Promise<CohortStat
   // Per-customer: last booking date + total bookings
   const customerRows = await db
     .select({
-      customerId:    bookings.customerId,
-      lastDate:      max(bookings.scheduledDate),
+      customerId:    jobs.customerId,
+      lastDate:      max(jobs.scheduledDate),
       totalBookings: count(),
     })
-    .from(bookings)
-    .where(eq(bookings.tenantId, tenantId))
-    .groupBy(bookings.customerId)
+    .from(jobs)
+    .where(eq(jobs.tenantId, tenantId))
+    .groupBy(jobs.customerId)
 
   if (customerRows.length === 0) {
     // No bookings at all - return sensible defaults
@@ -285,17 +285,17 @@ export async function getTenantCohortStats(tenantId: string): Promise<CohortStat
   // Frequency: count of bookings in last 90 days per customer
   const freqRows = await db
     .select({
-      customerId: bookings.customerId,
+      customerId: jobs.customerId,
       freq:       count(),
     })
-    .from(bookings)
+    .from(jobs)
     .where(
       and(
-        eq(bookings.tenantId, tenantId),
-        gte(bookings.scheduledDate, ninetyDaysAgo)
+        eq(jobs.tenantId, tenantId),
+        gte(jobs.scheduledDate, ninetyDaysAgo)
       )
     )
-    .groupBy(bookings.customerId)
+    .groupBy(jobs.customerId)
 
   const freqMap = new Map(freqRows.map((r) => [r.customerId, Number(r.freq)]))
 
@@ -379,18 +379,18 @@ export async function getBookingsByStatus(
   from?: Date,
   to?: Date
 ): Promise<Array<{ status: string; count: number }>> {
-  const conditions = [eq(bookings.tenantId, tenantId)]
-  if (from) conditions.push(gte(bookings.createdAt, from))
-  if (to) conditions.push(lte(bookings.createdAt, to))
+  const conditions = [eq(jobs.tenantId, tenantId)]
+  if (from) conditions.push(gte(jobs.createdAt, from))
+  if (to) conditions.push(lte(jobs.createdAt, to))
 
   const rows = await db
     .select({
-      status: bookings.status,
+      status: jobs.status,
       total: count(),
     })
-    .from(bookings)
+    .from(jobs)
     .where(and(...conditions))
-    .groupBy(bookings.status)
+    .groupBy(jobs.status)
 
   return rows.map((r) => ({
     status: r.status,
@@ -408,21 +408,21 @@ export async function getTopServices(
   from?: Date,
   to?: Date
 ): Promise<Array<{ serviceId: string; serviceName: string; bookingCount: number; revenue: number }>> {
-  const conditions = [eq(bookings.tenantId, tenantId)]
-  if (from) conditions.push(gte(bookings.createdAt, from))
-  if (to) conditions.push(lte(bookings.createdAt, to))
+  const conditions = [eq(jobs.tenantId, tenantId)]
+  if (from) conditions.push(gte(jobs.createdAt, from))
+  if (to) conditions.push(lte(jobs.createdAt, to))
 
   const rows = await db
     .select({
-      serviceId:    bookings.serviceId,
+      serviceId:    jobs.serviceId,
       serviceName:  services.name,
       bookingCount: count(),
-      revenue:      sum(bookings.totalAmount),
+      revenue:      sum(jobs.totalAmount),
     })
-    .from(bookings)
-    .innerJoin(services, eq(bookings.serviceId, services.id))
+    .from(jobs)
+    .innerJoin(services, eq(jobs.serviceId, services.id))
     .where(and(...conditions))
-    .groupBy(bookings.serviceId, services.name)
+    .groupBy(jobs.serviceId, services.name)
     .orderBy(desc(count()))
     .limit(limit)
 
@@ -444,24 +444,24 @@ export async function getStaffUtilization(
   to?: Date
 ): Promise<Array<{ staffId: string; staffName: string; bookingCount: number; hoursBooked: number }>> {
   const conditions = [
-    eq(bookings.tenantId, tenantId),
-    sql`${bookings.staffId} IS NOT NULL`,
+    eq(jobs.tenantId, tenantId),
+    sql`${jobs.staffId} IS NOT NULL`,
   ]
-  if (from) conditions.push(gte(bookings.createdAt, from))
-  if (to) conditions.push(lte(bookings.createdAt, to))
+  if (from) conditions.push(gte(jobs.createdAt, from))
+  if (to) conditions.push(lte(jobs.createdAt, to))
 
   const rows = await db
     .select({
-      staffId:      bookings.staffId,
+      staffId:      jobs.staffId,
       firstName:    users.firstName,
       lastName:     users.lastName,
       bookingCount: count(),
-      totalMinutes: sum(bookings.durationMinutes),
+      totalMinutes: sum(jobs.durationMinutes),
     })
-    .from(bookings)
-    .innerJoin(users, eq(bookings.staffId, users.id))
+    .from(jobs)
+    .innerJoin(users, eq(jobs.staffId, users.id))
     .where(and(...conditions))
-    .groupBy(bookings.staffId, users.firstName, users.lastName)
+    .groupBy(jobs.staffId, users.firstName, users.lastName)
     .orderBy(desc(count()))
 
   return rows.map((r) => ({
@@ -491,22 +491,22 @@ export async function getChurnRiskCandidates(
   // Get all customers with at least 2 bookings (need >= 2 to compute interval)
   const customerRows = await db
     .select({
-      customerId:  bookings.customerId,
+      customerId:  jobs.customerId,
       firstName:   customers.firstName,
       lastName:    customers.lastName,
-      lastBooking: max(bookings.scheduledDate),
+      lastBooking: max(jobs.scheduledDate),
       bookingCount: count(),
     })
-    .from(bookings)
-    .innerJoin(customers, eq(bookings.customerId, customers.id))
+    .from(jobs)
+    .innerJoin(customers, eq(jobs.customerId, customers.id))
     .where(
       and(
-        eq(bookings.tenantId, tenantId),
+        eq(jobs.tenantId, tenantId),
         isNull(customers.deletedAt),
-        sql`${bookings.status} NOT IN ('CANCELLED', 'REJECTED')`
+        sql`${jobs.status} NOT IN ('CANCELLED', 'REJECTED')`
       )
     )
-    .groupBy(bookings.customerId, customers.firstName, customers.lastName)
+    .groupBy(jobs.customerId, customers.firstName, customers.lastName)
     .having(sql`count(*) >= 2`)
 
   // For each candidate, fetch their scheduled dates to compute interval
@@ -514,16 +514,16 @@ export async function getChurnRiskCandidates(
 
   for (const row of customerRows) {
     const dateRows = await db
-      .select({ scheduledDate: bookings.scheduledDate })
-      .from(bookings)
+      .select({ scheduledDate: jobs.scheduledDate })
+      .from(jobs)
       .where(
         and(
-          eq(bookings.tenantId, tenantId),
-          eq(bookings.customerId, row.customerId),
-          sql`${bookings.status} NOT IN ('CANCELLED', 'REJECTED')`
+          eq(jobs.tenantId, tenantId),
+          eq(jobs.customerId, row.customerId),
+          sql`${jobs.status} NOT IN ('CANCELLED', 'REJECTED')`
         )
       )
-      .orderBy(bookings.scheduledDate)
+      .orderBy(jobs.scheduledDate)
 
     results.push({
       customerId:    row.customerId,

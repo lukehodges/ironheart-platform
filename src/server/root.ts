@@ -1,9 +1,11 @@
 import { router } from "@/shared/trpc";
 import { bookingRouter } from "@/modules/booking/booking.router";
-import { approvalRouter } from "@/modules/booking/sub-routers/approval.router";
-import { completionRouter } from "@/modules/booking/sub-routers/completion.router";
-import { portalRouter } from "@/modules/booking/sub-routers/portal.router";
-import { slotAvailabilityRouter } from "@/modules/booking/sub-routers/slot.router";
+import { approvalRouter } from "@/modules/jobs/sub-routers/approval.router";
+import { completionRouter } from "@/modules/jobs/sub-routers/completion.router";
+import { portalRouter } from "@/modules/jobs/sub-routers/portal.router";
+import { slotAvailabilityRouter } from "@/modules/jobs/sub-routers/slot.router";
+import { jobsRouter } from "@/modules/jobs/jobs.router";
+import { resourcesRouter } from "@/modules/resources/resources.router";
 import { schedulingRouter } from "@/modules/scheduling";
 import { authRouter } from "@/modules/auth";
 import { notificationRouter } from "@/modules/notification";
@@ -46,6 +48,8 @@ import { integrationsRouter } from "@/modules/integrations";
 export const appRouter = router({
   auth: authRouter,
   booking: bookingRouter,
+  jobs: jobsRouter,
+  resources: resourcesRouter,
   approval: approvalRouter,
   completion: completionRouter,
   portal: portalRouter,

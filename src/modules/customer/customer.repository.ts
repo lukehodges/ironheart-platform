@@ -4,7 +4,8 @@ import { NotFoundError } from "@/shared/errors";
 import {
   customers,
   customerNotes,
-  bookings,
+  customerContacts,
+  jobs,
   reviews,
   reviewRequests,
   invoices,
@@ -279,9 +280,9 @@ export const customerRepository = {
   ): Promise<void> {
     // Re-parent all related tables
     await tx
-      .update(bookings)
+      .update(jobs)
       .set({ customerId: targetId })
-      .where(eq(bookings.customerId, sourceId));
+      .where(eq(jobs.customerId, sourceId));
 
     await tx
       .update(customerNotes)
@@ -392,6 +393,95 @@ export const customerRepository = {
     log.info({ tenantId, noteId }, "Customer note deleted");
   },
 
+  // ---- CONTACTS ----
+
+  async listContacts(tenantId: string, customerId: string) {
+    return db
+      .select()
+      .from(customerContacts)
+      .where(
+        and(
+          eq(customerContacts.customerId, customerId),
+          eq(customerContacts.tenantId, tenantId),
+        ),
+      );
+  },
+
+  async createContact(
+    tenantId: string,
+    input: {
+      customerId: string;
+      name: string;
+      email?: string | null;
+      phone?: string | null;
+      role: typeof customerContacts.$inferInsert["role"];
+      receivesNotifications?: boolean;
+    },
+  ) {
+    const [row] = await db
+      .insert(customerContacts)
+      .values({
+        id: crypto.randomUUID(),
+        tenantId,
+        customerId: input.customerId,
+        name: input.name,
+        email: input.email ?? null,
+        phone: input.phone ?? null,
+        role: input.role,
+        receivesNotifications: input.receivesNotifications ?? false,
+        createdAt: new Date(),
+      })
+      .returning();
+    log.info({ tenantId, contactId: row!.id }, "Customer contact created");
+    return row!;
+  },
+
+  async updateContact(
+    tenantId: string,
+    contactId: string,
+    input: {
+      name?: string;
+      email?: string | null;
+      phone?: string | null;
+      role?: typeof customerContacts.$inferInsert["role"];
+      receivesNotifications?: boolean;
+    },
+  ) {
+    const updateData: Record<string, unknown> = {};
+    if (input.name !== undefined) updateData.name = input.name;
+    if (input.email !== undefined) updateData.email = input.email;
+    if (input.phone !== undefined) updateData.phone = input.phone;
+    if (input.role !== undefined) updateData.role = input.role;
+    if (input.receivesNotifications !== undefined) updateData.receivesNotifications = input.receivesNotifications;
+
+    const [updated] = await db
+      .update(customerContacts)
+      .set(updateData as Partial<typeof customerContacts.$inferInsert>)
+      .where(
+        and(
+          eq(customerContacts.id, contactId),
+          eq(customerContacts.tenantId, tenantId),
+        ),
+      )
+      .returning();
+
+    if (!updated) throw new NotFoundError("CustomerContact", contactId);
+    log.info({ tenantId, contactId }, "Customer contact updated");
+    return updated;
+  },
+
+  async deleteContact(tenantId: string, contactId: string): Promise<void> {
+    await db
+      .delete(customerContacts)
+      .where(
+        and(
+          eq(customerContacts.id, contactId),
+          eq(customerContacts.tenantId, tenantId),
+        ),
+      );
+    log.info({ tenantId, contactId }, "Customer contact deleted");
+  },
+
   // ---- HISTORY ----
 
   async getBookingHistory(
@@ -407,19 +497,19 @@ export const customerRepository = {
   > {
     const rows = await db
       .select({
-        id: bookings.id,
-        scheduledDate: bookings.scheduledDate,
-        status: bookings.status,
-        totalAmount: bookings.totalAmount,
+        id: jobs.id,
+        scheduledDate: jobs.scheduledDate,
+        status: jobs.status,
+        totalAmount: jobs.totalAmount,
       })
-      .from(bookings)
+      .from(jobs)
       .where(
         and(
-          eq(bookings.tenantId, tenantId),
-          eq(bookings.customerId, customerId),
+          eq(jobs.tenantId, tenantId),
+          eq(jobs.customerId, customerId),
         ),
       )
-      .orderBy(desc(bookings.scheduledDate));
+      .orderBy(desc(jobs.scheduledDate));
 
     return rows.map((r) => ({
       id: r.id,

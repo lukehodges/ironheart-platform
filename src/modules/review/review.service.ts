@@ -4,7 +4,7 @@ import { NotFoundError, ValidationError } from "@/shared/errors";
 import { inngest } from "@/shared/inngest";
 import type { Context } from "@/shared/trpc";
 import { reviewRepository } from "./review.repository";
-import { bookingRepository } from "@/modules/booking/booking.repository";
+import { jobRepository as bookingRepository } from "@/modules/jobs/jobs.repository";
 import type {
   ReviewRecord,
   ReviewRequestRecord,
@@ -117,7 +117,7 @@ export const reviewService = {
     await inngest.send({
       name: "review/request.send",
       data: {
-        bookingId: input.bookingId,
+        jobId: input.bookingId,
         customerId: input.customerId ?? "",
         delay: input.delay,
       },

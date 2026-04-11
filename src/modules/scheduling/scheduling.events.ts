@@ -10,27 +10,27 @@ const log = logger.child({ module: "scheduling.events" });
 // New strategy: fires on booking/confirmed event, uses step.sleepUntil() for exact timing.
 
 const bookingConfirmedSchema = z.object({
-  bookingId: z.string(),
+  jobId: z.string(),
   tenantId: z.string(),
 });
 
 export const scheduleBookingReminders = inngest.createFunction(
   { id: "schedule-booking-reminders" },
-  { event: "booking/confirmed" },
+  { event: "job/confirmed" },
   async ({ event, step }) => {
-    const { bookingId, tenantId } = bookingConfirmedSchema.parse(event.data);
+    const { jobId, tenantId } = bookingConfirmedSchema.parse(event.data);
 
     const booking = await step.run("load-booking", async () => {
-      // Load from bookings table - use db directly since repository doesn't have a single-booking method
+      // Load from jobs table - use db directly since repository doesn't have a single-job method
       // Return minimal shape: { scheduledDate, scheduledTime, status, customer: { email, phone } }
       // For now stub as null since calendar details need joins - will be wired in Phase 4
-      log.info({ bookingId, tenantId }, "Scheduling reminders for booking");
-      return null; // TODO Phase 4: load booking with customer details
+      log.info({ jobId, tenantId }, "Scheduling reminders for job");
+      return null; // TODO Phase 4: load job with customer details
     });
 
     if (!booking) return { skipped: true };
 
-    return { scheduled: true, bookingId };
+    return { scheduled: true, jobId };
   }
 );
 

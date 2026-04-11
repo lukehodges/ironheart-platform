@@ -25,7 +25,7 @@ function mapReview(row: typeof reviews.$inferSelect): ReviewRecord {
   return {
     id: row.id,
     tenantId: row.tenantId,
-    bookingId: row.bookingId ?? "",
+    bookingId: row.jobId ?? "",
     customerId: row.customerId ?? null,
     staffId: row.staffId ?? null,
     rating: row.rating ?? null,
@@ -49,7 +49,7 @@ function mapReviewRequest(
   return {
     id: row.id,
     tenantId: row.tenantId,
-    bookingId: row.bookingId,
+    bookingId: row.jobId,
     customerId: row.customerId ?? null,
     status: row.status as ReviewRequestStatus,
     channel: null,
@@ -111,7 +111,7 @@ export const reviewRepository = {
       .values({
         id: crypto.randomUUID(),
         tenantId: input.tenantId,
-        bookingId: input.bookingId,
+        jobId: input.bookingId,
         customerId: input.customerId,
         customerName: input.customerName ?? "",
         customerEmail: input.customerEmail ?? "",
@@ -167,7 +167,7 @@ export const reviewRepository = {
     log.info({ tenantId, opts }, "listRequests");
 
     const conditions = [eq(reviewRequests.tenantId, tenantId)];
-    if (opts.bookingId) conditions.push(eq(reviewRequests.bookingId, opts.bookingId));
+    if (opts.bookingId) conditions.push(eq(reviewRequests.jobId, opts.bookingId));
     if (opts.status) conditions.push(eq(reviewRequests.status, opts.status));
     if (opts.cursor)
       conditions.push(lte(reviewRequests.createdAt, new Date(opts.cursor)));
@@ -223,7 +223,7 @@ export const reviewRepository = {
         customerId: input.customerId ?? "",
         customerName: "",
         customerEmail: "",
-        bookingId: input.bookingId || null,
+        jobId: input.bookingId || null,
         staffId: input.staffId ?? null,
         rating: input.rating ?? 5,
         text: input.comment ?? null,

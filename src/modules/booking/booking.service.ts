@@ -131,15 +131,15 @@ export const bookingService = {
           name: "slot/reserved",
           data: {
             slotId: input.slotId ?? "",
-            bookingId: booking.id,
+            jobId: booking.id,
             tenantId,
             expiresAt: booking.reservationExpiresAt.toISOString(),
           },
         });
       }
 
-      // Emit booking created event for workflows
-      await inngest.send({ name: "booking/created", data: { bookingId: booking.id, tenantId } });
+      // Emit job created event for workflows
+      await inngest.send({ name: "job/created", data: { jobId: booking.id, tenantId } });
 
       log.info({ bookingId: booking.id, status: booking.status, tenantId }, "Booking created");
 
@@ -310,7 +310,7 @@ export const bookingService = {
 
     // Handle staff change - emit calendar sync for old staff
     if (input.staffIds !== undefined && existing.staffId) {
-      await inngest.send({ name: "calendar/sync.push", data: { bookingId, userId: existing.staffId, tenantId } });
+      await inngest.send({ name: "calendar/sync.push", data: { jobId: bookingId, userId: existing.staffId, tenantId } });
     }
 
     const updated = await bookingRepository.update(tenantId, bookingId, input);
@@ -323,7 +323,7 @@ export const bookingService = {
 
     // Emit calendar sync for new staff
     if (updated.staffId) {
-      await inngest.send({ name: "calendar/sync.push", data: { bookingId, userId: updated.staffId, tenantId } });
+      await inngest.send({ name: "calendar/sync.push", data: { jobId: bookingId, userId: updated.staffId, tenantId } });
     }
 
     log.info({ bookingId, tenantId }, "Booking updated");
@@ -360,7 +360,7 @@ export const bookingService = {
     // Delete assignments
     await bookingRepository.upsertAssignments(tenantId, bookingId, []);
 
-    await inngest.send({ name: "booking/cancelled", data: { bookingId, tenantId, reason } });
+    await inngest.send({ name: "job/cancelled", data: { jobId: bookingId, tenantId, reason } });
     const cancelledEmailTo = await bookingRepository.findCustomerEmailForBooking(bookingId);
     if (!cancelledEmailTo) {
       log.warn({ bookingId }, "No customer email found for notification, email will be skipped");
@@ -373,7 +373,7 @@ export const bookingService = {
         html: "",
         tenantId,
         templateId: "booking_cancelled",
-        bookingId,
+        jobId: bookingId,
         trigger: "BOOKING_CANCELLED",
       },
     });
@@ -591,10 +591,10 @@ export const bookingService = {
 
     await bookingRepository.recordStatusChange(input.bookingId, booking.status as BookingStatus, "COMPLETED", input.notes);
 
-    await inngest.send({ name: "booking/completed", data: { bookingId: input.bookingId, tenantId } });
+    await inngest.send({ name: "job/completed", data: { jobId: input.bookingId, tenantId } });
     await inngest.send({
       name: "review/request.send",
-      data: { bookingId: input.bookingId, customerId: input.customerId, delay: "24h" },
+      data: { jobId: input.bookingId, customerId: input.customerId, delay: "24h" },
     });
 
     log.info({ bookingId: input.bookingId, tenantId }, "Booking completed");

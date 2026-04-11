@@ -12,14 +12,14 @@ const scheduleReviewRequest = inngest.createFunction(
   { id: "review-schedule-request", retries: 3 },
   { event: "review/request.send" },
   async ({ event, step }) => {
-    const { bookingId, customerId, delay } = event.data;
+    const { jobId, customerId, delay } = event.data;
 
     if (delay) {
       await step.sleep("wait-for-timing", delay);
     }
 
     log.info(
-      { bookingId, customerId },
+      { jobId, customerId },
       "Review request scheduled - email dispatch via notification module"
     );
   }

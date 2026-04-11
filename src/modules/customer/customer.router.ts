@@ -11,6 +11,8 @@ import {
   updateCustomerSchema,
   mergeCustomersSchema,
   addNoteSchema,
+  createContactSchema,
+  updateContactSchema,
 } from "./customer.schemas";
 
 /**
@@ -67,6 +69,25 @@ export const customerRouter = router({
   getBookingHistory: moduleProcedure
     .input(z.object({ customerId: z.string() }))
     .query(async ({ ctx, input }) => customerService.getBookingHistory(ctx, input.customerId)),
+
+  // Contacts
+  contacts: router({
+    list: moduleProcedure
+      .input(z.object({ customerId: z.string().uuid() }))
+      .query(async ({ ctx, input }) => customerService.listContacts(ctx, input.customerId)),
+
+    create: modulePermission("customer:update")
+      .input(createContactSchema)
+      .mutation(async ({ ctx, input }) => customerService.createContact(ctx, input)),
+
+    update: modulePermission("customer:update")
+      .input(z.object({ contactId: z.string().uuid(), data: updateContactSchema }))
+      .mutation(async ({ ctx, input }) => customerService.updateContact(ctx, input.contactId, input.data)),
+
+    delete: modulePermission("customer:update")
+      .input(z.object({ contactId: z.string().uuid() }))
+      .mutation(async ({ ctx, input }) => customerService.deleteContact(ctx, input.contactId)),
+  }),
 });
 
 export type CustomerRouter = typeof customerRouter;

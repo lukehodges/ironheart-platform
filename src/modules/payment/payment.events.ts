@@ -62,7 +62,7 @@ export const handleStripeWebhook = inngest.createFunction(
               name: 'payment/intent.succeeded',
               data: {
                 paymentIntentId: (payload as { id: string }).id,
-                bookingId: result.bookingId ?? '',
+                jobId: result.bookingId ?? '',
                 tenantId: result.tenantId,
                 amount: result.amount,
               },
@@ -113,7 +113,7 @@ export const handleStripeWebhook = inngest.createFunction(
               name: 'payment/intent.failed',
               data: {
                 paymentIntentId: result.paymentIntentId,
-                bookingId: result.bookingId ?? '',
+                jobId: result.bookingId ?? '',
                 tenantId: result.tenantId!,
                 error: result.errorMessage,
               },

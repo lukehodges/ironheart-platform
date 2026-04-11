@@ -75,7 +75,7 @@ function toCompletedFormRecord(row: CompletedFormRow): CompletedFormRecord {
     id: row.id,
     tenantId: row.tenantId,
     templateId: row.templateId,
-    bookingId: row.bookingId ?? null,
+    bookingId: row.jobId ?? null,
     customerId: row.customerId ?? null,
     sessionKey: row.sessionKey ?? "",
     status: mapFormStatus(row.status),
@@ -245,7 +245,7 @@ export const formsRepository = {
         customerId: input.customerId ?? crypto.randomUUID(), // customerId is NOT NULL in schema
         customerName: "",          // required by schema; populated by service
         customerEmail: "",         // required by schema; populated by service
-        bookingId: input.bookingId ?? null,
+        jobId: input.bookingId ?? null,
         sessionKey: input.sessionKey,
         status: mapStatusToDb(input.status),
         responses: (input.responses ?? {}) as typeof completedForms.$inferInsert["responses"],
@@ -329,7 +329,7 @@ export const formsRepository = {
     }
 
     if (opts.bookingId) {
-      conditions.push(eq(completedForms.bookingId, opts.bookingId));
+      conditions.push(eq(completedForms.jobId, opts.bookingId));
     }
 
     if (opts.customerId) {

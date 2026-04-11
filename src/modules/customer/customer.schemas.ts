@@ -54,3 +54,22 @@ export const listCustomersSchema = z.object({
   cursor: z.string().optional(),
 })
 
+export const contactRoleEnum = z.enum(['PRIMARY', 'BILLING', 'SITE_CONTACT', 'GUARDIAN', 'EMERGENCY'])
+
+export const createContactSchema = z.object({
+  customerId: z.string().uuid(),
+  name: z.string().min(1).max(200),
+  email: z.string().email().optional().nullable(),
+  phone: z.string().optional().nullable(),
+  role: contactRoleEnum,
+  receivesNotifications: z.boolean().optional().default(false),
+})
+
+export const updateContactSchema = z.object({
+  name: z.string().min(1).max(200).optional(),
+  email: z.string().email().optional().nullable(),
+  phone: z.string().optional().nullable(),
+  role: contactRoleEnum.optional(),
+  receivesNotifications: z.boolean().optional(),
+})
+

@@ -8,7 +8,7 @@
 import { db } from '@/shared/db'
 import { and, desc, eq, isNull, or } from 'drizzle-orm'
 import {
-  bookings,
+  jobs,
   customers,
   messageTemplates,
   sentMessages,
@@ -52,7 +52,7 @@ export const notificationRepository = {
       .from(sentMessages)
       .where(
         and(
-          eq(sentMessages.bookingId, bookingId),
+          eq(sentMessages.jobId, bookingId),
           // Cast is required because the TS union includes PORTAL_INVITE which
           // is not in the pgEnum. We guard above so this is always safe.
           eq(sentMessages.trigger, trigger as typeof sentMessages.trigger._.data),
@@ -76,7 +76,9 @@ export const notificationRepository = {
    */
   async recordSentMessage(data: {
     tenantId: string
+    /** @deprecated use jobId */
     bookingId?: string
+    jobId?: string
     templateId?: string
     channel: MessageChannel
     trigger: MessageTrigger
@@ -93,15 +95,16 @@ export const notificationRepository = {
     if (data.trigger === 'PORTAL_INVITE') return
 
     const id = crypto.randomUUID()
-    // recipientId is a required non-nullable column; use bookingId as proxy,
+    const jobId = data.jobId ?? data.bookingId
+    // recipientId is a required non-nullable column; use jobId as proxy,
     // falling back to a deterministic placeholder UUID so the insert always
     // succeeds without violating NOT NULL.
-    const recipientId = data.bookingId ?? '00000000-0000-0000-0000-000000000000'
+    const recipientId = jobId ?? '00000000-0000-0000-0000-000000000000'
 
     await db.insert(sentMessages).values({
       id,
       tenantId: data.tenantId,
-      bookingId: data.bookingId ?? null,
+      jobId: jobId ?? null,
       templateId: data.templateId ?? null,
       channel: data.channel,
       trigger: data.trigger as typeof sentMessages.trigger._.data,
@@ -350,15 +353,15 @@ export const notificationRepository = {
   ): Promise<BookingForVariables | null> {
     const rows = await db
       .select({
-        // Booking core
-        id: bookings.id,
-        bookingNumber: bookings.bookingNumber,
-        scheduledDate: bookings.scheduledDate,
-        scheduledTime: bookings.scheduledTime,
-        durationMinutes: bookings.durationMinutes,
-        status: bookings.status,
-        locationType: bookings.locationType,
-        locationAddress: bookings.locationAddress,
+        // Job core
+        id: jobs.id,
+        bookingNumber: jobs.bookingNumber,
+        scheduledDate: jobs.scheduledDate,
+        scheduledTime: jobs.scheduledTime,
+        durationMinutes: jobs.durationMinutes,
+        status: jobs.status,
+        locationType: jobs.locationType,
+        locationAddress: jobs.locationAddress,
         // Customer
         customerFirstName: customers.firstName,
         customerLastName: customers.lastName,
@@ -375,12 +378,12 @@ export const notificationRepository = {
         tenantName: tenants.name,
         tenantSlug: tenants.slug,
       })
-      .from(bookings)
-      .leftJoin(customers, eq(bookings.customerId, customers.id))
-      .leftJoin(services, eq(bookings.serviceId, services.id))
-      .leftJoin(users, eq(bookings.staffId, users.id))
-      .leftJoin(tenants, eq(bookings.tenantId, tenants.id))
-      .where(eq(bookings.id, bookingId))
+      .from(jobs)
+      .leftJoin(customers, eq(jobs.customerId, customers.id))
+      .leftJoin(services, eq(jobs.serviceId, services.id))
+      .leftJoin(users, eq(jobs.staffId, users.id))
+      .leftJoin(tenants, eq(jobs.tenantId, tenants.id))
+      .where(eq(jobs.id, bookingId))
       .limit(1)
 
     if (rows.length === 0) return null

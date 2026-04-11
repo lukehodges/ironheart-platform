@@ -243,6 +243,52 @@ export const customerService = {
   },
 
   // ---------------------------------------------------------------------------
+  // CONTACTS
+  // ---------------------------------------------------------------------------
+
+  async listContacts(ctx: Context, customerId: string) {
+    const customer = await customerRepository.findById(ctx.tenantId, customerId);
+    if (!customer) throw new NotFoundError("Customer", customerId);
+    return customerRepository.listContacts(ctx.tenantId, customerId);
+  },
+
+  async createContact(
+    ctx: Context,
+    input: { customerId: string; name: string; email?: string | null; phone?: string | null; role: string; receivesNotifications?: boolean }
+  ) {
+    const customer = await customerRepository.findById(ctx.tenantId, input.customerId);
+    if (!customer) throw new NotFoundError("Customer", input.customerId);
+
+    const contact = await customerRepository.createContact(ctx.tenantId, {
+      customerId: input.customerId,
+      name: input.name,
+      email: input.email,
+      phone: input.phone,
+      role: input.role as Parameters<typeof customerRepository.createContact>[1]["role"],
+      receivesNotifications: input.receivesNotifications,
+    });
+
+    log.info({ tenantId: ctx.tenantId, customerId: input.customerId, contactId: contact.id }, "Contact created via service");
+    return contact;
+  },
+
+  async updateContact(
+    ctx: Context,
+    contactId: string,
+    input: { name?: string; email?: string | null; phone?: string | null; role?: string; receivesNotifications?: boolean }
+  ) {
+    return customerRepository.updateContact(ctx.tenantId, contactId, {
+      ...input,
+      role: input.role as Parameters<typeof customerRepository.updateContact>[2]["role"],
+    });
+  },
+
+  async deleteContact(ctx: Context, contactId: string): Promise<void> {
+    await customerRepository.deleteContact(ctx.tenantId, contactId);
+    log.info({ tenantId: ctx.tenantId, contactId }, "Contact deleted via service");
+  },
+
+  // ---------------------------------------------------------------------------
   // BOOKING HISTORY
   // ---------------------------------------------------------------------------
 

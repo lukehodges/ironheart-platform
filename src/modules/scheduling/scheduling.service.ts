@@ -1,6 +1,6 @@
 import { addDays, addWeeks, addMonths } from "date-fns";
 import { db } from "@/shared/db";
-import { bookings, users, availableSlots, staffProfiles } from "@/shared/db/schema";
+import { jobs, users, availableSlots, staffProfiles } from "@/shared/db/schema";
 import { eq, and, sql, gte, lte } from "drizzle-orm";
 import { logger } from "@/shared/logger";
 import { NotFoundError } from "@/shared/errors";
@@ -307,8 +307,8 @@ export const schedulingService = {
     // Load the booking
     const [booking] = await db
       .select()
-      .from(bookings)
-      .where(and(eq(bookings.id, bookingId), eq(bookings.tenantId, tenantId)))
+      .from(jobs)
+      .where(and(eq(jobs.id, bookingId), eq(jobs.tenantId, tenantId)))
       .limit(1);
 
     if (!booking) throw new NotFoundError("Booking", bookingId);
@@ -406,19 +406,19 @@ export const schedulingService = {
     // Load all non-terminal bookings on this date
     const dayBookings = await db
       .select({
-        id: bookings.id,
-        staffId: bookings.staffId,
-        scheduledTime: bookings.scheduledTime,
-        durationMinutes: bookings.durationMinutes,
-        status: bookings.status,
-        customerId: bookings.customerId,
+        id: jobs.id,
+        staffId: jobs.staffId,
+        scheduledTime: jobs.scheduledTime,
+        durationMinutes: jobs.durationMinutes,
+        status: jobs.status,
+        customerId: jobs.customerId,
       })
-      .from(bookings)
+      .from(jobs)
       .where(
         and(
-          eq(bookings.tenantId, tenantId),
-          eq(bookings.scheduledDate, date),
-          sql`${bookings.status} NOT IN ('CANCELLED', 'REJECTED')`,
+          eq(jobs.tenantId, tenantId),
+          eq(jobs.scheduledDate, date),
+          sql`${jobs.status} NOT IN ('CANCELLED', 'REJECTED')`,
         ),
       );
 
@@ -499,8 +499,8 @@ export const schedulingService = {
     // Load the booking (cross-tenant lookup since we only have bookingId)
     const [booking] = await db
       .select()
-      .from(bookings)
-      .where(eq(bookings.id, bookingId))
+      .from(jobs)
+      .where(eq(jobs.id, bookingId))
       .limit(1);
 
     if (!booking) {

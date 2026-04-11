@@ -13,10 +13,10 @@ const log = logger.child({ module: 'developer.events' })
 export const dispatchWebhooks = inngest.createFunction(
   { id: 'dispatch-webhooks', retries: 0 },
   [
-    { event: 'booking/created' },
-    { event: 'booking/confirmed' },
-    { event: 'booking/cancelled' },
-    { event: 'booking/completed' },
+    { event: 'job/created' },
+    { event: 'job/confirmed' },
+    { event: 'job/cancelled' },
+    { event: 'job/completed' },
     { event: 'review/submitted' },
     { event: 'forms/submitted' },
   ],
@@ -40,7 +40,7 @@ export const dispatchWebhooks = inngest.createFunction(
         step.run(`deliver-${ep.id}`, () =>
           deliverWebhook(ep as unknown as WebhookEndpoint, {
             name: event.name,
-            id:   event.id,
+            id:   (event as { id?: string }).id ?? '',
             data: event.data,
           })
         )

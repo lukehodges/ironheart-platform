@@ -1,5 +1,23 @@
 export type NoteType = 'GENERAL' | 'MEDICAL' | 'PREFERENCE' | 'COMPLAINT' | 'FOLLOWUP'
 
+export type CustomerType = 'INDIVIDUAL' | 'COMPANY'
+
+export type CrmStage = 'PROSPECT' | 'ACTIVE' | 'CHURNED'
+
+export type ContactRole = 'PRIMARY' | 'BILLING' | 'SITE_CONTACT' | 'GUARDIAN' | 'EMERGENCY'
+
+export interface CustomerContact {
+  id: string
+  customerId: string
+  tenantId: string
+  name: string
+  email: string | null
+  phone: string | null
+  role: ContactRole
+  receivesNotifications: boolean
+  createdAt: Date
+}
+
 export interface CustomerAddress {
   line1?: string
   line2?: string

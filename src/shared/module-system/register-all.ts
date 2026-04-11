@@ -14,6 +14,7 @@ import { settingsManifest } from '@/modules/settings/settings.manifest'
 // Vertical / feature modules
 import { customerManifest } from '@/modules/customer/customer.manifest'
 import { bookingManifest } from '@/modules/booking/booking.manifest'
+import { jobsManifest } from '@/modules/jobs/jobs.manifest'
 import { teamManifest } from '@/modules/team/team.manifest'
 import { schedulingManifest } from '@/modules/scheduling/scheduling.manifest'
 import { portalManifest } from '@/modules/portal/portal.manifest'
@@ -43,6 +44,7 @@ moduleRegistry.register(settingsManifest)
 // --- Vertical / feature modules ---
 moduleRegistry.register(customerManifest)
 moduleRegistry.register(bookingManifest)
+moduleRegistry.register(jobsManifest)
 moduleRegistry.register(teamManifest)
 moduleRegistry.register(schedulingManifest)
 moduleRegistry.register(portalManifest)

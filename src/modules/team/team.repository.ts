@@ -4,8 +4,8 @@ import { NotFoundError, ForbiddenError, ConflictError, BadRequestError } from "@
 import {
   users,
   staffProfiles,
-  userAvailability,
-  bookings,
+  resourceAvailability,
+  jobs,
   staffDepartments,
   staffDepartmentMembers,
   staffNotes,
@@ -393,35 +393,35 @@ export const teamRepository = {
     const availRows = userIds.length > 0
       ? await db
           .select({
-            userId: userAvailability.userId,
-            type: userAvailability.type,
-            specificDate: userAvailability.specificDate,
-            endDate: userAvailability.endDate,
-            dayOfWeek: userAvailability.dayOfWeek,
+            userId: resourceAvailability.userId,
+            type: resourceAvailability.type,
+            specificDate: resourceAvailability.specificDate,
+            endDate: resourceAvailability.endDate,
+            dayOfWeek: resourceAvailability.dayOfWeek,
           })
-          .from(userAvailability)
+          .from(resourceAvailability)
           .where(
             and(
-              inArray(userAvailability.userId, userIds),
+              inArray(resourceAvailability.userId, userIds),
               or(
                 // BLOCKED entries covering today
                 and(
-                  eq(userAvailability.type, "BLOCKED"),
-                  lte(userAvailability.specificDate, today),
+                  eq(resourceAvailability.type, "BLOCKED"),
+                  lte(resourceAvailability.specificDate, today),
                   or(
-                    isNull(userAvailability.endDate),
-                    gte(userAvailability.endDate, today),
+                    isNull(resourceAvailability.endDate),
+                    gte(resourceAvailability.endDate, today),
                   ),
                 ),
                 // SPECIFIC entries for today
                 and(
-                  eq(userAvailability.type, "SPECIFIC"),
-                  eq(userAvailability.specificDate, today),
+                  eq(resourceAvailability.type, "SPECIFIC"),
+                  eq(resourceAvailability.specificDate, today),
                 ),
                 // RECURRING entries for today's day of week
                 and(
-                  eq(userAvailability.type, "RECURRING"),
-                  eq(userAvailability.dayOfWeek, dayOfWeek),
+                  eq(resourceAvailability.type, "RECURRING"),
+                  eq(resourceAvailability.dayOfWeek, dayOfWeek),
                 ),
               ),
             )
@@ -758,17 +758,17 @@ export const teamRepository = {
     opts?: { type?: AvailabilityType; startDate?: string; endDate?: string }
   ): Promise<AvailabilityEntry[]> {
     log.info({ tenantId, userId, opts }, "getAvailabilityEntries");
-    const conditions = [eq(userAvailability.userId, userId)];
+    const conditions = [eq(resourceAvailability.userId, userId)];
 
     if (opts?.type) {
-      conditions.push(eq(userAvailability.type, opts.type));
+      conditions.push(eq(resourceAvailability.type, opts.type));
     }
 
     if (opts?.startDate) {
       conditions.push(
         or(
-          isNull(userAvailability.specificDate),
-          gte(userAvailability.specificDate, new Date(opts.startDate))
+          isNull(resourceAvailability.specificDate),
+          gte(resourceAvailability.specificDate, new Date(opts.startDate))
         ) as ReturnType<typeof eq>
       );
     }
@@ -776,17 +776,17 @@ export const teamRepository = {
     if (opts?.endDate) {
       conditions.push(
         or(
-          isNull(userAvailability.specificDate),
-          lte(userAvailability.specificDate, new Date(opts.endDate))
+          isNull(resourceAvailability.specificDate),
+          lte(resourceAvailability.specificDate, new Date(opts.endDate))
         ) as ReturnType<typeof eq>
       );
     }
 
     const rows = await db
       .select()
-      .from(userAvailability)
+      .from(resourceAvailability)
       .where(and(...conditions))
-      .orderBy(asc(userAvailability.createdAt));
+      .orderBy(asc(resourceAvailability.createdAt));
 
     return rows.map((row): AvailabilityEntry => {
       if (row.type === "RECURRING") {
@@ -838,15 +838,15 @@ export const teamRepository = {
 
     const blocked = await db
       .select()
-      .from(userAvailability)
+      .from(resourceAvailability)
       .where(
         and(
-          eq(userAvailability.userId, userId),
-          eq(userAvailability.type, "BLOCKED"),
-          lte(userAvailability.specificDate, dateObj),
+          eq(resourceAvailability.userId, userId),
+          eq(resourceAvailability.type, "BLOCKED"),
+          lte(resourceAvailability.specificDate, dateObj),
           or(
-            isNull(userAvailability.endDate),
-            gte(userAvailability.endDate, dateObj)
+            isNull(resourceAvailability.endDate),
+            gte(resourceAvailability.endDate, dateObj)
           )
         )
       );
@@ -855,12 +855,12 @@ export const teamRepository = {
 
     const specific = await db
       .select()
-      .from(userAvailability)
+      .from(resourceAvailability)
       .where(
         and(
-          eq(userAvailability.userId, userId),
-          eq(userAvailability.type, "SPECIFIC"),
-          eq(userAvailability.specificDate, dateObj)
+          eq(resourceAvailability.userId, userId),
+          eq(resourceAvailability.type, "SPECIFIC"),
+          eq(resourceAvailability.specificDate, dateObj)
         )
       );
 
@@ -873,12 +873,12 @@ export const teamRepository = {
 
     const recurring = await db
       .select()
-      .from(userAvailability)
+      .from(resourceAvailability)
       .where(
         and(
-          eq(userAvailability.userId, userId),
-          eq(userAvailability.type, "RECURRING"),
-          eq(userAvailability.dayOfWeek, dayOfWeek)
+          eq(resourceAvailability.userId, userId),
+          eq(resourceAvailability.type, "RECURRING"),
+          eq(resourceAvailability.dayOfWeek, dayOfWeek)
         )
       );
 
@@ -899,17 +899,17 @@ export const teamRepository = {
     await db.transaction(async (tx) => {
       if (replaceAll) {
         await tx
-          .delete(userAvailability)
-          .where(eq(userAvailability.userId, userId));
+          .delete(resourceAvailability)
+          .where(eq(resourceAvailability.userId, userId));
       } else {
         const incomingTypes = [...new Set(entries.map((e) => e.type))];
         if (incomingTypes.length > 0) {
           await tx
-            .delete(userAvailability)
+            .delete(resourceAvailability)
             .where(
               and(
-                eq(userAvailability.userId, userId),
-                inArray(userAvailability.type, incomingTypes)
+                eq(resourceAvailability.userId, userId),
+                inArray(resourceAvailability.type, incomingTypes)
               )
             );
         }
@@ -965,7 +965,7 @@ export const teamRepository = {
         }
       });
 
-      await tx.insert(userAvailability).values(rows);
+      await tx.insert(resourceAvailability).values(rows);
     });
   },
 
@@ -979,7 +979,7 @@ export const teamRepository = {
     log.info({ tenantId, userId, startDate, endDate }, "addBlockedEntry");
     const now = new Date();
 
-    await db.insert(userAvailability).values({
+    await db.insert(resourceAvailability).values({
       id: crypto.randomUUID(),
       userId,
       type: "BLOCKED",
@@ -1015,23 +1015,23 @@ export const teamRepository = {
 
     const rows = await db
       .select({
-        id: bookings.id,
-        scheduledDate: bookings.scheduledDate,
-        scheduledTime: bookings.scheduledTime,
-        durationMinutes: bookings.durationMinutes,
-        status: bookings.status,
+        id: jobs.id,
+        scheduledDate: jobs.scheduledDate,
+        scheduledTime: jobs.scheduledTime,
+        durationMinutes: jobs.durationMinutes,
+        status: jobs.status,
       })
-      .from(bookings)
+      .from(jobs)
       .where(
         and(
-          eq(bookings.tenantId, tenantId),
-          eq(bookings.staffId, userId),
-          gte(bookings.scheduledDate, startDate),
-          lte(bookings.scheduledDate, endDate),
-          notInArray(bookings.status, ['CANCELLED', 'REJECTED']),
+          eq(jobs.tenantId, tenantId),
+          eq(jobs.staffId, userId),
+          gte(jobs.scheduledDate, startDate),
+          lte(jobs.scheduledDate, endDate),
+          notInArray(jobs.status, ['CANCELLED', 'REJECTED']),
         )
       )
-      .orderBy(asc(bookings.scheduledDate), asc(bookings.scheduledTime));
+      .orderBy(asc(jobs.scheduledDate), asc(jobs.scheduledTime));
 
     return rows.map((row) => ({
       id: row.id,

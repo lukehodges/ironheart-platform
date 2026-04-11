@@ -32,19 +32,19 @@ export const handleNotificationSendEmail = inngest.createFunction(
   { id: 'handle-notification-send-email', name: 'Handle Notification: Send Email' },
   { event: 'notification/send.email' },
   async ({ event, step }) => {
-    const { to, subject, html, text, bookingId, tenantId, trigger, templateId } = event.data
+    const { to, subject, html, text, jobId, tenantId, trigger, templateId } = event.data
 
-    // Idempotency check - skip if already sent for this booking+trigger+channel
-    if (bookingId) {
+    // Idempotency check - skip if already sent for this job+trigger+channel
+    if (jobId) {
       const alreadySent = await step.run('check-idempotency', async () => {
         return notificationRepository.hasNotificationBeenSent(
-          bookingId,
+          jobId,
           trigger as MessageTrigger,
           'EMAIL' as MessageChannel
         )
       })
       if (alreadySent) {
-        log.info({ bookingId, trigger }, 'Email already sent - skipping (idempotent)')
+        log.info({ jobId, trigger }, 'Email already sent - skipping (idempotent)')
         return { skipped: true, reason: 'already-sent' }
       }
     }
@@ -58,7 +58,7 @@ export const handleNotificationSendEmail = inngest.createFunction(
     await step.run('record-sent-message', async () => {
       await notificationRepository.recordSentMessage({
         tenantId,
-        bookingId,
+        jobId,
         templateId,
         channel: 'EMAIL',
         trigger: trigger as MessageTrigger,
@@ -72,7 +72,7 @@ export const handleNotificationSendEmail = inngest.createFunction(
       })
     })
 
-    log.info({ bookingId, trigger, to, success: result.success }, 'Email send complete')
+    log.info({ jobId, trigger, to, success: result.success }, 'Email send complete')
 
     return { success: result.success, messageId: result.messageId }
   }
@@ -90,19 +90,19 @@ export const handleNotificationSendSms = inngest.createFunction(
   { id: 'handle-notification-send-sms', name: 'Handle Notification: Send SMS' },
   { event: 'notification/send.sms' },
   async ({ event, step }) => {
-    const { to, body, bookingId, tenantId, trigger, templateId } = event.data
+    const { to, body, jobId, tenantId, trigger, templateId } = event.data
 
-    // Idempotency check - skip if already sent for this booking+trigger+channel
-    if (bookingId) {
+    // Idempotency check - skip if already sent for this job+trigger+channel
+    if (jobId) {
       const alreadySent = await step.run('check-idempotency', async () => {
         return notificationRepository.hasNotificationBeenSent(
-          bookingId,
+          jobId,
           trigger as MessageTrigger,
           'SMS' as MessageChannel
         )
       })
       if (alreadySent) {
-        log.info({ bookingId, trigger }, 'SMS already sent - skipping (idempotent)')
+        log.info({ jobId, trigger }, 'SMS already sent - skipping (idempotent)')
         return { skipped: true, reason: 'already-sent' }
       }
     }
@@ -116,7 +116,7 @@ export const handleNotificationSendSms = inngest.createFunction(
     await step.run('record-sent-message', async () => {
       await notificationRepository.recordSentMessage({
         tenantId,
-        bookingId,
+        jobId,
         templateId,
         channel: 'SMS',
         trigger: trigger as MessageTrigger,
@@ -129,7 +129,7 @@ export const handleNotificationSendSms = inngest.createFunction(
       })
     })
 
-    log.info({ bookingId, trigger, to, success: result.success }, 'SMS send complete')
+    log.info({ jobId, trigger, to, success: result.success }, 'SMS send complete')
 
     return { success: result.success, messageId: result.messageId }
   }
@@ -148,44 +148,44 @@ export const handleNotificationSendSms = inngest.createFunction(
  */
 export const sendBookingConfirmationEmail = inngest.createFunction(
   { id: 'send-booking-confirmation-email', name: 'Send Booking Confirmation Email' },
-  { event: 'booking/confirmed' },
+  { event: 'job/confirmed' },
   async ({ event, step }) => {
-    const { bookingId, tenantId } = event.data
+    const { jobId, tenantId } = event.data
 
     await step.run('send-notification', async () => {
-      await notificationService.sendForBooking(bookingId, 'BOOKING_CONFIRMED', tenantId)
+      await notificationService.sendForBooking(jobId, 'BOOKING_CONFIRMED', tenantId)
     })
   }
 )
 
 /**
  * Send booking cancellation notification.
- * Triggered by booking/cancelled event.
+ * Triggered by job/cancelled event.
  */
 export const sendBookingCancellationNotification = inngest.createFunction(
   { id: 'send-booking-cancellation-notification', name: 'Send Booking Cancellation Notification' },
-  { event: 'booking/cancelled' },
+  { event: 'job/cancelled' },
   async ({ event, step }) => {
-    const { bookingId, tenantId } = event.data
+    const { jobId, tenantId } = event.data
 
     await step.run('send-notification', async () => {
-      await notificationService.sendForBooking(bookingId, 'BOOKING_CANCELLED', tenantId)
+      await notificationService.sendForBooking(jobId, 'BOOKING_CANCELLED', tenantId)
     })
   }
 )
 
 /**
- * Send review request notification after booking completion.
- * Triggered by booking/completed event.
+ * Send review request notification after job completion.
+ * Triggered by job/completed event.
  */
 export const sendReviewRequest = inngest.createFunction(
   { id: 'send-review-request', name: 'Send Review Request' },
-  { event: 'booking/completed' },
+  { event: 'job/completed' },
   async ({ event, step }) => {
-    const { bookingId, tenantId } = event.data
+    const { jobId, tenantId } = event.data
 
     await step.run('send-notification', async () => {
-      await notificationService.sendForBooking(bookingId, 'REVIEW_REQUEST', tenantId)
+      await notificationService.sendForBooking(jobId, 'REVIEW_REQUEST', tenantId)
     })
   }
 )

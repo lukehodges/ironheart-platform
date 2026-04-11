@@ -122,10 +122,10 @@ export const bookingRepository = {
     if (userId) {
       // Get booking IDs assigned to this user via bookingAssignments
       const assignedIds = await db
-        .select({ bookingId: bookingAssignments.bookingId })
+        .select({ jobId: bookingAssignments.jobId })
         .from(bookingAssignments)
         .where(eq(bookingAssignments.userId, userId));
-      const assignedBookingIds = assignedIds.map((a) => a.bookingId);
+      const assignedBookingIds = assignedIds.map((a) => a.jobId);
 
       const rbacCondition = assignedBookingIds.length > 0
         ? or(eq(bookings.staffId, userId), inArray(bookings.id, assignedBookingIds))
@@ -400,10 +400,10 @@ export const bookingRepository = {
 
   async upsertAssignments(tenantId: string, bookingId: string, staffIds: string[]) {
     // Delete existing then re-insert
-    await db.delete(bookingAssignments).where(eq(bookingAssignments.bookingId, bookingId));
+    await db.delete(bookingAssignments).where(eq(bookingAssignments.jobId, bookingId));
     if (staffIds.length > 0) {
       await db.insert(bookingAssignments).values(
-        staffIds.map((userId) => ({ id: crypto.randomUUID(), bookingId, userId }))
+        staffIds.map((userId) => ({ id: crypto.randomUUID(), jobId: bookingId, userId }))
       );
     }
   },
@@ -419,7 +419,7 @@ export const bookingRepository = {
   ) {
     await db.insert(bookingStatusHistory).values({
       id: crypto.randomUUID(),
-      bookingId,
+      jobId: bookingId,
       fromStatus: fromStatus ?? null,
       toStatus,
       reason: reason ?? null,
