@@ -16,6 +16,7 @@ import { aiFunctions } from "@/modules/ai";
 import { pipelineFunctions } from "@/modules/pipeline";
 import { outreachFunctions } from "@/modules/outreach";
 import { clientPortalFunctions } from "@/modules/client-portal";
+import { integrationsFunctions } from "@/modules/integrations";
 
 /**
  * Inngest serve endpoint.
@@ -61,5 +62,7 @@ export const { GET, POST, PUT } = serve({
     ...outreachFunctions,
     // Client Portal module
     ...clientPortalFunctions,
+    // Integration Hub
+    ...integrationsFunctions,
   ],
 });
