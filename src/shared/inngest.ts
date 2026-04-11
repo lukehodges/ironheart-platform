@@ -366,6 +366,14 @@ type IronheartEvents = {
   "portal/magic-link:requested": {
     data: { customerId: string; email: string; token: string; tenantId: string };
   };
+  "integration/webhook.received": {
+    data: {
+      /** Kebab-case provider slug: 'google-calendar', 'xero', etc. */
+      providerSlug: string
+      headers: Record<string, string>
+      body: unknown
+    }
+  };
 };
 
 /**
