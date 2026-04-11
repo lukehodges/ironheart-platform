@@ -16,6 +16,8 @@
 - [ ] **JOB-06**: `staffAvailability` renamed to `resourceAvailability` with FK pointing to `resources.id`
 - [ ] **JOB-07**: All 224 existing tests pass against the updated schema
 - [ ] **JOB-08**: tsc --noEmit passes with 0 errors; next build passes
+- [ ] **JOB-09**: Admin can manage all resource types (PERSON, VEHICLE, ROOM, EQUIPMENT) via `/admin/resources` with full CRUD
+- [ ] **JOB-10**: Jobs list (`/admin/jobs`) shows job type labels and resource assignments for every job
 
 ### Payment Split Engine (Phase 2)
 
@@ -24,6 +26,7 @@
 - [ ] **PAY-03**: All Cotswold-specific hardcode removed — `grep -r "cotswold|mileageCost" src/` returns 0 results
 - [ ] **PAY-04**: Existing payment flows produce identical line items to before the migration
 - [ ] **PAY-05**: Tests cover all 5 rule types with edge cases
+- [ ] **PAY-06**: Admin can create and manage split rules via `/admin/settings/payments` (recipients list, rule builder with add/reorder/delete per service, lookup table editor)
 
 ### Notification Engine (Phase 3)
 
@@ -32,6 +35,7 @@
 - [ ] **NOT-03**: Notification engine evaluates all active triggers on every Inngest event
 - [ ] **NOT-04**: Zero notification send logic remains in module service files
 - [ ] **NOT-05**: Adding a new trigger for a new tenant requires only a DB insert, no code change or deployment
+- [ ] **NOT-06**: Admin can create and manage notification triggers via `/admin/settings/notifications` (trigger list, create/edit form with event/channel/recipient expression/template fields, test-send button)
 
 ### Route Jobs (Phase 4)
 
@@ -40,6 +44,8 @@
 - [ ] **RTE-03**: Fleet dispatch mode finds nearest available resource in real time
 - [ ] **RTE-04**: Resources can track actual arrival and departure timestamps per stop
 - [ ] **RTE-05**: Travel cost calculated per tenant routing config and appended to job invoice
+- [ ] **RTE-06**: Dispatcher can view and manage job routes on a map via `/admin/jobs/[id]/route` (visual map, stop list, dispatch controls)
+- [ ] **RTE-07**: Field staff can access a mobile-optimised driver view at `/driver` for navigation and stop management
 
 ### Recurring Contracts (Phase 5)
 
@@ -48,6 +54,7 @@
 - [ ] **REC-03**: Invoices generated per `invoicingSchedule` config (per-job, weekly, monthly, on-completion)
 - [ ] **REC-04**: Contract pause, resume, and cancel flows work correctly
 - [ ] **REC-05**: Preferred resource assignment is honoured when the resource is available
+- [ ] **REC-06**: Admin can create and manage recurring contracts via `/admin/contracts` list, `/admin/contracts/new`, and `/admin/contracts/[id]` detail (rrule builder, occurrence preview, billing schedule)
 
 ### Classes & Memberships (Phase 6)
 
@@ -56,6 +63,8 @@
 - [ ] **CLS-03**: `customerMemberships` table tracks active memberships, plan, and usage count
 - [ ] **CLS-04**: QR check-in flow works end-to-end (generate token, scan, mark attended)
 - [ ] **CLS-05**: Membership discount is applied automatically when a member books a participant slot
+- [ ] **CLS-06**: Admin can manage class participants and check-in via `/admin/jobs/[id]/participants` (participant list with per-participant status and check-in controls)
+- [ ] **CLS-07**: Mobile QR check-in page exists at `/checkin/[ticketRef]` for staff use
 
 ### Field Service Billing (Phase 7)
 
@@ -64,6 +73,9 @@
 - [ ] **FSB-03**: Invoice auto-calculated on job completion using TIME_AND_MATERIALS formula: (hours × rate) + Σ(materials)
 - [ ] **FSB-04**: `resourceCertifications` table blocks assignment if a required certification is expired
 - [ ] **FSB-05**: Field engineer mobile-friendly view shows active job, time entry controls, and materials log
+- [ ] **FSB-06**: Field engineers have a mobile-optimised job view at `/field/jobs/[id]` with clock in/out and materials logging
+- [ ] **FSB-07**: Admin can manage resource certifications via `/admin/resources/[id]/certifications`
+- [ ] **FSB-08**: Admin can view a time + materials billing summary at `/admin/jobs/[id]/billing`
 
 ### Projects & CRM (Phase 8)
 
@@ -72,6 +84,8 @@
 - [ ] **PRJ-03**: CRM pipeline tracks prospects from first contact through to signed contract
 - [ ] **PRJ-04**: Time-and-materials billing rolls up from individual job entries to project-level invoice
 - [ ] **PRJ-05**: Project dashboard shows phase progress, total spend, and remaining scope
+- [ ] **PRJ-06**: Admin can manage projects and phases via `/admin/projects` list and `/admin/projects/[id]` detail (phases, associated jobs, spend summary)
+- [ ] **PRJ-07**: Admin can manage CRM deals via a kanban pipeline view at `/admin/crm`
 
 ## Future Requirements
 
@@ -106,47 +120,61 @@
 | JOB-06 | Phase 1 | Pending |
 | JOB-07 | Phase 1 | Pending |
 | JOB-08 | Phase 1 | Pending |
+| JOB-09 | Phase 1 | Pending |
+| JOB-10 | Phase 1 | Pending |
 | PAY-01 | Phase 2 | Pending |
 | PAY-02 | Phase 2 | Pending |
 | PAY-03 | Phase 2 | Pending |
 | PAY-04 | Phase 2 | Pending |
 | PAY-05 | Phase 2 | Pending |
+| PAY-06 | Phase 2 | Pending |
 | NOT-01 | Phase 3 | Pending |
 | NOT-02 | Phase 3 | Pending |
 | NOT-03 | Phase 3 | Pending |
 | NOT-04 | Phase 3 | Pending |
 | NOT-05 | Phase 3 | Pending |
+| NOT-06 | Phase 3 | Pending |
 | RTE-01 | Phase 4 | Pending |
 | RTE-02 | Phase 4 | Pending |
 | RTE-03 | Phase 4 | Pending |
 | RTE-04 | Phase 4 | Pending |
 | RTE-05 | Phase 4 | Pending |
+| RTE-06 | Phase 4 | Pending |
+| RTE-07 | Phase 4 | Pending |
 | REC-01 | Phase 5 | Pending |
 | REC-02 | Phase 5 | Pending |
 | REC-03 | Phase 5 | Pending |
 | REC-04 | Phase 5 | Pending |
 | REC-05 | Phase 5 | Pending |
+| REC-06 | Phase 5 | Pending |
 | CLS-01 | Phase 6 | Pending |
 | CLS-02 | Phase 6 | Pending |
 | CLS-03 | Phase 6 | Pending |
 | CLS-04 | Phase 6 | Pending |
 | CLS-05 | Phase 6 | Pending |
+| CLS-06 | Phase 6 | Pending |
+| CLS-07 | Phase 6 | Pending |
 | FSB-01 | Phase 7 | Pending |
 | FSB-02 | Phase 7 | Pending |
 | FSB-03 | Phase 7 | Pending |
 | FSB-04 | Phase 7 | Pending |
 | FSB-05 | Phase 7 | Pending |
+| FSB-06 | Phase 7 | Pending |
+| FSB-07 | Phase 7 | Pending |
+| FSB-08 | Phase 7 | Pending |
 | PRJ-01 | Phase 8 | Pending |
 | PRJ-02 | Phase 8 | Pending |
 | PRJ-03 | Phase 8 | Pending |
 | PRJ-04 | Phase 8 | Pending |
 | PRJ-05 | Phase 8 | Pending |
+| PRJ-06 | Phase 8 | Pending |
+| PRJ-07 | Phase 8 | Pending |
 
 **Coverage:**
-- v2.0 requirements: 40 total
-- Mapped to phases: 40
+- v2.0 requirements: 54 total (40 backend + 14 UI)
+- Mapped to phases: 54
 - Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-04-11*
-*Last updated: 2026-04-11 after milestone v2.0 initialization*
+*Last updated: 2026-04-11 — added UI vertical slice requirements for all phases*
