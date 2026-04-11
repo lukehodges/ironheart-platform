@@ -8,31 +8,31 @@ import { Inngest, EventSchemas } from "inngest";
  * To add a new event: add it here, then use it in the relevant module's *.events.ts file.
  */
 type IronheartEvents = {
-  "booking/created": {
-    data: { bookingId: string; tenantId: string };
+  "job/created": {
+    data: { jobId: string; tenantId: string };
   };
-  "booking/confirmed": {
-    data: { bookingId: string; tenantId: string };
+  "job/confirmed": {
+    data: { jobId: string; tenantId: string };
   };
-  "booking/cancelled": {
-    data: { bookingId: string; tenantId: string; reason?: string };
+  "job/cancelled": {
+    data: { jobId: string; tenantId: string; reason?: string };
   };
-  "booking/completed": {
-    data: { bookingId: string; tenantId: string };
+  "job/completed": {
+    data: { jobId: string; tenantId: string };
   };
-  "booking/reservation.expired": {
-    data: { bookingId: string; tenantId: string };
+  "job/reservation.expired": {
+    data: { jobId: string; tenantId: string };
   };
   "slot/reserved": {
     data: {
       slotId: string;
-      bookingId: string;
+      jobId: string;
       tenantId: string;
       expiresAt: string; // ISO 8601 UTC string - always use .toISOString()
     };
   };
   "slot/released": {
-    data: { slotId: string; bookingId: string; tenantId: string };
+    data: { slotId: string; jobId: string; tenantId: string };
   };
   "notification/send.email": {
     data: {
@@ -41,7 +41,7 @@ type IronheartEvents = {
       html: string;
       text?: string;
       replyTo?: string;
-      bookingId?: string;
+      jobId?: string;
       tenantId: string;
       templateId?: string;
       trigger: string;
@@ -51,14 +51,14 @@ type IronheartEvents = {
     data: {
       to: string;
       body: string;
-      bookingId?: string;
+      jobId?: string;
       tenantId: string;
       templateId?: string;
       trigger: string;
     };
   };
   "calendar/sync.push": {
-    data: { bookingId: string; userId: string; tenantId: string };
+    data: { jobId: string; userId: string; tenantId: string };
   };
   "calendar/sync.pull": {
     data: { userId: string; userIntegrationId?: string; tenantId?: string };
@@ -70,7 +70,7 @@ type IronheartEvents = {
     data: { workflowId: string; event: string; data: Record<string, unknown> };
   };
   "review/request.send": {
-    data: { bookingId: string; customerId: string; delay?: string };
+    data: { jobId: string; customerId: string; delay?: string };
   };
   "workflow/execute": {
     data: {
@@ -155,7 +155,7 @@ type IronheartEvents = {
   "payment/intent.succeeded": {
     data: {
       paymentIntentId: string;
-      bookingId: string;
+      jobId: string;
       tenantId: string;
       amount: number;
     };
@@ -163,7 +163,7 @@ type IronheartEvents = {
   "payment/intent.failed": {
     data: {
       paymentIntentId: string;
-      bookingId: string;
+      jobId: string;
       tenantId: string;
       error: string;
     };
@@ -178,7 +178,7 @@ type IronheartEvents = {
   };
   "calendar/sync.delete": {
     data: {
-      bookingId: string;
+      jobId: string;
       userId: string;
       tenantId: string;
     };
