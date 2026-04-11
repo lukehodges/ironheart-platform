@@ -15,7 +15,7 @@ import { sql } from "drizzle-orm"
 import { tenants } from "./tenant.schema"
 import { users } from "./auth.schema"
 import { services } from "./services.schema"
-import { bookings } from "./booking.schema"
+import { jobs } from "./booking.schema"
 
 // ---------------------------------------------------------------------------
 // Enums
@@ -67,7 +67,7 @@ export const sentMessages = pgTable("sent_messages", {
 	recipientId: uuid().notNull(),
 	recipientEmail: text(),
 	recipientPhone: text(),
-	bookingId: uuid(),
+	jobId: uuid(),
 	subject: text(),
 	body: text().notNull(),
 	status: messageStatus().default('QUEUED').notNull(),
@@ -78,9 +78,9 @@ export const sentMessages = pgTable("sent_messages", {
 	providerRef: text(),
 	createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 }, (table) => [
-	index("sent_messages_bookingId_idx").on( table.bookingId),
-	index("sent_messages_tenantId_createdAt_idx").on( table.tenantId, table.createdAt),
-	index("sentMessages_tenantId_bookingId_idx").on( table.tenantId, table.bookingId),
+	index("sent_messages_bookingId_idx").on(table.jobId),
+	index("sent_messages_tenantId_createdAt_idx").on(table.tenantId, table.createdAt),
+	index("sentMessages_tenantId_bookingId_idx").on(table.tenantId, table.jobId),
 	foreignKey({
 		columns: [table.tenantId],
 		foreignColumns: [tenants.id],
@@ -92,9 +92,9 @@ export const sentMessages = pgTable("sent_messages", {
 		name: "sent_messages_templateId_fkey"
 	}).onUpdate("cascade").onDelete("set null"),
 	foreignKey({
-		columns: [table.bookingId],
-		foreignColumns: [bookings.id],
-		name: "sent_messages_bookingId_fkey"
+		columns: [table.jobId],
+		foreignColumns: [jobs.id],
+		name: "sent_messages_jobId_fkey"
 	}).onUpdate("cascade").onDelete("set null"),
 ])
 

@@ -20,7 +20,7 @@ import { tenants, moduleCategory, settingType } from "./tenant.schema"
 import { users } from "./auth.schema"
 import { customers } from "./customer.schema"
 import { services } from "./services.schema"
-import { bookings } from "./booking.schema"
+import { jobs } from "./booking.schema"
 
 // ---------------------------------------------------------------------------
 // Enums
@@ -450,7 +450,7 @@ export const invoices = pgTable("invoices", {
 	tenantId: uuid().notNull(),
 	invoiceNumber: text().notNull(),
 	customerId: uuid().notNull(),
-	bookingId: uuid(),
+	jobId: uuid(),
 	subtotal: numeric({ precision: 10, scale: 2 }).notNull(),
 	taxAmount: numeric({ precision: 10, scale: 2 }).default('0').notNull(),
 	discountAmount: numeric({ precision: 10, scale: 2 }).default('0').notNull(),
@@ -486,9 +486,9 @@ export const invoices = pgTable("invoices", {
 		name: "invoices_customerId_fkey"
 	}).onUpdate("cascade").onDelete("restrict"),
 	foreignKey({
-		columns: [table.bookingId],
-		foreignColumns: [bookings.id],
-		name: "invoices_bookingId_fkey"
+		columns: [table.jobId],
+		foreignColumns: [jobs.id],
+		name: "invoices_jobId_fkey"
 	}).onUpdate("cascade").onDelete("set null"),
 ])
 
@@ -497,7 +497,7 @@ export const payments = pgTable("payments", {
 	tenantId: uuid().notNull(),
 	customerId: uuid().notNull(),
 	invoiceId: uuid(),
-	bookingId: uuid(),
+	jobId: uuid(),
 	amount: numeric({ precision: 10, scale: 2 }).notNull(),
 	currency: text().default('GBP').notNull(),
 	type: paymentType().default('PAYMENT').notNull(),
@@ -537,9 +537,9 @@ export const payments = pgTable("payments", {
 		name: "payments_invoiceId_fkey"
 	}).onUpdate("cascade").onDelete("set null"),
 	foreignKey({
-		columns: [table.bookingId],
-		foreignColumns: [bookings.id],
-		name: "payments_bookingId_fkey"
+		columns: [table.jobId],
+		foreignColumns: [jobs.id],
+		name: "payments_jobId_fkey"
 	}).onUpdate("cascade").onDelete("set null"),
 ])
 
@@ -549,7 +549,7 @@ export const reviews = pgTable("reviews", {
 	customerId: uuid().notNull(),
 	customerName: text().notNull(),
 	customerEmail: text().notNull(),
-	bookingId: uuid(),
+	jobId: uuid(),
 	staffId: uuid(),
 	serviceId: uuid(),
 	rating: integer().default(5).notNull(),
@@ -567,7 +567,7 @@ export const reviews = pgTable("reviews", {
 	updatedAt: timestamp({ precision: 3, mode: 'date' }).notNull(),
 	deletedAt: timestamp({ precision: 3, mode: 'date' }),
 }, (table) => [
-	index("reviews_bookingId_idx").on( table.bookingId),
+	index("reviews_bookingId_idx").on(table.jobId),
 	index("reviews_createdAt_idx").on( table.createdAt),
 	index("reviews_customerId_idx").on( table.customerId),
 	index("reviews_staffId_idx").on( table.staffId),
@@ -583,9 +583,9 @@ export const reviews = pgTable("reviews", {
 		name: "reviews_customerId_fkey"
 	}).onUpdate("cascade").onDelete("cascade"),
 	foreignKey({
-		columns: [table.bookingId],
-		foreignColumns: [bookings.id],
-		name: "reviews_bookingId_fkey"
+		columns: [table.jobId],
+		foreignColumns: [jobs.id],
+		name: "reviews_jobId_fkey"
 	}).onUpdate("cascade").onDelete("set null"),
 	foreignKey({
 		columns: [table.serviceId],
@@ -610,7 +610,7 @@ export const reviewRequests = pgTable("review_requests", {
 	customerId: uuid().notNull(),
 	customerName: text().notNull(),
 	customerEmail: text().notNull(),
-	bookingId: uuid().notNull(),
+	jobId: uuid().notNull(),
 	sentAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	sentBy: uuid(),
 	status: reviewRequestStatus().default('PENDING').notNull(),
@@ -621,7 +621,7 @@ export const reviewRequests = pgTable("review_requests", {
 	userAgent: text(),
 	createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 }, (table) => [
-	index("review_requests_bookingId_idx").on( table.bookingId),
+	index("review_requests_bookingId_idx").on(table.jobId),
 	index("review_requests_customerId_idx").on( table.customerId),
 	index("review_requests_status_idx").on( table.status),
 	index("review_requests_tenantId_idx").on( table.tenantId),
@@ -636,9 +636,9 @@ export const reviewRequests = pgTable("review_requests", {
 		name: "review_requests_customerId_fkey"
 	}).onUpdate("cascade").onDelete("cascade"),
 	foreignKey({
-		columns: [table.bookingId],
-		foreignColumns: [bookings.id],
-		name: "review_requests_bookingId_fkey"
+		columns: [table.jobId],
+		foreignColumns: [jobs.id],
+		name: "review_requests_jobId_fkey"
 	}).onUpdate("cascade").onDelete("restrict"),
 	foreignKey({
 		columns: [table.sentBy],
@@ -709,7 +709,7 @@ export const completedForms = pgTable("completed_forms", {
 	customerId: uuid().notNull(),
 	customerName: text().notNull(),
 	customerEmail: text().notNull(),
-	bookingId: uuid(),
+	jobId: uuid(),
 	responses: jsonb().notNull(),
 	signature: text(),
 	submittedAt: timestamp({ precision: 3, mode: 'date' }),
@@ -722,7 +722,7 @@ export const completedForms = pgTable("completed_forms", {
 	reminderSentAt: timestamp({ precision: 3, mode: 'date' }),
 	createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 }, (table) => [
-	index("completed_forms_bookingId_idx").on( table.bookingId),
+	index("completed_forms_bookingId_idx").on(table.jobId),
 	index("completed_forms_customerId_idx").on( table.customerId),
 	index("completed_forms_status_idx").on( table.status),
 	index("completed_forms_submittedAt_idx").on( table.submittedAt),
@@ -744,9 +744,9 @@ export const completedForms = pgTable("completed_forms", {
 		name: "completed_forms_customerId_fkey"
 	}).onUpdate("cascade").onDelete("cascade"),
 	foreignKey({
-		columns: [table.bookingId],
-		foreignColumns: [bookings.id],
-		name: "completed_forms_bookingId_fkey"
+		columns: [table.jobId],
+		foreignColumns: [jobs.id],
+		name: "completed_forms_jobId_fkey"
 	}).onUpdate("cascade").onDelete("set null"),
 	foreignKey({
 		columns: [table.submittedBy],

@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm/relations";
-import { tenants, roles, users, sessions, auditLogs, customers, customerNotes, bookings, bookingStatusHistory, travelLogs, messageTemplates, services, venues, sentMessages, payments, invoices, apiKeys, notifications, notificationPreferences, integrations, integrationSyncLogs, projects, projectMembers, reviews, reviewRequests, reviewAutomationSettings, formTemplates, completedForms, appointmentCompletions, tasks, modules, moduleSettings, tenantModules, tenantModuleSettings, serviceCategories, availableSlots, addOns, serviceAddOns, tenantPortals, portalTemplates, workflows, workflowActions, workflowExecutions, organizationSettings, userAvailability, userCapacities, bookingAssignments, userIntegrations, userIntegrationSyncLogs, userExternalEvents, slotStaff, rolePermissions, permissions, userRoles, tenantFeatures, featureFlags } from "./schema";
+import { tenants, roles, users, sessions, auditLogs, customers, customerNotes, jobs, jobStatusHistory, travelLogs, messageTemplates, services, venues, sentMessages, payments, invoices, apiKeys, notifications, notificationPreferences, integrations, integrationSyncLogs, projects, projectMembers, reviews, reviewRequests, reviewAutomationSettings, formTemplates, completedForms, appointmentCompletions, tasks, modules, moduleSettings, tenantModules, tenantModuleSettings, serviceCategories, availableSlots, addOns, serviceAddOns, tenantPortals, portalTemplates, workflows, workflowActions, workflowExecutions, organizationSettings, resourceAvailability, userCapacities, jobAssignments, userIntegrations, userIntegrationSyncLogs, userExternalEvents, slotStaff, rolePermissions, permissions, userRoles, tenantFeatures, featureFlags, resources, addresses, customerContacts } from "./schema";
 
 export const rolesRelations = relations(roles, ({one, many}) => ({
 	tenant: one(tenants, {
@@ -30,7 +30,10 @@ export const tenantsRelations = relations(tenants, ({many}) => ({
 	projects: many(projects),
 	tenantModules: many(tenantModules),
 	services: many(services),
-	bookings: many(bookings),
+	jobs: many(jobs),
+	resources: many(resources),
+	addresses: many(addresses),
+	customerContacts: many(customerContacts),
 	addOns: many(addOns),
 	availableSlots: many(availableSlots),
 	tenantPortals: many(tenantPortals),
@@ -53,7 +56,7 @@ export const usersRelations = relations(users, ({one, many}) => ({
 	sessions: many(sessions),
 	auditLogs: many(auditLogs),
 	customers: many(customers),
-	bookingStatusHistories: many(bookingStatusHistory),
+	jobStatusHistories: many(jobStatusHistory),
 	travelLogs: many(travelLogs),
 	notifications: many(notifications),
 	notificationPreferences: many(notificationPreferences),
@@ -69,14 +72,14 @@ export const usersRelations = relations(users, ({one, many}) => ({
 	completedForms: many(completedForms),
 	appointmentCompletions: many(appointmentCompletions),
 	tasks: many(tasks),
-	bookings_approvedById: many(bookings, {
-		relationName: "bookings_approvedById_users_id"
+	jobs_approvedById: many(jobs, {
+		relationName: "jobs_approvedById_users_id"
 	}),
-	bookings_createdById: many(bookings, {
-		relationName: "bookings_createdById_users_id"
+	jobs_createdById: many(jobs, {
+		relationName: "jobs_createdById_users_id"
 	}),
-	bookings_staffId: many(bookings, {
-		relationName: "bookings_staffId_users_id"
+	jobs_staffId: many(jobs, {
+		relationName: "jobs_staffId_users_id"
 	}),
 	tenant: one(tenants, {
 		fields: [users.tenantId],
@@ -90,9 +93,10 @@ export const usersRelations = relations(users, ({one, many}) => ({
 	users: many(users, {
 		relationName: "users_invitedById_users_id"
 	}),
-	userAvailabilities: many(userAvailability),
+	resourceAvailabilities: many(resourceAvailability),
 	userCapacities: many(userCapacities),
-	bookingAssignments: many(bookingAssignments),
+	jobAssignments: many(jobAssignments),
+	resources: many(resources),
 	userIntegrations_connectedBy: many(userIntegrations, {
 		relationName: "userIntegrations_connectedBy_users_id"
 	}),
@@ -131,7 +135,8 @@ export const customersRelations = relations(customers, ({one, many}) => ({
 	reviewRequests: many(reviewRequests),
 	completedForms: many(completedForms),
 	appointmentCompletions: many(appointmentCompletions),
-	bookings: many(bookings),
+	jobs: many(jobs),
+	customerContacts: many(customerContacts),
 }));
 
 export const customerNotesRelations = relations(customerNotes, ({one}) => ({
@@ -139,15 +144,15 @@ export const customerNotesRelations = relations(customerNotes, ({one}) => ({
 		fields: [customerNotes.customerId],
 		references: [customers.id]
 	}),
-	booking: one(bookings, {
-		fields: [customerNotes.bookingId],
-		references: [bookings.id]
+	job: one(jobs, {
+		fields: [customerNotes.jobId],
+		references: [jobs.id]
 	}),
 }));
 
-export const bookingsRelations = relations(bookings, ({one, many}) => ({
+export const jobsRelations = relations(jobs, ({one, many}) => ({
 	customerNotes: many(customerNotes),
-	bookingStatusHistories: many(bookingStatusHistory),
+	jobStatusHistories: many(jobStatusHistory),
 	sentMessages: many(sentMessages),
 	payments: many(payments),
 	invoices: many(invoices),
@@ -156,54 +161,58 @@ export const bookingsRelations = relations(bookings, ({one, many}) => ({
 	completedForms: many(completedForms),
 	appointmentCompletions: many(appointmentCompletions),
 	tenant: one(tenants, {
-		fields: [bookings.tenantId],
+		fields: [jobs.tenantId],
 		references: [tenants.id]
 	}),
 	customer: one(customers, {
-		fields: [bookings.customerId],
+		fields: [jobs.customerId],
 		references: [customers.id]
 	}),
 	venue: one(venues, {
-		fields: [bookings.venueId],
+		fields: [jobs.venueId],
 		references: [venues.id]
 	}),
 	user_approvedById: one(users, {
-		fields: [bookings.approvedById],
+		fields: [jobs.approvedById],
 		references: [users.id],
-		relationName: "bookings_approvedById_users_id"
+		relationName: "jobs_approvedById_users_id"
 	}),
 	user_createdById: one(users, {
-		fields: [bookings.createdById],
+		fields: [jobs.createdById],
 		references: [users.id],
-		relationName: "bookings_createdById_users_id"
+		relationName: "jobs_createdById_users_id"
 	}),
 	service: one(services, {
-		fields: [bookings.serviceId],
+		fields: [jobs.serviceId],
 		references: [services.id]
 	}),
 	project: one(projects, {
-		fields: [bookings.projectId],
+		fields: [jobs.projectId],
 		references: [projects.id]
 	}),
 	availableSlot: one(availableSlots, {
-		fields: [bookings.slotId],
+		fields: [jobs.slotId],
 		references: [availableSlots.id]
 	}),
 	user_staffId: one(users, {
-		fields: [bookings.staffId],
+		fields: [jobs.staffId],
 		references: [users.id],
-		relationName: "bookings_staffId_users_id"
+		relationName: "jobs_staffId_users_id"
 	}),
-	bookingAssignments: many(bookingAssignments),
+	jobAssignments: many(jobAssignments),
+	primaryAddress: one(addresses, {
+		fields: [jobs.primaryAddressId],
+		references: [addresses.id]
+	}),
 }));
 
-export const bookingStatusHistoryRelations = relations(bookingStatusHistory, ({one}) => ({
-	booking: one(bookings, {
-		fields: [bookingStatusHistory.bookingId],
-		references: [bookings.id]
+export const jobStatusHistoryRelations = relations(jobStatusHistory, ({one}) => ({
+	job: one(jobs, {
+		fields: [jobStatusHistory.jobId],
+		references: [jobs.id]
 	}),
 	user: one(users, {
-		fields: [bookingStatusHistory.changedById],
+		fields: [jobStatusHistory.changedById],
 		references: [users.id]
 	}),
 }));
@@ -238,7 +247,7 @@ export const servicesRelations = relations(services, ({one, many}) => ({
 		fields: [services.categoryId],
 		references: [serviceCategories.id]
 	}),
-	bookings: many(bookings),
+	jobs: many(jobs),
 	serviceAddOns: many(serviceAddOns),
 }));
 
@@ -247,7 +256,7 @@ export const venuesRelations = relations(venues, ({one, many}) => ({
 		fields: [venues.tenantId],
 		references: [tenants.id]
 	}),
-	bookings: many(bookings),
+	jobs: many(jobs),
 	availableSlots: many(availableSlots),
 }));
 
@@ -260,9 +269,9 @@ export const sentMessagesRelations = relations(sentMessages, ({one}) => ({
 		fields: [sentMessages.templateId],
 		references: [messageTemplates.id]
 	}),
-	booking: one(bookings, {
-		fields: [sentMessages.bookingId],
-		references: [bookings.id]
+	job: one(jobs, {
+		fields: [sentMessages.jobId],
+		references: [jobs.id]
 	}),
 }));
 
@@ -279,9 +288,9 @@ export const paymentsRelations = relations(payments, ({one}) => ({
 		fields: [payments.invoiceId],
 		references: [invoices.id]
 	}),
-	booking: one(bookings, {
-		fields: [payments.bookingId],
-		references: [bookings.id]
+	job: one(jobs, {
+		fields: [payments.jobId],
+		references: [jobs.id]
 	}),
 }));
 
@@ -295,9 +304,9 @@ export const invoicesRelations = relations(invoices, ({one, many}) => ({
 		fields: [invoices.customerId],
 		references: [customers.id]
 	}),
-	booking: one(bookings, {
-		fields: [invoices.bookingId],
-		references: [bookings.id]
+	job: one(jobs, {
+		fields: [invoices.jobId],
+		references: [jobs.id]
 	}),
 }));
 
@@ -351,7 +360,7 @@ export const projectsRelations = relations(projects, ({one, many}) => ({
 		fields: [projects.tenantId],
 		references: [tenants.id]
 	}),
-	bookings: many(bookings),
+	jobs: many(jobs),
 }));
 
 export const reviewsRelations = relations(reviews, ({one}) => ({
@@ -363,9 +372,9 @@ export const reviewsRelations = relations(reviews, ({one}) => ({
 		fields: [reviews.customerId],
 		references: [customers.id]
 	}),
-	booking: one(bookings, {
-		fields: [reviews.bookingId],
-		references: [bookings.id]
+	job: one(jobs, {
+		fields: [reviews.jobId],
+		references: [jobs.id]
 	}),
 	service: one(services, {
 		fields: [reviews.serviceId],
@@ -392,9 +401,9 @@ export const reviewRequestsRelations = relations(reviewRequests, ({one}) => ({
 		fields: [reviewRequests.customerId],
 		references: [customers.id]
 	}),
-	booking: one(bookings, {
-		fields: [reviewRequests.bookingId],
-		references: [bookings.id]
+	job: one(jobs, {
+		fields: [reviewRequests.jobId],
+		references: [jobs.id]
 	}),
 	user: one(users, {
 		fields: [reviewRequests.sentBy],
@@ -434,9 +443,9 @@ export const completedFormsRelations = relations(completedForms, ({one}) => ({
 		fields: [completedForms.customerId],
 		references: [customers.id]
 	}),
-	booking: one(bookings, {
-		fields: [completedForms.bookingId],
-		references: [bookings.id]
+	job: one(jobs, {
+		fields: [completedForms.jobId],
+		references: [jobs.id]
 	}),
 	user: one(users, {
 		fields: [completedForms.submittedBy],
@@ -449,9 +458,9 @@ export const appointmentCompletionsRelations = relations(appointmentCompletions,
 		fields: [appointmentCompletions.tenantId],
 		references: [tenants.id]
 	}),
-	booking: one(bookings, {
-		fields: [appointmentCompletions.bookingId],
-		references: [bookings.id]
+	job: one(jobs, {
+		fields: [appointmentCompletions.jobId],
+		references: [jobs.id]
 	}),
 	customer: one(customers, {
 		fields: [appointmentCompletions.customerId],
@@ -522,7 +531,7 @@ export const serviceCategoriesRelations = relations(serviceCategories, ({many}) 
 }));
 
 export const availableSlotsRelations = relations(availableSlots, ({one, many}) => ({
-	bookings: many(bookings),
+	jobs: many(jobs),
 	tenant: one(tenants, {
 		fields: [availableSlots.tenantId],
 		references: [tenants.id]
@@ -606,10 +615,14 @@ export const organizationSettingsRelations = relations(organizationSettings, ({o
 	}),
 }));
 
-export const userAvailabilityRelations = relations(userAvailability, ({one}) => ({
+export const resourceAvailabilityRelations = relations(resourceAvailability, ({one}) => ({
 	user: one(users, {
-		fields: [userAvailability.userId],
+		fields: [resourceAvailability.userId],
 		references: [users.id]
+	}),
+	resource: one(resources, {
+		fields: [resourceAvailability.resourceId],
+		references: [resources.id]
 	}),
 }));
 
@@ -624,14 +637,18 @@ export const userCapacitiesRelations = relations(userCapacities, ({one}) => ({
 	}),
 }));
 
-export const bookingAssignmentsRelations = relations(bookingAssignments, ({one}) => ({
-	booking: one(bookings, {
-		fields: [bookingAssignments.bookingId],
-		references: [bookings.id]
+export const jobAssignmentsRelations = relations(jobAssignments, ({one}) => ({
+	job: one(jobs, {
+		fields: [jobAssignments.jobId],
+		references: [jobs.id]
 	}),
 	user: one(users, {
-		fields: [bookingAssignments.userId],
+		fields: [jobAssignments.userId],
 		references: [users.id]
+	}),
+	resource: one(resources, {
+		fields: [jobAssignments.resourceId],
+		references: [resources.id]
 	}),
 }));
 
@@ -722,4 +739,41 @@ export const tenantFeaturesRelations = relations(tenantFeatures, ({one}) => ({
 
 export const featureFlagsRelations = relations(featureFlags, ({many}) => ({
 	tenantFeatures: many(tenantFeatures),
+}));
+
+export const resourcesRelations = relations(resources, ({one, many}) => ({
+	tenant: one(tenants, {
+		fields: [resources.tenantId],
+		references: [tenants.id]
+	}),
+	user: one(users, {
+		fields: [resources.userId],
+		references: [users.id]
+	}),
+	homeAddress: one(addresses, {
+		fields: [resources.homeAddressId],
+		references: [addresses.id]
+	}),
+	jobAssignments: many(jobAssignments),
+	resourceAvailabilities: many(resourceAvailability),
+}));
+
+export const addressesRelations = relations(addresses, ({one, many}) => ({
+	tenant: one(tenants, {
+		fields: [addresses.tenantId],
+		references: [tenants.id]
+	}),
+	resources: many(resources),
+	jobs: many(jobs),
+}));
+
+export const customerContactsRelations = relations(customerContacts, ({one}) => ({
+	customer: one(customers, {
+		fields: [customerContacts.customerId],
+		references: [customers.id]
+	}),
+	tenant: one(tenants, {
+		fields: [customerContacts.tenantId],
+		references: [tenants.id]
+	}),
 }));

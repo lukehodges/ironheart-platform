@@ -7,6 +7,7 @@
 export * from "./schemas/tenant.schema"
 export * from "./schemas/auth.schema"
 export * from "./schemas/customer.schema"
+export * from "./schemas/resources.schema"
 export * from "./schemas/services.schema"
 export * from "./schemas/scheduling.schema"
 export * from "./schemas/booking.schema"

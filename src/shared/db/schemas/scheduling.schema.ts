@@ -17,6 +17,7 @@ import { sql } from "drizzle-orm"
 import { tenants } from "./tenant.schema"
 import { users } from "./auth.schema"
 import { venues } from "./services.schema"
+import { resources } from "./resources.schema"
 
 // ---------------------------------------------------------------------------
 // Enums
@@ -90,9 +91,10 @@ export const slotStaff = pgTable("_SlotStaff", {
 	primaryKey({ columns: [table.a, table.b], name: "_SlotStaff_AB_pkey" }),
 ])
 
-export const userAvailability = pgTable("user_availability", {
+export const resourceAvailability = pgTable("resource_availability", {
 	id: uuid().primaryKey().notNull(),
 	userId: uuid().notNull(),
+	resourceId: uuid(),
 	type: availabilityType().notNull(),
 	dayOfWeek: integer(),
 	specificDate: date({ mode: 'date' }),
@@ -104,15 +106,23 @@ export const userAvailability = pgTable("user_availability", {
 	createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	updatedAt: timestamp({ precision: 3, mode: 'date' }).notNull(),
 }, (table) => [
-	index("user_availability_userId_dayOfWeek_idx").on( table.userId, table.dayOfWeek),
-	index("user_availability_userId_idx").on( table.userId),
-	index("user_availability_userId_specificDate_idx").on( table.userId, table.specificDate),
+	index("user_availability_userId_dayOfWeek_idx").on(table.userId, table.dayOfWeek),
+	index("user_availability_userId_idx").on(table.userId),
+	index("user_availability_userId_specificDate_idx").on(table.userId, table.specificDate),
 	foreignKey({
 		columns: [table.userId],
 		foreignColumns: [users.id],
 		name: "user_availability_userId_fkey"
 	}).onUpdate("cascade").onDelete("cascade"),
+	foreignKey({
+		columns: [table.resourceId],
+		foreignColumns: [resources.id],
+		name: "resource_availability_resourceId_fkey"
+	}).onUpdate("cascade").onDelete("set null"),
 ])
+
+// Backward-compat alias
+export const userAvailability = resourceAvailability;
 
 export const userCapacities = pgTable("user_capacities", {
 	id: uuid().primaryKey().notNull(),
@@ -142,3 +152,6 @@ export const userCapacities = pgTable("user_capacities", {
 // ---------------------------------------------------------------------------
 
 export type AvailableSlot = typeof availableSlots.$inferSelect;
+export type ResourceAvailability = typeof resourceAvailability.$inferSelect;
+// Backward-compat alias
+export type UserAvailability = ResourceAvailability;

@@ -20,6 +20,8 @@ import { users } from "./auth.schema"
 // ---------------------------------------------------------------------------
 
 export const customerStatus = pgEnum("CustomerStatus", ['ACTIVE', 'INACTIVE', 'BLOCKED'])
+export const customerType = pgEnum("CustomerType", ['INDIVIDUAL', 'COMPANY'])
+export const crmStage = pgEnum("CrmStage", ['PROSPECT', 'ACTIVE', 'CHURNED'])
 
 // ---------------------------------------------------------------------------
 // Tables
@@ -46,6 +48,9 @@ export const customers = pgTable("customers", {
 	marketingOptIn: boolean().default(false).notNull(),
 	referralSource: text(),
 	status: customerStatus().default('ACTIVE').notNull(),
+	type: customerType().default('INDIVIDUAL').notNull(),
+	crmStage: crmStage().default('ACTIVE').notNull(),
+	companyName: text(),
 	createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 	updatedAt: timestamp({ precision: 3, mode: 'date' }).notNull(),
 	deletedAt: timestamp({ precision: 3, mode: 'date' }),
