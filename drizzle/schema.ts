@@ -2956,7 +2956,7 @@ export const products = pgTable("products", {
 	slug: text().notNull(),
 	name: text().notNull(),
 	tagline: text().notNull(),
-	description: text().default(').notNull(),
+	description: text().default('').notNull(),
 	logoUrl: text(),
 	domain: text(),
 	moduleSlugs: text().array().default([""]).notNull(),

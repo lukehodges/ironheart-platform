@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { Suspense, useState, useEffect, useMemo } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { PortalSidebar } from "@/components/portal/portal-sidebar";
 import { PortalEngagementProvider } from "@/components/portal/portal-engagement-context";
 import { api } from "@/lib/trpc/react";
 import type { EngagementRecord } from "@/modules/client-portal/client-portal.types";
 
-export default function PortalDashboardLayout({
+function PortalDashboardInner({
   children,
 }: {
   children: React.ReactNode;
@@ -90,5 +90,17 @@ export default function PortalDashboardLayout({
         </main>
       </div>
     </PortalEngagementProvider>
+  );
+}
+
+export default function PortalDashboardLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <Suspense>
+      <PortalDashboardInner>{children}</PortalDashboardInner>
+    </Suspense>
   );
 }

@@ -148,7 +148,7 @@ export const integrationsService = {
           results.push({
             slug: provider.slug,
             name: provider.name,
-            connectedAt: integration.connectedAt?.toString(),
+            connectedAt: integration.createdAt?.toString(),
           })
         }
       }

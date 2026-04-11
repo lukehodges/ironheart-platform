@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo, useCallback } from "react"
+import { Suspense, useState, useEffect, useMemo, useCallback } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import {
@@ -107,7 +107,7 @@ function TableSkeleton() {
 
 // ─── Main page ───────────────────────────────────────────────────────────────
 
-export default function TeamPage() {
+function TeamPageInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -576,5 +576,13 @@ export default function TeamPage() {
         />
       </div>
     </TooltipProvider>
+  )
+}
+
+export default function TeamPage() {
+  return (
+    <Suspense>
+      <TeamPageInner />
+    </Suspense>
   )
 }

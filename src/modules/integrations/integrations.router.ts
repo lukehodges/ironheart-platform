@@ -11,7 +11,7 @@ export const integrationsRouter = router({
     .input(initiateOAuthSchema)
     .mutation(async ({ input, ctx }) => {
       const url = await integrationsService.initiateOAuth(
-        ctx.userId,
+        ctx.user.id,
         ctx.tenantId,
         input.providerSlug,
         input.redirectUri
@@ -28,7 +28,7 @@ export const integrationsRouter = router({
     .mutation(async ({ input, ctx }) => {
       await integrationsService.completeOAuth(
         input.code,
-        ctx.userId,
+        ctx.user.id,
         ctx.tenantId,
         input.providerSlug,
         input.redirectUri
@@ -42,7 +42,7 @@ export const integrationsRouter = router({
   disconnect: tenantProcedure
     .input(disconnectSchema)
     .mutation(async ({ input, ctx }) => {
-      await integrationsService.disconnect(ctx.userId, ctx.tenantId, input.providerSlug)
+      await integrationsService.disconnect(ctx.user.id, ctx.tenantId, input.providerSlug)
       return { success: true }
     }),
 
@@ -51,6 +51,6 @@ export const integrationsRouter = router({
    */
   listConnected: tenantProcedure
     .query(async ({ ctx }) => {
-      return integrationsService.listConnected(ctx.userId, ctx.tenantId)
+      return integrationsService.listConnected(ctx.user.id, ctx.tenantId)
     }),
 })
