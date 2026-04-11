@@ -268,6 +268,31 @@ The `user_integrations` table in the new schema is a superset of the old. No dat
 
 ---
 
+## Post-Implementation Documentation
+
+After implementation is complete, the following docs must be written to `docs/`:
+
+**`docs/integrations.md`** — Developer reference covering:
+- How the Integration Hub works (architecture overview, data flows)
+- The `IntegrationProvider` interface — every method explained with examples
+- How to add a new integration (step-by-step: create provider file, implement interface, register)
+- The three-level credential hierarchy and how encryption works
+- Domain event catalogue — what each event contains and when it fires
+- Webhook routing — how inbound webhooks are validated and processed
+- Error handling contract — why integrations must never fail core operations
+- Testing a new provider — what to mock, what cases to cover
+
+**`docs/integrations-future.md`** — Evolution roadmap covering:
+- How to evolve towards a rule engine (mini-Zapier) on top of the provider registry
+- Suggested next providers to implement and why (Xero, HubSpot, Slack, Stripe Connect)
+- How to build a tenant-facing integration management UI using existing tables
+- How to add a provider marketplace (tenants install integrations from a catalogue)
+- How to support tenant-supplied API keys (bring-your-own credentials at Level 2)
+
+These docs are **part of the implementation** — the phase is not complete until they exist.
+
+---
+
 ## Future Evolution
 
 This design supports two natural evolution paths without architectural changes:
