@@ -43,7 +43,7 @@ async function main() {
     INNER JOIN staff_profiles sp ON sp.user_id = u.id
     ON CONFLICT DO NOTHING
   `)
-  log.info({ count: insertResult.rowCount }, "resources inserted for team members")
+  log.info({ count: insertResult.length }, "resources inserted for team members")
 
   // Step 2: Backfill resourceId on job_assignments from matching resources.userId
   const updateResult = await db.execute(sql`
@@ -53,7 +53,7 @@ async function main() {
     WHERE r.user_id = ja.user_id
     AND ja.resource_id IS NULL
   `)
-  log.info({ count: updateResult.rowCount }, "job_assignments.resourceId backfilled")
+  log.info({ count: updateResult.length }, "job_assignments.resourceId backfilled")
 
   log.info("Phase 1 resource backfill complete")
 }
