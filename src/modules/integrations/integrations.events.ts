@@ -57,22 +57,32 @@ export const onBookingCancelled = inngest.createFunction(
 /**
  * Process an inbound webhook from an external provider.
  * Fires after the webhook API route responds 200.
+ *
+ * retries: 0 — webhook handling is not idempotent. Google (and most providers)
+ * retry on their own delivery schedule; Inngest retries would re-process the
+ * same push notification and cause duplicate calendar syncs. Errors are logged
+ * by the service; Google will re-deliver if the next sync detects drift.
  */
 export const onIntegrationWebhook = inngest.createFunction(
   {
     id: 'integrations-on-webhook-received',
     name: 'Integrations: Process inbound webhook',
-    retries: 2,
+    retries: 0,
   },
   { event: 'integration/webhook.received' },
   async ({ event, step }) => {
     const { providerSlug, headers, body } = event.data
 
-    await step.run('handle-webhook', async () => {
+    // Deterministic step ID based on channel + resource so Inngest deduplicates
+    // any concurrent invocations for the same push notification.
+    const channelId = (headers as Record<string, string>)['x-goog-channel-id'] ?? 'unknown'
+    const resourceId = (headers as Record<string, string>)['x-goog-resource-id'] ?? 'unknown'
+
+    await step.run(`handle-webhook-${channelId}-${resourceId}`, async () => {
       await integrationsService.handleWebhook(providerSlug, { headers, body })
     })
 
-    log.info({ providerSlug }, 'Integration webhook processed')
+    log.info({ providerSlug, channelId }, 'Integration webhook processed')
   }
 )
 

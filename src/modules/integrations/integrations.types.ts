@@ -91,7 +91,19 @@ export interface IntegrationProvider {
 
   /**
    * Return the OAuth URL to redirect the user to.
-   * `state` is a random UUID stored in the DB for CSRF protection.
+   *
+   * The SERVICE (integrationsService.initiateOAuth) is responsible for
+   * generating the CSRF state UUID and persisting it before calling this
+   * method. Providers only receive the already-generated state to embed in
+   * their OAuth redirect URL. Providers MUST NOT generate their own state.
+   *
+   * Providers that require async setup before building the URL (e.g. PKCE
+   * verifier storage for Google Calendar) should document that
+   * integrationsService.initiateOAuth handles them via a dedicated fast-path
+   * and this method may return '' as a stub in that case.
+   *
+   * @param state - CSRF state UUID generated and persisted by the service
+   * @param redirectUri - The OAuth callback URL
    */
   getOAuthUrl(state: string, redirectUri: string): string
 

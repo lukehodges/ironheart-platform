@@ -1,11 +1,18 @@
 // src/modules/integrations/integrations.service.ts
 import { logger } from '@/shared/logger'
-import { calendarSyncService } from '@/modules/calendar-sync'
+import { BadRequestError } from '@/shared/errors'
+import { calendarSyncService, calendarSyncRepository } from '@/modules/calendar-sync'
 import { getProvider, getAllProviders } from './integrations.registry'
 import { integrationsRepository } from './integrations.repository'
 import type { DomainEvent, WebhookPayload } from './integrations.types'
 
 const log = logger.child({ module: 'integrations.service' })
+
+/** Map provider slug to DB enum value used in user_integrations.provider */
+const SLUG_TO_DB_PROVIDER: Record<string, string> = {
+  'google-calendar': 'GOOGLE_CALENDAR',
+  'outlook-calendar': 'OUTLOOK_CALENDAR',
+}
 
 export const integrationsService = {
   /**
@@ -65,6 +72,10 @@ export const integrationsService = {
   /**
    * Route an inbound webhook to the correct provider.
    * providerSlug comes from the URL: /api/integrations/webhooks/google-calendar
+   *
+   * For Google Calendar, the real IntegrationContext is resolved from the
+   * x-goog-channel-id header before onWebhook is called. If the channel ID
+   * cannot be matched to a known integration, the webhook is discarded.
    */
   async handleWebhook(providerSlug: string, payload: WebhookPayload): Promise<void> {
     const provider = getProvider(providerSlug)
@@ -73,23 +84,39 @@ export const integrationsService = {
       return
     }
 
-    // For user context on webhooks, we look up by channel ID from headers
-    // The Google Calendar provider handles this internally via calendarSyncService
+    // Resolve real context from the webhook headers
+    const channelId = payload.headers['x-goog-channel-id']
+    if (!channelId) {
+      log.warn({ providerSlug }, 'Webhook missing channel ID header — ignoring')
+      return
+    }
+
+    const integration = await calendarSyncRepository.findByWatchChannelId(channelId)
+    if (!integration) {
+      log.warn({ providerSlug, channelId }, 'Webhook channel ID not matched to any integration — ignoring')
+      return
+    }
+
     const ctx = {
-      tenantId: '',    // Resolved by provider from channel token
-      userId: '',      // Resolved by provider from channel token
-      userIntegrationId: '',
+      tenantId: integration.tenantId,
+      userId: integration.userId,
+      userIntegrationId: integration.id,
     }
 
     try {
       await provider.onWebhook(payload, ctx)
     } catch (err) {
-      log.error({ providerSlug, err }, 'Unexpected error in provider.onWebhook')
+      log.error({ providerSlug, channelId, err }, 'Unexpected error in provider.onWebhook')
     }
   },
 
   /**
    * Initiate OAuth for a user — returns the URL to redirect to.
+   *
+   * The service is responsible for generating and persisting the CSRF state
+   * UUID. For Google Calendar, calendarSyncService.initiateOAuth handles state
+   * generation and PKCE storage internally. For other providers, the service
+   * generates a UUID state and passes it to provider.getOAuthUrl(state, redirectUri).
    */
   async initiateOAuth(
     userId: string,
@@ -101,9 +128,14 @@ export const integrationsService = {
     if (providerSlug === 'google-calendar') {
       return calendarSyncService.initiateOAuth(userId, tenantId, 'GOOGLE_CALENDAR', redirectUri)
     }
+
     const provider = getProvider(providerSlug)
-    if (!provider) throw new Error(`Unknown provider: ${providerSlug}`)
-    return provider.getOAuthUrl('', redirectUri)
+    if (!provider) throw new BadRequestError(`Unknown provider: ${providerSlug}`)
+
+    // Service generates and passes the CSRF state UUID.
+    // The provider only receives the state to embed in its OAuth URL.
+    const state = crypto.randomUUID()
+    return provider.getOAuthUrl(state, redirectUri)
   },
 
   /**
@@ -117,7 +149,7 @@ export const integrationsService = {
     redirectUri: string
   ): Promise<void> {
     const provider = getProvider(providerSlug)
-    if (!provider) throw new Error(`Unknown provider: ${providerSlug}`)
+    if (!provider) throw new BadRequestError(`Unknown provider: ${providerSlug}`)
     await provider.exchangeCode(code, userId, tenantId, redirectUri)
   },
 
@@ -126,12 +158,13 @@ export const integrationsService = {
    */
   async disconnect(userId: string, tenantId: string, providerSlug: string): Promise<void> {
     const provider = getProvider(providerSlug)
-    if (!provider) throw new Error(`Unknown provider: ${providerSlug}`)
+    if (!provider) throw new BadRequestError(`Unknown provider: ${providerSlug}`)
     await provider.disconnect(userId, tenantId)
   },
 
   /**
    * List which providers are currently connected for a user.
+   * Works generically for all registered providers via the integrations repository.
    */
   async listConnected(
     userId: string,
@@ -141,16 +174,25 @@ export const integrationsService = {
     const results: Array<{ slug: string; name: string; connectedAt?: string }> = []
 
     for (const provider of allProviders) {
-      if (provider.slug === 'google-calendar') {
-        const { calendarSyncRepository } = await import('@/modules/calendar-sync')
-        const integration = await calendarSyncRepository.findUserIntegration(userId, tenantId)
-        if (integration && (integration.status as string) === 'CONNECTED') {
-          results.push({
-            slug: provider.slug,
-            name: provider.name,
-            connectedAt: integration.createdAt?.toString(),
-          })
-        }
+      const dbProviderValue = SLUG_TO_DB_PROVIDER[provider.slug]
+      if (!dbProviderValue) {
+        // Provider slug not mapped to a DB enum value — skip
+        log.warn({ slug: provider.slug }, 'listConnected: no DB provider mapping for slug — skipping')
+        continue
+      }
+
+      const rows = await integrationsRepository.findConnectedIntegrationsForUser(
+        userId,
+        tenantId,
+        dbProviderValue
+      )
+
+      if (rows.length > 0) {
+        results.push({
+          slug: provider.slug,
+          name: provider.name,
+          connectedAt: rows[0]?.createdAt?.toString(),
+        })
       }
     }
 

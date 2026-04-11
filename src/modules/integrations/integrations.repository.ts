@@ -15,9 +15,41 @@ export interface ConnectedIntegrationRecord {
   /** DB enum value e.g. 'GOOGLE_CALENDAR' */
   provider: string
   status: string
+  createdAt?: Date | null
 }
 
 export const integrationsRepository = {
+  /**
+   * Find all CONNECTED user_integrations rows for a given user and tenant,
+   * optionally filtered by provider DB enum value (e.g. 'GOOGLE_CALENDAR').
+   */
+  async findConnectedIntegrationsForUser(
+    userId: string,
+    tenantId: string,
+    providerDbValue?: string
+  ): Promise<ConnectedIntegrationRecord[]> {
+    const conditions = [
+      eq(userIntegrations.userId, userId),
+      eq(userIntegrations.tenantId, tenantId),
+      eq(userIntegrations.status, 'CONNECTED'),
+    ]
+
+    if (providerDbValue) {
+      conditions.push(eq(userIntegrations.provider, providerDbValue as 'GOOGLE_CALENDAR' | 'OUTLOOK_CALENDAR'))
+    }
+
+    return db
+      .select({
+        id: userIntegrations.id,
+        userId: userIntegrations.userId,
+        provider: userIntegrations.provider,
+        status: userIntegrations.status,
+        createdAt: userIntegrations.createdAt,
+      })
+      .from(userIntegrations)
+      .where(and(...conditions))
+  },
+
   /**
    * Find all user_integrations rows that are CONNECTED for the staff member
    * assigned to the given booking.
