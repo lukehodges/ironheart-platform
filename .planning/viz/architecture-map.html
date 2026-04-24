@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ironheart Refactor - Architecture Map</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #09090b;
+      --surface: #18181b;
+      --surface-2: #27272a;
+      --border: #3f3f46;
+      --text: #fafafa;
+      --text-muted: #a1a1aa;
+      --accent: #8b5cf6;
+      --accent-dim: #6d28d9;
+      --green: #22c55e;
+      --blue: #3b82f6;
+      --orange: #f97316;
+      --pink: #ec4899;
+      --cyan: #06b6d4;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      line-height: 1.6;
+      padding: 2rem;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 3rem;
+      padding: 2rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    header h1 {
+      font-size: 2.5rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--accent), var(--pink));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 0.5rem;
+    }
+
+    header p {
+      color: var(--text-muted);
+      font-size: 1.1rem;
+    }
+
+    nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      justify-content: center;
+      margin: 1.5rem 0;
+    }
+
+    nav a {
+      color: var(--text-muted);
+      text-decoration: none;
+      padding: 0.4rem 1rem;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      font-size: 0.85rem;
+      transition: all 0.2s;
+    }
+
+    nav a:hover {
+      color: var(--text);
+      border-color: var(--accent);
+      background: rgba(139, 92, 246, 0.1);
+    }
+
+    .section {
+      margin-bottom: 3rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 2rem;
+      overflow-x: auto;
+    }
+
+    .section h2 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      color: var(--text);
+    }
+
+    .section h2 .num {
+      color: var(--accent);
+      margin-right: 0.5rem;
+    }
+
+    .section .desc {
+      color: var(--text-muted);
+      margin-bottom: 1.5rem;
+      font-size: 0.95rem;
+    }
+
+    .mermaid {
+      display: flex;
+      justify-content: center;
+      overflow-x: auto;
+    }
+
+    .mermaid svg {
+      max-width: 100%;
+      height: auto;
+    }
+
+    /* Comparison Table */
+    .comparison-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.95rem;
+    }
+
+    .comparison-table thead th {
+      background: var(--surface-2);
+      color: var(--text);
+      padding: 0.75rem 1rem;
+      text-align: left;
+      font-weight: 600;
+      border-bottom: 2px solid var(--border);
+    }
+
+    .comparison-table tbody td {
+      padding: 0.65rem 1rem;
+      border-bottom: 1px solid var(--border);
+      color: var(--text-muted);
+    }
+
+    .comparison-table tbody tr:hover {
+      background: rgba(139, 92, 246, 0.05);
+    }
+
+    .comparison-table tbody td:first-child {
+      color: var(--text);
+      font-weight: 500;
+    }
+
+    .comparison-table .original {
+      color: var(--text-muted);
+    }
+
+    .comparison-table .refactor {
+      color: var(--cyan);
+    }
+
+    .verdict {
+      text-align: center;
+      font-size: 1.1rem;
+    }
+
+    .verdict .win {
+      color: var(--green);
+    }
+
+    @media (max-width: 768px) {
+      body { padding: 1rem; }
+      header h1 { font-size: 1.8rem; }
+      .section { padding: 1rem; }
+      .section h2 { font-size: 1.2rem; }
+      nav a { font-size: 0.75rem; padding: 0.3rem 0.6rem; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Ironheart Refactor</h1>
+  <p>Interactive Architecture Map &mdash; Multi-tenant SaaS Platform</p>
+  <nav>
+    <a href="#system-arch">System Architecture</a>
+    <a href="#module-deps">Module Dependencies</a>
+    <a href="#booking-flow">Booking Lifecycle</a>
+    <a href="#doc-flow">Document Processing</a>
+    <a href="#tech-compare">Tech Comparison</a>
+  </nav>
+</header>
+
+<!-- 1. System Architecture Overview -->
+<div class="section" id="system-arch">
+  <h2><span class="num">01</span> System Architecture Overview</h2>
+  <p class="desc">Layered architecture from presentation through data to external services. Each layer communicates only with the layer directly below it.</p>
+  <pre class="mermaid">
+flowchart TB
+  subgraph PRES["Presentation Layer &mdash; Next.js 16 Pages"]
+    direction LR
+    AD["Admin Dashboard\n/admin/*"]
+    CP["Customer Portal\n/portal/*"]
+    BW["Booking Widget\n/book/*"]
+    PA["Platform Admin\n/platform/*"]
+  end
+
+  subgraph API["API Layer &mdash; tRPC 11 + 35 Routers"]
+    direction LR
+    TR["tRPC Routers"]
+    MW["Middleware\nAuth + RBAC + Tenant"]
+  end
+
+  subgraph MOD["Module Layer &mdash; 31 Feature Modules"]
+    direction LR
+    CORE["Core\nbooking, jobs, customer\nteam, scheduling"]
+    BIZ["Business\npayment, notification\nforms, review, workflow"]
+    PLAT["Platform\ntenant, rbac, auth\nplatform, settings, audit"]
+    GROW["Growth\nanalytics, pipeline\noutreach, ai, search"]
+    INTEG["Integration\ncalendar-sync\nintegrations, developer"]
+  end
+
+  subgraph DATA["Data Layer &mdash; Drizzle ORM + PostgreSQL"]
+    DB["25 Schema Files\n5126 LOC"]
+  end
+
+  subgraph EXT["External Services"]
+    direction LR
+    WORKOS["WorkOS\nAuth/SSO"]
+    INNGEST["Inngest\nBackground Jobs"]
+    RESEND["Resend\nEmail"]
+    TWILIO["Twilio\nSMS"]
+    GCAL["Google Calendar\nAPI"]
+    STRIPE["Stripe\nPayments"]
+    MAPLIBRE["MapLibre\nMaps"]
+    SENTRY["Sentry\nErrors"]
+    UPSTASH["Upstash Redis\nCache"]
+    CLAUDE["Anthropic Claude\nAI"]
+  end
+
+  PRES --> API
+  API --> MOD
+  MOD --> DATA
+  MOD --> EXT
+
+  style PRES fill:#1e1b4b,stroke:#6d28d9,color:#e0e7ff
+  style API fill:#172554,stroke:#2563eb,color:#dbeafe
+  style MOD fill:#14532d,stroke:#16a34a,color:#dcfce7
+  style DATA fill:#431407,stroke:#ea580c,color:#ffedd5
+  style EXT fill:#1c1917,stroke:#57534e,color:#e7e5e4
+
+  style AD fill:#2e1065,stroke:#8b5cf6,color:#ede9fe
+  style CP fill:#2e1065,stroke:#8b5cf6,color:#ede9fe
+  style BW fill:#2e1065,stroke:#8b5cf6,color:#ede9fe
+  style PA fill:#2e1065,stroke:#8b5cf6,color:#ede9fe
+
+  style TR fill:#1e3a5f,stroke:#3b82f6,color:#dbeafe
+  style MW fill:#1e3a5f,stroke:#3b82f6,color:#dbeafe
+
+  style CORE fill:#14532d,stroke:#22c55e,color:#dcfce7
+  style BIZ fill:#14532d,stroke:#22c55e,color:#dcfce7
+  style PLAT fill:#14532d,stroke:#22c55e,color:#dcfce7
+  style GROW fill:#14532d,stroke:#22c55e,color:#dcfce7
+  style INTEG fill:#14532d,stroke:#22c55e,color:#dcfce7
+
+  style DB fill:#431407,stroke:#f97316,color:#ffedd5
+
+  style WORKOS fill:#292524,stroke:#78716c,color:#e7e5e4
+  style INNGEST fill:#292524,stroke:#78716c,color:#e7e5e4
+  style RESEND fill:#292524,stroke:#78716c,color:#e7e5e4
+  style TWILIO fill:#292524,stroke:#78716c,color:#e7e5e4
+  style GCAL fill:#292524,stroke:#78716c,color:#e7e5e4
+  style STRIPE fill:#292524,stroke:#78716c,color:#e7e5e4
+  style MAPLIBRE fill:#292524,stroke:#78716c,color:#e7e5e4
+  style SENTRY fill:#292524,stroke:#78716c,color:#e7e5e4
+  style UPSTASH fill:#292524,stroke:#78716c,color:#e7e5e4
+  style CLAUDE fill:#292524,stroke:#78716c,color:#e7e5e4
+  </pre>
+</div>
+
+<!-- 2. Module Dependency Graph -->
+<div class="section" id="module-deps">
+  <h2><span class="num">02</span> Module Dependency Graph</h2>
+  <p class="desc">How the 31 feature modules interconnect. Arrows show "depends on" relationships. Colors indicate module categories: green = core, blue = business, purple = platform, orange = growth, cyan = integration.</p>
+  <pre class="mermaid">
+flowchart LR
+  booking["booking"]:::core
+  customer["customer"]:::core
+  scheduling["scheduling"]:::core
+  team["team"]:::core
+  jobs["jobs"]:::core
+
+  payment["payment"]:::biz
+  notification["notification"]:::biz
+  forms["forms"]:::biz
+  review["review"]:::biz
+  workflow["workflow"]:::biz
+
+  tenant["tenant"]:::plat
+  rbac["rbac"]:::plat
+  settings["settings"]:::plat
+  platform["platform"]:::plat
+  audit["audit"]:::plat
+  auth["auth"]:::plat
+
+  analytics["analytics"]:::growth
+  pipeline["pipeline"]:::growth
+  search["search"]:::growth
+  ai["ai"]:::growth
+
+  calendarSync["calendar-sync"]:::integ
+  integrations["integrations"]:::integ
+  clientPortal["client-portal"]:::integ
+
+  booking --> customer
+  booking --> scheduling
+  booking --> team
+  booking --> notification
+  booking --> payment
+  booking --> calendarSync
+  booking --> workflow
+
+  scheduling --> team
+  scheduling --> calendarSync
+
+  notification --> booking
+  notification --> review
+  notification --> forms
+  notification --> clientPortal
+
+  payment --> booking
+  payment --> customer
+
+  workflow --> booking
+
+  review --> booking
+  review --> customer
+
+  forms --> booking
+  forms --> customer
+
+  analytics --> booking
+  analytics --> customer
+  analytics --> team
+  analytics --> payment
+
+  clientPortal --> customer
+  clientPortal --> payment
+  clientPortal --> booking
+
+  platform --> tenant
+  platform --> rbac
+  platform --> settings
+
+  search --> booking
+  search --> customer
+  search --> team
+
+  audit --> booking
+  audit --> customer
+  audit --> team
+
+  calendarSync --> team
+
+  ai --> booking
+  ai --> customer
+  ai --> team
+  ai --> scheduling
+
+  classDef core fill:#14532d,stroke:#22c55e,color:#dcfce7
+  classDef biz fill:#172554,stroke:#3b82f6,color:#dbeafe
+  classDef plat fill:#2e1065,stroke:#8b5cf6,color:#ede9fe
+  classDef growth fill:#431407,stroke:#f97316,color:#ffedd5
+  classDef integ fill:#083344,stroke:#06b6d4,color:#cffafe
+  </pre>
+</div>
+
+<!-- 3. Booking Lifecycle -->
+<div class="section" id="booking-flow">
+  <h2><span class="num">03</span> Data Flow: Booking Lifecycle</h2>
+  <p class="desc">End-to-end sequence from initial customer interaction through completion, payment, and review.</p>
+  <pre class="mermaid">
+sequenceDiagram
+  actor Customer
+  participant Portal
+  participant Scheduling
+  participant Team
+  participant CalSync as Calendar-Sync
+  participant Booking
+  participant Notif as Notification
+  participant Workflow
+  actor Admin
+  actor Staff
+  participant Payment
+  participant Review
+  participant Analytics
+
+  Customer->>Portal: Select service
+  Portal->>Scheduling: Check availability
+  Scheduling->>Team: Get available staff
+  Scheduling->>CalSync: Check external calendars
+  Scheduling-->>Portal: Available slots
+  Customer->>Portal: Choose slot + confirm
+  Portal->>Booking: Create job (RESERVED)
+  Booking->>Notif: Send confirmation email
+  Booking->>CalSync: Push to Google Calendar
+  Booking->>Workflow: Trigger automation
+  Admin->>Booking: Confirm (CONFIRMED)
+  Booking->>Notif: Send confirmed email
+  Staff->>Booking: Complete (COMPLETED)
+  Booking->>Payment: Generate invoice
+  Booking->>Review: Send review request
+  Booking->>Analytics: Update metrics
+  </pre>
+</div>
+
+<!-- 4. Document Processing Flow -->
+<div class="section" id="doc-flow">
+  <h2><span class="num">04</span> Data Flow: Document Processing (Accountant Use Case)</h2>
+  <p class="desc">Demonstrates platform flexibility beyond bookings: an accountancy firm processing client documents through the job lifecycle.</p>
+  <pre class="mermaid">
+sequenceDiagram
+  actor Client
+  participant Portal
+  participant Jobs
+  participant Workflow
+  participant Scheduling
+  participant Team
+  participant Notif as Notification
+  actor Accountant
+  participant Forms
+  actor Manager
+  participant Payment
+
+  Client->>Portal: Upload documents
+  Portal->>Jobs: Create job (RECEIVED)
+  Jobs->>Workflow: Trigger assignment workflow
+  Workflow->>Scheduling: Find available accountant
+  Scheduling->>Team: Check capacity + skills
+  Scheduling-->>Workflow: Assign accountant
+  Jobs->>Notif: Send documents received email
+  Accountant->>Jobs: Start processing (IN_PROGRESS)
+  Accountant->>Forms: Fill compliance checklist
+  Accountant->>Jobs: Complete (REVIEW)
+  Manager->>Jobs: Approve (COMPLETED)
+  Jobs->>Notif: Send ready for collection email
+  Jobs->>Payment: Generate invoice
+  Client->>Portal: Download deliverables
+  </pre>
+</div>
+
+<!-- 5. Tech Stack Comparison -->
+<div class="section" id="tech-compare">
+  <h2><span class="num">05</span> Tech Stack Comparison</h2>
+  <p class="desc">Side-by-side comparison of the original Ironheart codebase vs the refactored platform architecture.</p>
+  <table class="comparison-table">
+    <thead>
+      <tr>
+        <th>Layer</th>
+        <th>Original</th>
+        <th>Refactor</th>
+        <th>Verdict</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>ORM</td>
+        <td class="original">Prisma 6</td>
+        <td class="refactor">Drizzle 0.45</td>
+        <td class="verdict"><span class="win">&#10003;</span></td>
+      </tr>
+      <tr>
+        <td>Auth</td>
+        <td class="original">NextAuth JWT</td>
+        <td class="refactor">WorkOS AuthKit</td>
+        <td class="verdict"><span class="win">&#10003;</span></td>
+      </tr>
+      <tr>
+        <td>Background Jobs</td>
+        <td class="original">Vercel Cron</td>
+        <td class="refactor">Inngest</td>
+        <td class="verdict"><span class="win">&#10003;</span></td>
+      </tr>
+      <tr>
+        <td>Logging</td>
+        <td class="original">console.log</td>
+        <td class="refactor">Pino</td>
+        <td class="verdict"><span class="win">&#10003;</span></td>
+      </tr>
+      <tr>
+        <td>Error Tracking</td>
+        <td class="original">None</td>
+        <td class="refactor">Sentry</td>
+        <td class="verdict"><span class="win">&#10003;</span></td>
+      </tr>
+      <tr>
+        <td>Cache / Rate Limit</td>
+        <td class="original">None</td>
+        <td class="refactor">Upstash Redis</td>
+        <td class="verdict"><span class="win">&#10003;</span></td>
+      </tr>
+      <tr>
+        <td>Calendar</td>
+        <td class="original">Custom</td>
+        <td class="refactor">FullCalendar 6</td>
+        <td class="verdict"><span class="win">&#10003;</span></td>
+      </tr>
+      <tr>
+        <td>Maps</td>
+        <td class="original">Mapbox GL</td>
+        <td class="refactor">MapLibre GL</td>
+        <td class="verdict"><span class="win">&#10003;</span></td>
+      </tr>
+      <tr>
+        <td>Payments</td>
+        <td class="original">None</td>
+        <td class="refactor">Stripe + GoCardless</td>
+        <td class="verdict"><span class="win">&#10003;</span></td>
+      </tr>
+      <tr>
+        <td>AI</td>
+        <td class="original">None</td>
+        <td class="refactor">Claude SDK + MCP</td>
+        <td class="verdict"><span class="win">&#10003;</span></td>
+      </tr>
+      <tr>
+        <td>Email</td>
+        <td class="original">Nodemailer</td>
+        <td class="refactor">Resend</td>
+        <td class="verdict"><span class="win">&#10003;</span></td>
+      </tr>
+      <tr>
+        <td>Modules</td>
+        <td class="original">18 routers</td>
+        <td class="refactor">31 modules + 35 routers</td>
+        <td class="verdict"><span class="win">&#10003;</span></td>
+      </tr>
+      <tr>
+        <td>Tests</td>
+        <td class="original">Minimal</td>
+        <td class="refactor">2,692 unit tests</td>
+        <td class="verdict"><span class="win">&#10003;</span></td>
+      </tr>
+      <tr>
+        <td>Schema</td>
+        <td class="original">42 Prisma models</td>
+        <td class="refactor">25 Drizzle schema files</td>
+        <td class="verdict"><span class="win">&#10003;</span></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<footer style="text-align:center; padding:2rem 0; color:var(--text-muted); font-size:0.85rem; border-top:1px solid var(--border); margin-top:2rem;">
+  Ironheart Refactor Architecture Map &mdash; Generated 2026-04-17
+</footer>
+
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'dark',
+    themeVariables: {
+      primaryColor: '#6d28d9',
+      primaryTextColor: '#fafafa',
+      primaryBorderColor: '#8b5cf6',
+      lineColor: '#a1a1aa',
+      secondaryColor: '#1e1b4b',
+      tertiaryColor: '#18181b',
+      background: '#09090b',
+      mainBkg: '#18181b',
+      nodeBorder: '#3f3f46',
+      clusterBkg: '#18181b',
+      clusterBorder: '#3f3f46',
+      titleColor: '#fafafa',
+      edgeLabelBackground: '#18181b',
+      actorBkg: '#2e1065',
+      actorBorder: '#8b5cf6',
+      actorTextColor: '#fafafa',
+      actorLineColor: '#a1a1aa',
+      signalColor: '#fafafa',
+      signalTextColor: '#fafafa',
+      labelBoxBkgColor: '#18181b',
+      labelBoxBorderColor: '#3f3f46',
+      labelTextColor: '#fafafa',
+      loopTextColor: '#a1a1aa',
+      activationBorderColor: '#8b5cf6',
+      activationBkgColor: '#2e1065',
+      sequenceNumberColor: '#fafafa'
+    },
+    flowchart: {
+      curve: 'basis',
+      padding: 20,
+      htmlLabels: true
+    },
+    sequence: {
+      actorMargin: 80,
+      messageMargin: 40,
+      mirrorActors: false,
+      useMaxWidth: true
+    }
+  });
+</script>
+
+</body>
+</html>

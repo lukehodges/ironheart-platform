@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ironheart Platform — Completion Roadmap</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --zinc-950: #09090b;
+    --zinc-900: #18181b;
+    --zinc-800: #27272a;
+    --zinc-700: #3f3f46;
+    --zinc-600: #52525b;
+    --zinc-500: #71717a;
+    --zinc-400: #a1a1aa;
+    --zinc-300: #d4d4d8;
+    --zinc-200: #e4e4e7;
+    --zinc-100: #f4f4f5;
+    --blue: #3b82f6;
+    --blue-dim: #1e3a5f;
+    --amber: #f59e0b;
+    --amber-dim: #5c3d0a;
+    --red: #ef4444;
+    --red-dim: #5c1a1a;
+    --green: #22c55e;
+    --green-dim: #14532d;
+    --radius: 8px;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+    background: var(--zinc-950);
+    color: var(--zinc-100);
+    line-height: 1.6;
+    padding: 2rem;
+    max-width: 1280px;
+    margin: 0 auto;
+  }
+
+  /* Header */
+  .header {
+    text-align: center;
+    margin-bottom: 3rem;
+    padding-bottom: 2rem;
+    border-bottom: 1px solid var(--zinc-800);
+  }
+  .header h1 {
+    font-size: 2.25rem;
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    background: linear-gradient(135deg, var(--zinc-100), var(--zinc-400));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .header p {
+    color: var(--zinc-400);
+    font-size: 1.1rem;
+    margin-top: 0.5rem;
+  }
+
+  /* Section headings */
+  .section-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-bottom: 1.25rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--zinc-800);
+    color: var(--zinc-200);
+  }
+  .section { margin-bottom: 3rem; }
+
+  /* ── 1. GANTT TIMELINE ── */
+  .gantt { display: grid; gap: 0; }
+  .gantt-phase-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 0.75rem 0 0.25rem 0;
+    color: var(--zinc-400);
+  }
+  .gantt-row {
+    display: grid;
+    grid-template-columns: 180px 1fr 80px;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.35rem 0;
+  }
+  .gantt-label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .gantt-track {
+    height: 28px;
+    background: var(--zinc-900);
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+  }
+  .gantt-bar {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.6s ease;
+    position: relative;
+  }
+  .gantt-bar::after {
+    content: attr(data-effort);
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: rgba(255,255,255,0.85);
+  }
+  .gantt-effort {
+    font-size: 0.75rem;
+    color: var(--zinc-500);
+    text-align: right;
+  }
+
+  .bar-blue   { background: linear-gradient(90deg, var(--blue), #60a5fa); }
+  .bar-amber  { background: linear-gradient(90deg, var(--amber), #fbbf24); }
+  .bar-red    { background: linear-gradient(90deg, var(--red), #f87171); }
+  .bar-green  { background: linear-gradient(90deg, var(--green), #4ade80); }
+
+  .phase-divider {
+    border: none;
+    border-top: 1px dashed var(--zinc-700);
+    margin: 0.5rem 0;
+  }
+
+  /* ── 2. MODULE CARDS ── */
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+    gap: 1rem;
+  }
+  details.module-card {
+    background: var(--zinc-900);
+    border: 1px solid var(--zinc-800);
+    border-radius: var(--radius);
+    transition: border-color 0.2s, box-shadow 0.2s;
+    overflow: hidden;
+  }
+  details.module-card:hover {
+    border-color: var(--zinc-600);
+    box-shadow: 0 0 0 1px var(--zinc-700);
+  }
+  details.module-card[open] {
+    border-color: var(--zinc-600);
+  }
+  details.module-card summary {
+    padding: 1rem 1.25rem;
+    cursor: pointer;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    user-select: none;
+    font-weight: 600;
+    font-size: 0.95rem;
+  }
+  details.module-card summary::-webkit-details-marker { display: none; }
+  details.module-card summary::before {
+    content: '';
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  details.module-card summary::after {
+    content: '+';
+    margin-left: auto;
+    font-size: 1.25rem;
+    color: var(--zinc-500);
+    transition: transform 0.2s;
+  }
+  details.module-card[open] summary::after {
+    content: '-';
+  }
+  .dot-blue::before   { background: var(--blue); }
+  .dot-amber::before  { background: var(--amber); }
+  .dot-red::before    { background: var(--red); }
+  .dot-green::before  { background: var(--green); }
+
+  .card-body {
+    padding: 0 1.25rem 1.25rem;
+  }
+  .card-body ul {
+    list-style: none;
+    font-size: 0.85rem;
+    line-height: 1.8;
+  }
+  .card-body li { padding-left: 1.5rem; position: relative; }
+  .card-body li::before {
+    position: absolute;
+    left: 0;
+    font-size: 0.85rem;
+  }
+  .card-body li.done { color: var(--zinc-400); }
+  .card-body li.done::before { content: '\2713'; color: var(--green); }
+  .card-body li.todo::before { content: '\25CB'; color: var(--zinc-500); }
+
+  /* ── 3. USE CASE TABLE ── */
+  .table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--zinc-800);
+    border-radius: var(--radius);
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+  }
+  thead { background: var(--zinc-900); }
+  th {
+    text-align: left;
+    padding: 0.75rem 1rem;
+    font-weight: 600;
+    color: var(--zinc-300);
+    border-bottom: 1px solid var(--zinc-800);
+  }
+  td {
+    padding: 0.6rem 1rem;
+    border-bottom: 1px solid var(--zinc-800);
+    color: var(--zinc-400);
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--zinc-900); }
+
+  /* ── 4. RISK RADAR ── */
+  .risk-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+  }
+  .risk-col h3 {
+    text-align: center;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+  }
+  .risk-col.high h3 { color: var(--red); border-bottom: 2px solid var(--red); }
+  .risk-col.medium h3 { color: var(--amber); border-bottom: 2px solid var(--amber); }
+  .risk-col.low h3 { color: var(--green); border-bottom: 2px solid var(--green); }
+
+  .risk-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    padding: 0.75rem;
+    background: var(--zinc-900);
+    border-radius: var(--radius);
+    border: 1px solid var(--zinc-800);
+    font-size: 0.85rem;
+    color: var(--zinc-300);
+    transition: border-color 0.2s;
+  }
+  .risk-item:hover { border-color: var(--zinc-600); }
+  .risk-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    margin-top: 4px;
+  }
+  .risk-dot.high   { background: var(--red); box-shadow: 0 0 8px var(--red); }
+  .risk-dot.medium { background: var(--amber); box-shadow: 0 0 8px var(--amber); }
+  .risk-dot.low    { background: var(--green); box-shadow: 0 0 6px var(--green); }
+
+  /* Chart container */
+  .chart-container {
+    max-width: 700px;
+    margin: 1.5rem auto;
+    padding: 1.5rem;
+    background: var(--zinc-900);
+    border: 1px solid var(--zinc-800);
+    border-radius: var(--radius);
+  }
+
+  /* Responsive */
+  @media (max-width: 800px) {
+    .card-grid { grid-template-columns: 1fr; }
+    .risk-grid { grid-template-columns: 1fr; }
+    .gantt-row { grid-template-columns: 120px 1fr 60px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════ HEADER ═══════════════ -->
+<div class="header">
+  <h1>Ironheart Platform — Completion Roadmap</h1>
+  <p>Module-by-module path to production</p>
+</div>
+
+<!-- ═══════════════ 1. GANTT TIMELINE ═══════════════ -->
+<div class="section">
+  <h2 class="section-title">1. Visual Timeline</h2>
+
+  <div class="gantt">
+    <!-- Phase A -->
+    <div class="gantt-phase-label">Phase A — Core Flow: "Book, schedule, notify, pay"</div>
+
+    <div class="gantt-row">
+      <div class="gantt-label">1. Booking / Jobs</div>
+      <div class="gantt-track"><div class="gantt-bar bar-blue" style="width:55%;" data-effort="Medium"></div></div>
+      <div class="gantt-effort">Medium</div>
+    </div>
+    <div class="gantt-row">
+      <div class="gantt-label">2. Customer</div>
+      <div class="gantt-track"><div class="gantt-bar bar-blue" style="width:30%;" data-effort="Small"></div></div>
+      <div class="gantt-effort">Small</div>
+    </div>
+    <div class="gantt-row">
+      <div class="gantt-label">3. Scheduling</div>
+      <div class="gantt-track"><div class="gantt-bar bar-blue" style="width:55%;" data-effort="Medium"></div></div>
+      <div class="gantt-effort">Medium</div>
+    </div>
+    <div class="gantt-row">
+      <div class="gantt-label">4. Calendar Sync</div>
+      <div class="gantt-track"><div class="gantt-bar bar-amber" style="width:55%;" data-effort="Medium"></div></div>
+      <div class="gantt-effort">Medium</div>
+    </div>
+    <div class="gantt-row">
+      <div class="gantt-label">5. Notification</div>
+      <div class="gantt-track"><div class="gantt-bar bar-red" style="width:80%;" data-effort="Large"></div></div>
+      <div class="gantt-effort">Large</div>
+    </div>
+    <div class="gantt-row">
+      <div class="gantt-label">6. Payment</div>
+      <div class="gantt-track"><div class="gantt-bar bar-red" style="width:80%;" data-effort="Large"></div></div>
+      <div class="gantt-effort">Large</div>
+    </div>
+
+    <hr class="phase-divider">
+
+    <!-- Phase B -->
+    <div class="gantt-phase-label">Phase B — Polish: "Forms, reviews, analytics"</div>
+
+    <div class="gantt-row">
+      <div class="gantt-label">7. Forms</div>
+      <div class="gantt-track"><div class="gantt-bar bar-green" style="width:30%;" data-effort="Small"></div></div>
+      <div class="gantt-effort">Small</div>
+    </div>
+    <div class="gantt-row">
+      <div class="gantt-label">8. Review</div>
+      <div class="gantt-track"><div class="gantt-bar bar-green" style="width:30%;" data-effort="Small"></div></div>
+      <div class="gantt-effort">Small</div>
+    </div>
+    <div class="gantt-row">
+      <div class="gantt-label">9. Analytics</div>
+      <div class="gantt-track"><div class="gantt-bar bar-amber" style="width:55%;" data-effort="Medium"></div></div>
+      <div class="gantt-effort">Medium</div>
+    </div>
+
+    <hr class="phase-divider">
+
+    <!-- Phase C -->
+    <div class="gantt-phase-label">Phase C — Admin: "Settings, permissions, platform"</div>
+
+    <div class="gantt-row">
+      <div class="gantt-label">10. Settings</div>
+      <div class="gantt-track"><div class="gantt-bar bar-green" style="width:30%;" data-effort="Small"></div></div>
+      <div class="gantt-effort">Small</div>
+    </div>
+    <div class="gantt-row">
+      <div class="gantt-label">11. RBAC</div>
+      <div class="gantt-track"><div class="gantt-bar bar-amber" style="width:55%;" data-effort="Medium"></div></div>
+      <div class="gantt-effort">Medium</div>
+    </div>
+    <div class="gantt-row">
+      <div class="gantt-label">12. Platform Admin</div>
+      <div class="gantt-track"><div class="gantt-bar bar-green" style="width:30%;" data-effort="Small"></div></div>
+      <div class="gantt-effort">Small</div>
+    </div>
+  </div>
+
+  <!-- Effort breakdown chart -->
+  <div class="chart-container">
+    <canvas id="effortChart"></canvas>
+  </div>
+</div>
+
+<!-- ═══════════════ 2. MODULE COMPLETION CARDS ═══════════════ -->
+<div class="section">
+  <h2 class="section-title">2. What "COMPLETE" Means Per Module</h2>
+
+  <div class="card-grid">
+
+    <!-- 1. Booking/Jobs -->
+    <details class="module-card">
+      <summary class="dot-blue">1. Booking / Jobs</summary>
+      <div class="card-body">
+        <ul>
+          <li class="done">Backend service with state machine</li>
+          <li class="done">Slot locking + capacity management</li>
+          <li class="done">Calendar view (FullCalendar)</li>
+          <li class="done">Booking list with filters</li>
+          <li class="done">New booking wizard</li>
+          <li class="todo">Kill jobs module duplicate &mdash; merge into one</li>
+          <li class="todo">Apply pending migration SQL</li>
+          <li class="todo">Remove backward-compat aliases</li>
+          <li class="todo">Verify all 224+ tests pass</li>
+          <li class="todo">End-to-end test: create &rarr; confirm &rarr; complete</li>
+        </ul>
+      </div>
+    </details>
+
+    <!-- 2. Customer -->
+    <details class="module-card">
+      <summary class="dot-blue">2. Customer</summary>
+      <div class="card-body">
+        <ul>
+          <li class="done">CRUD + merge + dedup</li>
+          <li class="done">Detail sheet with tabs</li>
+          <li class="done">Search integration</li>
+          <li class="todo">Add more service tests (currently 191L)</li>
+          <li class="todo">Customer import (CSV)</li>
+          <li class="todo">Customer segments / tags</li>
+          <li class="todo">Verify merge handles all 7 related tables</li>
+        </ul>
+      </div>
+    </details>
+
+    <!-- 3. Scheduling -->
+    <details class="module-card">
+      <summary class="dot-blue">3. Scheduling</summary>
+      <div class="card-body">
+        <ul>
+          <li class="done">Smart staff assignment</li>
+          <li class="done">Availability windows</li>
+          <li class="done">Travel time calculation</li>
+          <li class="todo">Resource skills matching (TODO in code)</li>
+          <li class="todo">Staff name resolution (TODO in code)</li>
+          <li class="todo">Capacity overflow handling</li>
+          <li class="todo">More test coverage (currently 337L)</li>
+        </ul>
+      </div>
+    </details>
+
+    <!-- 4. Calendar Sync -->
+    <details class="module-card">
+      <summary class="dot-amber">4. Calendar Sync</summary>
+      <div class="card-body">
+        <ul>
+          <li class="done">Google Calendar push/pull</li>
+          <li class="done">Outlook support scaffolded</li>
+          <li class="done">Conflict detection</li>
+          <li class="todo">Write tests (currently ZERO)</li>
+          <li class="todo">Apple Calendar provider</li>
+          <li class="todo">Sync error recovery</li>
+          <li class="todo">Admin UI for managing connections</li>
+        </ul>
+      </div>
+    </details>
+
+    <!-- 5. Notification -->
+    <details class="module-card">
+      <summary class="dot-red">5. Notification</summary>
+      <div class="card-body">
+        <ul>
+          <li class="done">React Email templates</li>
+          <li class="done">SMS template generation</li>
+          <li class="done">Inngest event-driven delivery</li>
+          <li class="todo">Write tests (currently ZERO)</li>
+          <li class="todo">Build admin UI for template management</li>
+          <li class="todo">Wire up client-portal event handlers (TODOs)</li>
+          <li class="todo">Delivery status tracking UI</li>
+          <li class="todo">Bounce / failure handling</li>
+        </ul>
+      </div>
+    </details>
+
+    <!-- 6. Payment -->
+    <details class="module-card">
+      <summary class="dot-red">6. Payment</summary>
+      <div class="card-body">
+        <ul>
+          <li class="done">Invoice state machine</li>
+          <li class="done">Payment recording</li>
+          <li class="done">Optimistic concurrency</li>
+          <li class="todo">Stripe integration (provider pattern ready)</li>
+          <li class="todo">GoCardless integration</li>
+          <li class="todo">Recurring billing</li>
+          <li class="todo">Refund handling</li>
+          <li class="todo">Payment dashboard with revenue charts</li>
+          <li class="todo">Receipt generation</li>
+        </ul>
+      </div>
+    </details>
+
+    <!-- 7. Forms -->
+    <details class="module-card">
+      <summary class="dot-green">7. Forms</summary>
+      <div class="card-body">
+        <ul>
+          <li class="done">8 field types</li>
+          <li class="done">Session management</li>
+          <li class="done">Public form submission</li>
+          <li class="todo">Form builder admin UI (drag-and-drop)</li>
+          <li class="todo">Conditional logic between fields</li>
+          <li class="todo">File upload to cloud storage</li>
+        </ul>
+      </div>
+    </details>
+
+    <!-- 8. Review -->
+    <details class="module-card">
+      <summary class="dot-green">8. Review</summary>
+      <div class="card-body">
+        <ul>
+          <li class="done">Review requests</li>
+          <li class="done">Star rating component</li>
+          <li class="done">Public review submission</li>
+          <li class="todo">Review aggregation and averages</li>
+          <li class="todo">Public review display widget</li>
+          <li class="todo">Review response by business</li>
+        </ul>
+      </div>
+    </details>
+
+    <!-- 9. Analytics -->
+    <details class="module-card">
+      <summary class="dot-amber">9. Analytics</summary>
+      <div class="card-body">
+        <ul>
+          <li class="done">Booking analytics service</li>
+          <li class="done">Revenue tracking</li>
+          <li class="done">Dashboard page exists</li>
+          <li class="todo">Replace computed-on-the-fly with pre-calculated</li>
+          <li class="todo">Add date range filtering</li>
+          <li class="todo">Export to CSV / PDF</li>
+          <li class="todo">Staff utilization heatmap</li>
+        </ul>
+      </div>
+    </details>
+
+    <!-- 10. Settings -->
+    <details class="module-card">
+      <summary class="dot-green">10. Settings</summary>
+      <div class="card-body">
+        <ul>
+          <li class="done">Key-value storage</li>
+          <li class="done">Module settings</li>
+          <li class="done">Tabbed settings page</li>
+          <li class="todo">Business hours configuration</li>
+          <li class="todo">Branding / white-label settings</li>
+          <li class="todo">Email template customization</li>
+        </ul>
+      </div>
+    </details>
+
+    <!-- 11. RBAC -->
+    <details class="module-card">
+      <summary class="dot-amber">11. RBAC</summary>
+      <div class="card-body">
+        <ul>
+          <li class="done">Role CRUD</li>
+          <li class="done">Permission assignment</li>
+          <li class="done">Self-lockout prevention</li>
+          <li class="todo">Write tests (currently ZERO)</li>
+          <li class="todo">Admin UI for role management</li>
+          <li class="todo">Permission audit view</li>
+          <li class="todo">Default role templates</li>
+        </ul>
+      </div>
+    </details>
+
+    <!-- 12. Platform Admin -->
+    <details class="module-card">
+      <summary class="dot-green">12. Platform Admin</summary>
+      <div class="card-body">
+        <ul>
+          <li class="done">Tenant provisioning</li>
+          <li class="done">Module enablement</li>
+          <li class="done">Revenue tracking</li>
+          <li class="done">911L of tests</li>
+          <li class="todo">Tenant usage dashboard</li>
+          <li class="todo">Billing integration</li>
+          <li class="todo">Platform-wide analytics</li>
+        </ul>
+      </div>
+    </details>
+
+  </div>
+</div>
+
+<!-- ═══════════════ 3. USE CASE MAPPING ═══════════════ -->
+<div class="section">
+  <h2 class="section-title">3. Use Case Mapping</h2>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Module</th>
+          <th>Party Entertainers</th>
+          <th>Accountant Doc Processing</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Jobs</strong></td>
+          <td>Book a magician for Saturday</td>
+          <td>Process Q1 tax return</td>
+        </tr>
+        <tr>
+          <td><strong>Customer</strong></td>
+          <td>Parents booking parties</td>
+          <td>Businesses needing accounts</td>
+        </tr>
+        <tr>
+          <td><strong>Scheduling</strong></td>
+          <td>Entertainer availability</td>
+          <td>Accountant workload + deadlines</td>
+        </tr>
+        <tr>
+          <td><strong>Calendar Sync</strong></td>
+          <td>Entertainer's Google Cal</td>
+          <td>Accountant's work calendar</td>
+        </tr>
+        <tr>
+          <td><strong>Notification</strong></td>
+          <td>"Booking confirmed!"</td>
+          <td>"Documents received, processing"</td>
+        </tr>
+        <tr>
+          <td><strong>Payment</strong></td>
+          <td>Deposit + balance</td>
+          <td>Monthly retainer or per-job</td>
+        </tr>
+        <tr>
+          <td><strong>Forms</strong></td>
+          <td>Party questionnaire</td>
+          <td>Client onboarding, VAT details</td>
+        </tr>
+        <tr>
+          <td><strong>Review</strong></td>
+          <td>Rate your entertainer</td>
+          <td>Rate your accountant</td>
+        </tr>
+        <tr>
+          <td><strong>Analytics</strong></td>
+          <td>Bookings by month</td>
+          <td>Jobs completed, revenue, deadlines</td>
+        </tr>
+        <tr>
+          <td><strong>Workflow</strong></td>
+          <td>Booking &rarr; Confirm &rarr; Complete</td>
+          <td>Received &rarr; Assign &rarr; Process &rarr; Review &rarr; Deliver</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ═══════════════ 4. RISK RADAR ═══════════════ -->
+<div class="section">
+  <h2 class="section-title">4. Risk Radar</h2>
+
+  <div class="chart-container" style="max-width:500px;">
+    <canvas id="riskChart"></canvas>
+  </div>
+
+  <div class="risk-grid" style="margin-top:1.5rem;">
+
+    <div class="risk-col high">
+      <h3>High Risk</h3>
+      <div class="risk-item">
+        <div class="risk-dot high"></div>
+        <div><strong>Payment gateway not integrated</strong> &mdash; Stripe provider pattern exists but no live integration; blocks revenue flow.</div>
+      </div>
+      <div class="risk-item">
+        <div class="risk-dot high"></div>
+        <div><strong>Notification has zero tests</strong> &mdash; No test coverage, no frontend UI, multiple TODOs in handlers. Critical path for user experience.</div>
+      </div>
+    </div>
+
+    <div class="risk-col medium">
+      <h3>Medium Risk</h3>
+      <div class="risk-item">
+        <div class="risk-dot medium"></div>
+        <div><strong>Jobs / Booking duplicate</strong> &mdash; Two overlapping modules cause confusion; needs merge before further work.</div>
+      </div>
+      <div class="risk-item">
+        <div class="risk-dot medium"></div>
+        <div><strong>Calendar sync untested</strong> &mdash; Zero tests for sync logic; webhook edge cases may surface in production.</div>
+      </div>
+      <div class="risk-item">
+        <div class="risk-dot medium"></div>
+        <div><strong>RBAC untested</strong> &mdash; Permission system has no automated tests; security-critical path.</div>
+      </div>
+    </div>
+
+    <div class="risk-col low">
+      <h3>Low Risk</h3>
+      <div class="risk-item">
+        <div class="risk-dot low"></div>
+        <div><strong>Forms needs builder UI</strong> &mdash; Backend complete; drag-and-drop builder is additive, not blocking.</div>
+      </div>
+      <div class="risk-item">
+        <div class="risk-dot low"></div>
+        <div><strong>Review needs aggregation</strong> &mdash; Core flow works; averages and display widget are polish items.</div>
+      </div>
+      <div class="risk-item">
+        <div class="risk-dot low"></div>
+        <div><strong>Analytics needs optimization</strong> &mdash; Dashboard renders; pre-calculation and exports are performance enhancements.</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════ CHARTS ═══════════════ -->
+<script>
+  // Effort breakdown doughnut
+  const effortCtx = document.getElementById('effortChart').getContext('2d');
+  new Chart(effortCtx, {
+    type: 'doughnut',
+    data: {
+      labels: [
+        'Booking/Jobs', 'Customer', 'Scheduling', 'Calendar Sync',
+        'Notification', 'Payment', 'Forms', 'Review',
+        'Analytics', 'Settings', 'RBAC', 'Platform Admin'
+      ],
+      datasets: [{
+        data: [5, 2, 5, 5, 8, 8, 2, 2, 5, 2, 5, 2],
+        backgroundColor: [
+          '#3b82f6', '#3b82f6', '#3b82f6', '#f59e0b',
+          '#ef4444', '#ef4444', '#22c55e', '#22c55e',
+          '#f59e0b', '#22c55e', '#f59e0b', '#22c55e'
+        ],
+        borderColor: '#09090b',
+        borderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: {
+          position: 'right',
+          labels: { color: '#d4d4d8', font: { size: 11 }, padding: 8 }
+        },
+        title: {
+          display: true,
+          text: 'Relative Effort by Module',
+          color: '#e4e4e7',
+          font: { size: 14, weight: '600' }
+        }
+      }
+    }
+  });
+
+  // Risk radar polar area chart
+  const riskCtx = document.getElementById('riskChart').getContext('2d');
+  new Chart(riskCtx, {
+    type: 'polarArea',
+    data: {
+      labels: ['Payment', 'Notification', 'Jobs/Booking', 'Calendar Sync', 'RBAC', 'Forms', 'Review', 'Analytics'],
+      datasets: [{
+        data: [9, 9, 6, 6, 6, 3, 3, 3],
+        backgroundColor: [
+          'rgba(239,68,68,0.6)', 'rgba(239,68,68,0.6)',
+          'rgba(245,158,11,0.6)', 'rgba(245,158,11,0.6)', 'rgba(245,158,11,0.6)',
+          'rgba(34,197,94,0.4)', 'rgba(34,197,94,0.4)', 'rgba(34,197,94,0.4)'
+        ],
+        borderColor: [
+          '#ef4444', '#ef4444',
+          '#f59e0b', '#f59e0b', '#f59e0b',
+          '#22c55e', '#22c55e', '#22c55e'
+        ],
+        borderWidth: 1
+      }]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        r: {
+          grid: { color: '#27272a' },
+          ticks: { display: false },
+          pointLabels: { color: '#a1a1aa', font: { size: 11 } }
+        }
+      },
+      plugins: {
+        legend: { display: false },
+        title: {
+          display: true,
+          text: 'Risk Severity by Module',
+          color: '#e4e4e7',
+          font: { size: 14, weight: '600' }
+        }
+      }
+    }
+  });
+</script>
+
+</body>
+</html>

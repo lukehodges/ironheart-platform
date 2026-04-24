@@ -800,13 +800,13 @@ export default function PaymentsPage() {
                     {invoiceDetail.customerId?.slice(0, 12)}...
                   </span>
                 </div>
-                {invoiceDetail.bookingId && (
+                {invoiceDetail.jobId && (
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-muted-foreground">
-                      Booking ID
+                      Job ID
                     </span>
                     <span className="text-xs font-mono text-muted-foreground">
-                      {invoiceDetail.bookingId.slice(0, 12)}...
+                      {invoiceDetail.jobId.slice(0, 12)}...
                     </span>
                   </div>
                 )}

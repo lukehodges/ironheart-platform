@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ironheart Platform - Module Status Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #09090b;
+    --card: #18181b;
+    --card-border: #27272a;
+    --text: #fafafa;
+    --text-muted: #a1a1aa;
+    --green: #22c55e;
+    --green-bg: rgba(34,197,94,0.15);
+    --amber: #f59e0b;
+    --amber-bg: rgba(245,158,11,0.15);
+    --red: #ef4444;
+    --red-bg: rgba(239,68,68,0.15);
+    --blue: #3b82f6;
+    --purple: #a855f7;
+    --cyan: #06b6d4;
+    --radius: 12px;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, Roboto, sans-serif;
+    line-height: 1.5;
+    padding: 2rem;
+    min-height: 100vh;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 2.5rem;
+    padding-bottom: 2rem;
+    border-bottom: 1px solid var(--card-border);
+  }
+  header h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    background: linear-gradient(135deg, #fff, #a1a1aa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  header p {
+    color: var(--text-muted);
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+  }
+
+  /* Summary Cards */
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2.5rem;
+  }
+  .summary-card {
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius);
+    padding: 1.25rem;
+    text-align: center;
+    transition: border-color 0.2s, transform 0.2s;
+  }
+  .summary-card:hover {
+    border-color: #3f3f46;
+    transform: translateY(-2px);
+  }
+  .summary-card .big-num {
+    font-size: 2.25rem;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+  }
+  .summary-card .label {
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-top: 0.25rem;
+  }
+  .num-blue { color: var(--blue); }
+  .num-green { color: var(--green); }
+  .num-purple { color: var(--purple); }
+  .num-amber { color: var(--amber); }
+  .num-cyan { color: var(--cyan); }
+
+  /* Section */
+  .section {
+    margin-bottom: 2.5rem;
+  }
+  .section h2 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .section h2 .dot {
+    width: 8px; height: 8px; border-radius: 50%; display: inline-block;
+  }
+
+  /* Card wrapper */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    transition: border-color 0.2s;
+  }
+  .card:hover { border-color: #3f3f46; }
+
+  /* Heatmap Grid */
+  .heatmap-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 0.5rem;
+  }
+  .heatmap-cell {
+    padding: 0.75rem 0.5rem;
+    border-radius: 8px;
+    text-align: center;
+    font-size: 0.8rem;
+    font-weight: 600;
+    transition: transform 0.15s, box-shadow 0.15s;
+    cursor: default;
+  }
+  .heatmap-cell:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+  }
+  .heatmap-cell .mod-name {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .heatmap-cell .mod-status {
+    font-size: 0.65rem;
+    margin-top: 2px;
+    opacity: 0.8;
+  }
+  .status-complete {
+    background: var(--green-bg);
+    border: 1px solid rgba(34,197,94,0.3);
+    color: var(--green);
+  }
+  .status-partial {
+    background: var(--amber-bg);
+    border: 1px solid rgba(245,158,11,0.3);
+    color: var(--amber);
+  }
+  .status-scaffold {
+    background: var(--red-bg);
+    border: 1px solid rgba(239,68,68,0.3);
+    color: var(--red);
+  }
+
+  /* Legend */
+  .legend {
+    display: flex;
+    gap: 1.5rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+  }
+  .legend-dot {
+    width: 12px; height: 12px; border-radius: 3px;
+  }
+
+  /* Chart containers */
+  .chart-container {
+    position: relative;
+    width: 100%;
+  }
+  .chart-container.bar-chart {
+    height: 750px;
+  }
+  .chart-container.donut-chart {
+    max-width: 400px;
+    margin: 0 auto;
+    height: 350px;
+  }
+
+  /* Zero-tests warning */
+  .zero-tests-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 0.5rem;
+    margin-top: 1rem;
+  }
+  .zero-test-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--red-bg);
+    border: 1px solid rgba(239,68,68,0.2);
+    border-radius: 8px;
+    padding: 0.6rem 0.8rem;
+    font-size: 0.85rem;
+    color: var(--red);
+    font-weight: 600;
+  }
+  .zero-test-item .warn-icon {
+    font-size: 1.1rem;
+    flex-shrink: 0;
+  }
+
+  /* Checklist cards */
+  .checklist-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 1rem;
+  }
+  .checklist-card {
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius);
+    padding: 1.25rem;
+    transition: border-color 0.2s, transform 0.2s;
+  }
+  .checklist-card:hover {
+    border-color: #3f3f46;
+    transform: translateY(-2px);
+  }
+  .checklist-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.75rem;
+  }
+  .checklist-header .num {
+    background: var(--blue);
+    color: #fff;
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .checklist-header .name {
+    font-weight: 700;
+    font-size: 1rem;
+    flex: 1;
+    margin-left: 0.75rem;
+  }
+  .checklist-header .pct {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--text-muted);
+  }
+  .progress-bar-bg {
+    width: 100%;
+    height: 6px;
+    background: #27272a;
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 0.75rem;
+  }
+  .progress-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.6s ease;
+  }
+  .checklist-items {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.35rem 1rem;
+  }
+  .check-item {
+    font-size: 0.8rem;
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+  .check-yes { color: var(--green); }
+  .check-no { color: var(--red); }
+  .check-item .ck-label { color: var(--text-muted); }
+
+  /* Two-column layout for charts */
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+  }
+  @media (max-width: 900px) {
+    .two-col { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 600px) {
+    body { padding: 1rem; }
+    header h1 { font-size: 1.4rem; }
+    .summary-grid { grid-template-columns: repeat(2, 1fr); }
+    .heatmap-grid { grid-template-columns: repeat(3, 1fr); }
+    .checklist-grid { grid-template-columns: 1fr; }
+  }
+
+  .note {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 0.75rem;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Ironheart Platform &mdash; Module Status Dashboard</h1>
+  <p>Generated 2026-04-17</p>
+</header>
+
+<!-- Section 5: Summary Cards (top) -->
+<div class="summary-grid">
+  <div class="summary-card">
+    <div class="big-num num-blue">~12,000</div>
+    <div class="label">Total Backend LOC</div>
+  </div>
+  <div class="summary-card">
+    <div class="big-num num-green">200+</div>
+    <div class="label">Frontend Files</div>
+  </div>
+  <div class="summary-card">
+    <div class="big-num num-purple">~10,000</div>
+    <div class="label">Total Test LOC</div>
+  </div>
+  <div class="summary-card">
+    <div class="big-num num-amber">28 + 2</div>
+    <div class="label">Modules (impl + scaffold)</div>
+  </div>
+  <div class="summary-card">
+    <div class="big-num num-cyan">60+</div>
+    <div class="label">Admin Pages</div>
+  </div>
+</div>
+
+<!-- Section 1: Module Completion Heatmap -->
+<div class="section">
+  <h2><span class="dot" style="background:var(--green)"></span> Module Completion Heatmap</h2>
+  <div class="legend">
+    <span class="legend-item"><span class="legend-dot" style="background:var(--green-bg); border:1px solid rgba(34,197,94,0.3)"></span> Complete</span>
+    <span class="legend-item"><span class="legend-dot" style="background:var(--amber-bg); border:1px solid rgba(245,158,11,0.3)"></span> Partial</span>
+    <span class="legend-item"><span class="legend-dot" style="background:var(--red-bg); border:1px solid rgba(239,68,68,0.3)"></span> Scaffold</span>
+  </div>
+  <div class="heatmap-grid" id="heatmap"></div>
+</div>
+
+<!-- Section 2: Backend vs Frontend vs Tests -->
+<div class="section">
+  <h2><span class="dot" style="background:var(--blue)"></span> Backend vs Frontend vs Tests by Module</h2>
+  <div class="card">
+    <div class="chart-container bar-chart">
+      <canvas id="barChart"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- Section 3: Test Coverage Gap Analysis -->
+<div class="section">
+  <h2><span class="dot" style="background:var(--purple)"></span> Test Coverage Gap Analysis</h2>
+  <div class="two-col">
+    <div class="card">
+      <div class="chart-container donut-chart">
+        <canvas id="donutChart"></canvas>
+      </div>
+    </div>
+    <div class="card">
+      <h3 style="color:var(--red); font-size:0.95rem; margin-bottom:0.75rem; display:flex; align-items:center; gap:0.4rem;">
+        <span style="font-size:1.2rem;">&#9888;</span> Modules with Zero Tests
+      </h3>
+      <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.75rem;">
+        These modules have no test coverage and represent the highest risk areas.
+      </p>
+      <div class="zero-tests-list" id="zeroTestsList"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Section 4: Module Completion Checklist -->
+<div class="section">
+  <h2><span class="dot" style="background:var(--cyan)"></span> Module Completion Checklist (Priority Order)</h2>
+  <div class="checklist-grid" id="checklistGrid"></div>
+</div>
+
+<script>
+// ─── DATA ───────────────────────────────────────────────────────────────────
+
+const modules = [
+  { name: 'auth', status: 'complete' },
+  { name: 'workflow', status: 'complete' },
+  { name: 'team', status: 'complete' },
+  { name: 'ai', status: 'complete' },
+  { name: 'client-portal', status: 'complete' },
+  { name: 'platform', status: 'complete' },
+  { name: 'booking', status: 'complete' },
+  { name: 'customer', status: 'partial' },
+  { name: 'scheduling', status: 'partial' },
+  { name: 'payment', status: 'partial' },
+  { name: 'notification', status: 'partial' },
+  { name: 'calendar-sync', status: 'partial' },
+  { name: 'analytics', status: 'partial' },
+  { name: 'forms', status: 'partial' },
+  { name: 'review', status: 'partial' },
+  { name: 'rbac', status: 'partial' },
+  { name: 'settings', status: 'partial' },
+  { name: 'tenant', status: 'partial' },
+  { name: 'search', status: 'partial' },
+  { name: 'audit', status: 'partial' },
+  { name: 'developer', status: 'partial' },
+  { name: 'integrations', status: 'partial' },
+  { name: 'outreach', status: 'partial' },
+  { name: 'pipeline', status: 'partial' },
+  { name: 'product', status: 'partial' },
+  { name: 'subscription', status: 'partial' },
+  { name: 'resources', status: 'partial' },
+  { name: 'jobs', status: 'partial' },
+  { name: 'portal', status: 'scaffold' },
+  { name: 'staff', status: 'scaffold' },
+];
+
+const barData = [
+  { name: 'booking', backend: 702, frontend: 5, tests: 400 },
+  { name: 'team', backend: 910, frontend: 12, tests: 1489 },
+  { name: 'workflow', backend: 503, frontend: 3, tests: 1152 },
+  { name: 'ai', backend: 967, frontend: 2, tests: 800 },
+  { name: 'client-portal', backend: 1218, frontend: 14, tests: 323 },
+  { name: 'platform', backend: 725, frontend: 16, tests: 911 },
+  { name: 'customer', backend: 405, frontend: 5, tests: 191 },
+  { name: 'scheduling', backend: 736, frontend: 2, tests: 337 },
+  { name: 'payment', backend: 187, frontend: 3, tests: 1142 },
+  { name: 'notification', backend: 593, frontend: 0, tests: 0 },
+  { name: 'calendar-sync', backend: 530, frontend: 1, tests: 0 },
+  { name: 'analytics', backend: 589, frontend: 9, tests: 321 },
+  { name: 'forms', backend: 403, frontend: 3, tests: 252 },
+  { name: 'review', backend: 336, frontend: 2, tests: 227 },
+  { name: 'rbac', backend: 337, frontend: 0, tests: 0 },
+  { name: 'settings', backend: 188, frontend: 17, tests: 438 },
+  { name: 'tenant', backend: 289, frontend: 2, tests: 557 },
+  { name: 'search', backend: 82, frontend: 0, tests: 142 },
+  { name: 'audit', backend: 189, frontend: 2, tests: 360 },
+  { name: 'developer', backend: 71, frontend: 1, tests: 362 },
+  { name: 'resources', backend: 92, frontend: 0, tests: 0 },
+  { name: 'jobs', backend: 660, frontend: 0, tests: 0 },
+  { name: 'outreach', backend: 981, frontend: 5, tests: 527 },
+  { name: 'pipeline', backend: 447, frontend: 3, tests: 761 },
+  { name: 'product', backend: 159, frontend: 3, tests: 285 },
+  { name: 'subscription', backend: 183, frontend: 2, tests: 270 },
+  { name: 'integrations', backend: 268, frontend: 2, tests: 155 },
+  { name: 'portal', backend: 0, frontend: 14, tests: 0 },
+  { name: 'staff', backend: 0, frontend: 0, tests: 0 },
+];
+
+const zeroTestModules = ['notification', 'calendar-sync', 'rbac', 'resources', 'jobs', 'portal', 'staff'];
+
+const checklist = [
+  { num: 1, name: 'Booking / Jobs', pct: 80, backend: true, frontend: true, tests: true, integration: false, note: 'Needs dedup cleanup' },
+  { num: 2, name: 'Customer', pct: 65, backend: false, frontend: true, tests: false, integration: false, note: 'Backend partial, tests light' },
+  { num: 3, name: 'Scheduling', pct: 60, backend: true, frontend: false, tests: false, integration: false, note: 'Frontend minimal, tests light' },
+  { num: 4, name: 'Calendar Sync', pct: 50, backend: true, frontend: false, tests: false, integration: false, note: 'No tests, frontend minimal' },
+  { num: 5, name: 'Notification', pct: 40, backend: true, frontend: false, tests: false, integration: false, note: 'No frontend, no tests' },
+  { num: 6, name: 'Payment', pct: 35, backend: false, frontend: false, tests: true, integration: false, note: 'No gateway, backend minimal' },
+  { num: 7, name: 'Forms', pct: 55, backend: true, frontend: true, tests: true, integration: false, note: 'All OK, needs integration' },
+  { num: 8, name: 'Review', pct: 50, backend: true, frontend: true, tests: true, integration: false, note: 'All OK, needs integration' },
+  { num: 9, name: 'Analytics', pct: 55, backend: true, frontend: true, tests: true, integration: false, note: 'Frontend exists, tests OK' },
+  { num: 10, name: 'Settings', pct: 60, backend: true, frontend: true, tests: true, integration: false, note: 'Frontend good, tests OK' },
+  { num: 11, name: 'RBAC', pct: 45, backend: true, frontend: false, tests: false, integration: false, note: 'No frontend page, no tests' },
+  { num: 12, name: 'Platform', pct: 75, backend: true, frontend: true, tests: true, integration: true, note: 'Backend done, tests good' },
+];
+
+// ─── HEATMAP ────────────────────────────────────────────────────────────────
+
+const heatmapEl = document.getElementById('heatmap');
+modules.forEach(m => {
+  const div = document.createElement('div');
+  const statusClass = m.status === 'complete' ? 'status-complete' : m.status === 'partial' ? 'status-partial' : 'status-scaffold';
+  const statusLabel = m.status.charAt(0).toUpperCase() + m.status.slice(1);
+  div.className = 'heatmap-cell ' + statusClass;
+  div.innerHTML = '<div class="mod-name">' + m.name + '</div><div class="mod-status">' + statusLabel + '</div>';
+  heatmapEl.appendChild(div);
+});
+
+// ─── BAR CHART ──────────────────────────────────────────────────────────────
+
+const barCtx = document.getElementById('barChart').getContext('2d');
+new Chart(barCtx, {
+  type: 'bar',
+  data: {
+    labels: barData.map(d => d.name),
+    datasets: [
+      {
+        label: 'Backend LOC',
+        data: barData.map(d => d.backend),
+        backgroundColor: 'rgba(59,130,246,0.8)',
+        borderColor: 'rgba(59,130,246,1)',
+        borderWidth: 1,
+        borderRadius: 3,
+      },
+      {
+        label: 'Frontend (files)',
+        data: barData.map(d => d.frontend),
+        backgroundColor: 'rgba(34,197,94,0.8)',
+        borderColor: 'rgba(34,197,94,1)',
+        borderWidth: 1,
+        borderRadius: 3,
+      },
+      {
+        label: 'Test LOC',
+        data: barData.map(d => d.tests),
+        backgroundColor: 'rgba(168,85,247,0.8)',
+        borderColor: 'rgba(168,85,247,1)',
+        borderWidth: 1,
+        borderRadius: 3,
+      },
+    ]
+  },
+  options: {
+    indexAxis: 'y',
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        labels: { color: '#a1a1aa', font: { size: 12 } }
+      },
+      tooltip: {
+        backgroundColor: '#27272a',
+        titleColor: '#fafafa',
+        bodyColor: '#a1a1aa',
+        borderColor: '#3f3f46',
+        borderWidth: 1,
+      }
+    },
+    scales: {
+      x: {
+        grid: { color: 'rgba(63,63,70,0.4)' },
+        ticks: { color: '#71717a', font: { size: 11 } },
+        title: { display: true, text: 'Lines of Code / File Count', color: '#71717a' }
+      },
+      y: {
+        grid: { display: false },
+        ticks: { color: '#a1a1aa', font: { size: 11, weight: '600' } }
+      }
+    }
+  }
+});
+
+// ─── DONUT CHART ────────────────────────────────────────────────────────────
+
+const donutCtx = document.getElementById('donutChart').getContext('2d');
+new Chart(donutCtx, {
+  type: 'doughnut',
+  data: {
+    labels: ['Good tests (>300 LOC)', 'Some tests (<300 LOC)', 'Zero tests'],
+    datasets: [{
+      data: [15, 6, 7],
+      backgroundColor: [
+        'rgba(34,197,94,0.85)',
+        'rgba(245,158,11,0.85)',
+        'rgba(239,68,68,0.85)',
+      ],
+      borderColor: ['#22c55e', '#f59e0b', '#ef4444'],
+      borderWidth: 2,
+      hoverOffset: 8,
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    cutout: '60%',
+    plugins: {
+      legend: {
+        position: 'bottom',
+        labels: { color: '#a1a1aa', font: { size: 12 }, padding: 16 }
+      },
+      tooltip: {
+        backgroundColor: '#27272a',
+        titleColor: '#fafafa',
+        bodyColor: '#a1a1aa',
+        borderColor: '#3f3f46',
+        borderWidth: 1,
+        callbacks: {
+          label: function(ctx) {
+            return ctx.label + ': ' + ctx.parsed + ' modules';
+          }
+        }
+      }
+    }
+  }
+});
+
+// ─── ZERO TESTS LIST ────────────────────────────────────────────────────────
+
+const zeroListEl = document.getElementById('zeroTestsList');
+zeroTestModules.forEach(name => {
+  const div = document.createElement('div');
+  div.className = 'zero-test-item';
+  div.innerHTML = '<span class="warn-icon">&#9888;</span> ' + name;
+  zeroListEl.appendChild(div);
+});
+
+// ─── CHECKLIST ──────────────────────────────────────────────────────────────
+
+const checklistEl = document.getElementById('checklistGrid');
+checklist.forEach(item => {
+  const pctColor = item.pct >= 75 ? 'var(--green)' : item.pct >= 50 ? 'var(--amber)' : 'var(--red)';
+  const card = document.createElement('div');
+  card.className = 'checklist-card';
+
+  const checkIcon = (val) => val
+    ? '<span class="check-yes">&#10003;</span>'
+    : '<span class="check-no">&#10007;</span>';
+
+  card.innerHTML =
+    '<div class="checklist-header">' +
+      '<span class="num">' + item.num + '</span>' +
+      '<span class="name">' + item.name + '</span>' +
+      '<span class="pct" style="color:' + pctColor + '">' + item.pct + '%</span>' +
+    '</div>' +
+    '<div class="progress-bar-bg">' +
+      '<div class="progress-bar-fill" style="width:' + item.pct + '%; background:' + pctColor + '"></div>' +
+    '</div>' +
+    '<div class="checklist-items">' +
+      '<div class="check-item">' + checkIcon(item.backend) + ' <span class="ck-label">Backend</span></div>' +
+      '<div class="check-item">' + checkIcon(item.frontend) + ' <span class="ck-label">Frontend</span></div>' +
+      '<div class="check-item">' + checkIcon(item.tests) + ' <span class="ck-label">Tests</span></div>' +
+      '<div class="check-item">' + checkIcon(item.integration) + ' <span class="ck-label">Integration</span></div>' +
+    '</div>' +
+    '<p class="note">' + item.note + '</p>';
+
+  checklistEl.appendChild(card);
+});
+</script>
+</body>
+</html>

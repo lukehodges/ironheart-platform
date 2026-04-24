@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ironheart — Universal Platform Roadmap</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,300;0,400;0,700;1,400&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #080909;
+      --bg2:      #0f1011;
+      --bg3:      #161718;
+      --border:   #232426;
+      --border2:  #2e3032;
+      --muted:    #4a4c50;
+      --text:     #c8c9cc;
+      --bright:   #e8e9ec;
+      --amber:    #f0a500;
+      --amber-lo: rgba(240,165,0,0.08);
+      --amber-md: rgba(240,165,0,0.18);
+      --green:    #3ddc84;
+      --green-lo: rgba(61,220,132,0.08);
+      --red:      #ff5c5c;
+      --blue:     #5b9cf6;
+      --blue-lo:  rgba(91,156,246,0.08);
+    }
+
+    html { font-size: 14px; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'JetBrains Mono', monospace;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── grid background ── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(var(--border) 1px, transparent 1px),
+        linear-gradient(90deg, var(--border) 1px, transparent 1px);
+      background-size: 40px 40px;
+      opacity: 0.35;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .wrap {
+      position: relative;
+      z-index: 1;
+      max-width: 1320px;
+      margin: 0 auto;
+      padding: 48px 32px 80px;
+    }
+
+    /* ── header ── */
+    .header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 24px;
+      margin-bottom: 56px;
+      flex-wrap: wrap;
+    }
+
+    .header-left { flex: 1; min-width: 0; }
+
+    .eyebrow {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      font-weight: 400;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      color: var(--amber);
+      margin-bottom: 10px;
+    }
+
+    h1 {
+      font-family: 'Syne', sans-serif;
+      font-size: clamp(28px, 4vw, 52px);
+      font-weight: 800;
+      color: var(--bright);
+      letter-spacing: -0.02em;
+      line-height: 1;
+    }
+
+    h1 span {
+      color: var(--amber);
+    }
+
+    .tagline {
+      margin-top: 12px;
+      font-size: 11px;
+      color: var(--muted);
+      font-style: italic;
+      max-width: 400px;
+      line-height: 1.6;
+    }
+
+    .header-right {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 8px;
+    }
+
+    .stat-block {
+      text-align: right;
+    }
+
+    .stat-number {
+      font-family: 'Syne', sans-serif;
+      font-size: 36px;
+      font-weight: 800;
+      color: var(--bright);
+      line-height: 1;
+    }
+
+    .stat-label {
+      font-size: 10px;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    /* ── progress bar ── */
+    .progress-row {
+      margin-bottom: 48px;
+    }
+
+    .progress-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .progress-label {
+      font-size: 10px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .progress-pct {
+      font-size: 11px;
+      color: var(--amber);
+      font-weight: 700;
+    }
+
+    .progress-track {
+      height: 2px;
+      background: var(--border2);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: var(--amber);
+      border-radius: 2px;
+      width: 0%;
+      transition: width 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+      box-shadow: 0 0 12px var(--amber);
+    }
+
+    /* ── section headings ── */
+    .section-head {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .section-head h2 {
+      font-family: 'Syne', sans-serif;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .section-head::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* ── dependency graph ── */
+    .dep-section { margin-bottom: 56px; }
+
+    .dep-graph {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 32px;
+      overflow-x: auto;
+    }
+
+    .dep-svg {
+      display: block;
+      min-width: 800px;
+      width: 100%;
+    }
+
+    /* ── phases grid ── */
+    .phases-section { }
+
+    .phases-grid {
+      display: grid;
+      gap: 1px;
+      background: var(--border);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    /* Foundation row */
+    .phase-row-foundation {
+      grid-template-columns: 1fr;
+    }
+
+    /* Sequential row */
+    .phase-row-seq {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    /* Parallel row */
+    .phase-row-parallel {
+      grid-template-columns: repeat(5, 1fr);
+    }
+
+    .phase-card {
+      background: var(--bg2);
+      padding: 24px;
+      position: relative;
+      transition: background 0.2s;
+      cursor: default;
+    }
+
+    .phase-card:hover {
+      background: var(--bg3);
+    }
+
+    .phase-card.status-current {
+      background: var(--amber-lo);
+    }
+
+    .phase-card.status-current:hover {
+      background: var(--amber-md);
+    }
+
+    .phase-card.status-done {
+      background: var(--green-lo);
+    }
+
+    /* left accent bar */
+    .phase-card::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+    }
+
+    .phase-card.status-todo::before     { background: var(--border2); }
+    .phase-card.status-current::before  { background: var(--amber); box-shadow: 0 0 8px var(--amber); }
+    .phase-card.status-done::before     { background: var(--green); }
+    .phase-card.status-blocked::before  { background: var(--muted); }
+
+    .phase-number {
+      font-family: 'Syne', sans-serif;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    .phase-card.status-current .phase-number { color: var(--amber); }
+    .phase-card.status-done    .phase-number { color: var(--green); }
+
+    .phase-name {
+      font-family: 'Syne', sans-serif;
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--bright);
+      line-height: 1.25;
+      margin-bottom: 10px;
+    }
+
+    .phase-card.status-todo    .phase-name { color: var(--text); }
+    .phase-card.status-blocked .phase-name { color: var(--muted); }
+
+    .phase-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 9px;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      padding: 3px 8px;
+      border-radius: 2px;
+      margin-bottom: 14px;
+      font-weight: 700;
+    }
+
+    .phase-card.status-todo     .phase-label { background: var(--bg3); color: var(--muted); border: 1px solid var(--border2); }
+    .phase-card.status-current  .phase-label { background: var(--amber-md); color: var(--amber); border: 1px solid rgba(240,165,0,0.3); }
+    .phase-card.status-done     .phase-label { background: var(--green-lo); color: var(--green); border: 1px solid rgba(61,220,132,0.2); }
+    .phase-card.status-blocked  .phase-label { background: var(--bg3); color: var(--muted); border: 1px solid var(--border); }
+
+    .dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .phase-card.status-current .dot {
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    .phase-goal {
+      font-size: 11px;
+      color: var(--muted);
+      line-height: 1.6;
+      margin-bottom: 16px;
+    }
+
+    .phase-meta {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .phase-meta-item {
+      font-size: 10px;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .phase-meta-item strong {
+      color: var(--text);
+    }
+
+    .phase-plans-bar {
+      margin-top: 14px;
+      display: flex;
+      gap: 3px;
+    }
+
+    .plan-pip {
+      flex: 1;
+      height: 3px;
+      border-radius: 1px;
+      background: var(--border2);
+      max-width: 32px;
+      transition: background 0.3s;
+    }
+
+    .plan-pip.done     { background: var(--green); }
+    .plan-pip.active   { background: var(--amber); }
+    .plan-pip.todo     { background: var(--border2); }
+
+    .phase-depends {
+      margin-top: 10px;
+      font-size: 9px;
+      color: var(--muted);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .phase-depends span {
+      color: var(--blue);
+    }
+
+    /* ── section separators ── */
+    .row-label {
+      font-size: 9px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--muted);
+      padding: 8px 24px;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .row-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+      margin-left: 8px;
+    }
+
+    /* ── principle box ── */
+    .principle {
+      margin-top: 48px;
+      border: 1px solid var(--border);
+      border-left: 2px solid var(--amber);
+      padding: 20px 24px;
+      background: var(--amber-lo);
+      border-radius: 0 4px 4px 0;
+    }
+
+    .principle-head {
+      font-size: 9px;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      color: var(--amber);
+      margin-bottom: 8px;
+      font-weight: 700;
+    }
+
+    .principle-text {
+      font-size: 12px;
+      color: var(--text);
+      line-height: 1.7;
+      font-style: italic;
+    }
+
+    /* ── footer ── */
+    .footer {
+      margin-top: 56px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .footer-left {
+      font-size: 10px;
+      color: var(--muted);
+    }
+
+    .footer-right {
+      font-size: 10px;
+      color: var(--muted);
+    }
+
+    .footer-right span { color: var(--amber); }
+
+    /* ── animations ── */
+    .phase-card {
+      opacity: 0;
+      transform: translateY(8px);
+      animation: fadeUp 0.4s ease forwards;
+    }
+
+    @keyframes fadeUp {
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* stagger cards */
+    .phase-card:nth-child(1)  { animation-delay: 0.05s; }
+    .phase-card:nth-child(2)  { animation-delay: 0.10s; }
+    .phase-card:nth-child(3)  { animation-delay: 0.15s; }
+    .phase-card:nth-child(4)  { animation-delay: 0.20s; }
+    .phase-card:nth-child(5)  { animation-delay: 0.25s; }
+    .phase-card:nth-child(6)  { animation-delay: 0.30s; }
+    .phase-card:nth-child(7)  { animation-delay: 0.35s; }
+    .phase-card:nth-child(8)  { animation-delay: 0.40s; }
+    .phase-card:nth-child(9)  { animation-delay: 0.45s; }
+    .phase-card:nth-child(10) { animation-delay: 0.50s; }
+
+    /* responsive */
+    @media (max-width: 900px) {
+      .phase-row-parallel { grid-template-columns: 1fr 1fr; }
+      .phase-row-seq      { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 600px) {
+      .phase-row-parallel { grid-template-columns: 1fr; }
+      .wrap { padding: 24px 16px 60px; }
+    }
+
+    /* Update instructions overlay */
+    .update-hint {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: var(--bg2);
+      border: 1px solid var(--border2);
+      border-radius: 4px;
+      padding: 12px 16px;
+      font-size: 10px;
+      color: var(--muted);
+      line-height: 1.6;
+      z-index: 100;
+      max-width: 220px;
+    }
+
+    .update-hint strong {
+      display: block;
+      color: var(--amber);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <!-- ── HEADER ── -->
+  <header class="header">
+    <div class="header-left">
+      <div class="eyebrow">Universal Platform · Milestone v2.0</div>
+      <h1>Iron<span>heart</span></h1>
+      <p class="tagline">Engines + config. Never features + clients.<br>New clients are a config exercise, not a sprint.</p>
+    </div>
+    <div class="header-right">
+      <div class="stat-block">
+        <div class="stat-number" id="phasesComplete">0</div>
+        <div class="stat-label">Phases complete</div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── OVERALL PROGRESS ── -->
+  <div class="progress-row">
+    <div class="progress-meta">
+      <span class="progress-label">Overall Progress — 8 Phases</span>
+      <span class="progress-pct" id="pctLabel">0%</span>
+    </div>
+    <div class="progress-track">
+      <div class="progress-fill" id="progressFill"></div>
+    </div>
+  </div>
+
+  <!-- ── DEPENDENCY GRAPH ── -->
+  <div class="dep-section">
+    <div class="section-head"><h2>Dependency Flow</h2></div>
+    <div class="dep-graph">
+      <svg class="dep-svg" viewBox="0 0 820 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="arr" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+            <path d="M0,0 L6,3 L0,6 Z" fill="#2e3032"/>
+          </marker>
+          <marker id="arr-amber" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+            <path d="M0,0 L6,3 L0,6 Z" fill="#f0a500"/>
+          </marker>
+        </defs>
+
+        <!-- Phase nodes -->
+        <!-- Phase 1 (foundation) -->
+        <rect x="10" y="55" width="110" height="50" rx="3" fill="#161718" stroke="#f0a500" stroke-width="1.5"/>
+        <text x="65" y="76" text-anchor="middle" fill="#4a4c50" font-family="JetBrains Mono" font-size="9" letter-spacing="2">PHASE 1</text>
+        <text x="65" y="92" text-anchor="middle" fill="#e8e9ec" font-family="Syne" font-size="11" font-weight="700">Data Model</text>
+
+        <!-- Phase 2 -->
+        <rect x="200" y="10" width="110" height="50" rx="3" fill="#161718" stroke="#2e3032" stroke-width="1"/>
+        <text x="255" y="31" text-anchor="middle" fill="#4a4c50" font-family="JetBrains Mono" font-size="9" letter-spacing="2">PHASE 2</text>
+        <text x="255" y="47" text-anchor="middle" fill="#c8c9cc" font-family="Syne" font-size="11" font-weight="700">Pay Splits</text>
+
+        <!-- Phase 3 -->
+        <rect x="200" y="100" width="110" height="50" rx="3" fill="#161718" stroke="#2e3032" stroke-width="1"/>
+        <text x="255" y="121" text-anchor="middle" fill="#4a4c50" font-family="JetBrains Mono" font-size="9" letter-spacing="2">PHASE 3</text>
+        <text x="255" y="137" text-anchor="middle" fill="#c8c9cc" font-family="Syne" font-size="11" font-weight="700">Notifications</text>
+
+        <!-- Phases 4-8 (parallel) -->
+        <rect x="390" y="10"  width="85" height="50" rx="3" fill="#161718" stroke="#2e3032" stroke-width="1"/>
+        <text x="432" y="31" text-anchor="middle" fill="#4a4c50" font-family="JetBrains Mono" font-size="8" letter-spacing="1.5">PHASE 4</text>
+        <text x="432" y="47" text-anchor="middle" fill="#c8c9cc" font-family="Syne" font-size="10" font-weight="700">Routes</text>
+
+        <rect x="485" y="10"  width="85" height="50" rx="3" fill="#161718" stroke="#2e3032" stroke-width="1"/>
+        <text x="527" y="31" text-anchor="middle" fill="#4a4c50" font-family="JetBrains Mono" font-size="8" letter-spacing="1.5">PHASE 5</text>
+        <text x="527" y="47" text-anchor="middle" fill="#c8c9cc" font-family="Syne" font-size="10" font-weight="700">Recurring</text>
+
+        <rect x="580" y="10"  width="85" height="50" rx="3" fill="#161718" stroke="#2e3032" stroke-width="1"/>
+        <text x="622" y="31" text-anchor="middle" fill="#4a4c50" font-family="JetBrains Mono" font-size="8" letter-spacing="1.5">PHASE 6</text>
+        <text x="622" y="47" text-anchor="middle" fill="#c8c9cc" font-family="Syne" font-size="10" font-weight="700">Classes</text>
+
+        <rect x="390" y="100" width="85" height="50" rx="3" fill="#161718" stroke="#2e3032" stroke-width="1"/>
+        <text x="432" y="121" text-anchor="middle" fill="#4a4c50" font-family="JetBrains Mono" font-size="8" letter-spacing="1.5">PHASE 7</text>
+        <text x="432" y="137" text-anchor="middle" fill="#c8c9cc" font-family="Syne" font-size="10" font-weight="700">Field Svc</text>
+
+        <rect x="680" y="55"  width="85" height="50" rx="3" fill="#161718" stroke="#2e3032" stroke-width="1"/>
+        <text x="722" y="76" text-anchor="middle" fill="#4a4c50" font-family="JetBrains Mono" font-size="8" letter-spacing="1.5">PHASE 8</text>
+        <text x="722" y="92" text-anchor="middle" fill="#c8c9cc" font-family="Syne" font-size="10" font-weight="700">Projects</text>
+
+        <!-- Connections from Phase 1 -->
+        <!-- to Phase 2 -->
+        <path d="M120,70 C155,70 165,35 200,35" stroke="#f0a500" stroke-width="1" marker-end="url(#arr-amber)" opacity="0.6"/>
+        <!-- to Phase 3 -->
+        <path d="M120,80 C155,80 165,125 200,125" stroke="#f0a500" stroke-width="1" marker-end="url(#arr-amber)" opacity="0.6"/>
+        <!-- to Phase 4 (via fork) -->
+        <path d="M310,35 C350,35 360,35 390,35" stroke="#2e3032" stroke-width="1" marker-end="url(#arr)" opacity="0.8"/>
+        <!-- to Phase 5 -->
+        <path d="M310,35 C340,35 370,35 485,35" stroke="#2e3032" stroke-width="1" marker-end="url(#arr)" opacity="0.8"/>
+        <!-- to Phase 6 -->
+        <path d="M310,35 C340,35 390,35 580,35" stroke="#2e3032" stroke-width="1" marker-end="url(#arr)" opacity="0.8"/>
+        <!-- Phase 2 to Phase 7 -->
+        <path d="M310,125 C350,125 360,125 390,125" stroke="#2e3032" stroke-width="1" marker-end="url(#arr)" opacity="0.8"/>
+        <!-- Phase 7 to Phase 8 -->
+        <path d="M475,125 C570,125 620,92 680,80" stroke="#2e3032" stroke-width="1" marker-end="url(#arr)" opacity="0.8"/>
+
+        <!-- Legend -->
+        <line x1="10" y1="150" x2="30" y2="150" stroke="#f0a500" stroke-width="1" opacity="0.6"/>
+        <text x="35" y="154" fill="#4a4c50" font-family="JetBrains Mono" font-size="9">Sequential (must complete)</text>
+        <line x1="210" y1="150" x2="230" y2="150" stroke="#2e3032" stroke-width="1"/>
+        <text x="235" y="154" fill="#4a4c50" font-family="JetBrains Mono" font-size="9">Parallel (can run concurrently)</text>
+      </svg>
+    </div>
+  </div>
+
+  <!-- ── PHASE CARDS ── -->
+  <div class="phases-section">
+    <div class="section-head"><h2>Phases</h2></div>
+
+    <div style="display:grid; gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: 4px; overflow: hidden;">
+
+      <!-- Row label: Foundation -->
+      <div class="row-label">Foundation — must complete first</div>
+
+      <!-- Phase 1 (full width) -->
+      <!-- STATUS: change to status-current when in progress, status-done when complete -->
+      <div class="phase-card status-current">
+        <div class="phase-number">Phase 01 — Foundation</div>
+        <div class="phase-name">Universal Data Model</div>
+        <div class="phase-label"><span class="dot"></span> In Progress</div>
+        <div class="phase-goal">Replace booking-centric schema with universal primitives. <code>jobs</code> replaces <code>bookings</code>. <code>resources</code> handles staff, rooms, vehicles, equipment. <code>addresses</code> is shared and geocoded. Every subsequent phase builds on this.</div>
+        <div class="phase-meta">
+          <span class="phase-meta-item">Spec: <strong>phase-a-universal-data-model.md</strong></span>
+          <span class="phase-meta-item">Plans: <strong>0 / 3</strong></span>
+          <span class="phase-meta-item">Success criteria: <strong>6</strong></span>
+        </div>
+        <div class="phase-plans-bar">
+          <div class="plan-pip todo"></div>
+          <div class="plan-pip todo"></div>
+          <div class="plan-pip todo"></div>
+        </div>
+      </div>
+
+      <!-- Row label: Sequential -->
+      <div class="row-label">Sequential — depend on Phase 1</div>
+
+      <!-- Phase 2 + 3 side by side -->
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--border);">
+
+        <div class="phase-card status-todo">
+          <div class="phase-number">Phase 02</div>
+          <div class="phase-name">Payment Split Engine</div>
+          <div class="phase-label"><span class="dot"></span> Not Started</div>
+          <div class="phase-goal">Rule-based splits replace every hardcoded calculation. The 258-line Cotswold file is deleted. Client payment logic becomes DB rows.</div>
+          <div class="phase-meta">
+            <span class="phase-meta-item">Spec: <strong>phase-b-payment-split-engine.md</strong></span>
+            <span class="phase-meta-item">Plans: <strong>0 / 2</strong></span>
+          </div>
+          <div class="phase-plans-bar">
+            <div class="plan-pip todo"></div>
+            <div class="plan-pip todo"></div>
+          </div>
+          <div class="phase-depends">Depends on: <span>Phase 1</span></div>
+        </div>
+
+        <div class="phase-card status-todo">
+          <div class="phase-number">Phase 03</div>
+          <div class="phase-name">Notification Engine</div>
+          <div class="phase-label"><span class="dot"></span> Not Started</div>
+          <div class="phase-goal">Every send trigger becomes a DB row. Generic variable resolver handles dot-path expressions. Adding comms for a new client requires zero code.</div>
+          <div class="phase-meta">
+            <span class="phase-meta-item">Spec: <strong>phase-c-notification-engine.md</strong></span>
+            <span class="phase-meta-item">Plans: <strong>0 / 2</strong></span>
+          </div>
+          <div class="phase-plans-bar">
+            <div class="plan-pip todo"></div>
+            <div class="plan-pip todo"></div>
+          </div>
+          <div class="phase-depends">Depends on: <span>Phase 1</span></div>
+        </div>
+
+      </div>
+
+      <!-- Row label: Parallel -->
+      <div class="row-label">Parallel — independent, can run concurrently after Phase 1</div>
+
+      <!-- Phases 4–8 -->
+      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1px; background: var(--border);">
+
+        <div class="phase-card status-todo">
+          <div class="phase-number">Phase 04</div>
+          <div class="phase-name">Route Jobs</div>
+          <div class="phase-label"><span class="dot"></span> Not Started</div>
+          <div class="phase-goal">Multi-stop jobs, optimised stop order, fleet dispatch. Waste disposal, logistics, district nurses.</div>
+          <div class="phase-meta">
+            <span class="phase-meta-item">Plans: <strong>0 / 2</strong></span>
+          </div>
+          <div class="phase-plans-bar">
+            <div class="plan-pip todo"></div>
+            <div class="plan-pip todo"></div>
+          </div>
+          <div class="phase-depends">Depends on: <span>Phase 1</span></div>
+        </div>
+
+        <div class="phase-card status-todo">
+          <div class="phase-number">Phase 05</div>
+          <div class="phase-name">Recurring Contracts</div>
+          <div class="phase-label"><span class="dot"></span> Not Started</div>
+          <div class="phase-goal">rrule-driven job generation. Auto-invoicing. Sign once, book never — weekly cleaners, retainers, care plans.</div>
+          <div class="phase-meta">
+            <span class="phase-meta-item">Plans: <strong>0 / 2</strong></span>
+          </div>
+          <div class="phase-plans-bar">
+            <div class="plan-pip todo"></div>
+            <div class="plan-pip todo"></div>
+          </div>
+          <div class="phase-depends">Depends on: <span>Phase 1</span></div>
+        </div>
+
+        <div class="phase-card status-todo">
+          <div class="phase-number">Phase 06</div>
+          <div class="phase-name">Classes & Memberships</div>
+          <div class="phase-label"><span class="dot"></span> Not Started</div>
+          <div class="phase-goal">Multi-participant jobs. Capacity locks, waitlist, QR check-in, membership passes. Fitness studios, education, events.</div>
+          <div class="phase-meta">
+            <span class="phase-meta-item">Plans: <strong>0 / 2</strong></span>
+          </div>
+          <div class="phase-plans-bar">
+            <div class="plan-pip todo"></div>
+            <div class="plan-pip todo"></div>
+          </div>
+          <div class="phase-depends">Depends on: <span>Phase 1</span></div>
+        </div>
+
+        <div class="phase-card status-todo">
+          <div class="phase-number">Phase 07</div>
+          <div class="phase-name">Field Service Billing</div>
+          <div class="phase-label"><span class="dot"></span> Not Started</div>
+          <div class="phase-goal">Clock in/out, log materials, certification gates. Auto-calculate (hours × rate) + parts on completion.</div>
+          <div class="phase-meta">
+            <span class="phase-meta-item">Plans: <strong>0 / 2</strong></span>
+          </div>
+          <div class="phase-plans-bar">
+            <div class="plan-pip todo"></div>
+            <div class="plan-pip todo"></div>
+          </div>
+          <div class="phase-depends">Depends on: <span>Phase 1, 2</span></div>
+        </div>
+
+        <div class="phase-card status-todo">
+          <div class="phase-number">Phase 08</div>
+          <div class="phase-name">Projects & CRM</div>
+          <div class="phase-label"><span class="dot"></span> Not Started</div>
+          <div class="phase-goal">Project phases, milestone invoicing, CRM pipeline from prospect to contract. Consultants, agencies, architects.</div>
+          <div class="phase-meta">
+            <span class="phase-meta-item">Plans: <strong>0 / 2</strong></span>
+          </div>
+          <div class="phase-plans-bar">
+            <div class="plan-pip todo"></div>
+            <div class="plan-pip todo"></div>
+          </div>
+          <div class="phase-depends">Depends on: <span>Phase 1, 7</span></div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ── PRINCIPLE ── -->
+  <div class="principle">
+    <div class="principle-head">The Rule</div>
+    <div class="principle-text">
+      Before writing any new feature: does it belong in an engine? → add a config option, not a code path.
+      Does it introduce a client-specific check? → make it a table row.
+      If a future client asks for something genuinely new, the question is: "which engine needs a new rule type?" — not "which module do I add client X logic to?"
+    </div>
+  </div>
+
+  <!-- ── FOOTER ── -->
+  <footer class="footer">
+    <div class="footer-left">
+      ironheart-refactor · universal platform · phases A–H
+    </div>
+    <div class="footer-right">
+      updated <span id="lastUpdated">—</span>
+    </div>
+  </footer>
+
+</div>
+
+<!-- Update hint -->
+<div class="update-hint">
+  <strong>To update status</strong>
+  Edit phase-card classes:<br>
+  <code>status-todo</code> · not started<br>
+  <code>status-current</code> · in progress<br>
+  <code>status-done</code> · complete<br>
+  Update plan-pip classes too.
+</div>
+
+<script>
+  // ── compute progress from DOM ──
+  const cards = document.querySelectorAll('.phase-card');
+  let done = 0;
+  cards.forEach(c => { if (c.classList.contains('status-done')) done++; });
+
+  const total = cards.length;
+  const pct = Math.round((done / total) * 100);
+
+  // animate progress bar
+  setTimeout(() => {
+    document.getElementById('progressFill').style.width = pct + '%';
+    document.getElementById('pctLabel').textContent = pct + '%';
+    document.getElementById('phasesComplete').textContent = done;
+  }, 300);
+
+  // last updated
+  document.getElementById('lastUpdated').textContent =
+    new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+</script>
+
+</body>
+</html>

@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ironheart Platform — Codebase Deep Dive</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #09090b;
+    --card: #18181b;
+    --border: #27272a;
+    --text: #fafafa;
+    --text-muted: #a1a1aa;
+    --accent: #3b82f6;
+    --green: #22c55e;
+    --amber: #f59e0b;
+    --red: #ef4444;
+    --purple: #a855f7;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    line-height: 1.5;
+    padding: 2rem;
+    min-height: 100vh;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 3rem;
+  }
+  header h1 {
+    font-size: 2.25rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    background: linear-gradient(135deg, #60a5fa, #a78bfa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  header p {
+    color: var(--text-muted);
+    font-size: 1rem;
+    margin-top: 0.5rem;
+  }
+
+  .grid-7 {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2.5rem;
+  }
+
+  .stat-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.25rem;
+    text-align: center;
+    transition: border-color 0.2s;
+  }
+  .stat-card:hover { border-color: #3f3f46; }
+  .stat-card .icon { font-size: 1.75rem; margin-bottom: 0.5rem; }
+  .stat-card .number {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.2;
+  }
+  .stat-card .label {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-top: 0.25rem;
+  }
+  .stat-card .sub {
+    font-size: 0.7rem;
+    color: #71717a;
+    margin-top: 0.15rem;
+  }
+
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    margin-bottom: 2.5rem;
+  }
+
+  .grid-1 {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2rem;
+    margin-bottom: 2.5rem;
+  }
+
+  @media (max-width: 900px) {
+    .grid-2 { grid-template-columns: 1fr; }
+  }
+
+  .panel {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.5rem;
+  }
+  .panel h2 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    color: var(--text);
+  }
+  .panel h2 .dim {
+    font-weight: 400;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+  }
+
+  canvas { max-width: 100%; }
+
+  /* Integration table */
+  .int-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+  }
+  .int-table th {
+    text-align: left;
+    padding: 0.6rem 0.75rem;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-muted);
+    font-weight: 500;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .int-table td {
+    padding: 0.6rem 0.75rem;
+    border-bottom: 1px solid #1e1e21;
+  }
+  .int-table tr:last-child td { border-bottom: none; }
+  .int-table tr:hover td { background: #1c1c1f; }
+
+  .badge {
+    display: inline-block;
+    padding: 0.15rem 0.5rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+  }
+  .badge-green { background: #052e16; color: #4ade80; }
+  .badge-amber { background: #422006; color: #fbbf24; }
+  .badge-red   { background: #450a0a; color: #f87171; }
+
+  .chart-container {
+    position: relative;
+    width: 100%;
+  }
+  .chart-container.tall { height: 550px; }
+  .chart-container.medium { height: 400px; }
+  .chart-container.short { height: 340px; }
+
+  footer {
+    text-align: center;
+    color: #52525b;
+    font-size: 0.75rem;
+    margin-top: 3rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border);
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Ironheart Platform — Codebase Deep Dive</h1>
+  <p>Quantitative analysis of 65,500+ lines across 31 modules</p>
+</header>
+
+<!-- 1. Overview Cards -->
+<div class="grid-7">
+  <div class="stat-card">
+    <div class="icon">&#x1F4E6;</div>
+    <div class="number">31</div>
+    <div class="label">Modules</div>
+    <div class="sub">28 impl / 2 scaffold / 1 dup</div>
+  </div>
+  <div class="stat-card">
+    <div class="icon">&#x1F4C4;</div>
+    <div class="number">~65.5k</div>
+    <div class="label">Lines of Module Code</div>
+  </div>
+  <div class="stat-card">
+    <div class="icon">&#x1F9EA;</div>
+    <div class="number">72</div>
+    <div class="label">Test Files</div>
+    <div class="sub">~10,000 Test LOC</div>
+  </div>
+  <div class="stat-card">
+    <div class="icon">&#x1F4CA;</div>
+    <div class="number">25</div>
+    <div class="label">Schema Files</div>
+    <div class="sub">5,126 Schema LOC</div>
+  </div>
+  <div class="stat-card">
+    <div class="icon">&#x1F5A5;&#xFE0F;</div>
+    <div class="number">60+</div>
+    <div class="label">Admin Pages</div>
+  </div>
+  <div class="stat-card">
+    <div class="icon">&#x1F50C;</div>
+    <div class="number">35</div>
+    <div class="label">tRPC Routers</div>
+  </div>
+  <div class="stat-card">
+    <div class="icon">&#x2699;&#xFE0F;</div>
+    <div class="number">10</div>
+    <div class="label">External Integrations</div>
+  </div>
+</div>
+
+<!-- 2. Module Size Distribution (Bubble) -->
+<div class="grid-1">
+  <div class="panel">
+    <h2>Module Size Distribution <span class="dim">— Backend LOC vs Test LOC (bubble size = total)</span></h2>
+    <div class="chart-container tall">
+      <canvas id="bubbleChart"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- 3. Test Coverage Radar + 4. Schema Complexity -->
+<div class="grid-2">
+  <div class="panel">
+    <h2>Test Coverage by Category <span class="dim">— radar</span></h2>
+    <div class="chart-container medium">
+      <canvas id="radarCoverage"></canvas>
+    </div>
+  </div>
+  <div class="panel">
+    <h2>Schema Complexity <span class="dim">— lines per schema file</span></h2>
+    <div class="chart-container tall">
+      <canvas id="schemaBar"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- 5. Frontend Components + 7. Old vs New -->
+<div class="grid-2">
+  <div class="panel">
+    <h2>Frontend Components by Domain <span class="dim">— 161 files</span></h2>
+    <div class="chart-container medium">
+      <canvas id="doughnutComponents"></canvas>
+    </div>
+  </div>
+  <div class="panel">
+    <h2>Original vs Refactor <span class="dim">— comparative radar</span></h2>
+    <div class="chart-container medium">
+      <canvas id="radarComparison"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- 6. Integration Table -->
+<div class="grid-1">
+  <div class="panel">
+    <h2>External Integration Status</h2>
+    <table class="int-table">
+      <thead>
+        <tr><th>Integration</th><th>Status</th><th>Module</th><th>Notes</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>WorkOS</td><td><span class="badge badge-green">Connected</span></td><td>auth</td><td>SSO/SAML ready</td></tr>
+        <tr><td>Inngest</td><td><span class="badge badge-green">Connected</span></td><td>all</td><td>Event-driven jobs</td></tr>
+        <tr><td>Resend</td><td><span class="badge badge-green">Connected</span></td><td>notification</td><td>Email delivery</td></tr>
+        <tr><td>Twilio</td><td><span class="badge badge-amber">Scaffolded</span></td><td>notification</td><td>SMS templates exist, needs wiring</td></tr>
+        <tr><td>Google Calendar</td><td><span class="badge badge-green">Connected</span></td><td>calendar-sync</td><td>Two-way sync + webhooks</td></tr>
+        <tr><td>Outlook Calendar</td><td><span class="badge badge-amber">Scaffolded</span></td><td>calendar-sync</td><td>Provider pattern ready</td></tr>
+        <tr><td>Apple Calendar</td><td><span class="badge badge-red">Not started</span></td><td>calendar-sync</td><td>Provider pattern ready</td></tr>
+        <tr><td>Stripe</td><td><span class="badge badge-amber">Scaffolded</span></td><td>payment</td><td>Provider exists, not connected</td></tr>
+        <tr><td>GoCardless</td><td><span class="badge badge-amber">Scaffolded</span></td><td>payment</td><td>Provider exists, not connected</td></tr>
+        <tr><td>MapLibre</td><td><span class="badge badge-green">Connected</span></td><td>scheduling</td><td>Open source maps</td></tr>
+        <tr><td>Sentry</td><td><span class="badge badge-green">Connected</span></td><td>platform</td><td>Error tracking</td></tr>
+        <tr><td>Upstash Redis</td><td><span class="badge badge-green">Connected</span></td><td>auth/tenant</td><td>Rate limiting + cache</td></tr>
+        <tr><td>Anthropic Claude</td><td><span class="badge badge-green">Connected</span></td><td>ai</td><td>MCP + chat</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<footer>
+  Generated 2026-04-17 &middot; Ironheart Platform Metrics Dashboard
+</footer>
+
+<script>
+// ─── Shared Config ───────────────────────────────────────────────────
+Chart.defaults.color = '#a1a1aa';
+Chart.defaults.borderColor = '#27272a';
+Chart.defaults.font.family = "-apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif";
+
+const GREEN = '#22c55e';
+const AMBER = '#f59e0b';
+const RED   = '#ef4444';
+const BLUE  = '#3b82f6';
+const PURPLE = '#a855f7';
+
+// ─── 2. Bubble Chart ────────────────────────────────────────────────
+(function() {
+  const modules = [
+    { label: 'team',          x: 910,  y: 1489, status: 'green' },
+    { label: 'ai',            x: 967,  y: 800,  status: 'green' },
+    { label: 'workflow',      x: 503,  y: 1152, status: 'green' },
+    { label: 'client-portal', x: 1218, y: 323,  status: 'green' },
+    { label: 'platform',      x: 725,  y: 911,  status: 'green' },
+    { label: 'booking',       x: 702,  y: 400,  status: 'green' },
+    { label: 'outreach',      x: 981,  y: 527,  status: 'amber' },
+    { label: 'scheduling',    x: 736,  y: 337,  status: 'amber' },
+    { label: 'notification',  x: 593,  y: 0,    status: 'amber' },
+    { label: 'calendar-sync', x: 530,  y: 0,    status: 'amber' },
+    { label: 'analytics',     x: 589,  y: 321,  status: 'amber' },
+    { label: 'payment',       x: 187,  y: 1142, status: 'amber' },
+    { label: 'pipeline',      x: 447,  y: 761,  status: 'amber' },
+    { label: 'customer',      x: 405,  y: 191,  status: 'amber' },
+    { label: 'forms',         x: 403,  y: 252,  status: 'amber' },
+    { label: 'review',        x: 336,  y: 227,  status: 'amber' },
+    { label: 'rbac',          x: 337,  y: 0,    status: 'amber' },
+    { label: 'tenant',        x: 289,  y: 557,  status: 'amber' },
+    { label: 'settings',      x: 188,  y: 438,  status: 'amber' },
+    { label: 'audit',         x: 189,  y: 360,  status: 'amber' },
+    { label: 'developer',     x: 71,   y: 362,  status: 'amber' },
+    { label: 'jobs',          x: 660,  y: 0,    status: 'amber' },
+    { label: 'resources',     x: 92,   y: 0,    status: 'amber' },
+    { label: 'search',        x: 82,   y: 142,  status: 'amber' },
+    { label: 'product',       x: 159,  y: 285,  status: 'amber' },
+    { label: 'subscription',  x: 183,  y: 270,  status: 'amber' },
+    { label: 'integrations',  x: 268,  y: 155,  status: 'amber' },
+  ];
+
+  const colorMap = { green: GREEN, amber: AMBER, red: RED };
+  const scale = 0.018;
+
+  const datasets = ['green', 'amber'].map(status => {
+    const filtered = modules.filter(m => m.status === status);
+    return {
+      label: status === 'green' ? 'Complete' : 'Partial',
+      data: filtered.map(m => ({
+        x: m.x,
+        y: m.y,
+        r: Math.max(6, Math.sqrt(m.x + m.y) * scale * 18),
+        label: m.label
+      })),
+      backgroundColor: (status === 'green' ? GREEN : AMBER) + '55',
+      borderColor: colorMap[status],
+      borderWidth: 1.5,
+    };
+  });
+
+  new Chart(document.getElementById('bubbleChart'), {
+    type: 'bubble',
+    data: { datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        x: {
+          title: { display: true, text: 'Backend LOC', color: '#a1a1aa' },
+          min: 0,
+          max: 1350,
+          grid: { color: '#1e1e21' },
+        },
+        y: {
+          title: { display: true, text: 'Test LOC', color: '#a1a1aa' },
+          min: -80,
+          max: 1600,
+          grid: { color: '#1e1e21' },
+        }
+      },
+      plugins: {
+        tooltip: {
+          callbacks: {
+            label: function(ctx) {
+              const d = ctx.raw;
+              return `${d.label}: ${d.x} backend, ${d.y} test (${d.x + d.y} total)`;
+            }
+          }
+        },
+        legend: { position: 'top', labels: { usePointStyle: true, pointStyle: 'circle' } },
+        annotation: undefined,
+      }
+    },
+    plugins: [{
+      id: 'bubbleLabels',
+      afterDraw(chart) {
+        const ctx = chart.ctx;
+        ctx.save();
+        ctx.font = '11px -apple-system, system-ui, sans-serif';
+        ctx.textAlign = 'center';
+
+        const annotations = [
+          { label: 'payment', text: 'More tests than code!', color: AMBER },
+          { label: 'notification', text: 'Zero tests', color: '#f87171' },
+          { label: 'calendar-sync', text: 'Zero tests', color: '#f87171' },
+          { label: 'jobs', text: 'Duplicate module', color: '#f87171' },
+        ];
+
+        chart.data.datasets.forEach(ds => {
+          ds.data.forEach((point, i) => {
+            const meta = chart.getDatasetMeta(chart.data.datasets.indexOf(ds));
+            const el = meta.data[i];
+            if (!el) return;
+            const xPos = el.x;
+            const yPos = el.y;
+
+            // Draw module name
+            ctx.fillStyle = '#d4d4d8';
+            ctx.fillText(point.label, xPos, yPos - point.r - 5);
+
+            // Draw annotation if exists
+            const ann = annotations.find(a => a.label === point.label);
+            if (ann) {
+              ctx.fillStyle = ann.color;
+              ctx.font = 'bold 10px -apple-system, system-ui, sans-serif';
+              ctx.fillText(ann.text, xPos, yPos - point.r - 18);
+              ctx.font = '11px -apple-system, system-ui, sans-serif';
+            }
+          });
+        });
+        ctx.restore();
+      }
+    }]
+  });
+})();
+
+// ─── 3. Test Coverage Radar ─────────────────────────────────────────
+(function() {
+  new Chart(document.getElementById('radarCoverage'), {
+    type: 'radar',
+    data: {
+      labels: ['Core Modules', 'Business Modules', 'Platform Modules', 'Growth Modules', 'Integration Modules'],
+      datasets: [{
+        label: 'Test Coverage %',
+        data: [65, 45, 55, 60, 25],
+        backgroundColor: BLUE + '30',
+        borderColor: BLUE,
+        borderWidth: 2,
+        pointBackgroundColor: BLUE,
+        pointRadius: 5,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        r: {
+          beginAtZero: true,
+          max: 100,
+          ticks: { stepSize: 20, backdropColor: 'transparent', color: '#71717a', font: { size: 10 } },
+          grid: { color: '#27272a' },
+          angleLines: { color: '#27272a' },
+          pointLabels: { color: '#d4d4d8', font: { size: 12 } },
+        }
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => `${ctx.label}: ${ctx.raw}%`
+          }
+        }
+      }
+    }
+  });
+})();
+
+// ─── 4. Schema Complexity ───────────────────────────────────────────
+(function() {
+  const schemas = [
+    { name: 'shared', loc: 770, cat: 'platform' },
+    { name: 'client-portal', loc: 491, cat: 'core' },
+    { name: 'booking', loc: 316, cat: 'core' },
+    { name: 'phase6', loc: 299, cat: 'platform' },
+    { name: 'staff', loc: 264, cat: 'core' },
+    { name: 'auth', loc: 262, cat: 'platform' },
+    { name: 'scheduling', loc: 220, cat: 'core' },
+    { name: 'customer', loc: 200, cat: 'core' },
+    { name: 'notifications', loc: 180, cat: 'business' },
+    { name: 'workflow', loc: 175, cat: 'business' },
+    { name: 'resources', loc: 170, cat: 'business' },
+    { name: 'forms', loc: 150, cat: 'business' },
+    { name: 'review', loc: 140, cat: 'business' },
+    { name: 'payment', loc: 135, cat: 'business' },
+    { name: 'analytics', loc: 120, cat: 'growth' },
+    { name: 'pipeline', loc: 115, cat: 'growth' },
+    { name: 'outreach', loc: 110, cat: 'growth' },
+    { name: 'tenant', loc: 105, cat: 'platform' },
+    { name: 'integrations', loc: 100, cat: 'growth' },
+    { name: 'search', loc: 90, cat: 'growth' },
+    { name: 'audit', loc: 85, cat: 'platform' },
+    { name: 'developer', loc: 80, cat: 'growth' },
+    { name: 'product', loc: 75, cat: 'business' },
+    { name: 'subscription', loc: 70, cat: 'business' },
+    { name: 'ai', loc: 68, cat: 'growth' },
+  ];
+
+  const catColors = {
+    core: BLUE,
+    business: GREEN,
+    platform: PURPLE,
+    growth: AMBER,
+  };
+
+  new Chart(document.getElementById('schemaBar'), {
+    type: 'bar',
+    data: {
+      labels: schemas.map(s => s.name + '.schema.ts'),
+      datasets: [{
+        data: schemas.map(s => s.loc),
+        backgroundColor: schemas.map(s => catColors[s.cat] + '88'),
+        borderColor: schemas.map(s => catColors[s.cat]),
+        borderWidth: 1,
+        borderRadius: 3,
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        x: {
+          title: { display: true, text: 'Lines of Code', color: '#a1a1aa' },
+          grid: { color: '#1e1e21' },
+        },
+        y: {
+          grid: { display: false },
+          ticks: { font: { size: 11 } },
+        }
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            afterLabel: function(ctx) {
+              return 'Category: ' + schemas[ctx.dataIndex].cat;
+            }
+          }
+        }
+      }
+    }
+  });
+})();
+
+// ─── 5. Frontend Component Doughnut ─────────────────────────────────
+(function() {
+  const data = [
+    { domain: 'UI primitives', count: 28 },
+    { domain: 'Client portal', count: 23 },
+    { domain: 'Settings', count: 17 },
+    { domain: 'Platform admin', count: 16 },
+    { domain: 'Team', count: 12 },
+    { domain: 'Portal', count: 9 },
+    { domain: 'Analytics', count: 9 },
+    { domain: 'Booking flow', count: 8 },
+    { domain: 'Layout', count: 8 },
+    { domain: 'Calendar', count: 6 },
+    { domain: 'Forms', count: 5 },
+    { domain: 'Workflow', count: 5 },
+    { domain: 'Other', count: 15 },
+  ];
+
+  const palette = [
+    '#3b82f6', '#8b5cf6', '#06b6d4', '#14b8a6',
+    '#22c55e', '#84cc16', '#eab308', '#f59e0b',
+    '#f97316', '#ef4444', '#ec4899', '#d946ef',
+    '#6b7280',
+  ];
+
+  new Chart(document.getElementById('doughnutComponents'), {
+    type: 'doughnut',
+    data: {
+      labels: data.map(d => d.domain),
+      datasets: [{
+        data: data.map(d => d.count),
+        backgroundColor: palette.map(c => c + 'cc'),
+        borderColor: palette,
+        borderWidth: 1.5,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: '55%',
+      plugins: {
+        legend: {
+          position: 'right',
+          labels: { boxWidth: 12, padding: 10, font: { size: 11 } }
+        },
+        tooltip: {
+          callbacks: {
+            label: ctx => `${ctx.label}: ${ctx.raw} files`
+          }
+        }
+      }
+    }
+  });
+})();
+
+// ─── 7. Old vs New Radar ────────────────────────────────────────────
+(function() {
+  const labels = [
+    'Code Organization', 'Test Coverage', 'Type Safety',
+    'Auth Security', 'Error Handling', 'Logging',
+    'Integration Arch', 'Frontend Completeness',
+    'Documentation', 'Production Readiness'
+  ];
+  const original = [40, 20, 60, 50, 30, 10, 40, 55, 30, 35];
+  const refactor = [90, 70, 90, 95, 85, 80, 85, 65, 75, 70];
+
+  new Chart(document.getElementById('radarComparison'), {
+    type: 'radar',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Original Ironheart',
+          data: original,
+          backgroundColor: '#ef444425',
+          borderColor: '#ef4444',
+          borderWidth: 2,
+          pointBackgroundColor: '#ef4444',
+          pointRadius: 4,
+        },
+        {
+          label: 'Refactored Ironheart',
+          data: refactor,
+          backgroundColor: '#22c55e25',
+          borderColor: '#22c55e',
+          borderWidth: 2,
+          pointBackgroundColor: '#22c55e',
+          pointRadius: 4,
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        r: {
+          beginAtZero: true,
+          max: 100,
+          ticks: { stepSize: 20, backdropColor: 'transparent', color: '#71717a', font: { size: 9 } },
+          grid: { color: '#27272a' },
+          angleLines: { color: '#27272a' },
+          pointLabels: { color: '#d4d4d8', font: { size: 10 } },
+        }
+      },
+      plugins: {
+        legend: {
+          position: 'top',
+          labels: { usePointStyle: true, pointStyle: 'circle', padding: 15 }
+        }
+      }
+    }
+  });
+})();
+</script>
+</body>
+</html>
