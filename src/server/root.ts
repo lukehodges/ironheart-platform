@@ -30,6 +30,7 @@ import { productRouter } from "@/modules/product";
 import { subscriptionRouter } from "@/modules/subscription";
 import { clientPortalRouter } from "@/modules/client-portal";
 import { integrationsRouter } from "@/modules/integrations";
+import { consultingRouter } from "@/modules/consulting";
 
 /**
  * Root tRPC router.
@@ -75,6 +76,7 @@ export const appRouter = router({
   subscription: subscriptionRouter,
   clientPortal: clientPortalRouter,
   integrations: integrationsRouter,
+  consulting: consultingRouter,
 });
 
 export type AppRouter = typeof appRouter;
