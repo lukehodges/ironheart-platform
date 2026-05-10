@@ -62,3 +62,18 @@ export const listEngagementsByStageSchema = z.object({
   limit: z.number().min(1).max(100).default(50),
   cursor: z.string().optional(),
 });
+
+export const createPlaneProjectSchema = z.object({
+  engagementId: z.string(),
+  auditSessionId: z.string(),
+  projectName: z.string().min(1),
+});
+
+export const createDriveFolderSchema = z.object({
+  engagementId: z.string(),
+  companyName: z.string().min(1),
+});
+
+export const getIntegrationStatusSchema = z.object({
+  engagementId: z.string(),
+});

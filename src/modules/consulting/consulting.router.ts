@@ -3,6 +3,8 @@ import { router, tenantProcedure, platformAdminProcedure, createModuleMiddleware
 import { consultingService } from "./consulting.service";
 import { onboardingService } from "./onboarding.service";
 import { provisioningService } from "./provisioning.service";
+import { integrationService } from "./integration.service";
+import { auditWorkspaceService } from "@/modules/audit-workspace/audit-workspace.service";
 import {
   stageTransitionSchema,
   setAuditWindowSchema,
@@ -10,6 +12,9 @@ import {
   listEngagementsByStageSchema,
   addTeamContactSchema,
   provisionClientTenantSchema,
+  createPlaneProjectSchema,
+  createDriveFolderSchema,
+  getIntegrationStatusSchema,
 } from "./consulting.schemas";
 
 const moduleGate = createModuleMiddleware("consulting");
@@ -43,4 +48,27 @@ export const consultingRouter = router({
   provisionClientTenant: moduleProcedure
     .input(provisionClientTenantSchema)
     .mutation(async ({ ctx, input }) => provisioningService.provisionClientTenant(ctx.tenantId, input)),
+
+  createPlaneProject: moduleProcedure
+    .input(createPlaneProjectSchema)
+    .mutation(async ({ ctx, input }) => {
+      const fullSession = await auditWorkspaceService.getFullSession(ctx, {
+        auditSessionId: input.auditSessionId,
+      });
+      return integrationService.createPlaneProjectFromAudit(
+        ctx.tenantId, input.engagementId, fullSession, input.projectName
+      );
+    }),
+
+  createDriveFolder: moduleProcedure
+    .input(createDriveFolderSchema)
+    .mutation(async ({ ctx, input }) =>
+      integrationService.createDriveFolder(ctx.tenantId, input.engagementId, input.companyName)
+    ),
+
+  integrationStatus: moduleProcedure
+    .input(getIntegrationStatusSchema)
+    .query(async ({ ctx, input }) =>
+      integrationService.getIntegrationStatus(ctx.tenantId, input.engagementId)
+    ),
 });
