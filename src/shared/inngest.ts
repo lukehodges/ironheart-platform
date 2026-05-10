@@ -403,6 +403,12 @@ type IronheartEvents = {
       tenantId: string;
     };
   };
+  "audit-workspace/session-created": {
+    data: { auditSessionId: string; engagementId: string; tenantId: string };
+  };
+  "audit-workspace/ready-for-report": {
+    data: { auditSessionId: string; tenantId: string };
+  };
 };
 
 /**
