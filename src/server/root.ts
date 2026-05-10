@@ -32,6 +32,7 @@ import { clientPortalRouter } from "@/modules/client-portal";
 import { integrationsRouter } from "@/modules/integrations";
 import { consultingRouter } from "@/modules/consulting";
 import { auditWorkspaceRouter } from "@/modules/audit-workspace";
+import { reportGeneratorRouter } from "@/modules/report-generator";
 
 /**
  * Root tRPC router.
@@ -79,6 +80,7 @@ export const appRouter = router({
   integrations: integrationsRouter,
   consulting: consultingRouter,
   auditWorkspace: auditWorkspaceRouter,
+  reportGenerator: reportGeneratorRouter,
 });
 
 export type AppRouter = typeof appRouter;
