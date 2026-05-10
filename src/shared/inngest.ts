@@ -374,6 +374,35 @@ type IronheartEvents = {
       body: unknown
     }
   };
+  "engagement/stage-changed": {
+    data: {
+      engagementId: string;
+      tenantId: string;
+      fromStage: string;
+      toStage: string;
+    };
+  };
+  "engagement/tenant-provisioned": {
+    data: {
+      engagementId: string;
+      tenantId: string;
+      clientTenantId: string;
+      ownerEmail: string;
+    };
+  };
+  "engagement/questionnaires-assigned": {
+    data: {
+      engagementId: string;
+      tenantId: string;
+      assignments: { contactUserId: string; formTemplateId: string }[];
+    };
+  };
+  "engagement/onboarding-complete": {
+    data: {
+      engagementId: string;
+      tenantId: string;
+    };
+  };
 };
 
 /**
