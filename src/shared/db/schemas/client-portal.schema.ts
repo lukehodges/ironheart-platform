@@ -92,6 +92,19 @@ export const recurringInterval = pgEnum("RecurringInterval", [
   "QUARTERLY",
 ]);
 
+export const engagementStage = pgEnum("EngagementStage", [
+  "DISCOVERY",
+  "PROPOSAL",
+  "CONTRACTED",
+  "ONBOARDING",
+  "AUDITING",
+  "REPORTING",
+  "IMPLEMENTING",
+  "RETAINER",
+  "CLOSED_WON",
+  "CLOSED_LOST",
+]);
+
 // ── Tables ───────────────────────────────────────────────────────────────
 
 export const engagements = pgTable(
@@ -107,6 +120,16 @@ export const engagements = pgTable(
     startDate: date({ mode: "date" }),
     endDate: date({ mode: "date" }),
     activeProposalId: uuid(),
+    stage: engagementStage().default("DISCOVERY"),
+    clientTenantId: uuid(),
+    auditWindowStart: date({ mode: "date" }),
+    auditWindowEnd: date({ mode: "date" }),
+    closedReason: text(),
+    planeProjectId: text(),
+    driveFolderId: text(),
+    discoveryCallId: uuid(),
+    discoveryNotes: text(),
+    qualificationData: jsonb(),
     createdAt: timestamp({ precision: 3, mode: "date" })
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),

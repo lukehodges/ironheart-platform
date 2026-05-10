@@ -1,3 +1,23 @@
+export type EngagementStage =
+  | "DISCOVERY"
+  | "PROPOSAL"
+  | "CONTRACTED"
+  | "ONBOARDING"
+  | "AUDITING"
+  | "REPORTING"
+  | "IMPLEMENTING"
+  | "RETAINER"
+  | "CLOSED_WON"
+  | "CLOSED_LOST";
+
+export interface QualificationData {
+  revenue: string | null;
+  teamSize: number | null;
+  painPoints: string[];
+  industry: string | null;
+  decisionMaker: boolean;
+}
+
 // ── Enums as string unions ───────────────────────────────────────────────
 
 export type EngagementType = "PROJECT" | "RETAINER" | "HYBRID";
@@ -48,6 +68,16 @@ export interface EngagementRecord {
   startDate: Date | null;
   endDate: Date | null;
   activeProposalId: string | null;
+  stage: EngagementStage | null;
+  clientTenantId: string | null;
+  auditWindowStart: Date | null;
+  auditWindowEnd: Date | null;
+  closedReason: string | null;
+  planeProjectId: string | null;
+  driveFolderId: string | null;
+  discoveryCallId: string | null;
+  discoveryNotes: string | null;
+  qualificationData: QualificationData | null;
   createdAt: Date;
   updatedAt: Date;
 }
