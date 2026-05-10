@@ -409,6 +409,12 @@ type IronheartEvents = {
   "audit-workspace/ready-for-report": {
     data: { auditSessionId: string; tenantId: string };
   };
+  "report-generator/report-created": {
+    data: { reportId: string; engagementId: string; tenantId: string };
+  };
+  "report-generator/report-published": {
+    data: { reportId: string; engagementId: string; tenantId: string };
+  };
 };
 
 /**
