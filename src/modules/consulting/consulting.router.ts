@@ -2,12 +2,14 @@ import { z } from "zod";
 import { router, tenantProcedure, platformAdminProcedure, createModuleMiddleware } from "@/shared/trpc";
 import { consultingService } from "./consulting.service";
 import { onboardingService } from "./onboarding.service";
+import { provisioningService } from "./provisioning.service";
 import {
   stageTransitionSchema,
   setAuditWindowSchema,
   updateDiscoveryNotesSchema,
   listEngagementsByStageSchema,
   addTeamContactSchema,
+  provisionClientTenantSchema,
 } from "./consulting.schemas";
 
 const moduleGate = createModuleMiddleware("consulting");
@@ -37,4 +39,8 @@ export const consultingRouter = router({
   suggestAssignments: moduleProcedure
     .input(addTeamContactSchema)
     .query(async ({ input }) => onboardingService.suggestQuestionnaireAssignments(input.contacts)),
+
+  provisionClientTenant: moduleProcedure
+    .input(provisionClientTenantSchema)
+    .mutation(async ({ ctx, input }) => provisioningService.provisionClientTenant(ctx.tenantId, input)),
 });

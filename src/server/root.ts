@@ -30,7 +30,7 @@ import { productRouter } from "@/modules/product";
 import { subscriptionRouter } from "@/modules/subscription";
 import { clientPortalRouter } from "@/modules/client-portal";
 import { integrationsRouter } from "@/modules/integrations";
-import { consultingRouter } from "@/modules/consulting";
+import { consultingRouter, consultingClientRouter } from "@/modules/consulting";
 import { auditWorkspaceRouter } from "@/modules/audit-workspace";
 import { reportGeneratorRouter } from "@/modules/report-generator";
 
@@ -79,6 +79,7 @@ export const appRouter = router({
   clientPortal: clientPortalRouter,
   integrations: integrationsRouter,
   consulting: consultingRouter,
+  consultingClient: consultingClientRouter,
   auditWorkspace: auditWorkspaceRouter,
   reportGenerator: reportGeneratorRouter,
 });
