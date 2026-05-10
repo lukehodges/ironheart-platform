@@ -9,9 +9,9 @@ export interface QuestionnaireMapping {
 
 export const DEFAULT_QUESTIONNAIRE_MAPPINGS: QuestionnaireMapping[] = [
   { roleKeywords: ["owner", "director", "ceo", "founder", "managing"], templateSlug: "questionnaire-owner-director" },
-  { roleKeywords: ["operations", "ops", "delivery", "manager"], templateSlug: "questionnaire-operations" },
   { roleKeywords: ["finance", "admin", "accounts", "bookkeeper", "accountant"], templateSlug: "questionnaire-finance-admin" },
   { roleKeywords: ["sales", "marketing", "bd", "business dev", "growth"], templateSlug: "questionnaire-sales-marketing" },
+  { roleKeywords: ["operations", "ops", "delivery", "manager"], templateSlug: "questionnaire-operations" },
 ];
 
 export const TEAM_MEMBER_TEMPLATE_SLUG = "questionnaire-team-member";
