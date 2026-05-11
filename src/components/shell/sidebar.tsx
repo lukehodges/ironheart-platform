@@ -57,15 +57,15 @@ const TENANT_SECTIONS: NavSectionDef[] = [
   {
     title: "Automation",
     items: [
-      { id: "workflow", label: "Workflows", icon: "workflow", href: "/admin/workflow", badge: "2" },
+      { id: "workflow", label: "Workflows", icon: "workflow", href: "/admin/workflows", badge: "2" },
       { id: "forms", label: "Forms", icon: "file", href: "/admin/forms" },
-      { id: "ai", label: "AI Copilot", icon: "sparkles", href: "/admin/ai", trailing: "new" },
+      { id: "ai", label: "AI Copilot", icon: "sparkles", href: "/admin/ai-chat", trailing: "new" },
     ],
   },
   {
     title: "Finance",
     items: [
-      { id: "invoices", label: "Invoices", icon: "invoice", href: "/admin/invoices" },
+      { id: "invoices", label: "Invoices", icon: "invoice", href: "/admin/payments" },
       { id: "payments", label: "Payments", icon: "money", href: "/admin/payments" },
     ],
   },

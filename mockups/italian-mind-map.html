@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Italian Mind Map</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;600;700&family=Architects+Daughter&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #f5f0e8;
+    min-height: 100vh;
+    font-family: 'Caveat', cursive;
+    overflow-x: hidden;
+    position: relative;
+  }
+
+  /* Faint ruled-paper lines */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      to bottom,
+      transparent,
+      transparent 39px,
+      #e0d8c8 39px,
+      #e0d8c8 40px
+    );
+    opacity: 0.35;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Margin line */
+  body::after {
+    content: '';
+    position: fixed;
+    top: 0; bottom: 0;
+    left: 80px;
+    width: 1.5px;
+    background: #d4a0a0;
+    opacity: 0.3;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .page-title {
+    text-align: center;
+    padding: 40px 20px 10px;
+    font-family: 'Architects Daughter', cursive;
+    font-size: 2.4rem;
+    color: #4a3f35;
+    position: relative;
+    z-index: 1;
+    letter-spacing: 1px;
+  }
+
+  .page-title span {
+    display: inline-block;
+    border-bottom: 2px solid #b8a99a;
+    padding-bottom: 4px;
+  }
+
+  .subtitle {
+    text-align: center;
+    font-family: 'Caveat', cursive;
+    font-size: 1.3rem;
+    color: #8a7e70;
+    margin-bottom: 30px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .canvas {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 20px 40px 80px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .cluster {
+    position: relative;
+    margin-bottom: 40px;
+    padding: 24px 20px 20px;
+  }
+
+  .cluster-label {
+    font-family: 'Architects Daughter', cursive;
+    font-size: 1.15rem;
+    color: #8a7e70;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    margin-bottom: 16px;
+    padding-left: 6px;
+    position: relative;
+  }
+
+  .cluster-label::after {
+    content: '';
+    display: block;
+    width: 60px;
+    height: 1.5px;
+    background: currentColor;
+    opacity: 0.4;
+    margin-top: 4px;
+    border-radius: 1px;
+  }
+
+  .words {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 4px;
+    align-items: flex-start;
+  }
+
+  .word-card {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 8px 16px 6px;
+    position: relative;
+    transition: transform 0.2s ease;
+    cursor: default;
+  }
+
+  .word-card:hover {
+    transform: scale(1.08);
+  }
+
+  .italian {
+    font-family: 'Caveat', cursive;
+    font-weight: 700;
+    font-size: 1.65rem;
+    color: #3a3228;
+    line-height: 1.15;
+    letter-spacing: 0.5px;
+  }
+
+  .english {
+    font-family: 'Caveat', cursive;
+    font-weight: 400;
+    font-size: 1.05rem;
+    color: #9a8e7e;
+    line-height: 1.2;
+    margin-top: 1px;
+  }
+
+  /* Organic rotations — every card gets a slight tilt */
+  .word-card:nth-child(7n+1) { transform: rotate(-1.2deg); }
+  .word-card:nth-child(7n+2) { transform: rotate(0.8deg); margin-top: 4px; }
+  .word-card:nth-child(7n+3) { transform: rotate(-0.5deg); margin-top: -2px; }
+  .word-card:nth-child(7n+4) { transform: rotate(1.5deg); margin-top: 6px; }
+  .word-card:nth-child(7n+5) { transform: rotate(-0.3deg); margin-top: 2px; }
+  .word-card:nth-child(7n+6) { transform: rotate(0.9deg); margin-top: -3px; }
+  .word-card:nth-child(7n)   { transform: rotate(-1.8deg); margin-top: 5px; }
+
+  .word-card:hover { transform: scale(1.08) rotate(0deg) !important; }
+
+  /* Pencil underline on some words */
+  .word-card:nth-child(5n) .italian {
+    text-decoration: underline;
+    text-decoration-color: #c8b8a4;
+    text-underline-offset: 3px;
+    text-decoration-thickness: 1.5px;
+    text-decoration-style: wavy;
+  }
+
+  /* Subtle circle around occasional words */
+  .word-card:nth-child(11n+3)::before {
+    content: '';
+    position: absolute;
+    inset: -2px -6px;
+    border: 1.5px solid #c4b8a4;
+    border-radius: 50%;
+    opacity: 0.4;
+    transform: rotate(-2deg);
+  }
+
+  /* Colour accents per cluster */
+  .cluster--verbs .italian { color: #5c4033; }
+  .cluster--verbs .cluster-label { color: #7a5c47; }
+
+  .cluster--people .italian { color: #4a5568; }
+  .cluster--people .cluster-label { color: #6b7b8d; }
+
+  .cluster--time .italian { color: #5b4a6a; }
+  .cluster--time .cluster-label { color: #7d6b8e; }
+
+  .cluster--places .italian { color: #4a6b5a; }
+  .cluster--places .cluster-label { color: #5e8a6e; }
+
+  .cluster--adjectives .italian { color: #7a4a3a; }
+  .cluster--adjectives .cluster-label { color: #9a6a5a; }
+
+  .cluster--connectors .italian { color: #5a6068; }
+  .cluster--connectors .cluster-label { color: #7a8088; }
+
+  /* Doodle connectors between clusters */
+  .doodle-line {
+    position: absolute;
+    z-index: 0;
+    opacity: 0.15;
+    pointer-events: none;
+  }
+
+  /* Scattered margin notes */
+  .margin-note {
+    position: absolute;
+    font-family: 'Caveat', cursive;
+    font-size: 0.95rem;
+    color: #b8a090;
+    transform: rotate(-4deg);
+    white-space: nowrap;
+    pointer-events: none;
+  }
+
+  /* Grid layout for clusters — organic, not rigid */
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px 40px;
+  }
+
+  .cluster--verbs {
+    grid-column: 1 / -1;
+  }
+
+  /* Separator doodles */
+  .separator {
+    text-align: center;
+    color: #c8b8a4;
+    font-size: 1.6rem;
+    letter-spacing: 12px;
+    margin: 10px 0;
+    opacity: 0.5;
+    user-select: none;
+  }
+
+  @media (max-width: 800px) {
+    .grid {
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+    .page-title { font-size: 1.8rem; }
+    .canvas { padding: 10px 16px 60px; }
+    .word-card { padding: 6px 10px 4px; }
+    .italian { font-size: 1.4rem; }
+    .english { font-size: 0.95rem; }
+    body::after { left: 30px; }
+  }
+</style>
+</head>
+<body>
+
+<h1 class="page-title"><span>Le Parole Italiane</span></h1>
+<p class="subtitle">~ 100 words to build sentences from ~</p>
+
+<div class="canvas">
+  <div class="grid">
+
+    <!-- VERBS -->
+    <div class="cluster cluster--verbs">
+      <div class="cluster-label">Verbi</div>
+      <div class="words">
+        <div class="word-card"><span class="italian">essere</span><span class="english">to be</span></div>
+        <div class="word-card"><span class="italian">avere</span><span class="english">to have</span></div>
+        <div class="word-card"><span class="italian">fare</span><span class="english">to do / make</span></div>
+        <div class="word-card"><span class="italian">andare</span><span class="english">to go</span></div>
+        <div class="word-card"><span class="italian">volere</span><span class="english">to want</span></div>
+        <div class="word-card"><span class="italian">potere</span><span class="english">to be able to</span></div>
+        <div class="word-card"><span class="italian">dovere</span><span class="english">to have to</span></div>
+        <div class="word-card"><span class="italian">dire</span><span class="english">to say</span></div>
+        <div class="word-card"><span class="italian">dare</span><span class="english">to give</span></div>
+        <div class="word-card"><span class="italian">sapere</span><span class="english">to know (fact)</span></div>
+        <div class="word-card"><span class="italian">conoscere</span><span class="english">to know (person)</span></div>
+        <div class="word-card"><span class="italian">vedere</span><span class="english">to see</span></div>
+        <div class="word-card"><span class="italian">venire</span><span class="english">to come</span></div>
+        <div class="word-card"><span class="italian">mettere</span><span class="english">to put</span></div>
+        <div class="word-card"><span class="italian">prendere</span><span class="english">to take</span></div>
+        <div class="word-card"><span class="italian">mangiare</span><span class="english">to eat</span></div>
+        <div class="word-card"><span class="italian">bere</span><span class="english">to drink</span></div>
+        <div class="word-card"><span class="italian">parlare</span><span class="english">to speak</span></div>
+        <div class="word-card"><span class="italian">pensare</span><span class="english">to think</span></div>
+        <div class="word-card"><span class="italian">trovare</span><span class="english">to find</span></div>
+        <div class="word-card"><span class="italian">stare</span><span class="english">to stay</span></div>
+        <div class="word-card"><span class="italian">partire</span><span class="english">to leave</span></div>
+        <div class="word-card"><span class="italian">arrivare</span><span class="english">to arrive</span></div>
+        <div class="word-card"><span class="italian">vivere</span><span class="english">to live</span></div>
+        <div class="word-card"><span class="italian">lavorare</span><span class="english">to work</span></div>
+        <div class="word-card"><span class="italian">comprare</span><span class="english">to buy</span></div>
+        <div class="word-card"><span class="italian">capire</span><span class="english">to understand</span></div>
+        <div class="word-card"><span class="italian">leggere</span><span class="english">to read</span></div>
+        <div class="word-card"><span class="italian">scrivere</span><span class="english">to write</span></div>
+        <div class="word-card"><span class="italian">dormire</span><span class="english">to sleep</span></div>
+      </div>
+    </div>
+
+    <!-- PEOPLE -->
+    <div class="cluster cluster--people">
+      <div class="cluster-label">Persone</div>
+      <div class="words">
+        <div class="word-card"><span class="italian">io</span><span class="english">I</span></div>
+        <div class="word-card"><span class="italian">tu</span><span class="english">you</span></div>
+        <div class="word-card"><span class="italian">lui / lei</span><span class="english">he / she</span></div>
+        <div class="word-card"><span class="italian">noi</span><span class="english">we</span></div>
+        <div class="word-card"><span class="italian">loro</span><span class="english">they</span></div>
+        <div class="word-card"><span class="italian">uomo</span><span class="english">man</span></div>
+        <div class="word-card"><span class="italian">donna</span><span class="english">woman</span></div>
+        <div class="word-card"><span class="italian">bambino/a</span><span class="english">child</span></div>
+        <div class="word-card"><span class="italian">amico/a</span><span class="english">friend</span></div>
+        <div class="word-card"><span class="italian">persona</span><span class="english">person</span></div>
+      </div>
+    </div>
+
+    <!-- TIME -->
+    <div class="cluster cluster--time">
+      <div class="cluster-label">Tempo</div>
+      <div class="words">
+        <div class="word-card"><span class="italian">oggi</span><span class="english">today</span></div>
+        <div class="word-card"><span class="italian">domani</span><span class="english">tomorrow</span></div>
+        <div class="word-card"><span class="italian">ieri</span><span class="english">yesterday</span></div>
+        <div class="word-card"><span class="italian">adesso</span><span class="english">now</span></div>
+        <div class="word-card"><span class="italian">sempre</span><span class="english">always</span></div>
+        <div class="word-card"><span class="italian">mai</span><span class="english">never</span></div>
+        <div class="word-card"><span class="italian">a volte</span><span class="english">sometimes</span></div>
+        <div class="word-card"><span class="italian">gi&agrave;</span><span class="english">already</span></div>
+        <div class="word-card"><span class="italian">ancora</span><span class="english">still / yet</span></div>
+        <div class="word-card"><span class="italian">tempo</span><span class="english">time</span></div>
+        <div class="word-card"><span class="italian">giorno</span><span class="english">day</span></div>
+        <div class="word-card"><span class="italian">notte</span><span class="english">night</span></div>
+        <div class="word-card"><span class="italian">anno</span><span class="english">year</span></div>
+      </div>
+    </div>
+
+    <!-- PLACES & THINGS -->
+    <div class="cluster cluster--places">
+      <div class="cluster-label">Posti e Cose</div>
+      <div class="words">
+        <div class="word-card"><span class="italian">casa</span><span class="english">house</span></div>
+        <div class="word-card"><span class="italian">acqua</span><span class="english">water</span></div>
+        <div class="word-card"><span class="italian">cibo</span><span class="english">food</span></div>
+        <div class="word-card"><span class="italian">soldi</span><span class="english">money</span></div>
+        <div class="word-card"><span class="italian">cosa</span><span class="english">thing</span></div>
+        <div class="word-card"><span class="italian">posto</span><span class="english">place</span></div>
+        <div class="word-card"><span class="italian">citt&agrave;</span><span class="english">city</span></div>
+        <div class="word-card"><span class="italian">strada</span><span class="english">street</span></div>
+        <div class="word-card"><span class="italian">macchina</span><span class="english">car</span></div>
+        <div class="word-card"><span class="italian">lavoro</span><span class="english">work / job</span></div>
+      </div>
+    </div>
+
+    <!-- ADJECTIVES -->
+    <div class="cluster cluster--adjectives">
+      <div class="cluster-label">Aggettivi</div>
+      <div class="words">
+        <div class="word-card"><span class="italian">buono</span><span class="english">good</span></div>
+        <div class="word-card"><span class="italian">cattivo</span><span class="english">bad</span></div>
+        <div class="word-card"><span class="italian">grande</span><span class="english">big</span></div>
+        <div class="word-card"><span class="italian">piccolo</span><span class="english">small</span></div>
+        <div class="word-card"><span class="italian">nuovo</span><span class="english">new</span></div>
+        <div class="word-card"><span class="italian">vecchio</span><span class="english">old</span></div>
+        <div class="word-card"><span class="italian">bello</span><span class="english">beautiful</span></div>
+        <div class="word-card"><span class="italian">felice</span><span class="english">happy</span></div>
+        <div class="word-card"><span class="italian">primo</span><span class="english">first</span></div>
+        <div class="word-card"><span class="italian">ultimo</span><span class="english">last</span></div>
+        <div class="word-card"><span class="italian">stesso</span><span class="english">same</span></div>
+        <div class="word-card"><span class="italian">altro</span><span class="english">other</span></div>
+        <div class="word-card"><span class="italian">possibile</span><span class="english">possible</span></div>
+        <div class="word-card"><span class="italian">importante</span><span class="english">important</span></div>
+      </div>
+    </div>
+
+    <!-- CONNECTORS -->
+    <div class="cluster cluster--connectors">
+      <div class="cluster-label">Connettori</div>
+      <div class="words">
+        <div class="word-card"><span class="italian">e</span><span class="english">and</span></div>
+        <div class="word-card"><span class="italian">o</span><span class="english">or</span></div>
+        <div class="word-card"><span class="italian">ma</span><span class="english">but</span></div>
+        <div class="word-card"><span class="italian">perch&eacute;</span><span class="english">because</span></div>
+        <div class="word-card"><span class="italian">se</span><span class="english">if</span></div>
+        <div class="word-card"><span class="italian">quando</span><span class="english">when</span></div>
+        <div class="word-card"><span class="italian">dove</span><span class="english">where</span></div>
+        <div class="word-card"><span class="italian">come</span><span class="english">how</span></div>
+        <div class="word-card"><span class="italian">che / cosa</span><span class="english">what</span></div>
+        <div class="word-card"><span class="italian">chi</span><span class="english">who</span></div>
+        <div class="word-card"><span class="italian">con</span><span class="english">with</span></div>
+        <div class="word-card"><span class="italian">senza</span><span class="english">without</span></div>
+        <div class="word-card"><span class="italian">per</span><span class="english">for</span></div>
+        <div class="word-card"><span class="italian">in</span><span class="english">in</span></div>
+        <div class="word-card"><span class="italian">di</span><span class="english">of</span></div>
+        <div class="word-card"><span class="italian">a</span><span class="english">to / at</span></div>
+        <div class="word-card"><span class="italian">questo</span><span class="english">this</span></div>
+        <div class="word-card"><span class="italian">quello</span><span class="english">that</span></div>
+        <div class="word-card"><span class="italian">pi&ugrave;</span><span class="english">more</span></div>
+        <div class="word-card"><span class="italian">molto</span><span class="english">very</span></div>
+        <div class="word-card"><span class="italian">non</span><span class="english">not</span></div>
+        <div class="word-card"><span class="italian">s&igrave;</span><span class="english">yes</span></div>
+        <div class="word-card"><span class="italian">no</span><span class="english">no</span></div>
+      </div>
+    </div>
+
+  </div><!-- /grid -->
+
+  <!-- Scattered margin notes for that notebook feel -->
+  <span class="margin-note" style="top: 120px; right: 60px; transform: rotate(-6deg);">volere + potere + dovere chain together!</span>
+  <span class="margin-note" style="top: 480px; left: 90px; transform: rotate(3deg);">sapere = facts, conoscere = people</span>
+  <span class="margin-note" style="bottom: 280px; right: 40px; transform: rotate(-3deg);">di, a, in, con, per = most common prepositions</span>
+
+</div>
+
+<!-- SVG doodle swirls for decoration -->
+<svg class="doodle-line" style="position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0;" xmlns="http://www.w3.org/2000/svg">
+  <path d="M 200 300 Q 300 250, 400 320" stroke="#b8a090" fill="none" stroke-width="1.2" opacity="0.15" stroke-dasharray="4 6"/>
+  <path d="M 600 200 Q 700 280, 800 220" stroke="#b8a090" fill="none" stroke-width="1" opacity="0.12" stroke-dasharray="3 5"/>
+  <path d="M 900 450 Q 1000 400, 1100 460" stroke="#b8a090" fill="none" stroke-width="1.5" opacity="0.1" stroke-dasharray="5 4"/>
+  <circle cx="150" cy="520" r="20" stroke="#c4b8a4" fill="none" stroke-width="1" opacity="0.1"/>
+  <circle cx="1200" cy="350" r="15" stroke="#c4b8a4" fill="none" stroke-width="1" opacity="0.08"/>
+</svg>
+
+</body>
+</html>

@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Italian Sentence Fragments</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;600;700&family=Architects+Daughter&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #f5f0e8;
+    min-height: 100vh;
+    font-family: 'Caveat', cursive;
+    overflow-x: hidden;
+    position: relative;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      to bottom,
+      transparent,
+      transparent 39px,
+      #e0d8c8 39px,
+      #e0d8c8 40px
+    );
+    opacity: 0.35;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  body::after {
+    content: '';
+    position: fixed;
+    top: 0; bottom: 0;
+    left: 80px;
+    width: 1.5px;
+    background: #d4a0a0;
+    opacity: 0.3;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .page-title {
+    text-align: center;
+    padding: 40px 20px 10px;
+    font-family: 'Architects Daughter', cursive;
+    font-size: 2.4rem;
+    color: #4a3f35;
+    position: relative;
+    z-index: 1;
+    letter-spacing: 1px;
+  }
+
+  .page-title span {
+    display: inline-block;
+    border-bottom: 2px solid #b8a99a;
+    padding-bottom: 4px;
+  }
+
+  .subtitle {
+    text-align: center;
+    font-family: 'Caveat', cursive;
+    font-size: 1.3rem;
+    color: #8a7e70;
+    margin-bottom: 30px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .canvas {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 20px 40px 80px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px 50px;
+  }
+
+  .cluster {
+    position: relative;
+    margin-bottom: 30px;
+    padding: 20px 16px 16px;
+  }
+
+  .cluster--wide {
+    grid-column: 1 / -1;
+  }
+
+  .cluster-label {
+    font-family: 'Architects Daughter', cursive;
+    font-size: 1.1rem;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    margin-bottom: 14px;
+    padding-left: 4px;
+    position: relative;
+  }
+
+  .cluster-label::after {
+    content: '';
+    display: block;
+    width: 50px;
+    height: 1.5px;
+    background: currentColor;
+    opacity: 0.4;
+    margin-top: 4px;
+  }
+
+  .fragments {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 6px;
+    align-items: flex-start;
+  }
+
+  /* Fragment strip — the core element */
+  .frag {
+    display: inline-flex;
+    flex-direction: column;
+    padding: 7px 18px 5px;
+    background: transparent;
+    border-bottom: 1.5px dashed transparent;
+    position: relative;
+    cursor: default;
+    transition: transform 0.2s ease, background 0.25s ease;
+  }
+
+  .frag:hover {
+    transform: scale(1.06) rotate(0deg) !important;
+    background: rgba(255,248,235,0.7);
+    border-radius: 4px;
+  }
+
+  .frag .it {
+    font-family: 'Caveat', cursive;
+    font-weight: 700;
+    font-size: 1.55rem;
+    line-height: 1.2;
+    letter-spacing: 0.3px;
+  }
+
+  .frag .en {
+    font-family: 'Caveat', cursive;
+    font-weight: 400;
+    font-size: 0.95rem;
+    line-height: 1.2;
+    margin-top: 1px;
+    opacity: 0.65;
+  }
+
+  /* Organic tilts */
+  .frag:nth-child(9n+1) { transform: rotate(-1deg); }
+  .frag:nth-child(9n+2) { transform: rotate(0.7deg); margin-top: 3px; }
+  .frag:nth-child(9n+3) { transform: rotate(-0.4deg); margin-top: -2px; }
+  .frag:nth-child(9n+4) { transform: rotate(1.3deg); margin-top: 5px; }
+  .frag:nth-child(9n+5) { transform: rotate(-1.5deg); margin-top: 1px; }
+  .frag:nth-child(9n+6) { transform: rotate(0.5deg); margin-top: -1px; }
+  .frag:nth-child(9n+7) { transform: rotate(-0.8deg); margin-top: 4px; }
+  .frag:nth-child(9n+8) { transform: rotate(1.1deg); margin-top: -3px; }
+  .frag:nth-child(9n)   { transform: rotate(-1.2deg); margin-top: 2px; }
+
+  /* Ellipsis styling — shows these are chainable */
+  .frag .it .ellipsis {
+    color: #b8a898;
+    font-weight: 400;
+  }
+
+  /* Pencil bracket on some */
+  .frag:nth-child(7n+2)::before {
+    content: '[';
+    position: absolute;
+    left: 4px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 2rem;
+    color: #c8b8a4;
+    opacity: 0.4;
+    font-weight: 300;
+  }
+  .frag:nth-child(7n+2)::after {
+    content: ']';
+    position: absolute;
+    right: 4px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 2rem;
+    color: #c8b8a4;
+    opacity: 0.4;
+    font-weight: 300;
+  }
+
+  /* Wavy underline on select fragments */
+  .frag:nth-child(6n+4) .it {
+    text-decoration: underline;
+    text-decoration-color: #c8b8a4;
+    text-underline-offset: 3px;
+    text-decoration-thickness: 1.5px;
+    text-decoration-style: wavy;
+  }
+
+  /* Arrow connectors between some fragments */
+  .arrow-hint {
+    display: inline-flex;
+    align-items: center;
+    color: #c4b4a0;
+    font-size: 1.4rem;
+    padding: 0 2px;
+    user-select: none;
+    opacity: 0.5;
+    margin-top: 6px;
+  }
+
+  /* Cluster colour accents */
+  .cluster--starters .cluster-label { color: #7a5c47; }
+  .cluster--starters .it { color: #5c4033; }
+
+  .cluster--actions .cluster-label { color: #4a7a5c; }
+  .cluster--actions .it { color: #3a6048; }
+
+  .cluster--bridges .cluster-label { color: #5b4a6a; }
+  .cluster--bridges .it { color: #4a3a5c; }
+
+  .cluster--time .cluster-label { color: #6b7b8d; }
+  .cluster--time .it { color: #4a5568; }
+
+  .cluster--endings .cluster-label { color: #7a6a4a; }
+  .cluster--endings .it { color: #6a5a3a; }
+
+  .cluster--questions .cluster-label { color: #8a5a4a; }
+  .cluster--questions .it { color: #7a4a3a; }
+
+  .cluster--expressions .cluster-label { color: #5a7a6a; }
+  .cluster--expressions .it { color: #3a6050; }
+
+  /* Example sentence strip at bottom */
+  .example-strip {
+    margin-top: 40px;
+    padding: 24px 20px;
+    position: relative;
+  }
+
+  .example-strip .cluster-label {
+    color: #8a7e70;
+  }
+
+  .example-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 14px;
+    padding: 6px 0;
+  }
+
+  .example-row .piece {
+    font-family: 'Caveat', cursive;
+    font-weight: 700;
+    font-size: 1.5rem;
+    padding: 4px 12px;
+    border-radius: 3px;
+    line-height: 1.2;
+  }
+
+  .example-row .piece--starter { background: rgba(92,64,51,0.08); color: #5c4033; }
+  .example-row .piece--action { background: rgba(58,96,72,0.08); color: #3a6048; }
+  .example-row .piece--bridge { background: rgba(74,58,92,0.08); color: #4a3a5c; }
+  .example-row .piece--time { background: rgba(74,85,104,0.08); color: #4a5568; }
+  .example-row .piece--ending { background: rgba(106,90,58,0.08); color: #6a5a3a; }
+  .example-row .piece--question { background: rgba(122,74,58,0.08); color: #7a4a3a; }
+
+  .example-row .plus {
+    color: #c4b4a0;
+    font-size: 1.3rem;
+    padding: 0 2px;
+  }
+
+  .example-row .result {
+    font-family: 'Caveat', cursive;
+    font-weight: 400;
+    font-size: 1.15rem;
+    color: #8a7e70;
+    margin-left: 8px;
+    font-style: italic;
+  }
+
+  /* Margin notes */
+  .margin-note {
+    position: absolute;
+    font-family: 'Caveat', cursive;
+    font-size: 0.95rem;
+    color: #b8a090;
+    white-space: nowrap;
+    pointer-events: none;
+  }
+
+  @media (max-width: 800px) {
+    .grid { grid-template-columns: 1fr; gap: 10px; }
+    .page-title { font-size: 1.8rem; }
+    .canvas { padding: 10px 16px 60px; }
+    .frag { padding: 5px 12px 4px; }
+    .frag .it { font-size: 1.35rem; }
+    .frag .en { font-size: 0.85rem; }
+    body::after { left: 30px; }
+  }
+
+  /* Background doodle arrows */
+  svg.bg-doodles {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    z-index: 0;
+  }
+</style>
+</head>
+<body>
+
+<h1 class="page-title"><span>Frammenti da Costruire</span></h1>
+<p class="subtitle">~ snap pieces together to build sentences ~</p>
+
+<div class="canvas">
+  <div class="grid">
+
+    <!-- STARTERS -->
+    <div class="cluster cluster--starters">
+      <div class="cluster-label">Inizi &mdash; sentence starters</div>
+      <div class="fragments">
+        <div class="frag"><span class="it">Voglio<span class="ellipsis">...</span></span><span class="en">I want...</span></div>
+        <div class="frag"><span class="it">Posso<span class="ellipsis">...</span></span><span class="en">I can... / Can I...</span></div>
+        <div class="frag"><span class="it">Devo<span class="ellipsis">...</span></span><span class="en">I have to...</span></div>
+        <div class="frag"><span class="it">Vorrei<span class="ellipsis">...</span></span><span class="en">I would like...</span></div>
+        <div class="frag"><span class="it">Mi piace<span class="ellipsis">...</span></span><span class="en">I like...</span></div>
+        <div class="frag"><span class="it">Non mi piace<span class="ellipsis">...</span></span><span class="en">I don't like...</span></div>
+        <div class="frag"><span class="it">Penso che<span class="ellipsis">...</span></span><span class="en">I think that...</span></div>
+        <div class="frag"><span class="it">Credo che<span class="ellipsis">...</span></span><span class="en">I believe that...</span></div>
+        <div class="frag"><span class="it">Non so se<span class="ellipsis">...</span></span><span class="en">I don't know if...</span></div>
+        <div class="frag"><span class="it">Ho bisogno di<span class="ellipsis">...</span></span><span class="en">I need...</span></div>
+        <div class="frag"><span class="it">Sto cercando di<span class="ellipsis">...</span></span><span class="en">I'm trying to...</span></div>
+        <div class="frag"><span class="it">Non posso<span class="ellipsis">...</span></span><span class="en">I can't...</span></div>
+        <div class="frag"><span class="it">So che<span class="ellipsis">...</span></span><span class="en">I know that...</span></div>
+        <div class="frag"><span class="it">Preferisco<span class="ellipsis">...</span></span><span class="en">I prefer...</span></div>
+      </div>
+    </div>
+
+    <!-- ACTIONS (infinitive chunks) -->
+    <div class="cluster cluster--actions">
+      <div class="cluster-label">Azioni &mdash; plug-in actions</div>
+      <div class="fragments">
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>andare a<span class="ellipsis">...</span></span><span class="en">...to go to...</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>parlare con<span class="ellipsis">...</span></span><span class="en">...to speak with...</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>mangiare qualcosa</span><span class="en">...to eat something</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>fare questo</span><span class="en">...to do this</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>comprare<span class="ellipsis">...</span></span><span class="en">...to buy...</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>trovare un posto</span><span class="en">...to find a place</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>prendere un caff&egrave;</span><span class="en">...to have a coffee</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>vedere qualcuno</span><span class="en">...to see someone</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>lavorare qui</span><span class="en">...to work here</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>dire qualcosa</span><span class="en">...to say something</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>capire questo</span><span class="en">...to understand this</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>tornare a casa</span><span class="en">...to go back home</span></div>
+      </div>
+    </div>
+
+    <!-- BRIDGES -->
+    <div class="cluster cluster--bridges">
+      <div class="cluster-label">Ponti &mdash; mid-sentence bridges</div>
+      <div class="fragments">
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>ma non<span class="ellipsis">...</span></span><span class="en">...but not...</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>perch&eacute;<span class="ellipsis">...</span></span><span class="en">...because...</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>anche se<span class="ellipsis">...</span></span><span class="en">...even if...</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>quando<span class="ellipsis">...</span></span><span class="en">...when...</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>se<span class="ellipsis">...</span></span><span class="en">...if...</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>e anche<span class="ellipsis">...</span></span><span class="en">...and also...</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>per&ograve;<span class="ellipsis">...</span></span><span class="en">...however...</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>invece di<span class="ellipsis">...</span></span><span class="en">...instead of...</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>prima di<span class="ellipsis">...</span></span><span class="en">...before...</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>dopo<span class="ellipsis">...</span></span><span class="en">...after...</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>senza<span class="ellipsis">...</span></span><span class="en">...without...</span></div>
+      </div>
+    </div>
+
+    <!-- TIME / PLACE ANCHORS -->
+    <div class="cluster cluster--time">
+      <div class="cluster-label">Quando e Dove &mdash; anchors</div>
+      <div class="fragments">
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>domani</span><span class="en">...tomorrow</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>stasera</span><span class="en">...tonight</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>adesso</span><span class="en">...now</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>la prossima settimana</span><span class="en">...next week</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>pi&ugrave; tardi</span><span class="en">...later</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>in Italia</span><span class="en">...in Italy</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>qui</span><span class="en">...here</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>a casa</span><span class="en">...at home</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>al ristorante</span><span class="en">...at the restaurant</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>in citt&agrave;</span><span class="en">...in the city</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>stamattina</span><span class="en">...this morning</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>ogni giorno</span><span class="en">...every day</span></div>
+      </div>
+    </div>
+
+    <!-- QUESTIONS -->
+    <div class="cluster cluster--questions">
+      <div class="cluster-label">Domande &mdash; question starters</div>
+      <div class="fragments">
+        <div class="frag"><span class="it">Dove posso<span class="ellipsis">...?</span></span><span class="en">Where can I...?</span></div>
+        <div class="frag"><span class="it">Quando<span class="ellipsis">...?</span></span><span class="en">When...?</span></div>
+        <div class="frag"><span class="it">Perch&eacute; non<span class="ellipsis">...?</span></span><span class="en">Why not...?</span></div>
+        <div class="frag"><span class="it">Come si dice<span class="ellipsis">...?</span></span><span class="en">How do you say...?</span></div>
+        <div class="frag"><span class="it">Che cosa &egrave;<span class="ellipsis">...?</span></span><span class="en">What is...?</span></div>
+        <div class="frag"><span class="it">Chi &egrave;<span class="ellipsis">...?</span></span><span class="en">Who is...?</span></div>
+        <div class="frag"><span class="it">Quanto costa<span class="ellipsis">...?</span></span><span class="en">How much is...?</span></div>
+        <div class="frag"><span class="it">C'&egrave;<span class="ellipsis">...?</span></span><span class="en">Is there...?</span></div>
+        <div class="frag"><span class="it">&Egrave; possibile<span class="ellipsis">...?</span></span><span class="en">Is it possible...?</span></div>
+        <div class="frag"><span class="it">Mi pu&ograve; aiutare con<span class="ellipsis">...?</span></span><span class="en">Can you help me with...?</span></div>
+      </div>
+    </div>
+
+    <!-- EVERYDAY EXPRESSIONS -->
+    <div class="cluster cluster--expressions">
+      <div class="cluster-label">Espressioni &mdash; ready-made pieces</div>
+      <div class="fragments">
+        <div class="frag"><span class="it">Va bene</span><span class="en">It's fine / OK</span></div>
+        <div class="frag"><span class="it">Non c'&egrave; problema</span><span class="en">No problem</span></div>
+        <div class="frag"><span class="it">Non importa</span><span class="en">It doesn't matter</span></div>
+        <div class="frag"><span class="it">Dipende</span><span class="en">It depends</span></div>
+        <div class="frag"><span class="it">Secondo me<span class="ellipsis">...</span></span><span class="en">In my opinion...</span></div>
+        <div class="frag"><span class="it">Per esempio<span class="ellipsis">...</span></span><span class="en">For example...</span></div>
+        <div class="frag"><span class="it">In realt&agrave;<span class="ellipsis">...</span></span><span class="en">Actually...</span></div>
+        <div class="frag"><span class="it">Forse<span class="ellipsis">...</span></span><span class="en">Maybe...</span></div>
+        <div class="frag"><span class="it">Certo!</span><span class="en">Of course!</span></div>
+        <div class="frag"><span class="it">Hai ragione</span><span class="en">You're right</span></div>
+        <div class="frag"><span class="it">Non lo so</span><span class="en">I don't know</span></div>
+        <div class="frag"><span class="it">Mi sembra<span class="ellipsis">...</span></span><span class="en">It seems to me...</span></div>
+      </div>
+    </div>
+
+    <!-- ENDINGS -->
+    <div class="cluster cluster--endings cluster--wide">
+      <div class="cluster-label">Fini &mdash; how things land</div>
+      <div class="fragments">
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>&egrave; importante</span><span class="en">...is important</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>non &egrave; facile</span><span class="en">...isn't easy</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>&egrave; possibile</span><span class="en">...is possible</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>&egrave; difficile</span><span class="en">...is difficult</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>&egrave; meglio</span><span class="en">...is better</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>non &egrave; vero</span><span class="en">...isn't true</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>&egrave; troppo</span><span class="en">...is too much</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>non funziona</span><span class="en">...doesn't work</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>mi piace molto</span><span class="en">...I like it a lot</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>&egrave; la stessa cosa</span><span class="en">...it's the same thing</span></div>
+      </div>
+    </div>
+
+  </div><!-- /grid -->
+
+  <!-- EXAMPLE COMBOS -->
+  <div class="example-strip">
+    <div class="cluster-label" style="color:#8a7e70;">Come si costruisce &mdash; how to snap them together</div>
+
+    <div class="example-row">
+      <span class="piece piece--starter">Voglio</span>
+      <span class="plus">+</span>
+      <span class="piece piece--action">andare a</span>
+      <span class="plus">+</span>
+      <span class="piece piece--time">al ristorante</span>
+      <span class="plus">+</span>
+      <span class="piece piece--time">stasera</span>
+      <span class="result">&rarr; Voglio andare al ristorante stasera</span>
+    </div>
+
+    <div class="example-row">
+      <span class="piece piece--starter">Non posso</span>
+      <span class="plus">+</span>
+      <span class="piece piece--action">lavorare qui</span>
+      <span class="plus">+</span>
+      <span class="piece piece--bridge">perch&eacute;</span>
+      <span class="plus">+</span>
+      <span class="piece piece--ending">non funziona</span>
+      <span class="result">&rarr; Non posso lavorare qui perch&eacute; non funziona</span>
+    </div>
+
+    <div class="example-row">
+      <span class="piece piece--question">Dove posso</span>
+      <span class="plus">+</span>
+      <span class="piece piece--action">prendere un caff&egrave;</span>
+      <span class="plus">+</span>
+      <span class="piece piece--time">qui</span>
+      <span class="result">&rarr; Dove posso prendere un caff&egrave; qui?</span>
+    </div>
+
+    <div class="example-row">
+      <span class="piece piece--starter">Penso che</span>
+      <span class="plus">+</span>
+      <span class="piece piece--ending">&egrave; meglio</span>
+      <span class="plus">+</span>
+      <span class="piece piece--action">tornare a casa</span>
+      <span class="plus">+</span>
+      <span class="piece piece--bridge">prima di</span>
+      <span class="plus">+</span>
+      <span class="piece piece--time">stasera</span>
+      <span class="result">&rarr; Penso che &egrave; meglio tornare a casa prima di stasera</span>
+    </div>
+
+    <div class="example-row">
+      <span class="piece piece--starter">Vorrei</span>
+      <span class="plus">+</span>
+      <span class="piece piece--action">dire qualcosa</span>
+      <span class="plus">+</span>
+      <span class="piece piece--bridge">ma non</span>
+      <span class="plus">+</span>
+      <span class="piece piece--starter">so che</span>
+      <span class="plus">+</span>
+      <span class="piece piece--ending">&egrave; possibile</span>
+      <span class="result">&rarr; Vorrei dire qualcosa ma non so se &egrave; possibile</span>
+    </div>
+
+  </div>
+
+  <!-- Margin notes -->
+  <span class="margin-note" style="top: 100px; right: 50px; transform: rotate(-5deg);">starter + action = basic sentence</span>
+  <span class="margin-note" style="top: 380px; left: 90px; transform: rotate(2deg);">add a bridge to extend!</span>
+  <span class="margin-note" style="bottom: 350px; right: 30px; transform: rotate(-3deg);">drop a time anchor at the end</span>
+  <span class="margin-note" style="bottom: 120px; left: 100px; transform: rotate(4deg);">mix &amp; match freely</span>
+
+</div>
+
+<!-- Background doodle curves -->
+<svg class="bg-doodles" xmlns="http://www.w3.org/2000/svg">
+  <path d="M 180 280 Q 280 240, 380 300" stroke="#b8a090" fill="none" stroke-width="1.2" opacity="0.12" stroke-dasharray="4 6"/>
+  <path d="M 700 180 Q 800 250, 900 200" stroke="#b8a090" fill="none" stroke-width="1" opacity="0.10" stroke-dasharray="3 5"/>
+  <path d="M 500 500 Q 600 460, 720 510" stroke="#b8a090" fill="none" stroke-width="1.5" opacity="0.08" stroke-dasharray="5 4"/>
+  <!-- Small arrow doodles -->
+  <path d="M 400 380 L 430 375 L 425 385" stroke="#c4b4a0" fill="none" stroke-width="1" opacity="0.15"/>
+  <path d="M 850 420 L 880 415 L 875 425" stroke="#c4b4a0" fill="none" stroke-width="1" opacity="0.12"/>
+</svg>
+
+</body>
+</html>
