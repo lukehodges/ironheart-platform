@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import Link from "next/link"
 import { Icon } from "@/components/shell"
 
 /* ------------------------------------------------------------------ */
@@ -313,9 +314,9 @@ export default function CustomerDetailPage() {
           <div className="ih-avatar" style={{ width: 72, height: 72, borderRadius: 14, fontSize: 28, display: "flex", alignItems: "center", justifyContent: "center" }}>{customer.initials}</div>
           <div>
             <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 6 }}>
-              <button className="ih-btn ih-btn-quiet ih-btn-sm" style={{ padding: "2px 6px" }}>
-                <Icon name="chevronLeft" size={12} /> Back
-              </button>
+              <Link href="/admin/customers" className="ih-btn ih-btn-quiet ih-btn-sm" style={{ padding: "2px 6px", textDecoration: "none" }}>
+                <Icon name="chevronLeft" size={12} /> Customers
+              </Link>
               <span className="ih-eyebrow">/cst_204 {"·"} customer</span>
             </div>
             <h1 className="ih-serif" style={{ margin: 0, fontSize: 36, lineHeight: 1 }}>{customer.name}</h1>

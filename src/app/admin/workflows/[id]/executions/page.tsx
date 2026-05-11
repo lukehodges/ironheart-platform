@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { Icon } from "@/components/shell"
 import { useState } from "react"
 
@@ -103,10 +104,10 @@ export default function WorkflowExecutionsPage() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 24, gap: 24, flexWrap: "wrap" }}>
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-            <a href="/admin/workflows" style={{ display: "flex", alignItems: "center", gap: 4, textDecoration: "none", color: "var(--ih-ink-50)" }}>
+            <Link href="/admin/workflows" style={{ display: "flex", alignItems: "center", gap: 4, textDecoration: "none", color: "var(--ih-ink-50)" }}>
               <Icon name="chevronLeft" size={12}/>
               <span className="ih-eyebrow">Workflows</span>
-            </a>
+            </Link>
             <Icon name="chevronRight" size={10} style={{ color: "var(--ih-ink-30)" }}/>
             <span className="ih-eyebrow">WF-204 Onboarding Northwind</span>
             <Icon name="chevronRight" size={10} style={{ color: "var(--ih-ink-30)" }}/>
@@ -118,7 +119,7 @@ export default function WorkflowExecutionsPage() {
         </div>
         <div style={{ display: "flex", gap: 6 }}>
           <button className="ih-btn ih-btn-ghost ih-btn-sm"><Icon name="download" size={12}/> Export</button>
-          <a href="/admin/workflows/wf-204" className="ih-btn ih-btn-primary ih-btn-sm" style={{ textDecoration: "none" }}><Icon name="chevronLeft" size={11}/> Back to editor</a>
+          <Link href="/admin/workflows/wf-204" className="ih-btn ih-btn-primary ih-btn-sm" style={{ textDecoration: "none" }}><Icon name="chevronLeft" size={11}/> Back to editor</Link>
         </div>
       </div>
 

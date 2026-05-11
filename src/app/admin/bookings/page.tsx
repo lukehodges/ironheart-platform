@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { Icon } from "@/components/shell"
 
 /* ── Data ───────────────────────────────────────────────────────────────── */
@@ -8,21 +9,21 @@ type Tone = "muted" | "info" | "accent" | "warn"
 
 interface Booking { time: string; dur: string; title: string; sub: string; tone: Tone; tag: string }
 
-const TODAY: Booking[] = [
-  { time: "10:00", dur: "30m", title: "Stand-up · internal",         sub: "Mira, Sam",                       tone: "muted",  tag: "internal" },
-  { time: "11:30", dur: "45m", title: "Northwind · sprint review",   sub: "Mira Sato · Zoom",                  tone: "info",   tag: "engagement" },
-  { time: "14:00", dur: "60m", title: "Olsen Brands · kickoff",      sub: "3 attendees · discovery",            tone: "accent", tag: "booking" },
-  { time: "16:00", dur: "20m", title: "Acme · invoice review",       sub: "Sarah Rowe · /inv_2041",            tone: "warn",   tag: "invoice" },
+const TODAY: (Booking & { id: string })[] = [
+  { id: "bk_standup", time: "10:00", dur: "30m", title: "Stand-up · internal",         sub: "Mira, Sam",                       tone: "muted",  tag: "internal" },
+  { id: "bk_0913",    time: "11:30", dur: "45m", title: "Northwind · sprint review",   sub: "Mira Sato · Zoom",                  tone: "info",   tag: "engagement" },
+  { id: "bk_olsen",   time: "14:00", dur: "60m", title: "Olsen Brands · kickoff",      sub: "3 attendees · discovery",            tone: "accent", tag: "booking" },
+  { id: "bk_acme_inv",time: "16:00", dur: "20m", title: "Acme · invoice review",       sub: "Sarah Rowe · /inv_2041",            tone: "warn",   tag: "invoice" },
 ]
 
-const TOMORROW: Booking[] = [
-  { time: "09:00", dur: "30m", title: "Stand-up · internal",         sub: "Mira, Sam",                       tone: "muted",  tag: "internal" },
-  { time: "11:30", dur: "45m", title: "Northwind · sprint review",   sub: "Mira Sato · Zoom",                  tone: "info",   tag: "engagement" },
+const TOMORROW: (Booking & { id: string })[] = [
+  { id: "bk_standup2",time: "09:00", dur: "30m", title: "Stand-up · internal",         sub: "Mira, Sam",                       tone: "muted",  tag: "internal" },
+  { id: "bk_0914",    time: "11:30", dur: "45m", title: "Northwind · sprint review",   sub: "Mira Sato · Zoom",                  tone: "info",   tag: "engagement" },
 ]
 
-const LATER: Booking[] = [
-  { time: "10:00", dur: "30m", title: "Stand-up · internal",         sub: "Mira, Sam",                       tone: "muted",  tag: "internal" },
-  { time: "15:00", dur: "45m", title: "Stakeholder demo",              sub: "Northwind HQ",                    tone: "accent", tag: "booking" },
+const LATER: (Booking & { id: string })[] = [
+  { id: "bk_standup3",time: "10:00", dur: "30m", title: "Stand-up · internal",         sub: "Mira, Sam",                       tone: "muted",  tag: "internal" },
+  { id: "bk_nw_demo", time: "15:00", dur: "45m", title: "Stakeholder demo",              sub: "Northwind HQ",                    tone: "accent", tag: "booking" },
 ]
 
 const GROUPS = [
@@ -62,11 +63,12 @@ export default function BookingsPage() {
               {group.items.map((b, i) => {
                 const isHighlight = gi === 0 && i === 2
                 return (
-                  <div key={i} style={{
+                  <Link key={i} href={`/admin/bookings/${b.id}`} style={{
                     padding: "12px 24px", borderTop: "1px solid var(--ih-line)",
                     display: "grid", gridTemplateColumns: "60px 1fr auto auto", gap: 14, alignItems: "center",
                     background: isHighlight ? "var(--ih-accent-soft-2)" : "transparent",
                     borderLeft: isHighlight ? "2px solid var(--ih-accent)" : "2px solid transparent",
+                    textDecoration: "none", color: "inherit",
                   }}>
                     <div>
                       <div className="ih-mono" style={{ fontSize: 13, fontWeight: 500 }}>{b.time}</div>
@@ -78,7 +80,7 @@ export default function BookingsPage() {
                     </div>
                     <span className={`ih-pill ${b.tone !== "muted" ? `ih-pill-${b.tone}` : ""}`} style={{ fontSize: 9 }}>{b.tag}</span>
                     <Icon name="chevronRight" size={11} style={{ color: "var(--ih-ink-30)" }}/>
-                  </div>
+                  </Link>
                 )
               })}
             </div>

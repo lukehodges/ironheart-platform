@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { Icon } from "@/components/shell"
 
 /* ── Demo Data ─────────────────────────────────────────────────────────── */
@@ -43,10 +44,10 @@ export default function FormSubmissionDetailPage() {
     <div style={{ padding: "24px 28px 48px", maxWidth: 900, margin: "0 auto" }}>
       {/* Breadcrumb */}
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
-        <a href="/admin/forms" style={{ display: "flex", alignItems: "center", gap: 4, textDecoration: "none", color: "var(--ih-ink-50)" }}>
+        <Link href="/admin/forms" style={{ display: "flex", alignItems: "center", gap: 4, textDecoration: "none", color: "var(--ih-ink-50)" }}>
           <Icon name="chevronLeft" size={12}/>
           <span className="ih-eyebrow">Forms</span>
-        </a>
+        </Link>
         <Icon name="chevronRight" size={10} style={{ color: "var(--ih-ink-30)" }}/>
         <span className="ih-eyebrow">Submissions</span>
         <Icon name="chevronRight" size={10} style={{ color: "var(--ih-ink-30)" }}/>
@@ -157,7 +158,7 @@ export default function FormSubmissionDetailPage() {
       <div className="ih-card" style={{ padding: 18 }}>
         <div className="ih-eyebrow" style={{ marginBottom: 10 }}>Related records</div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-          <a href="/admin/bookings/bk-9281" style={{ textDecoration: "none", color: "inherit" }}>
+          <Link href="/admin/bookings/bk-9281" style={{ textDecoration: "none", color: "inherit" }}>
             <div className="ih-card" style={{ padding: 12, display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
               <Icon name="calendar" size={14} style={{ color: "var(--ih-accent)" }}/>
               <div style={{ flex: 1 }}>
@@ -166,8 +167,8 @@ export default function FormSubmissionDetailPage() {
               </div>
               <Icon name="arrowUpRight" size={11} style={{ color: "var(--ih-ink-30)" }}/>
             </div>
-          </a>
-          <a href="/admin/engagements/eng-204" style={{ textDecoration: "none", color: "inherit" }}>
+          </Link>
+          <Link href="/admin/clients/eng-204" style={{ textDecoration: "none", color: "inherit" }}>
             <div className="ih-card" style={{ padding: 12, display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
               <Icon name="handshake" size={14} style={{ color: "var(--ih-accent)" }}/>
               <div style={{ flex: 1 }}>
@@ -176,7 +177,7 @@ export default function FormSubmissionDetailPage() {
               </div>
               <Icon name="arrowUpRight" size={11} style={{ color: "var(--ih-ink-30)" }}/>
             </div>
-          </a>
+          </Link>
         </div>
       </div>
     </div>

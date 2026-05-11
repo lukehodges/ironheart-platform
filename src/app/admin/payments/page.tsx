@@ -1,5 +1,7 @@
 "use client"
 
+import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { Icon } from "@/components/shell"
 
 /* ── Data ────────────────────────────────────────────────────────────────── */
@@ -38,6 +40,7 @@ const TH: React.CSSProperties = { textAlign: "left", padding: "10px 12px", fontW
 /* ── Page ─────────────────────────────────────────────────────────────────── */
 
 export default function PaymentsPage() {
+  const router = useRouter()
   return (
     <div style={{ padding: "24px 28px 48px", maxWidth: 1400, margin: "0 auto" }}>
       {/* Header */}
@@ -50,7 +53,7 @@ export default function PaymentsPage() {
         </div>
         <div style={{ display: "flex", gap: 6 }}>
           <button className="ih-btn ih-btn-ghost ih-btn-sm"><Icon name="download" size={12}/> Export</button>
-          <button className="ih-btn ih-btn-primary ih-btn-sm"><Icon name="plus" size={12}/> New invoice</button>
+          <Link href="/admin/payments/new" className="ih-btn ih-btn-primary ih-btn-sm" style={{ textDecoration: "none" }}><Icon name="plus" size={12}/> New invoice</Link>
         </div>
       </div>
 
@@ -106,7 +109,7 @@ export default function PaymentsPage() {
             </thead>
             <tbody>
               {INVOICES.map((inv) => (
-                <tr key={inv.id} style={{ borderTop: "1px solid var(--ih-line)", cursor: "pointer" }}>
+                <tr key={inv.id} onClick={() => router.push(`/admin/payments/${inv.id}`)} style={{ borderTop: "1px solid var(--ih-line)", cursor: "pointer" }}>
                   <td style={{ padding: "10px 12px 10px 18px" }}>
                     <span className="ih-mono" style={{ fontSize: 11, fontWeight: 500 }}>{inv.number}</span>
                   </td>

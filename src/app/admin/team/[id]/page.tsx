@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import Link from "next/link"
 import { Icon } from "@/components/shell"
 
 const MEMBER = {
@@ -57,9 +58,9 @@ export default function TeamMemberDetailPage() {
   return (
     <div style={{ padding: "24px 28px 48px", maxWidth: 1200, margin: "0 auto" }}>
       {/* Back */}
-      <a href="/admin/team" style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12, color: "var(--ih-ink-50)", textDecoration: "none", marginBottom: 18 }}>
-        <Icon name="chevronLeft" size={12} /> Back to team
-      </a>
+      <Link href="/admin/team" style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12, color: "var(--ih-ink-50)", textDecoration: "none", marginBottom: 18 }}>
+        <Icon name="chevronLeft" size={12} /> Team
+      </Link>
 
       {/* Entity header */}
       <div className="ih-card" style={{ padding: 22, marginBottom: 24 }}>

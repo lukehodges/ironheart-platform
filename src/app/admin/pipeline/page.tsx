@@ -1,35 +1,36 @@
 "use client"
 
+import Link from "next/link"
 import { Icon, type IconName } from "@/components/shell"
 
 /* ── Data ───────────────────────────────────────────────────────────────── */
 
 type Tone = "muted" | "info" | "warn" | "ok" | "accent"
 
-interface Deal { name: string; sub: string; value: string; size: string; tone: Tone }
+interface Deal { id: string; name: string; sub: string; value: string; size: string; tone: Tone }
 interface Stage { name: string; count: number; value: string; deals: Deal[] }
 
 const STAGES: Stage[] = [
   { name: "New", count: 4, value: "$28k", deals: [
-    { name: "Marlow Ltd", sub: "Discovery call booked", value: "$8k", size: "S", tone: "muted" },
-    { name: "Pinewood", sub: "Inbound · brief in /docs", value: "$6k", size: "S", tone: "muted" },
-    { name: "Halftime", sub: "Referral · cold", value: "$4k", size: "M", tone: "muted" },
-    { name: "Veridian", sub: "Cold outreach reply", value: "$10k", size: "M", tone: "muted" },
+    { id: "deal_marlow", name: "Marlow Ltd", sub: "Discovery call booked", value: "$8k", size: "S", tone: "muted" },
+    { id: "deal_pinewood", name: "Pinewood", sub: "Inbound · brief in /docs", value: "$6k", size: "S", tone: "muted" },
+    { id: "deal_halftime", name: "Halftime", sub: "Referral · cold", value: "$4k", size: "M", tone: "muted" },
+    { id: "deal_veridian", name: "Veridian", sub: "Cold outreach reply", value: "$10k", size: "M", tone: "muted" },
   ]},
   { name: "Qualified", count: 7, value: "$64k", deals: [
-    { name: "Olsen Brands", sub: "Kickoff today 14:00", value: "$12k", size: "M", tone: "accent" },
-    { name: "Bramble Co.", sub: "Awaiting brief", value: "$9k", size: "M", tone: "info" },
-    { name: "Stoneworks", sub: "Demo Thu", value: "$8k", size: "S", tone: "info" },
-    { name: "Field Notes", sub: "NDA out", value: "$7k", size: "M", tone: "muted" },
+    { id: "deal_0472", name: "Olsen Brands", sub: "Kickoff today 14:00", value: "$12k", size: "M", tone: "accent" },
+    { id: "deal_bramble", name: "Bramble Co.", sub: "Awaiting brief", value: "$9k", size: "M", tone: "info" },
+    { id: "deal_stone", name: "Stoneworks", sub: "Demo Thu", value: "$8k", size: "S", tone: "info" },
+    { id: "deal_field", name: "Field Notes", sub: "NDA out", value: "$7k", size: "M", tone: "muted" },
   ]},
   { name: "Proposal", count: 5, value: "$58k", deals: [
-    { name: "Cardinal", sub: "Sent Mon · open rate 4", value: "$22k", size: "L", tone: "warn" },
-    { name: "Lume", sub: "Negotiating scope", value: "$14k", size: "M", tone: "warn" },
-    { name: "Hatch & Co", sub: "Verbal yes", value: "$12k", size: "M", tone: "warn" },
+    { id: "deal_cardinal", name: "Cardinal", sub: "Sent Mon · open rate 4", value: "$22k", size: "L", tone: "warn" },
+    { id: "deal_lume", name: "Lume", sub: "Negotiating scope", value: "$14k", size: "M", tone: "warn" },
+    { id: "deal_hatch", name: "Hatch & Co", sub: "Verbal yes", value: "$12k", size: "M", tone: "warn" },
   ]},
   { name: "Won", count: 3, value: "$34k", deals: [
-    { name: "Olsen Brands", sub: "kickoff today", value: "$12k", size: "M", tone: "ok" },
-    { name: "Bramble Co.", sub: "engagement /eng_0489", value: "$9k", size: "M", tone: "ok" },
+    { id: "deal_olsen_won", name: "Olsen Brands", sub: "kickoff today", value: "$12k", size: "M", tone: "ok" },
+    { id: "deal_bramble_won", name: "Bramble Co.", sub: "engagement /eng_0489", value: "$9k", size: "M", tone: "ok" },
   ]},
 ]
 
@@ -82,7 +83,7 @@ export default function PipelinePage() {
         {STAGES.map((s, si) => (
           <div key={s.name} style={{ padding: 14, borderLeft: si === 0 ? "0" : "1px solid var(--ih-line)", display: "grid", gap: 8, alignContent: "start" }}>
             {s.deals.map((d, j) => (
-              <div key={j} className="ih-card" style={{ padding: 12, cursor: "grab", position: "relative" }}>
+              <Link key={j} href={`/admin/pipeline/${d.id}`} className="ih-card" style={{ padding: 12, cursor: "grab", position: "relative", textDecoration: "none", color: "inherit", display: "block" }}>
                 {j === 0 && si === 1 && <span style={{ position: "absolute", top: 0, bottom: 0, left: -1, width: 2, background: "var(--ih-accent)", borderRadius: 1 }}/>}
                 <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
                   <strong style={{ fontSize: 12.5, fontWeight: 500 }}>{d.name}</strong>
@@ -96,7 +97,7 @@ export default function PipelinePage() {
                     {j % 2 === 0 && <div className="ih-avatar" style={{ width: 18, height: 18, fontSize: 8 }}>SR</div>}
                   </div>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         ))}

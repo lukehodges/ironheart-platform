@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { Icon } from "@/components/shell"
 
 const TEAM = [
@@ -124,9 +125,9 @@ export default function TeamPage() {
                   ))}
                 </div>
 
-                <a href={`/admin/team/${m.initials.toLowerCase()}`} className="ih-btn ih-btn-ghost ih-btn-sm" style={{ height: 26, fontSize: 11, textDecoration: "none" }}>
+                <Link href={`/admin/team/${m.initials.toLowerCase()}`} className="ih-btn ih-btn-ghost ih-btn-sm" style={{ height: 26, fontSize: 11, textDecoration: "none" }}>
                   View profile <Icon name="arrowRight" size={10} />
-                </a>
+                </Link>
               </div>
             </div>
           </div>

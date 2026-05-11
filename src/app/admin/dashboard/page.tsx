@@ -1,8 +1,11 @@
 "use client"
 
+import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { Icon } from "@/components/shell"
 
 export default function DashboardPage() {
+  const router = useRouter()
   return (
     <div style={{ padding: "24px 28px 48px", maxWidth: 1400, margin: "0 auto" }}>
       {/* Hero greeting */}
@@ -23,9 +26,9 @@ export default function DashboardPage() {
       {/* The three things */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 14, marginBottom: 28 }}>
         {[
-          { rank: 1, kind: "Approvals", title: "Acme final invoice", body: "Sarah’s been chasing for 2 days. Sign or push back today or it slips into next sprint.", action: "Review · $14.2k", tone: "accent" as const, meta: "/inv_2041 · 4hrs ago" },
-          { rank: 2, kind: "Bookings",  title: "Olsen kickoff at 14:00", body: "Discovery call. Brief is in /docs. Prep doc auto‑drafted by copilot — open to review.", action: "Open prep doc", tone: "ink" as const, meta: "in 5h 12m" },
-          { rank: 3, kind: "Workflow",  title: "Stripe sync paused", body: "Run /wf_887 stopped on rate limit at 06:14. 12 invoices queued behind it.", action: "Resume run", tone: "warn" as const, meta: "/wf_887 · stripe" },
+          { rank: 1, kind: "Approvals", title: "Acme final invoice", body: "Sarah’s been chasing for 2 days. Sign or push back today or it slips into next sprint.", action: "Review · $14.2k", tone: "accent" as const, meta: "/inv_2041 · 4hrs ago", href: "/admin/payments/inv_2041" },
+          { rank: 2, kind: "Bookings",  title: "Olsen kickoff at 14:00", body: "Discovery call. Brief is in /docs. Prep doc auto‑drafted by copilot — open to review.", action: "Open prep doc", tone: "ink" as const, meta: "in 5h 12m", href: "/admin/bookings/bk_olsen" },
+          { rank: 3, kind: "Workflow",  title: "Stripe sync paused", body: "Run /wf_887 stopped on rate limit at 06:14. 12 invoices queued behind it.", action: "Resume run", tone: "warn" as const, meta: "/wf_887 · stripe", href: "/admin/workflows/wf_887" },
         ].map((t) => (
           <div key={t.rank} className="ih-card" style={{ padding: 18, position: "relative" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
@@ -39,9 +42,9 @@ export default function DashboardPage() {
             <p style={{ margin: 0, fontSize: 12, color: "var(--ih-ink-65)", lineHeight: 1.5, minHeight: 56 }}>{t.body}</p>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 14, paddingTop: 12, borderTop: "1px solid var(--ih-line)" }}>
               <span className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-40)" }}>{t.meta}</span>
-              <button className={`ih-btn ${t.tone === "accent" ? "ih-btn-accent" : t.tone === "warn" ? "ih-btn-ghost" : "ih-btn-primary"} ih-btn-sm`}>
+              <Link href={t.href} className={`ih-btn ${t.tone === "accent" ? "ih-btn-accent" : t.tone === "warn" ? "ih-btn-ghost" : "ih-btn-primary"} ih-btn-sm`} style={{ textDecoration: "none" }}>
                 {t.action} <Icon name="arrowRight" size={11}/>
-              </button>
+              </Link>
             </div>
           </div>
         ))}
@@ -50,13 +53,13 @@ export default function DashboardPage() {
       {/* Drillable stats */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 10, marginBottom: 28 }}>
         {[
-          { l: "Active engagements", v: "08", d: "+1", h: "this month", icon: "handshake" as const },
-          { l: "Bookings · 7d",      v: "23", d: "+4", h: "vs last 7d",  icon: "calendar" as const },
-          { l: "Pipeline value",     v: "$184k", d: "−2.1%", h: "MRR equiv", icon: "pipeline" as const },
-          { l: "Hours saved · auto", v: "192h", d: "+38h", h: "this month", icon: "bolt" as const },
-          { l: "Outstanding inv.",   v: "$28.4k", d: "3 over", h: "due >7d", icon: "invoice" as const },
+          { l: "Active engagements", v: "08", d: "+1", h: "this month", icon: "handshake" as const, href: "/admin/clients?stage=active" },
+          { l: "Bookings · 7d",      v: "23", d: "+4", h: "vs last 7d",  icon: "calendar" as const, href: "/admin/bookings" },
+          { l: "Pipeline value",     v: "$184k", d: "−2.1%", h: "MRR equiv", icon: "pipeline" as const, href: "/admin/pipeline" },
+          { l: "Hours saved · auto", v: "192h", d: "+38h", h: "this month", icon: "bolt" as const, href: "/admin/workflows" },
+          { l: "Outstanding inv.",   v: "$28.4k", d: "3 over", h: "due >7d", icon: "invoice" as const, href: "/admin/payments?status=outstanding" },
         ].map((s) => (
-          <div key={s.l} className="ih-card" style={{ padding: "14px 14px", cursor: "pointer" }}>
+          <Link key={s.l} href={s.href} className="ih-card" style={{ padding: "14px 14px", cursor: "pointer", textDecoration: "none", color: "inherit" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
               <span className="ih-eyebrow">{s.l}</span>
               <Icon name={s.icon} size={12} style={{ color: "var(--ih-ink-30)" }} />
@@ -67,7 +70,7 @@ export default function DashboardPage() {
               <span>{s.h}</span>
               <span style={{ marginLeft: "auto", color: "var(--ih-ink-30)" }}>↗</span>
             </div>
-          </div>
+          </Link>
         ))}
       </div>
 
@@ -88,15 +91,15 @@ export default function DashboardPage() {
           </div>
           <div>
             {[
-              { time: "09:42", icon: "money" as const, tone: "ok",      who: "Stripe",     verb: "received payment from", obj: "Acme Studios", amt: "$4,200", trail: "/inv_2039 · paid in full" },
-              { time: "09:28", icon: "bolt" as const,  tone: "info",    who: "Workflow",   verb: "ran",                  obj: "Send onboarding · Olsen", amt: "23 steps", trail: "/wf_204 · 1.4s" },
-              { time: "08:51", icon: "check" as const, tone: "ok",      who: "Mira (you)", verb: "approved",             obj: "Q2 retainer brief · Northwind", amt: "",        trail: "/eng_0481 · note added" },
-              { time: "08:33", icon: "chat" as const,  tone: "muted",   who: "Portal",     verb: "comment from",         obj: "Jamie at Westfield",      amt: "",         trail: "design review · 1 reply pending" },
-              { time: "07:14", icon: "x" as const,     tone: "danger",  who: "Stripe sync",verb: "failed on",            obj: "rate limit · resume?",    amt: "12 queued", trail: "/wf_887 · auto‑retry off" },
-              { time: "Mon",   icon: "file" as const,  tone: "muted",   who: "Form",       verb: "new submission ·",     obj: "Discovery / leadership",  amt: "",         trail: "/form_intake · routed to pipeline" },
-              { time: "Mon",   icon: "user" as const,  tone: "info",    who: "Pipeline",   verb: "deal moved to",        obj: "Won · Olsen Brands",      amt: "$12k",     trail: "/deal_443 · engagement auto‑created" },
+              { time: "09:42", icon: "money" as const, tone: "ok",      who: "Stripe",     verb: "received payment from", obj: "Acme Studios", amt: "$4,200", trail: "/inv_2039 · paid in full", href: "/admin/payments/inv_2039" },
+              { time: "09:28", icon: "bolt" as const,  tone: "info",    who: "Workflow",   verb: "ran",                  obj: "Send onboarding · Olsen", amt: "23 steps", trail: "/wf_204 · 1.4s", href: "/admin/workflows/wf_204" },
+              { time: "08:51", icon: "check" as const, tone: "ok",      who: "Mira (you)", verb: "approved",             obj: "Q2 retainer brief · Northwind", amt: "",        trail: "/eng_0481 · note added", href: "/admin/clients/eng_0481" },
+              { time: "08:33", icon: "chat" as const,  tone: "muted",   who: "Portal",     verb: "comment from",         obj: "Jamie at Westfield",      amt: "",         trail: "design review · 1 reply pending", href: "/admin/inbox" },
+              { time: "07:14", icon: "x" as const,     tone: "danger",  who: "Stripe sync",verb: "failed on",            obj: "rate limit · resume?",    amt: "12 queued", trail: "/wf_887 · auto‑retry off", href: "/admin/workflows/wf_887" },
+              { time: "Mon",   icon: "file" as const,  tone: "muted",   who: "Form",       verb: "new submission ·",     obj: "Discovery / leadership",  amt: "",         trail: "/form_intake · routed to pipeline", href: "/admin/forms" },
+              { time: "Mon",   icon: "user" as const,  tone: "info",    who: "Pipeline",   verb: "deal moved to",        obj: "Won · Olsen Brands",      amt: "$12k",     trail: "/deal_443 · engagement auto‑created", href: "/admin/pipeline/deal_443" },
             ].map((row, i) => (
-              <div key={i} style={{ display: "grid", gridTemplateColumns: "44px 26px 1fr auto", gap: 10, alignItems: "center", padding: "10px 18px", borderBottom: i === 6 ? "0" : "1px solid var(--ih-line)" }}>
+              <Link key={i} href={row.href} style={{ display: "grid", gridTemplateColumns: "44px 26px 1fr auto", gap: 10, alignItems: "center", padding: "10px 18px", borderBottom: i === 6 ? "0" : "1px solid var(--ih-line)", textDecoration: "none", color: "inherit" }}>
                 <span className="ih-mono" style={{ fontSize: 10.5, color: "var(--ih-ink-40)" }}>{row.time}</span>
                 <div style={{ width: 22, height: 22, borderRadius: 6, background: row.tone === "accent" ? "var(--ih-accent-soft)" : row.tone === "ok" ? "var(--ih-ok-soft)" : row.tone === "warn" ? "var(--ih-warn-soft)" : row.tone === "info" ? "var(--ih-info-soft)" : row.tone === "danger" ? "var(--ih-danger-soft)" : "var(--ih-surface-2)", display: "flex", alignItems: "center", justifyContent: "center", color: row.tone === "ok" ? "var(--ih-ok)" : row.tone === "warn" ? "var(--ih-warn)" : row.tone === "info" ? "var(--ih-info)" : row.tone === "danger" ? "var(--ih-danger)" : "var(--ih-ink-50)" }}>
                   <Icon name={row.icon} size={11} stroke={2}/>
@@ -109,11 +112,11 @@ export default function DashboardPage() {
                   <div className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-40)", marginTop: 2 }}>{row.trail}</div>
                 </div>
                 <Icon name="arrowUpRight" size={12} style={{ color: "var(--ih-ink-30)" }}/>
-              </div>
+              </Link>
             ))}
           </div>
           <div style={{ padding: "10px 18px", textAlign: "center" }}>
-            <button className="ih-btn ih-btn-quiet ih-btn-sm">View full timeline →</button>
+            <Link href="/admin/audit" className="ih-btn ih-btn-quiet ih-btn-sm" style={{ textDecoration: "none" }}>View full timeline →</Link>
           </div>
         </div>
 
@@ -125,12 +128,12 @@ export default function DashboardPage() {
           </div>
           <div style={{ padding: "8px 0" }}>
             {[
-              { time: "10:00", dur: "30m", title: "Stand‑up · internal", tag: "team", tone: "muted", live: false, sub: "Mira, Sam" },
-              { time: "11:30", dur: "45m", title: "Northwind · review", tag: "engagement", tone: "info", live: false, sub: "Q2 deliverables, /eng_0481" },
-              { time: "14:00", dur: "60m", title: "Olsen Brands · kickoff", tag: "booking", tone: "accent", live: true, sub: "Discovery / leadership · 3 attendees" },
-              { time: "16:00", dur: "20m", title: "Acme · invoice review", tag: "invoice", tone: "warn", live: false, sub: "/inv_2041 · $14.2k" },
+              { time: "10:00", dur: "30m", title: "Stand‑up · internal", tag: "team", tone: "muted", live: false, sub: "Mira, Sam", href: "/admin/bookings/bk_standup" },
+              { time: "11:30", dur: "45m", title: "Northwind · review", tag: "engagement", tone: "info", live: false, sub: "Q2 deliverables, /eng_0481", href: "/admin/bookings/bk_0913" },
+              { time: "14:00", dur: "60m", title: "Olsen Brands · kickoff", tag: "booking", tone: "accent", live: true, sub: "Discovery / leadership · 3 attendees", href: "/admin/bookings/bk_olsen" },
+              { time: "16:00", dur: "20m", title: "Acme · invoice review", tag: "invoice", tone: "warn", live: false, sub: "/inv_2041 · $14.2k", href: "/admin/bookings/bk_acme_inv" },
             ].map((b, i) => (
-              <div key={i} style={{ padding: "10px 18px", display: "grid", gridTemplateColumns: "54px 1fr auto", gap: 12, alignItems: "center", borderTop: i === 0 ? "0" : "1px solid var(--ih-line)", position: "relative" }}>
+              <Link key={i} href={b.href} style={{ padding: "10px 18px", display: "grid", gridTemplateColumns: "54px 1fr auto", gap: 12, alignItems: "center", borderTop: i === 0 ? "0" : "1px solid var(--ih-line)", position: "relative", textDecoration: "none", color: "inherit" }}>
                 {b.live && <span style={{ position: "absolute", left: 0, top: 8, bottom: 8, width: 2, background: "var(--ih-accent)" }}/>}
                 <div>
                   <div className="ih-mono" style={{ fontSize: 12, fontWeight: 500 }}>{b.time}</div>
@@ -144,12 +147,12 @@ export default function DashboardPage() {
                   <div className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-40)", marginTop: 2 }}>{b.sub}</div>
                 </div>
                 <Icon name="chevronRight" size={12} style={{ color: "var(--ih-ink-30)" }}/>
-              </div>
+              </Link>
             ))}
           </div>
           <div style={{ padding: "10px 18px", borderTop: "1px solid var(--ih-line)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-40)" }}>4 events · 2h 35m scheduled</span>
-            <button className="ih-btn ih-btn-quiet ih-btn-sm">Open calendar →</button>
+            <Link href="/admin/calendar" className="ih-btn ih-btn-quiet ih-btn-sm" style={{ textDecoration: "none" }}>Open calendar →</Link>
           </div>
         </div>
       </div>
@@ -159,7 +162,7 @@ export default function DashboardPage() {
         <div className="ih-card">
           <div style={{ padding: "14px 18px", borderBottom: "1px solid var(--ih-line)", display: "flex", justifyContent: "space-between" }}>
             <div><span className="ih-eyebrow">Active</span><h3 style={{ margin: "2px 0 0", fontSize: 15, fontWeight: 600 }}>Engagements</h3></div>
-            <button className="ih-btn ih-btn-quiet ih-btn-sm">All 8 →</button>
+            <Link href="/admin/clients?stage=active" className="ih-btn ih-btn-quiet ih-btn-sm" style={{ textDecoration: "none" }}>All 8 →</Link>
           </div>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
             <thead>
@@ -169,13 +172,13 @@ export default function DashboardPage() {
             </thead>
             <tbody>
               {([
-                ["Northwind",  "Q2 retainer", "Sprint 4", "32/40h", 78, "Tue · review",   "ok"],
-                ["Olsen Brands","Kickoff",    "Discovery","6/30h",  20, "Today · 14:00",  "accent"],
-                ["Westfield",  "Build",       "Sprint 2", "48/60h", 80, "Thu · standup",  "info"],
-                ["Halcyon",    "Audit",       "Wrap",     "78/80h", 97, "Fri · handoff",  "warn"],
-                ["Acme Studios","Retainer",   "Month 3",  "22/40h", 55, "Mon · invoice",  "ok"],
-              ] as [string, string, string, string, number, string, string][]).map((row, i) => (
-                <tr key={i} style={{ borderTop: "1px solid var(--ih-line)" }}>
+                ["Northwind",  "Q2 retainer", "Sprint 4", "32/40h", 78, "Tue · review",   "ok", "c-northwind"],
+                ["Olsen Brands","Kickoff",    "Discovery","6/30h",  20, "Today · 14:00",  "accent", "c-olsen"],
+                ["Westfield",  "Build",       "Sprint 2", "48/60h", 80, "Thu · standup",  "info", "c-westfield"],
+                ["Halcyon",    "Audit",       "Wrap",     "78/80h", 97, "Fri · handoff",  "warn", "c-halcyon"],
+                ["Acme Studios","Retainer",   "Month 3",  "22/40h", 55, "Mon · invoice",  "ok", "c-acme"],
+              ] as [string, string, string, string, number, string, string, string][]).map((row, i) => (
+                <tr key={i} style={{ borderTop: "1px solid var(--ih-line)", cursor: "pointer" }} onClick={() => router.push(`/admin/clients/${row[7]}`)}>
                   <td style={{ padding: "10px 14px" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       <div className="ih-avatar" style={{ width: 22, height: 22, fontSize: 9 }}>{(row[0] as string).split(" ").map(w=>w[0]).join("").slice(0,2)}</div>
@@ -233,18 +236,18 @@ export default function DashboardPage() {
           <span className="ih-eyebrow">Quick actions</span>
           <div style={{ display: "grid", gap: 6, marginTop: 10 }}>
             {([
-              ["plus","Create booking","B"],
-              ["plus","New client","C"],
-              ["plus","Draft invoice","I"],
-              ["workflow","Run workflow","W"],
-              ["sparkles","Ask copilot","."],
-              ["search","Search anything","K"],
-            ] as [string, string, string][]).map(([icon, label, key]) => (
-              <button key={label} className="ih-btn ih-btn-ghost" style={{ height: 32, justifyContent: "flex-start", padding: "0 10px" }}>
+              ["plus","Create booking","B", "/admin/bookings/new"],
+              ["plus","New client","C", "/admin/clients/new"],
+              ["plus","Draft invoice","I", "/admin/payments/new"],
+              ["workflow","Run workflow","W", "/admin/workflows"],
+              ["sparkles","Ask copilot",".", "/admin/ai-chat"],
+              ["search","Search anything","K", "/admin"],
+            ] as [string, string, string, string][]).map(([icon, label, key, href]) => (
+              <Link key={label} href={href} className="ih-btn ih-btn-ghost" style={{ height: 32, justifyContent: "flex-start", padding: "0 10px", textDecoration: "none" }}>
                 <Icon name={icon as "plus" | "workflow" | "sparkles" | "search"} size={13} style={{ color: icon==="sparkles" ? "var(--ih-accent)" : "var(--ih-ink-50)" }}/>
                 <span style={{ flex: 1, textAlign: "left", fontWeight: 400, fontSize: 12 }}>{label}</span>
                 <span className="ih-kbd">⌘{key}</span>
-              </button>
+              </Link>
             ))}
           </div>
         </div>

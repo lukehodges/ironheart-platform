@@ -1,5 +1,7 @@
 "use client"
 
+import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { Icon } from "@/components/shell"
 
 /* ── Data ────────────────────────────────────────────────────────────────── */
@@ -41,6 +43,7 @@ const TH: React.CSSProperties = { textAlign: "left", padding: "10px 12px", fontW
 /* ── Page ─────────────────────────────────────────────────────────────────── */
 
 export default function FormsPage() {
+  const router = useRouter()
   return (
     <div style={{ padding: "24px 28px 48px", maxWidth: 1400, margin: "0 auto" }}>
       {/* Header */}
@@ -104,7 +107,7 @@ export default function FormsPage() {
               </div>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: 12, borderTop: "1px solid var(--ih-line)" }}>
                 <span className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-40)" }}>Last used {t.lastUsed}</span>
-                <button className="ih-btn ih-btn-ghost ih-btn-sm">Edit <Icon name="arrowRight" size={11}/></button>
+                <Link href={`/admin/forms/${t.id}`} className="ih-btn ih-btn-ghost ih-btn-sm" style={{ textDecoration: "none" }}>Edit <Icon name="arrowRight" size={11}/></Link>
               </div>
             </div>
           ))}
@@ -133,7 +136,7 @@ export default function FormsPage() {
           </thead>
           <tbody>
             {SUBMISSIONS.map((s) => (
-              <tr key={s.id} style={{ borderTop: "1px solid var(--ih-line)", cursor: "pointer" }}>
+              <tr key={s.id} style={{ borderTop: "1px solid var(--ih-line)", cursor: "pointer" }} onClick={() => router.push(`/admin/forms/submissions/${s.id}`)}>
                 <td style={{ padding: "10px 12px 10px 18px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <Icon name="file" size={13} style={{ color: "var(--ih-ink-40)" }} />

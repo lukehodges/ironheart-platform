@@ -43,6 +43,7 @@ const TENANT_SECTIONS: NavSectionDef[] = [
     items: [
       { id: "dashboard", label: "Dashboard", icon: "dashboard", href: "/admin" },
       { id: "clients", label: "Clients", icon: "users", href: "/admin/clients", badge: "12" },
+      { id: "inbox", label: "Inbox", icon: "chat", href: "/admin/inbox", badge: "4" },
     ],
   },
   {
@@ -52,6 +53,7 @@ const TENANT_SECTIONS: NavSectionDef[] = [
       { id: "pipeline", label: "Pipeline", icon: "pipeline", href: "/admin/pipeline" },
       { id: "customers", label: "Customers", icon: "user", href: "/admin/customers" },
       { id: "calendar", label: "Calendar", icon: "bookings", href: "/admin/calendar" },
+      { id: "team", label: "Team", icon: "users", href: "/admin/team" },
     ],
   },
   {
@@ -66,7 +68,6 @@ const TENANT_SECTIONS: NavSectionDef[] = [
     title: "Finance",
     items: [
       { id: "invoices", label: "Invoices", icon: "invoice", href: "/admin/payments" },
-      { id: "payments", label: "Payments", icon: "money", href: "/admin/payments" },
     ],
   },
   {

@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { Icon } from "@/components/shell"
 
 /* ── Demo Data ─────────────────────────────────────────────────────────── */
@@ -50,17 +51,17 @@ export default function WorkflowEditorPage() {
       {/* ── Top bar ─────────────────────────────────────────────── */}
       <div style={{ padding: "10px 18px", borderBottom: "1px solid var(--ih-line)", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <a href="/admin/workflows" style={{ display: "flex", alignItems: "center", gap: 4, textDecoration: "none", color: "var(--ih-ink-50)" }}>
+          <Link href="/admin/workflows" style={{ display: "flex", alignItems: "center", gap: 4, textDecoration: "none", color: "var(--ih-ink-50)" }}>
             <Icon name="chevronLeft" size={12}/>
             <span className="ih-eyebrow">Workflows</span>
-          </a>
+          </Link>
           <Icon name="chevronRight" size={10} style={{ color: "var(--ih-ink-30)" }}/>
           <span style={{ fontSize: 13, fontWeight: 500 }}>WF-204 &middot; Onboarding Northwind</span>
           <span className="ih-pill ih-pill-ok" style={{ marginLeft: 6 }}><span className="ih-dot ih-dot-ok"/> Active &middot; v3</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <button className="ih-btn ih-btn-quiet ih-btn-sm"><Icon name="play" size={11}/> Test run</button>
-          <a href="/admin/workflows/wf-204/executions" className="ih-btn ih-btn-ghost ih-btn-sm" style={{ textDecoration: "none" }}><Icon name="clock" size={11}/> History</a>
+          <Link href="/admin/workflows/wf-204/executions" className="ih-btn ih-btn-ghost ih-btn-sm" style={{ textDecoration: "none" }}><Icon name="clock" size={11}/> History</Link>
           <button className="ih-btn ih-btn-quiet ih-btn-sm"><Icon name="folder" size={11}/> Clone</button>
           <button className="ih-btn ih-btn-quiet ih-btn-sm" style={{ color: "var(--ih-danger)" }}><Icon name="x" size={11}/> Delete</button>
           <div style={{ width: 1, height: 20, background: "var(--ih-line)", margin: "0 4px" }}/>

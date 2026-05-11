@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { Icon } from "@/components/shell"
 
 /* ------------------------------------------------------------------ */
@@ -58,9 +59,9 @@ export default function InvoiceDetailPage() {
       <div style={{ padding: "24px 28px 18px", borderBottom: "1px solid var(--ih-line)", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div>
           <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
-            <button className="ih-btn ih-btn-quiet ih-btn-sm" style={{ padding: "2px 6px" }}>
-              <Icon name="chevronLeft" size={12} /> Back
-            </button>
+            <Link href="/admin/payments" className="ih-btn ih-btn-quiet ih-btn-sm" style={{ padding: "2px 6px", textDecoration: "none" }}>
+              <Icon name="chevronLeft" size={12} /> Invoices
+            </Link>
             <span className="ih-eyebrow">/inv_2041 {"·"} invoice</span>
           </div>
           <div style={{ display: "flex", gap: 14, alignItems: "baseline" }}>
@@ -186,21 +187,23 @@ export default function InvoiceDetailPage() {
           <div className="ih-eyebrow" style={{ marginBottom: 14 }}>Right rail {"·"} context</div>
 
           {/* Client link */}
-          <div className="ih-card" style={{ marginBottom: 12, background: "var(--ih-surface)", cursor: "pointer" }}>
-            <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--ih-line)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span className="ih-eyebrow">Client</span>
-              <Icon name="arrowUpRight" size={10} style={{ color: "var(--ih-ink-30)" }} />
-            </div>
-            <div style={{ padding: "12px 14px", display: "flex", gap: 12, alignItems: "center" }}>
-              <div className="ih-avatar" style={{ width: 32, height: 32, fontSize: 12, background: "var(--ih-surface-2)", border: "1px solid var(--ih-line)" }}>
-                <span style={{ fontStyle: "italic", fontFamily: "var(--ih-font-serif)" }}>N</span>
+          <Link href="/admin/clients/c-northwind" style={{ textDecoration: "none", color: "inherit" }}>
+            <div className="ih-card" style={{ marginBottom: 12, background: "var(--ih-surface)", cursor: "pointer" }}>
+              <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--ih-line)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span className="ih-eyebrow">Client</span>
+                <Icon name="arrowUpRight" size={10} style={{ color: "var(--ih-ink-30)" }} />
               </div>
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 600 }}>Northwind Co.</div>
-                <div className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-50)" }}>Mira Sato {"·"} Founder</div>
+              <div style={{ padding: "12px 14px", display: "flex", gap: 12, alignItems: "center" }}>
+                <div className="ih-avatar" style={{ width: 32, height: 32, fontSize: 12, background: "var(--ih-surface-2)", border: "1px solid var(--ih-line)" }}>
+                  <span style={{ fontStyle: "italic", fontFamily: "var(--ih-font-serif)" }}>N</span>
+                </div>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600 }}>Northwind Co.</div>
+                  <div className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-50)" }}>Mira Sato {"·"} Founder</div>
+                </div>
               </div>
             </div>
-          </div>
+          </Link>
 
           {/* Linked engagement */}
           <div className="ih-card" style={{ marginBottom: 12, background: "var(--ih-surface)", cursor: "pointer" }}>

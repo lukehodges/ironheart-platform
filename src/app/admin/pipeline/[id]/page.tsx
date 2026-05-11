@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import Link from "next/link"
 import { Icon } from "@/components/shell"
 
 /* ------------------------------------------------------------------ */
@@ -106,9 +107,9 @@ export default function PipelineDealDetailPage() {
       <div style={{ padding: "24px 28px 18px", borderBottom: "1px solid var(--ih-line)", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div>
           <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
-            <button className="ih-btn ih-btn-quiet ih-btn-sm" style={{ padding: "2px 6px" }}>
-              <Icon name="chevronLeft" size={12} /> Back
-            </button>
+            <Link href="/admin/pipeline" className="ih-btn ih-btn-quiet ih-btn-sm" style={{ padding: "2px 6px", textDecoration: "none" }}>
+              <Icon name="chevronLeft" size={12} /> Pipeline
+            </Link>
             <span className="ih-eyebrow">/deal_0472 {"·"} pipeline</span>
           </div>
           <h1 className="ih-serif" style={{ margin: 0, fontSize: 36, lineHeight: 1 }}>
@@ -236,21 +237,23 @@ export default function PipelineDealDetailPage() {
           </div>
 
           {/* Related client link */}
-          <div className="ih-card" style={{ marginBottom: 12, background: "var(--ih-surface)", cursor: "pointer" }}>
-            <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--ih-line)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span className="ih-eyebrow">Related client</span>
-              <Icon name="arrowUpRight" size={10} style={{ color: "var(--ih-ink-30)" }} />
-            </div>
-            <div style={{ padding: "12px 14px", display: "flex", gap: 12, alignItems: "center" }}>
-              <div className="ih-avatar" style={{ width: 32, height: 32, fontSize: 12, background: "var(--ih-surface-2)", border: "1px solid var(--ih-line)" }}>
-                <span style={{ fontStyle: "italic", fontFamily: "var(--ih-font-serif)" }}>O</span>
+          <Link href="/admin/clients/c-olsen" style={{ textDecoration: "none", color: "inherit" }}>
+            <div className="ih-card" style={{ marginBottom: 12, background: "var(--ih-surface)", cursor: "pointer" }}>
+              <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--ih-line)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span className="ih-eyebrow">Related client</span>
+                <Icon name="arrowUpRight" size={10} style={{ color: "var(--ih-ink-30)" }} />
               </div>
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 500 }}>Olsen Brands</div>
-                <div className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-50)" }}>Prospect {"·"} no engagement yet</div>
+              <div style={{ padding: "12px 14px", display: "flex", gap: 12, alignItems: "center" }}>
+                <div className="ih-avatar" style={{ width: 32, height: 32, fontSize: 12, background: "var(--ih-surface-2)", border: "1px solid var(--ih-line)" }}>
+                  <span style={{ fontStyle: "italic", fontFamily: "var(--ih-font-serif)" }}>O</span>
+                </div>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 500 }}>Olsen Brands</div>
+                  <div className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-50)" }}>Prospect {"·"} no engagement yet</div>
+                </div>
               </div>
             </div>
-          </div>
+          </Link>
 
           {/* Next action card */}
           <div className="ih-card" style={{ marginBottom: 12, background: "var(--ih-surface)" }}>

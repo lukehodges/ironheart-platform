@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { Icon } from "@/components/shell"
 import { useState } from "react"
 
@@ -49,10 +50,10 @@ export default function FormEditorPage() {
       {/* ── Top bar ─────────────────────────────────────────────── */}
       <div style={{ padding: "10px 18px", borderBottom: "1px solid var(--ih-line)", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <a href="/admin/forms" style={{ display: "flex", alignItems: "center", gap: 4, textDecoration: "none", color: "var(--ih-ink-50)" }}>
+          <Link href="/admin/forms" style={{ display: "flex", alignItems: "center", gap: 4, textDecoration: "none", color: "var(--ih-ink-50)" }}>
             <Icon name="chevronLeft" size={12}/>
             <span className="ih-eyebrow">Forms</span>
-          </a>
+          </Link>
           <Icon name="chevronRight" size={10} style={{ color: "var(--ih-ink-30)" }}/>
           <span style={{ fontSize: 13, fontWeight: 500 }}>Owner / Director Questionnaire</span>
           <span className="ih-pill ih-pill-ok" style={{ marginLeft: 6 }}><span className="ih-dot ih-dot-ok"/> Active</span>

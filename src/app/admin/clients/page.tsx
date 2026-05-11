@@ -1,6 +1,8 @@
 "use client"
 
 import { useState } from "react"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { Icon, type IconName } from "@/components/shell"
 
 /* ── Data ────────────────────────────────────────────────────────────────── */
@@ -48,7 +50,7 @@ type Row = {
 }
 
 const ROWS: Row[] = [
-  { id: "c-northwind", initials: "NW", customer: "Northwind Logistics", contact: "Sarah Chen", title: "Q1 operations audit", type: "PROJECT", status: "ACTIVE", stage: "AUDITING", health: 92, value: 24500, valueUnit: "\u00a3", next: "Review draft audit", nextWhen: "2d", nextTone: "info", owner: "LH", lastActivity: "4h ago" },
+  { id: "c-northwind", initials: "NW", customer: "Northwind Co.", contact: "Mira Sato", title: "Q2 retainer", type: "RETAINER", status: "ACTIVE", stage: "AUDITING", health: 92, value: 24500, valueUnit: "\u00a3", next: "Sprint review Tue", nextWhen: "2d", nextTone: "info", owner: "LH", lastActivity: "4h ago" },
   { id: "c-vellum", initials: "VC", customer: "Vellum & Co.", contact: "Tom Reeves", title: "Client portal rebuild", type: "PROJECT", status: "ACTIVE", stage: "IMPLEMENTING", health: 78, value: 48000, valueUnit: "\u00a3", next: "Send invoice #3", nextWhen: "today", nextTone: "accent", owner: "LH", lastActivity: "1d ago" },
   { id: "c-seaglass", initials: "SG", customer: "Sea Glass Studio", contact: "Mira Patel", title: "Discovery + scoping", type: "PROJECT", status: "PROPOSED", stage: "PROPOSAL", health: 65, value: 18000, valueUnit: "\u00a3", proposed: true, next: "Awaiting decision", nextWhen: "5d", nextTone: "warn", owner: "LH", lastActivity: "3d ago" },
   { id: "c-bowery", initials: "BM", customer: "Bowery Mills", contact: "Jonas Hale", title: "Monthly ops retainer", type: "RETAINER", status: "ACTIVE", stage: "RETAINER", health: 88, value: 4200, valueUnit: "\u00a3/mo", next: "Q1 review call", nextWhen: "Wed", nextTone: "info", owner: "LH", lastActivity: "2d ago" },
@@ -222,7 +224,7 @@ function PreviewDrawer({ row, onClose }: { row: Row; onClose: () => void }) {
           </div>
         </div>
         <div style={{ display: "flex", gap: 4 }}>
-          <button className="ih-btn ih-btn-quiet ih-btn-icon" style={{ height: 24, width: 24 }}><Icon name="arrowUpRight" size={12} /></button>
+          <Link href={`/admin/clients/${row.id}`} className="ih-btn ih-btn-quiet ih-btn-icon" style={{ height: 24, width: 24, textDecoration: "none" }}><Icon name="arrowUpRight" size={12} /></Link>
           <button className="ih-btn ih-btn-quiet ih-btn-icon" style={{ height: 24, width: 24 }} onClick={onClose}><Icon name="x" size={12} /></button>
         </div>
       </div>
