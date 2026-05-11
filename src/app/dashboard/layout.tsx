@@ -12,7 +12,9 @@ const NAV_ITEMS: { label: string; href: string; icon: IconName }[] = [
   { label: "Deliverables",  href: "/dashboard/deliverables", icon: "file" },
   { label: "Approvals",     href: "/dashboard/approvals",    icon: "check" },
   { label: "Invoices",      href: "/dashboard/invoices",     icon: "invoice" },
+  { label: "Sessions",      href: "/dashboard/sessions",     icon: "calendar" },
   { label: "Documents",     href: "/dashboard/documents",    icon: "folder" },
+  { label: "Messages",      href: "/dashboard/messages",     icon: "chat" },
 ]
 
 /* ── Layout ──────────────────────────────────────────────────────────────── */
