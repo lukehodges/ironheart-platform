@@ -1,7 +1,9 @@
 "use client"
 
-import type { ReactNode } from "react"
+import { useCallback, useState, type ReactNode } from "react"
 import { Frame } from "@/components/shell/frame"
+import { CommandPalette } from "@/components/shell/command-palette"
+import { AICopilot } from "@/components/shell/ai-copilot"
 
 interface AdminShellClientProps {
   children: ReactNode
@@ -14,6 +16,12 @@ interface AdminShellClientProps {
 }
 
 export function AdminShellClient({ children, user }: AdminShellClientProps) {
+  const [cmdOpen, setCmdOpen] = useState(false)
+  const [copilotOpen, setCopilotOpen] = useState(false)
+
+  const handleCmdChange = useCallback((v: boolean) => setCmdOpen(v), [])
+  const handleCopilotChange = useCallback((v: boolean) => setCopilotOpen(v), [])
+
   return (
     <Frame
       surface="tenant"
@@ -21,6 +29,8 @@ export function AdminShellClient({ children, user }: AdminShellClientProps) {
       userInitials={user.initials}
     >
       {children}
+      <CommandPalette open={cmdOpen} onOpenChange={handleCmdChange} />
+      <AICopilot open={copilotOpen} onOpenChange={handleCopilotChange} />
     </Frame>
   )
 }
