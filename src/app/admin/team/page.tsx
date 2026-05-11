@@ -1,588 +1,161 @@
 "use client"
 
-import { Suspense, useState, useEffect, useMemo, useCallback } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
-import Link from "next/link"
-import {
-  UserPlus,
-  Network,
-  Search,
-  List,
-  LayoutGrid,
-  Users,
-  TrendingUp,
-  Building2,
-  Activity,
-  ChevronRight,
-} from "lucide-react"
-import { api } from "@/lib/trpc/react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Separator } from "@/components/ui/separator"
-import { Skeleton } from "@/components/ui/skeleton"
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-} from "@/components/ui/dropdown-menu"
-import { Checkbox } from "@/components/ui/checkbox"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
-import { TeamMemberSheet } from "@/components/team/team-member-sheet"
-import { AddMemberDialog } from "@/components/team/add-member-dialog"
-import { KpiCard } from "@/components/team/kpi-card"
-import { TeamSidebar } from "@/components/team/team-sidebar"
-import { TeamTable } from "@/components/team/team-table"
-import { TeamGridCard } from "@/components/team/team-grid-card"
-import { cn } from "@/lib/utils"
-import { toast } from "sonner"
-import type { StaffMember, StaffStatus, EmployeeType } from "@/modules/team/team.types"
+import { Icon } from "@/components/shell"
 
-// ─── Types ───────────────────────────────────────────────────────────────────
-
-type StatusFilter = "ALL" | StaffStatus
-type ViewMode = "table" | "grid"
-
-const STATUS_FILTERS: Array<{ value: StatusFilter; label: string }> = [
-  { value: "ALL", label: "All" },
-  { value: "ACTIVE", label: "Active" },
-  { value: "INACTIVE", label: "Inactive" },
-  { value: "SUSPENDED", label: "Suspended" },
+const TEAM = [
+  {
+    name: "Luke Hodges", initials: "LH", role: "Owner & Lead Consultant", department: "Consulting",
+    engagements: 6, hours: 32, maxHours: 40, availability: "available" as const,
+    skills: ["Strategy", "Operations", "Leadership", "Workflow Design", "AI Integration"],
+    email: "luke@ironheart.io", joined: "Jan 2024",
+  },
+  {
+    name: "Sam Park", initials: "SP", role: "Ops Lead", department: "Operations",
+    engagements: 2, hours: 6, maxHours: 40, availability: "available" as const,
+    skills: ["Operations", "Process Design", "Client Onboarding", "Data Analysis"],
+    email: "sam@ironheart.io", joined: "Mar 2024",
+  },
 ]
 
-// ─── localStorage helpers ────────────────────────────────────────────────────
+const DEPARTMENTS = [
+  { name: "Consulting", count: 1, color: "var(--ih-accent)" },
+  { name: "Operations", count: 1, color: "var(--ih-info)" },
+]
 
-function getStoredView(): ViewMode {
-  if (typeof window === "undefined") return "table"
-  return (localStorage.getItem("team-view-mode") as ViewMode) ?? "table"
+function availabilityDot(status: "available" | "busy" | "away") {
+  if (status === "available") return "ih-dot-ok"
+  if (status === "busy") return "ih-dot-warn"
+  return "ih-dot-muted"
 }
 
-function getStoredSidebar(): boolean {
-  if (typeof window === "undefined") return true
-  const stored = localStorage.getItem("team-sidebar-open")
-  return stored === null ? true : stored === "true"
-}
-
-// ─── Loading skeleton ────────────────────────────────────────────────────────
-
-function KpiSkeleton() {
-  return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-      {Array.from({ length: 4 }).map((_, i) => (
-        <div key={i} className="rounded-xl border border-[var(--ih-line)] p-5 space-y-3">
-          <Skeleton className="h-3 w-20" />
-          <Skeleton className="h-8 w-16" />
-          <Skeleton className="h-3 w-28" />
-        </div>
-      ))}
-    </div>
-  )
-}
-
-function TableSkeleton() {
-  return (
-    <div className="rounded-xl border border-[var(--ih-line)] bg-[var(--ih-surface)] overflow-hidden">
-      <div className="p-4 space-y-3">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="flex items-center gap-4">
-            <Skeleton className="h-8 w-8 rounded-full" />
-            <div className="space-y-1.5 flex-1">
-              <Skeleton className="h-3.5 w-32" />
-              <Skeleton className="h-3 w-20" />
-            </div>
-            <Skeleton className="h-5 w-16 rounded-full" />
-            <Skeleton className="h-5 w-16 rounded-full" />
-            <Skeleton className="h-3 w-20" />
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-// ─── Main page ───────────────────────────────────────────────────────────────
-
-function TeamPageInner() {
-  const router = useRouter()
-  const searchParams = useSearchParams()
-
-  // ─── Filter state from URL params ──────────────────────────────────────────
-  const VALID_STATUSES = new Set(["ALL", "ACTIVE", "INACTIVE", "SUSPENDED"])
-  const VALID_EMPLOYEE_TYPES = new Set(["EMPLOYED", "SELF_EMPLOYED", "CONTRACTOR"])
-
-  const rawStatus = searchParams.get("status")?.toUpperCase() ?? "ALL"
-  const statusFilter: StatusFilter = VALID_STATUSES.has(rawStatus) ? (rawStatus as StatusFilter) : "ALL"
-
-  const deptFilter = searchParams.get("dept") ?? null
-
-  const rawType = searchParams.get("type")?.toUpperCase() ?? ""
-  const employeeTypeFilter: EmployeeType | null = VALID_EMPLOYEE_TYPES.has(rawType) ? (rawType as EmployeeType) : null
-
-  const searchParam = searchParams.get("search") ?? ""
-
-  const [search, setSearch] = useState(searchParam)
-  const [debouncedSearch, setDebouncedSearch] = useState(searchParam)
-
-  // ─── UI state (localStorage) ───────────────────────────────────────────────
-  const [viewMode, setViewMode] = useState<ViewMode>(getStoredView)
-  const [sidebarOpen, setSidebarOpen] = useState(getStoredSidebar)
-
-  // ─── Other state ───────────────────────────────────────────────────────────
-  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null)
-  const [addDialogOpen, setAddDialogOpen] = useState(false)
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
-  const [bulkMode, setBulkMode] = useState(false)
-  const [bulkUpdating, setBulkUpdating] = useState(false)
-  const [cursor, setCursor] = useState<string | undefined>(undefined)
-
-  // ─── URL param helpers ─────────────────────────────────────────────────────
-  const updateParams = useCallback(
-    (updates: Record<string, string | null>) => {
-      const params = new URLSearchParams(searchParams.toString())
-      for (const [key, value] of Object.entries(updates)) {
-        if (value === null || value === "" || value === "ALL") {
-          params.delete(key)
-        } else {
-          params.set(key, value.toLowerCase())
-        }
-      }
-      const qs = params.toString()
-      router.replace(qs ? `?${qs}` : "/admin/team", { scroll: false })
-      setCursor(undefined)
-    },
-    [searchParams, router]
-  )
-
-  // ─── Debounced search → URL sync ──────────────────────────────────────────
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearch(search)
-      if (search !== searchParam) {
-        updateParams({ search: search || null })
-      }
-    }, 300)
-    return () => clearTimeout(timer)
-  }, [search, searchParam, updateParams])
-
-  // ─── Persist view/sidebar prefs ────────────────────────────────────────────
-  useEffect(() => { localStorage.setItem("team-view-mode", viewMode) }, [viewMode])
-  useEffect(() => { localStorage.setItem("team-sidebar-open", String(sidebarOpen)) }, [sidebarOpen])
-
-  // ─── Data fetching ─────────────────────────────────────────────────────────
-  const { data: stats, isLoading: statsLoading } = api.team.stats.useQuery(undefined, {
-    staleTime: 60_000,
-  })
-
-  const { data, isLoading } = api.team.list.useQuery({
-    limit: 25,
-    search: debouncedSearch || undefined,
-    departmentId: deptFilter ?? undefined,
-    status: statusFilter === "ALL" ? undefined : statusFilter,
-    employeeType: employeeTypeFilter ?? undefined,
-    cursor,
-  })
-
-  const [allMembers, setAllMembers] = useState<StaffMember[]>([])
-
-  // Accumulate pages or reset on filter/search change
-  useEffect(() => {
-    if (!data) return
-    if (cursor) {
-      // Appending next page
-      setAllMembers((prev) => [...prev, ...data.rows])
-    } else {
-      // Fresh query (filters changed, initial load)
-      setAllMembers(data.rows)
-    }
-  }, [data, cursor])
-
-  const { data: departments } = api.team.departments.list.useQuery(undefined, {
-    staleTime: 60_000,
-  })
-
-  const utils = api.useUtils()
-
-  // ─── Build department color map ────────────────────────────────────────────
-  const deptColorMap = useMemo(() => {
-    const map = new Map<string, string>()
-    if (!departments) return map
-    function walk(list: typeof departments) {
-      for (const d of list!) {
-        if (d.color) map.set(d.name, d.color)
-        if (d.children?.length) walk(d.children)
-      }
-    }
-    walk(departments)
-    return map
-  }, [departments])
-
-  // Flatten departments for sidebar
-  const sidebarDepts = useMemo(() => {
-    if (!departments) return []
-    const result: Array<{ id: string; name: string; color: string | null; memberCount: number }> = []
-    function walk(list: typeof departments) {
-      for (const d of list!) {
-        result.push({ id: d.id, name: d.name, color: d.color ?? null, memberCount: d.memberCount ?? 0 })
-        if (d.children?.length) walk(d.children)
-      }
-    }
-    walk(departments)
-    return result
-  }, [departments])
-
-  // ─── Bulk actions ──────────────────────────────────────────────────────────
-  const bulkUpdateMutation = api.team.update.useMutation({
-    onError: (err) => toast.error(err.message ?? "Failed to update"),
-  })
-
-  async function handleBulkStatusChange(status: StaffStatus) {
-    const ids = Array.from(selectedIds)
-    setBulkUpdating(true)
-    try {
-      for (const id of ids) {
-        await bulkUpdateMutation.mutateAsync({ id, status })
-      }
-      toast.success(`Updated ${ids.length} member${ids.length !== 1 ? "s" : ""}`)
-      setSelectedIds(new Set())
-      setBulkMode(false)
-      void utils.team.list.invalidate()
-      void utils.team.stats.invalidate()
-    } catch {
-      // onError handler shows toast
-    } finally {
-      setBulkUpdating(false)
-    }
-  }
-
-  function toggleSelect(id: string) {
-    setSelectedIds((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-  }
-
-  // ─── Helpers ───────────────────────────────────────────────────────────────
-  const hasFilters = statusFilter !== "ALL" || deptFilter !== null || employeeTypeFilter !== null || search !== ""
-
-  function clearFilters() {
-    setSearch("")
-    router.replace("/admin/team", { scroll: false })
-    setCursor(undefined)
-  }
-
-  function getDeptColor(deptName: string): string {
-    return deptColorMap.get(deptName) ?? "#a1a1aa"
-  }
-
-  function getMemberDeptColor(member: typeof allMembers[0]): string {
-    const deptName = member.departments?.find((d) => d.isPrimary)?.departmentName
-      ?? member.departments?.[0]?.departmentName
-    return deptName ? getDeptColor(deptName) : "#a1a1aa"
-  }
-
-  // ─── Render ────────────────────────────────────────────────────────────────
-  return (
-    <TooltipProvider>
-      <div className="space-y-6 animate-fade-in">
-        {/* Breadcrumb */}
-        <div className="flex items-center gap-1.5 text-xs text-[var(--ih-ink-40)]">
-          <span>Admin</span>
-          <ChevronRight className="h-3 w-3" />
-          <span className="text-[var(--ih-ink-65)] font-medium">People</span>
-        </div>
-
-        {/* Header */}
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-[var(--ih-ink)]">People</h1>
-            <p className="mt-0.5 text-sm text-[var(--ih-ink-50)]">
-              Manage staff capacity, availability, and department structure.
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" asChild>
-              <Link href="/admin/team/departments">
-                <Network className="h-4 w-4" />
-                Departments
-              </Link>
-            </Button>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  size="sm"
-                  className="gap-2 bg-zinc-900 text-white hover:bg-zinc-700"
-                  onClick={() => setAddDialogOpen(true)}
-                >
-                  <UserPlus className="h-4 w-4" />
-                  Invite Member
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="text-xs">
-                Add a new team member
-              </TooltipContent>
-            </Tooltip>
-          </div>
-        </div>
-
-        {/* KPI cards */}
-        {statsLoading ? (
-          <KpiSkeleton />
-        ) : stats ? (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <KpiCard
-              label="Total Members"
-              value={String(stats.total)}
-              sub={`Across ${stats.departmentCount} departments`}
-              icon={Users}
-            />
-            <KpiCard
-              label="Active Rate"
-              value={stats.total > 0 ? `${Math.round((stats.activeCount / stats.total) * 100)}%` : "0%"}
-              sub={`${stats.activeCount} active`}
-              icon={TrendingUp}
-            />
-            <KpiCard
-              label="Departments"
-              value={String(stats.departmentCount)}
-              icon={Building2}
-            />
-            <KpiCard
-              label="Avg Capacity"
-              value={stats.avgCapacityMax > 0 ? String(stats.avgCapacityUsed) : "—"}
-              sub={stats.avgCapacityMax > 0 ? `Out of ${stats.avgCapacityMax} max` : "No capacity data"}
-              icon={Activity}
-            />
-          </div>
-        ) : null}
-
-        {/* Body: sidebar + main */}
-        <div className="flex items-start gap-5">
-          {/* Sidebar */}
-          <TeamSidebar
-            departments={sidebarDepts}
-            totalMembers={stats?.total ?? 0}
-            deptFilter={deptFilter}
-            onDeptFilter={(id) => updateParams({ dept: id })}
-            employeeTypeFilter={employeeTypeFilter}
-            onEmployeeTypeFilter={(type) => updateParams({ type: type })}
-            isOpen={sidebarOpen}
-            onToggle={() => setSidebarOpen(!sidebarOpen)}
-          />
-
-          {/* Main content */}
-          <div className="flex-1 min-w-0 space-y-3">
-            {/* Search + view toggle */}
-            <div className="flex items-center gap-2">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[var(--ih-ink-40)]" />
-                <Input
-                  placeholder="Search by name, title, skill..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="pl-9 h-9 text-sm border-[var(--ih-line)] bg-[var(--ih-surface)] placeholder:text-[var(--ih-ink-40)]"
-                />
-              </div>
-              {/* View toggle */}
-              <div className="flex items-center rounded-lg border border-[var(--ih-line)] bg-[var(--ih-surface)] p-0.5 gap-0.5">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      onClick={() => setViewMode("table")}
-                      className={cn(
-                        "h-7 w-7 flex items-center justify-center rounded-md transition-colors",
-                        viewMode === "table" ? "bg-zinc-900 text-white" : "text-[var(--ih-ink-40)] hover:text-[var(--ih-ink-65)]"
-                      )}
-                    >
-                      <List className="h-3.5 w-3.5" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom" className="text-xs">Table view</TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      onClick={() => setViewMode("grid")}
-                      className={cn(
-                        "h-7 w-7 flex items-center justify-center rounded-md transition-colors",
-                        viewMode === "grid" ? "bg-zinc-900 text-white" : "text-[var(--ih-ink-40)] hover:text-[var(--ih-ink-65)]"
-                      )}
-                    >
-                      <LayoutGrid className="h-3.5 w-3.5" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="bottom" className="text-xs">Grid view</TooltipContent>
-                </Tooltip>
-              </div>
-              {/* Bulk select toggle */}
-              <Button
-                size="sm"
-                variant={bulkMode ? "secondary" : "outline"}
-                className="text-xs h-9"
-                onClick={() => { setBulkMode(!bulkMode); setSelectedIds(new Set()) }}
-              >
-                {bulkMode ? "Cancel" : "Select"}
-              </Button>
-            </div>
-
-            {/* Status filter chips */}
-            <div className="flex items-center gap-1.5">
-              {STATUS_FILTERS.map((f) => (
-                <button
-                  key={f.value}
-                  type="button"
-                  onClick={() => updateParams({ status: f.value })}
-                  className={cn(
-                    "inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium transition-colors",
-                    statusFilter === f.value
-                      ? "border-zinc-900 bg-zinc-900 text-white"
-                      : "border-[var(--ih-line)] bg-[var(--ih-surface)] text-[var(--ih-ink-65)] hover:bg-[var(--ih-surface-2)]"
-                  )}
-                >
-                  {f.label}
-                </button>
-              ))}
-              {hasFilters && (
-                <>
-                  <Separator orientation="vertical" className="h-4 mx-1" />
-                  <button
-                    type="button"
-                    className="text-xs text-[var(--ih-ink-40)] hover:text-[var(--ih-ink-65)] transition-colors"
-                    onClick={clearFilters}
-                  >
-                    Clear filters
-                  </button>
-                </>
-              )}
-              <span className="ml-auto font-mono text-xs text-[var(--ih-ink-40)] tabular-nums">
-                {allMembers.length} member{allMembers.length !== 1 ? "s" : ""}
-                {data?.hasMore ? "+" : ""}
-              </span>
-            </div>
-
-            {/* Content */}
-            {isLoading ? (
-              <TableSkeleton />
-            ) : viewMode === "table" ? (
-              <TeamTable
-                members={allMembers}
-                departmentColors={deptColorMap}
-                onNavigate={(id) => router.push(`/admin/team/${id}`)}
-                onQuickView={(id) => setSelectedMemberId(id)}
-                bulkMode={bulkMode}
-                selectedIds={selectedIds}
-                onToggleSelect={toggleSelect}
-              />
-            ) : (
-              allMembers.length === 0 ? (
-                <div className="flex h-24 items-center justify-center rounded-xl border border-[var(--ih-line)] bg-[var(--ih-surface)]">
-                  <p className="text-sm text-[var(--ih-ink-40)]">No members match your filters.</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                  {allMembers.map((member) => (
-                    <div key={member.id} className="relative">
-                      {bulkMode && (
-                        <div className="absolute top-2 left-2 z-10">
-                          <Checkbox
-                            checked={selectedIds.has(member.id)}
-                            onCheckedChange={() => toggleSelect(member.id)}
-                            aria-label={`Select ${member.name}`}
-                          />
-                        </div>
-                      )}
-                      <TeamGridCard
-                        member={member}
-                        deptColor={getMemberDeptColor(member)}
-                        onNavigate={(id) => bulkMode ? toggleSelect(id) : router.push(`/admin/team/${id}`)}
-                        onQuickView={(id) => setSelectedMemberId(id)}
-                      />
-                    </div>
-                  ))}
-                </div>
-              )
-            )}
-
-            {/* Load more */}
-            {data?.hasMore && (
-              <div className="flex justify-center pt-4">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    const lastMember = allMembers[allMembers.length - 1]
-                    if (lastMember) setCursor(lastMember.id)
-                  }}
-                >
-                  Load more
-                </Button>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Bulk actions toolbar */}
-        {selectedIds.size > 0 && (
-          <div className="sticky bottom-4 z-10 mx-auto w-fit rounded-lg border border-[var(--ih-line)] bg-[var(--ih-surface)] shadow-lg px-4 py-2 flex items-center gap-3">
-            <span className="text-xs font-medium">{selectedIds.size} selected</span>
-            <Separator orientation="vertical" className="h-5" />
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button size="sm" variant="outline" className="text-xs h-7" disabled={bulkUpdating}>
-                  {bulkUpdating ? "Updating..." : "Change status"}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                {(["ACTIVE", "INACTIVE", "SUSPENDED"] as const).map((s) => (
-                  <DropdownMenuItem
-                    key={s}
-                    onClick={() => void handleBulkStatusChange(s)}
-                  >
-                    {s.charAt(0) + s.slice(1).toLowerCase()}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="text-xs h-7"
-              onClick={() => { setSelectedIds(new Set()); setBulkMode(false) }}
-            >
-              Cancel
-            </Button>
-          </div>
-        )}
-
-        {/* Sheet */}
-        <TeamMemberSheet
-          memberId={selectedMemberId}
-          onClose={() => setSelectedMemberId(null)}
-        />
-
-        {/* Add member dialog */}
-        <AddMemberDialog
-          open={addDialogOpen}
-          onOpenChange={setAddDialogOpen}
-          onSuccess={() => { void utils.team.list.invalidate(); void utils.team.stats.invalidate() }}
-        />
-      </div>
-    </TooltipProvider>
-  )
+function availabilityLabel(status: "available" | "busy" | "away") {
+  if (status === "available") return "Available"
+  if (status === "busy") return "Busy"
+  return "Away"
 }
 
 export default function TeamPage() {
+  const totalEngagements = TEAM.reduce((s, m) => s + m.engagements, 0)
+  const totalHours = TEAM.reduce((s, m) => s + m.hours, 0)
+  const totalMaxHours = TEAM.reduce((s, m) => s + m.maxHours, 0)
+  const utilization = totalMaxHours > 0 ? Math.round((totalHours / totalMaxHours) * 1000) / 10 : 0
+
   return (
-    <Suspense>
-      <TeamPageInner />
-    </Suspense>
+    <div style={{ padding: "24px 28px 48px", maxWidth: 1400, margin: "0 auto" }}>
+      {/* Header */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 28, gap: 24, flexWrap: "wrap" }}>
+        <div>
+          <div className="ih-eyebrow" style={{ marginBottom: 8 }}>Team &middot; workspace</div>
+          <h1 className="ih-serif" style={{ margin: 0, fontSize: 44, lineHeight: 0.98 }}>
+            Your team. <span className="ih-italic-red">{TEAM.length}</span> active.
+          </h1>
+        </div>
+        <div style={{ display: "flex", gap: 6 }}>
+          <button className="ih-btn ih-btn-primary ih-btn-sm"><Icon name="plus" size={12} /> Add team member</button>
+        </div>
+      </div>
+
+      {/* Stat cards */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, marginBottom: 28 }}>
+        {[
+          { l: "Team Size", v: String(TEAM.length), d: "", h: "active members", icon: "users" as const },
+          { l: "Active Engagements", v: String(totalEngagements), d: "", h: "across team", icon: "handshake" as const },
+          { l: "Hours This Week", v: `${totalHours}/${totalMaxHours}h`, d: "", h: "logged / capacity", icon: "clock" as const },
+          { l: "Utilization", v: `${utilization}%`, d: "", h: "team average", icon: "chart" as const },
+        ].map((s) => (
+          <div key={s.l} className="ih-card" style={{ padding: "14px 14px", cursor: "pointer" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+              <span className="ih-eyebrow">{s.l}</span>
+              <Icon name={s.icon} size={12} style={{ color: "var(--ih-ink-30)" }} />
+            </div>
+            <div className="ih-serif" style={{ fontSize: 30, lineHeight: 1 }}>{s.v}</div>
+            <div style={{ marginTop: 6, fontSize: 10.5, color: "var(--ih-ink-50)" }}>
+              {s.h}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Team grid */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 14, marginBottom: 28 }}>
+        {TEAM.map((m) => (
+          <div key={m.name} className="ih-card" style={{ padding: 22 }}>
+            <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
+              <div className="ih-avatar" style={{ width: 56, height: 56, fontSize: 18, flexShrink: 0 }}>{m.initials}</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
+                  <span className="ih-serif" style={{ fontSize: 20 }}>{m.name}</span>
+                  <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                    <span className={`ih-dot ${availabilityDot(m.availability)}`} />
+                    <span className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-50)" }}>{availabilityLabel(m.availability)}</span>
+                  </span>
+                </div>
+                <div style={{ fontSize: 12.5, color: "var(--ih-ink-65)", marginBottom: 10 }}>
+                  {m.role}
+                  <span style={{ margin: "0 6px", color: "var(--ih-ink-30)" }}>&middot;</span>
+                  <span style={{ padding: "2px 8px", borderRadius: 9999, background: "var(--ih-surface-2)", fontSize: 10.5, fontWeight: 500 }}>{m.department}</span>
+                </div>
+
+                {/* Quick stats */}
+                <div style={{ display: "flex", gap: 20, marginBottom: 12 }}>
+                  <div>
+                    <div className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-40)", marginBottom: 2 }}>Engagements</div>
+                    <div style={{ fontSize: 16, fontWeight: 600 }}>{m.engagements}</div>
+                  </div>
+                  <div>
+                    <div className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-40)", marginBottom: 2 }}>Hours/week</div>
+                    <div style={{ fontSize: 16, fontWeight: 600 }}>{m.hours}<span style={{ color: "var(--ih-ink-40)", fontWeight: 400, fontSize: 12 }}>/{m.maxHours}h</span></div>
+                  </div>
+                  <div>
+                    <div className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-40)", marginBottom: 2 }}>Utilization</div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <div style={{ width: 48, height: 4, background: "var(--ih-surface-2)", borderRadius: 2, overflow: "hidden" }}>
+                        <div style={{ width: `${Math.round((m.hours / m.maxHours) * 100)}%`, height: "100%", background: "var(--ih-ink)" }} />
+                      </div>
+                      <span className="ih-mono" style={{ fontSize: 11 }}>{Math.round((m.hours / m.maxHours) * 100)}%</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Skills */}
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 14 }}>
+                  {m.skills.map((sk) => (
+                    <span key={sk} style={{ padding: "2px 8px", borderRadius: 9999, background: "var(--ih-surface-2)", fontSize: 10.5, color: "var(--ih-ink-65)" }}>{sk}</span>
+                  ))}
+                </div>
+
+                <a href={`/admin/team/${m.initials.toLowerCase()}`} className="ih-btn ih-btn-ghost ih-btn-sm" style={{ height: 26, fontSize: 11, textDecoration: "none" }}>
+                  View profile <Icon name="arrowRight" size={10} />
+                </a>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Departments */}
+      <div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+          <div>
+            <span className="ih-eyebrow">Structure</span>
+            <h3 style={{ margin: "2px 0 0", fontSize: 15, fontWeight: 600 }}>Departments</h3>
+          </div>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
+          {DEPARTMENTS.map((d) => (
+            <div key={d.name} className="ih-card" style={{ padding: 16, display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{ width: 36, height: 36, borderRadius: 8, background: d.color, opacity: 0.15, position: "relative" }}>
+                <Icon name="building" size={16} style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", color: d.color }} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 600, fontSize: 14 }}>{d.name}</div>
+                <div className="ih-mono" style={{ fontSize: 10.5, color: "var(--ih-ink-50)" }}>{d.count} member{d.count !== 1 ? "s" : ""}</div>
+              </div>
+              <Icon name="chevronRight" size={12} style={{ color: "var(--ih-ink-30)" }} />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
   )
 }

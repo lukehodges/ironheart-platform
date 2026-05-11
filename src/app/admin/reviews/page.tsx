@@ -1,734 +1,226 @@
 "use client"
 
-import { useState, useCallback } from "react"
-import { toast } from "sonner"
-import {
-  Star,
-  ChevronLeft,
-  ChevronRight,
-  RefreshCw,
-  AlertTriangle,
-  MoreHorizontal,
-} from "lucide-react"
-import { api } from "@/lib/trpc/react"
-import { PageHeader } from "@/components/ui/page-header"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Skeleton } from "@/components/ui/skeleton"
-import { EmptyState } from "@/components/ui/empty-state"
-import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-  TableCell,
-} from "@/components/ui/table"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-} from "@/components/ui/sheet"
-import { Separator } from "@/components/ui/separator"
-import { Textarea } from "@/components/ui/textarea"
-import { Label } from "@/components/ui/label"
-import type { ReviewRecord } from "@/modules/review/review.types"
+import { useState } from "react"
+import { Icon } from "@/components/shell"
 
-// ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
+const FILTERS = ["All", "Published", "Pending Review", "Flagged", "Responded"] as const
 
-const PAGE_SIZE = 25
-
-type VisibilityFilter = "ALL" | "PUBLIC" | "PRIVATE" | "ISSUES"
-
-const FILTER_OPTIONS: { label: string; value: VisibilityFilter }[] = [
-  { label: "All", value: "ALL" },
-  { label: "Public", value: "PUBLIC" },
-  { label: "Private", value: "PRIVATE" },
-  { label: "Issues", value: "ISSUES" },
+const REVIEWS = [
+  {
+    id: 1, client: "Northwind", initials: "NC", rating: 5, date: "8 May 2026", engagement: "Q2 retainer",
+    text: "Luke and the team transformed our internal operations. The audit uncovered three bottlenecks we had been ignoring for years. Sprint delivery was excellent and every milestone hit on time.",
+    sentiment: "Positive" as const, status: "Published" as const, responded: true,
+  },
+  {
+    id: 2, client: "Acme Studios", initials: "AS", rating: 5, date: "2 May 2026", engagement: "Q2 retainer",
+    text: "Incredibly thorough discovery process. The questionnaires surfaced issues our leadership had never discussed openly. Already seeing measurable improvement in team alignment.",
+    sentiment: "Positive" as const, status: "Published" as const, responded: false,
+  },
+  {
+    id: 3, client: "Vellum & Co.", initials: "VC", rating: 4, date: "28 Apr 2026", engagement: "Portal rebuild",
+    text: "Good progress on the portal rebuild. A couple of design iterations took longer than expected but the end result is solid. Would recommend for technical projects.",
+    sentiment: "Positive" as const, status: "Published" as const, responded: true,
+  },
+  {
+    id: 4, client: "Bowery Mills", initials: "BM", rating: 3, date: "20 Apr 2026", engagement: "Monthly ops retainer",
+    text: "Useful monthly check-ins but would appreciate more proactive recommendations between sessions. The reports are detailed but sometimes arrive a day late.",
+    sentiment: "Neutral" as const, status: "Pending Review" as const, responded: false,
+  },
+  {
+    id: 5, client: "Sea Glass Studio", initials: "SG", rating: 5, date: "14 Apr 2026", engagement: "Discovery scoping",
+    text: "Best discovery process I have experienced. Mira was fantastic at drawing out what we actually needed versus what we thought we wanted. Proposal was spot on.",
+    sentiment: "Positive" as const, status: "Published" as const, responded: false,
+  },
+  {
+    id: 6, client: "Brigham Architects", initials: "BA", rating: 2, date: "3 Apr 2026", engagement: "Workflow rebuild",
+    text: "The workflow rebuild stalled after phase 1. Communication dropped off and we had to chase for updates multiple times. Invoice was sent before final deliverables were approved.",
+    sentiment: "Negative" as const, status: "Flagged" as const, responded: false,
+  },
 ]
 
-const RESOLUTION_OPTIONS: {
-  label: string
-  value: "CONTACTED" | "RESOLVED" | "DISMISSED"
-}[] = [
-  { label: "Contacted", value: "CONTACTED" },
-  { label: "Resolved", value: "RESOLVED" },
-  { label: "Dismissed", value: "DISMISSED" },
-]
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-function formatDate(date: Date | string | null | undefined): string {
-  if (!date) return " - "
-  const d = typeof date === "string" ? new Date(date) : date
-  return d.toLocaleDateString("en-GB", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  })
-}
-
-function formatRelativeDate(date: Date | string | null | undefined): string {
-  if (!date) return " - "
-  const d = typeof date === "string" ? new Date(date) : date
-  const now = new Date()
-  const diffMs = now.getTime() - d.getTime()
-  const diffDays = Math.floor(Math.abs(diffMs) / (1000 * 60 * 60 * 24))
-  const isFuture = diffMs < 0
-
-  if (diffDays === 0) return "Today"
-
-  if (isFuture) {
-    if (diffDays === 1) return "Tomorrow"
-    if (diffDays < 7) return `in ${diffDays} days`
-    if (diffDays < 30) return `in ${Math.floor(diffDays / 7)}w`
-    if (diffDays < 365) return `in ${Math.floor(diffDays / 30)}mo`
-    return `in ${Math.floor(diffDays / 365)}y`
-  }
-
-  if (diffDays === 1) return "Yesterday"
-  if (diffDays < 7) return `${diffDays} days ago`
-  if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`
-  if (diffDays < 365) return `${Math.floor(diffDays / 30)}mo ago`
-  return `${Math.floor(diffDays / 365)}y ago`
-}
-
-function truncate(text: string | null | undefined, maxLength: number): string {
-  if (!text) return " - "
-  if (text.length <= maxLength) return text
-  return text.slice(0, maxLength) + "…"
-}
-
-function issueCategoryLabel(
-  category: string | null | undefined,
-): string {
-  if (!category) return " - "
-  const labels: Record<string, string> = {
-    LATE: "Late",
-    QUALITY: "Quality",
-    ATTITUDE: "Attitude",
-    SAFETY: "Safety",
-    OTHER: "Other",
-  }
-  return labels[category] ?? category
-}
-
-function issueCategoryBadgeVariant(
-  category: string | null | undefined,
-): "destructive" | "warning" | "secondary" {
-  if (!category) return "secondary"
-  if (category === "SAFETY") return "destructive"
-  return "warning"
-}
-
-// ---------------------------------------------------------------------------
-// Star rating component
-// ---------------------------------------------------------------------------
-
-function StarRating({ rating }: { rating: number | null | undefined }) {
-  if (rating == null) {
-    return <span className="text-xs text-muted-foreground italic">No rating</span>
-  }
-
+function Stars({ count }: { count: number }) {
   return (
-    <div className="flex items-center gap-0.5">
+    <div style={{ display: "flex", gap: 2 }}>
       {Array.from({ length: 5 }).map((_, i) => (
-        <Star
-          key={i}
-          className={
-            i < rating
-              ? "h-4 w-4 fill-yellow-400 text-yellow-400"
-              : "h-4 w-4 text-muted-foreground"
-          }
-          aria-hidden="true"
-        />
+        <Icon key={i} name="star" size={13} style={{ color: i < count ? "var(--ih-warn)" : "var(--ih-ink-20)", fill: i < count ? "var(--ih-warn)" : "none" }} />
       ))}
-      <span className="sr-only">{rating} out of 5 stars</span>
     </div>
   )
 }
 
-// ---------------------------------------------------------------------------
-// Table skeleton
-// ---------------------------------------------------------------------------
-
-function TableRowSkeleton() {
-  return (
-    <TableRow>
-      <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-      <TableCell><Skeleton className="h-4 w-20" /></TableCell>
-      <TableCell><Skeleton className="h-4 w-40" /></TableCell>
-      <TableCell><Skeleton className="h-5 w-16 rounded-md" /></TableCell>
-      <TableCell><Skeleton className="h-5 w-16 rounded-md" /></TableCell>
-      <TableCell><Skeleton className="h-4 w-20" /></TableCell>
-      <TableCell><Skeleton className="h-7 w-7 rounded-md" /></TableCell>
-    </TableRow>
-  )
+function sentimentColor(s: "Positive" | "Neutral" | "Negative") {
+  if (s === "Positive") return { bg: "var(--ih-ok-soft)", color: "var(--ih-ok)" }
+  if (s === "Neutral") return { bg: "var(--ih-warn-soft)", color: "var(--ih-warn)" }
+  return { bg: "var(--ih-danger-soft)", color: "var(--ih-danger)" }
 }
-
-// ---------------------------------------------------------------------------
-// Review row
-// ---------------------------------------------------------------------------
-
-interface ReviewRowProps {
-  review: ReviewRecord
-  onView: (review: ReviewRecord) => void
-}
-
-function ReviewRow({ review, onView }: ReviewRowProps) {
-  return (
-    <TableRow
-      className="cursor-pointer"
-      onClick={() => onView(review)}
-      aria-label={`View review ${review.id}`}
-    >
-      {/* Customer */}
-      <TableCell>
-        <span className="text-sm font-medium text-foreground">
-          {review.customerId ? `Customer` : "Anonymous"}
-        </span>
-      </TableCell>
-
-      {/* Rating */}
-      <TableCell>
-        <StarRating rating={review.rating} />
-      </TableCell>
-
-      {/* Comment */}
-      <TableCell>
-        <span className="text-sm text-muted-foreground">
-          {truncate(review.comment, 60)}
-        </span>
-      </TableCell>
-
-      {/* Status */}
-      <TableCell>
-        <Badge
-          variant={review.isPublic ? "success" : "secondary"}
-          className="text-[10px]"
-        >
-          {review.isPublic ? "Public" : "Private"}
-        </Badge>
-      </TableCell>
-
-      {/* Issue */}
-      <TableCell>
-        {review.issueCategory ? (
-          <Badge
-            variant={issueCategoryBadgeVariant(review.issueCategory)}
-            className="text-[10px]"
-          >
-            {issueCategoryLabel(review.issueCategory)}
-          </Badge>
-        ) : (
-          <span className="text-xs text-muted-foreground">{" - "}</span>
-        )}
-      </TableCell>
-
-      {/* Date */}
-      <TableCell>
-        <span className="text-xs text-muted-foreground">
-          {formatRelativeDate(review.createdAt)}
-        </span>
-      </TableCell>
-
-      {/* Actions */}
-      <TableCell onClick={(e) => e.stopPropagation()}>
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          onClick={() => onView(review)}
-          aria-label="View review details"
-        >
-          <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
-        </Button>
-      </TableCell>
-    </TableRow>
-  )
-}
-
-// ---------------------------------------------------------------------------
-// Detail sheet
-// ---------------------------------------------------------------------------
-
-interface ReviewDetailSheetProps {
-  review: ReviewRecord | null
-  onClose: () => void
-  onResolved: () => void
-}
-
-function ReviewDetailSheet({ review, onClose, onResolved }: ReviewDetailSheetProps) {
-  const [resolutionStatus, setResolutionStatus] = useState<
-    "CONTACTED" | "RESOLVED" | "DISMISSED" | ""
-  >("")
-  const [resolutionNotes, setResolutionNotes] = useState("")
-
-  const resolveIssue = api.review.resolveIssue.useMutation({
-    onSuccess: () => {
-      toast.success("Issue resolved successfully")
-      setResolutionStatus("")
-      setResolutionNotes("")
-      onResolved()
-      onClose()
-    },
-    onError: (err) => {
-      toast.error(err.message ?? "Failed to resolve issue")
-    },
-  })
-
-  const handleSubmitResolution = useCallback(() => {
-    if (!review || !resolutionStatus) return
-    resolveIssue.mutate({
-      reviewId: review.id,
-      resolutionStatus: resolutionStatus as "CONTACTED" | "RESOLVED" | "DISMISSED",
-      resolutionNotes: resolutionNotes || undefined,
-    })
-  }, [review, resolutionStatus, resolutionNotes, resolveIssue])
-
-  // Reset form when review changes
-  const handleOpenChange = useCallback(
-    (open: boolean) => {
-      if (!open) {
-        setResolutionStatus("")
-        setResolutionNotes("")
-        onClose()
-      }
-    },
-    [onClose],
-  )
-
-  return (
-    <Sheet open={!!review} onOpenChange={handleOpenChange}>
-      <SheetContent className="overflow-y-auto">
-        <SheetHeader>
-          <SheetTitle>Review Details</SheetTitle>
-          <SheetDescription>
-            Full review information and issue resolution.
-          </SheetDescription>
-        </SheetHeader>
-
-        {review && (
-          <div className="mt-6 space-y-6">
-            {/* Rating */}
-            <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">Rating</Label>
-              <StarRating rating={review.rating} />
-            </div>
-
-            {/* Status */}
-            <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">Visibility</Label>
-              <div>
-                <Badge
-                  variant={review.isPublic ? "success" : "secondary"}
-                >
-                  {review.isPublic ? "Public" : "Private"}
-                </Badge>
-              </div>
-            </div>
-
-            {/* Platform */}
-            {review.platform && (
-              <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Platform</Label>
-                <p className="text-sm text-foreground">{review.platform}</p>
-              </div>
-            )}
-
-            {/* Comment */}
-            <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">Comment</Label>
-              <p className="text-sm text-foreground whitespace-pre-wrap">
-                {review.comment || "No comment provided."}
-              </p>
-            </div>
-
-            {/* Date */}
-            <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">Submitted</Label>
-              <p className="text-sm text-foreground">{formatDate(review.createdAt)}</p>
-            </div>
-
-            {/* Booking ID */}
-            <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">Booking ID</Label>
-              <p className="text-sm text-foreground font-mono text-xs">
-                {review.bookingId}
-              </p>
-            </div>
-
-            {/* Issue section */}
-            {review.issueCategory && (
-              <>
-                <Separator />
-
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2">
-                    <AlertTriangle className="h-4 w-4 text-warning" aria-hidden="true" />
-                    <span className="text-sm font-semibold text-foreground">
-                      Flagged Issue
-                    </span>
-                  </div>
-
-                  <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground">Category</Label>
-                    <div>
-                      <Badge variant={issueCategoryBadgeVariant(review.issueCategory)}>
-                        {issueCategoryLabel(review.issueCategory)}
-                      </Badge>
-                    </div>
-                  </div>
-
-                  {/* Existing resolution */}
-                  {review.resolutionStatus && (
-                    <div className="space-y-3">
-                      <div className="space-y-1">
-                        <Label className="text-xs text-muted-foreground">
-                          Resolution Status
-                        </Label>
-                        <div>
-                          <Badge variant="outline">{review.resolutionStatus}</Badge>
-                        </div>
-                      </div>
-                      {review.resolutionNotes && (
-                        <div className="space-y-1">
-                          <Label className="text-xs text-muted-foreground">
-                            Resolution Notes
-                          </Label>
-                          <p className="text-sm text-foreground whitespace-pre-wrap">
-                            {review.resolutionNotes}
-                          </p>
-                        </div>
-                      )}
-                      {review.resolvedAt && (
-                        <div className="space-y-1">
-                          <Label className="text-xs text-muted-foreground">
-                            Resolved At
-                          </Label>
-                          <p className="text-sm text-foreground">
-                            {formatDate(review.resolvedAt)}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Resolve form (only if not yet resolved) */}
-                  {!review.resolutionStatus && (
-                    <div className="space-y-4 rounded-lg border border-border p-4">
-                      <p className="text-sm font-medium text-foreground">
-                        Resolve This Issue
-                      </p>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="resolution-status">Status</Label>
-                        <Select
-                          value={resolutionStatus}
-                          onValueChange={(val) =>
-                            setResolutionStatus(
-                              val as "CONTACTED" | "RESOLVED" | "DISMISSED",
-                            )
-                          }
-                        >
-                          <SelectTrigger
-                            id="resolution-status"
-                            className="w-full"
-                            aria-label="Resolution status"
-                          >
-                            <SelectValue placeholder="Select status..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {RESOLUTION_OPTIONS.map((opt) => (
-                              <SelectItem key={opt.value} value={opt.value}>
-                                {opt.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="resolution-notes">Notes (optional)</Label>
-                        <Textarea
-                          id="resolution-notes"
-                          placeholder="Add resolution notes..."
-                          value={resolutionNotes}
-                          onChange={(e) => setResolutionNotes(e.target.value)}
-                          rows={3}
-                        />
-                      </div>
-
-                      <Button
-                        size="sm"
-                        onClick={handleSubmitResolution}
-                        disabled={!resolutionStatus || resolveIssue.isPending}
-                      >
-                        {resolveIssue.isPending ? "Saving..." : "Save Resolution"}
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              </>
-            )}
-          </div>
-        )}
-      </SheetContent>
-    </Sheet>
-  )
-}
-
-// ---------------------------------------------------------------------------
-// Page
-// ---------------------------------------------------------------------------
 
 export default function ReviewsPage() {
-  // Filter state
-  const [visibilityFilter, setVisibilityFilter] =
-    useState<VisibilityFilter>("ALL")
-  const [minRating, setMinRating] = useState<string>("")
+  const [activeFilter, setActiveFilter] = useState<string>("All")
 
-  // Pagination state
-  const [cursor, setCursor] = useState<string | undefined>(undefined)
-  const [cursorStack, setCursorStack] = useState<string[]>([])
-
-  // Detail sheet state
-  const [selectedReview, setSelectedReview] = useState<ReviewRecord | null>(null)
-
-  // Derive API filter params from visibility filter
-  const isPublicFilter =
-    visibilityFilter === "PUBLIC"
-      ? true
-      : visibilityFilter === "PRIVATE"
-        ? false
-        : undefined
-  const hasIssueFilter = visibilityFilter === "ISSUES" ? true : undefined
-
-  const { data, isLoading, isError, refetch } = api.review.list.useQuery({
-    isPublic: isPublicFilter,
-    hasIssue: hasIssueFilter,
-    minRating: minRating ? Number(minRating) : undefined,
-    limit: PAGE_SIZE,
-    cursor,
+  const filtered = REVIEWS.filter((r) => {
+    if (activeFilter === "All") return true
+    if (activeFilter === "Published") return r.status === "Published"
+    if (activeFilter === "Pending Review") return r.status === "Pending Review"
+    if (activeFilter === "Flagged") return r.status === "Flagged"
+    if (activeFilter === "Responded") return r.responded
+    return true
   })
 
-  const utils = api.useUtils()
-
-  const rows = (data?.rows ?? []) as ReviewRecord[]
-  const hasMore = data?.hasMore ?? false
-
-  // Pagination helpers
-  function goToNextPage() {
-    if (!hasMore || rows.length === 0) return
-    const nextCursor = rows[rows.length - 1]!.id
-    setCursorStack((prev) => [...prev, cursor ?? ""])
-    setCursor(nextCursor)
-  }
-
-  function goToPrevPage() {
-    if (cursorStack.length === 0) return
-    const prevCursor = cursorStack[cursorStack.length - 1]
-    setCursorStack((prev) => prev.slice(0, -1))
-    setCursor(prevCursor === "" ? undefined : prevCursor)
-  }
-
-  const isFirstPage = cursorStack.length === 0
-
-  // Reset pagination when filters change
-  function handleVisibilityFilter(filter: VisibilityFilter) {
-    setVisibilityFilter(filter)
-    setCursor(undefined)
-    setCursorStack([])
-  }
-
-  function handleMinRatingChange(value: string) {
-    setMinRating(value === "any" ? "" : value)
-    setCursor(undefined)
-    setCursorStack([])
-  }
-
-  const handleView = useCallback((review: ReviewRecord) => {
-    setSelectedReview(review)
-  }, [])
-
-  const handleSheetClose = useCallback(() => {
-    setSelectedReview(null)
-  }, [])
-
-  const handleResolved = useCallback(() => {
-    void utils.review.list.invalidate()
-  }, [utils])
-
   return (
-    <div className="space-y-6 animate-fade-in">
-      {/* Page header */}
-      <PageHeader
-        title="Reviews"
-        description="Monitor and moderate customer reviews."
-      />
-
-      {/* Filters */}
-      <div className="space-y-3">
-        {/* Filter chips */}
-        <div className="flex items-center gap-2 flex-wrap">
-          {FILTER_OPTIONS.map((opt) => (
-            <button
-              key={opt.value}
-              type="button"
-              onClick={() => handleVisibilityFilter(opt.value)}
-              className={[
-                "inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold transition-colors",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                visibilityFilter === opt.value
-                  ? "bg-primary text-primary-foreground border-transparent shadow"
-                  : "border-input bg-background text-foreground hover:bg-accent",
-              ].join(" ")}
-              aria-pressed={visibilityFilter === opt.value}
-            >
-              {opt.label}
-            </button>
-          ))}
-
-          {/* Rating filter */}
-          <div className="flex items-center gap-1.5 ml-2">
-            <span className="text-xs text-muted-foreground font-medium">
-              Min rating:
-            </span>
-            <Select
-              value={minRating || "any"}
-              onValueChange={handleMinRatingChange}
-            >
-              <SelectTrigger
-                className="h-7 w-[80px] text-xs"
-                aria-label="Minimum rating filter"
-              >
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="any">Any</SelectItem>
-                <SelectItem value="1">1+</SelectItem>
-                <SelectItem value="2">2+</SelectItem>
-                <SelectItem value="3">3+</SelectItem>
-                <SelectItem value="4">4+</SelectItem>
-                <SelectItem value="5">5</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+    <div style={{ padding: "24px 28px 48px", maxWidth: 1400, margin: "0 auto" }}>
+      {/* Header */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 28, gap: 24, flexWrap: "wrap" }}>
+        <div>
+          <div className="ih-eyebrow" style={{ marginBottom: 8 }}>Intelligence &middot; reviews</div>
+          <h1 className="ih-serif" style={{ margin: 0, fontSize: 44, lineHeight: 0.98 }}>
+            34 reviews. <span className="ih-italic-red">4.8</span> average.
+          </h1>
+        </div>
+        <div style={{ display: "flex", gap: 6 }}>
+          <button className="ih-btn ih-btn-ghost ih-btn-sm"><Icon name="download" size={12} /> Export</button>
+          <button className="ih-btn ih-btn-primary ih-btn-sm"><Icon name="mail" size={12} /> Request reviews</button>
         </div>
       </div>
 
-      {/* Content */}
-      <div className="rounded-xl border border-border overflow-hidden">
-        {isError ? (
-          <div className="flex flex-col items-center justify-center py-16 gap-3">
-            <p className="text-sm text-destructive font-medium">
-              Failed to load reviews
+      {/* Stat cards */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, marginBottom: 28 }}>
+        {[
+          { l: "Avg Rating", v: "4.8", d: "+0.2", h: "vs last quarter", icon: "star" as const },
+          { l: "Response Rate", v: "72%", d: "+8%", h: "reviews responded to", icon: "chat" as const },
+          { l: "NPS Score", v: "68", d: "+4", h: "net promoter score", icon: "target" as const },
+          { l: "Positive Sentiment", v: "89%", d: "+3%", h: "of all reviews", icon: "check" as const },
+        ].map((s) => (
+          <div key={s.l} className="ih-card" style={{ padding: "14px 14px", cursor: "pointer" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+              <span className="ih-eyebrow">{s.l}</span>
+              <Icon name={s.icon} size={12} style={{ color: "var(--ih-ink-30)" }} />
+            </div>
+            <div className="ih-serif" style={{ fontSize: 30, lineHeight: 1 }}>{s.v}</div>
+            <div style={{ marginTop: 6, fontSize: 10.5, color: "var(--ih-ink-50)", display: "flex", gap: 5, alignItems: "center" }}>
+              <span style={{ color: "var(--ih-ok)", fontWeight: 500 }} className="ih-mono">{s.d}</span>
+              <span>{s.h}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Filter tabs */}
+      <div style={{ display: "flex", gap: 4, marginBottom: 18 }}>
+        {FILTERS.map((f) => (
+          <button
+            key={f}
+            onClick={() => setActiveFilter(f)}
+            className={`ih-btn ${activeFilter === f ? "ih-btn-ghost" : "ih-btn-quiet"} ih-btn-sm`}
+            style={{ height: 28, fontSize: 11.5, fontWeight: activeFilter === f ? 500 : 400 }}
+          >
+            {f}
+            {f === "Flagged" && <span style={{ marginLeft: 4, background: "var(--ih-danger-soft)", color: "var(--ih-danger)", borderRadius: 8, padding: "1px 6px", fontSize: 10 }}>1</span>}
+          </button>
+        ))}
+        <span className="ih-mono" style={{ marginLeft: "auto", fontSize: 10.5, color: "var(--ih-ink-40)", alignSelf: "center" }}>
+          {filtered.length} review{filtered.length !== 1 ? "s" : ""}
+        </span>
+      </div>
+
+      {/* Review cards */}
+      <div style={{ display: "grid", gap: 12, marginBottom: 28 }}>
+        {filtered.map((r) => (
+          <div key={r.id} className="ih-card" style={{ padding: 18 }}>
+            <div style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
+              <div className="ih-avatar" style={{ width: 36, height: 36, fontSize: 12, flexShrink: 0 }}>{r.initials}</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6, flexWrap: "wrap" }}>
+                  <span style={{ fontWeight: 600, fontSize: 14 }}>{r.client}</span>
+                  <Stars count={r.rating} />
+                  <span className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-40)" }}>{r.date}</span>
+                  <span className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-40)" }}>&middot; {r.engagement}</span>
+                  <span
+                    style={{
+                      marginLeft: "auto",
+                      fontSize: 10,
+                      fontWeight: 500,
+                      padding: "2px 8px",
+                      borderRadius: 9999,
+                      background: sentimentColor(r.sentiment).bg,
+                      color: sentimentColor(r.sentiment).color,
+                    }}
+                  >
+                    {r.sentiment}
+                  </span>
+                </div>
+                <p style={{ margin: 0, fontSize: 13, color: "var(--ih-ink-65)", lineHeight: 1.55, marginBottom: 12 }}>
+                  {r.text}
+                </p>
+                <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                  {r.status === "Published" ? (
+                    <span className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ok)", display: "flex", alignItems: "center", gap: 4 }}>
+                      <span className="ih-dot ih-dot-ok" /> Published
+                    </span>
+                  ) : r.status === "Flagged" ? (
+                    <span className="ih-mono" style={{ fontSize: 10, color: "var(--ih-danger)", display: "flex", alignItems: "center", gap: 4 }}>
+                      <Icon name="flag" size={10} /> Flagged
+                    </span>
+                  ) : (
+                    <span className="ih-mono" style={{ fontSize: 10, color: "var(--ih-warn)", display: "flex", alignItems: "center", gap: 4 }}>
+                      <span className="ih-dot ih-dot-warn" /> Pending
+                    </span>
+                  )}
+                  <div style={{ flex: 1 }} />
+                  {r.status !== "Published" && (
+                    <button className="ih-btn ih-btn-primary ih-btn-sm" style={{ height: 24, fontSize: 10.5 }}>
+                      <Icon name="check" size={10} /> Publish
+                    </button>
+                  )}
+                  {!r.responded && (
+                    <button className="ih-btn ih-btn-ghost ih-btn-sm" style={{ height: 24, fontSize: 10.5 }}>
+                      <Icon name="chat" size={10} /> Respond
+                    </button>
+                  )}
+                  {r.status !== "Flagged" && (
+                    <button className="ih-btn ih-btn-quiet ih-btn-sm" style={{ height: 24, fontSize: 10.5 }}>
+                      <Icon name="flag" size={10} /> Flag
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Automation section */}
+      <div className="ih-card" style={{ padding: 18 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+          <div>
+            <span className="ih-eyebrow">Automation</span>
+            <h3 style={{ margin: "2px 0 0", fontSize: 15, fontWeight: 600 }}>Review collection settings</h3>
+          </div>
+          <button className="ih-btn ih-btn-ghost ih-btn-sm"><Icon name="sliders" size={12} /> Configure</button>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14 }}>
+          <div style={{ padding: 14, background: "var(--ih-surface-2)", borderRadius: 10 }}>
+            <div className="ih-eyebrow" style={{ marginBottom: 6 }}>Auto-request</div>
+            <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 4 }}>Enabled</div>
+            <p style={{ fontSize: 11, color: "var(--ih-ink-50)", margin: 0 }}>
+              Sends review request 24h after engagement completion via email.
             </p>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => void refetch()}
-              className="gap-1.5"
-            >
-              <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
-              Retry
-            </Button>
           </div>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[120px]">Customer</TableHead>
-                <TableHead className="w-[120px]">Rating</TableHead>
-                <TableHead>Comment</TableHead>
-                <TableHead className="w-[90px]">Status</TableHead>
-                <TableHead className="w-[90px]">Issue</TableHead>
-                <TableHead className="w-[100px]">Date</TableHead>
-                <TableHead className="w-[48px]">
-                  <span className="sr-only">Actions</span>
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                Array.from({ length: 8 }).map((_, i) => (
-                  <TableRowSkeleton key={i} />
-                ))
-              ) : rows.length === 0 ? (
-                <TableRow>
-                  <td colSpan={7} className="p-0">
-                    <EmptyState
-                      variant="inbox"
-                      title="No reviews found"
-                      description={
-                        visibilityFilter !== "ALL" || minRating
-                          ? "No reviews match your current filters. Try adjusting your criteria."
-                          : "Reviews will appear here once customers submit feedback."
-                      }
-                    />
-                  </td>
-                </TableRow>
-              ) : (
-                rows.map((review) => (
-                  <ReviewRow
-                    key={review.id}
-                    review={review}
-                    onView={handleView}
-                  />
-                ))
-              )}
-            </TableBody>
-          </Table>
-        )}
-      </div>
-
-      {/* Pagination */}
-      {!isLoading && !isError && rows.length > 0 && (
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span>
-            Showing {rows.length} review{rows.length !== 1 ? "s" : ""}
-          </span>
-          <div className="flex items-center gap-1">
-            <Button
-              variant="outline"
-              size="icon-sm"
-              onClick={goToPrevPage}
-              disabled={isFirstPage}
-              aria-label="Previous page"
-            >
-              <ChevronLeft className="h-4 w-4" aria-hidden="true" />
-            </Button>
-            <Button
-              variant="outline"
-              size="icon-sm"
-              onClick={goToNextPage}
-              disabled={!hasMore}
-              aria-label="Next page"
-            >
-              <ChevronRight className="h-4 w-4" aria-hidden="true" />
-            </Button>
+          <div style={{ padding: 14, background: "var(--ih-surface-2)", borderRadius: 10 }}>
+            <div className="ih-eyebrow" style={{ marginBottom: 6 }}>Screening threshold</div>
+            <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 4 }}>4.0 stars minimum</div>
+            <p style={{ fontSize: 11, color: "var(--ih-ink-50)", margin: 0 }}>
+              Reviews below threshold are held for manual review before publishing.
+            </p>
+          </div>
+          <div style={{ padding: 14, background: "var(--ih-surface-2)", borderRadius: 10 }}>
+            <div className="ih-eyebrow" style={{ marginBottom: 6 }}>Pre-screening rules</div>
+            <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 4 }}>3 active rules</div>
+            <p style={{ fontSize: 11, color: "var(--ih-ink-50)", margin: 0 }}>
+              Flag profanity, auto-publish 5-star from repeat clients, notify on negative.
+            </p>
           </div>
         </div>
-      )}
-
-      {/* Detail sheet */}
-      <ReviewDetailSheet
-        review={selectedReview}
-        onClose={handleSheetClose}
-        onResolved={handleResolved}
-      />
+      </div>
     </div>
   )
 }
