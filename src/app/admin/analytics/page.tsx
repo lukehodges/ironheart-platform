@@ -1,323 +1,228 @@
 "use client"
 
-import { useState, useMemo, useCallback } from "react"
-import { subDays } from "date-fns"
-import { PageHeader } from "@/components/ui/page-header"
-import { Card } from "@/components/ui/card"
-import { Skeleton } from "@/components/ui/skeleton"
-import { DateRangePicker, type DateRange } from "@/components/analytics/date-range-picker"
-import { ExportMenu } from "@/components/analytics/export-menu"
-import { KPICard } from "@/components/analytics/kpi-card"
-import { RevenueChart } from "@/components/analytics/revenue-chart"
-import { StatusDonutChart } from "@/components/analytics/status-donut-chart"
-import { TopServicesChart } from "@/components/analytics/top-services-chart"
-import { StaffUtilizationHeatmap } from "@/components/analytics/staff-utilization-heatmap"
-import { ChurnRiskTable } from "@/components/analytics/churn-risk-table"
-import { useAnalyticsData } from "@/hooks/use-analytics-data"
-import { toast } from "sonner"
-import type { AnalyticsFilters } from "@/schemas/analytics.schemas"
-import type { KPICard as KPICardType } from "@/types/analytics"
+import { Icon } from "@/components/shell"
 
-/**
- * Analytics Dashboard Page
- *
- * Main analytics page displaying:
- * - KPI cards (4-column grid)
- * - Revenue chart (full width)
- * - Status donut chart + Top services bar chart (2-column grid)
- * - Staff utilization heatmap (full width)
- * - Churn risk table (full width)
- *
- * All components use useAnalyticsData hook with filters from date range picker.
- * Supports CSV/PDF export of all dashboard data.
- */
+/* ── Data ────────────────────────────────────────────────────────────────── */
+
+const REVENUE_MONTHS: { month: string; paid: number; outstanding: number }[] = [
+  { month: "Dec", paid: 28, outstanding: 6 },
+  { month: "Jan", paid: 32, outstanding: 8 },
+  { month: "Feb", paid: 36, outstanding: 4 },
+  { month: "Mar", paid: 42, outstanding: 10 },
+  { month: "Apr", paid: 38, outstanding: 6 },
+  { month: "May", paid: 48, outstanding: 12 },
+]
+
+const HEALTH_GRADES: { grade: string; count: number; tone: string }[] = [
+  { grade: "A", count: 4, tone: "ok" },
+  { grade: "B", count: 3, tone: "ok" },
+  { grade: "C", count: 2, tone: "warn" },
+  { grade: "D", count: 1, tone: "danger" },
+  { grade: "F", count: 0, tone: "muted" },
+]
+
+const PIPELINE_STAGES: { stage: string; count: number; maxWidth: number; tone: string }[] = [
+  { stage: "Discovery", count: 3, maxWidth: 30, tone: "info" },
+  { stage: "Proposal", count: 5, maxWidth: 50, tone: "warn" },
+  { stage: "Contracted", count: 2, maxWidth: 20, tone: "info" },
+  { stage: "Auditing", count: 3, maxWidth: 30, tone: "info" },
+  { stage: "Implementing", count: 4, maxWidth: 40, tone: "accent" },
+  { stage: "Retainer", count: 2, maxWidth: 20, tone: "ok" },
+  { stage: "Closed Won", count: 6, maxWidth: 60, tone: "ok" },
+]
+
+const TOP_CLIENTS: { name: string; revenue: number; engagements: number; health: string }[] = [
+  { name: "Vellum & Co.", revenue: 64000, engagements: 2, health: "ok" },
+  { name: "Northwind Logistics", revenue: 48200, engagements: 3, health: "ok" },
+  { name: "Bowery Mills", revenue: 42000, engagements: 2, health: "ok" },
+  { name: "Arden Health", revenue: 38000, engagements: 1, health: "ok" },
+  { name: "Castor Foods", revenue: 22000, engagements: 1, health: "ok" },
+]
+
+const TH: React.CSSProperties = { textAlign: "left", padding: "10px 12px", fontWeight: 500, fontSize: 10, color: "var(--ih-ink-40)", textTransform: "uppercase", letterSpacing: "0.12em", fontFamily: "var(--ih-font-mono)" }
+
+/* ── Page ─────────────────────────────────────────────────────────────────── */
+
 export default function AnalyticsPage() {
-  // Date range state - default to last 30 days
-  const [dateRange, setDateRange] = useState<DateRange>(() => ({
-    from: subDays(new Date(), 30),
-    to: new Date(),
-  }))
-
-  const [isExporting, setIsExporting] = useState(false)
-
-  // Build filters for analytics queries
-  const filters: AnalyticsFilters = useMemo(() => ({
-    from: dateRange.from,
-    to: dateRange.to,
-  }), [dateRange])
-
-  // Fetch all analytics data
-  const analytics = useAnalyticsData(filters)
-
-  // ---------------------------------------------------------------------------
-  // Handlers
-  // ---------------------------------------------------------------------------
-
-  const handleDateRangeChange = useCallback((range: DateRange) => {
-    setDateRange(range)
-  }, [])
-
-  const handleDateRangeReset = useCallback(() => {
-    setDateRange({
-      from: subDays(new Date(), 30),
-      to: new Date(),
-    })
-  }, [])
-
-  const handleExport = useCallback(async (format: "csv" | "pdf") => {
-    setIsExporting(true)
-    try {
-      if (format === "pdf") {
-        toast.info("PDF export coming soon")
-        return
-      }
-
-      // Build CSV from available analytics data
-      const rows: string[][] = []
-      rows.push(["Metric", "Value"])
-
-      // KPIs
-      const kpis = analytics.kpis.data
-      if (kpis) {
-        rows.push(["Bookings Created", String(kpis.bookings?.created ?? 0)])
-        rows.push(["Bookings Confirmed", String(kpis.bookings?.confirmed ?? 0)])
-        rows.push(["Bookings Completed", String(kpis.bookings?.completed ?? 0)])
-        rows.push(["Revenue Gross", String(kpis.revenue?.gross ?? 0)])
-        rows.push(["Revenue Net", String(kpis.revenue?.net ?? 0)])
-        rows.push(["Revenue Outstanding", String(kpis.revenue?.outstanding ?? 0)])
-        rows.push(["New Customers", String(kpis.customers?.new ?? 0)])
-        rows.push(["Returning Customers", String(kpis.customers?.returning ?? 0)])
-        rows.push(["Average Rating", String(kpis.reviews?.ratingAvg ?? 0)])
-        rows.push(["Staff Utilisation", String(kpis.staffUtilisation ?? 0)])
-      }
-
-      const csvContent = rows
-        .map((row) => row.map((cell) => `"${cell.replace(/"/g, '""')}"`).join(","))
-        .join("\n")
-
-      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement("a")
-      link.href = url
-      link.download = `analytics-${new Date().toISOString().slice(0, 10)}.csv`
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      URL.revokeObjectURL(url)
-
-      toast.success("Analytics data exported to CSV")
-    } catch (error) {
-      toast.error(`Failed to export analytics: ${error instanceof Error ? error.message : "Unknown error"}`)
-    } finally {
-      setIsExporting(false)
-    }
-  }, [analytics.kpis.data, analytics.bookingsByStatus.data, analytics.topServices.data])
-
-  // Check if we have any data loading
-  const isAnyLoading =
-    analytics.kpis.isLoading ||
-    analytics.revenueChart.isLoading ||
-    analytics.bookingsByStatus.isLoading ||
-    analytics.topServices.isLoading ||
-    analytics.staffUtilization.isLoading ||
-    analytics.churnRisk.isLoading
-
-  // Check if all data has loaded (used for export button state)
-  const hasData =
-    analytics.kpis.data ||
-    analytics.revenueChart.data ||
-    analytics.bookingsByStatus.data ||
-    analytics.topServices.data ||
-    analytics.staffUtilization.data ||
-    analytics.churnRisk.data
-
-  // ---------------------------------------------------------------------------
-  // Render
-  // ---------------------------------------------------------------------------
+  const maxRev = Math.max(...REVENUE_MONTHS.map(m => m.paid + m.outstanding))
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      {/* Page Header with Date Range Picker and Export Menu */}
-      <PageHeader
-        title="Analytics Dashboard"
-        description="Insights and metrics for your business performance"
-      >
-        <DateRangePicker
-          value={dateRange}
-          onChange={handleDateRangeChange}
-          onReset={handleDateRangeReset}
-        />
-        <ExportMenu
-          onExport={handleExport}
-          disabled={!hasData}
-          isExporting={isExporting}
-        />
-      </PageHeader>
-
-      {/* KPI Cards - 4 column grid (responsive) */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {analytics.kpis.isLoading ? (
-          // Loading skeletons
-          <>
-            <KPICardSkeleton />
-            <KPICardSkeleton />
-            <KPICardSkeleton />
-            <KPICardSkeleton />
-          </>
-        ) : analytics.kpis.error ? (
-          // Error state
-          <ErrorCard message="Failed to load KPIs" colSpan={4} />
-        ) : analytics.kpis.data ? (
-          // Render KPI cards from summary data
-          <>
-            <KPICard
-              label="Bookings"
-              value={analytics.kpis.data.bookings.created}
-              change={0}
-              trend="neutral"
-              period={analytics.kpis.data.period}
-            />
-            <KPICard
-              label="Revenue"
-              value={`£${analytics.kpis.data.revenue.gross}`}
-              change={0}
-              trend="neutral"
-              period={analytics.kpis.data.period}
-            />
-            <KPICard
-              label="New Customers"
-              value={analytics.kpis.data.customers.new}
-              change={0}
-              trend="neutral"
-              period={analytics.kpis.data.period}
-            />
-            <KPICard
-              label="Avg. Rating"
-              value={analytics.kpis.data.reviews.ratingAvg || "N/A"}
-              change={0}
-              trend="neutral"
-              period={analytics.kpis.data.period}
-            />
-          </>
-        ) : (
-          // Empty state
-          <EmptyCard message="No KPI data available" colSpan={4} />
-        )}
+    <div style={{ padding: "24px 28px 48px", maxWidth: 1400, margin: "0 auto" }}>
+      {/* Header */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 24, gap: 24, flexWrap: "wrap" }}>
+        <div>
+          <div className="ih-eyebrow" style={{ marginBottom: 8 }}>Intelligence &middot; analytics</div>
+          <h1 className="ih-serif" style={{ margin: 0, fontSize: 38, lineHeight: 0.98 }}>
+            May 2026. Your business <span className="ih-italic-red">at a glance.</span>
+          </h1>
+        </div>
+        <div style={{ display: "flex", gap: 6 }}>
+          <button className="ih-btn ih-btn-ghost ih-btn-sm"><Icon name="calendar" size={12}/> May 2026</button>
+          <button className="ih-btn ih-btn-ghost ih-btn-sm"><Icon name="download" size={12}/> Export</button>
+        </div>
       </div>
 
-      {/* Revenue Chart - Full width */}
-      <section aria-labelledby="revenue-chart-title">
-        <h2 id="revenue-chart-title" className="sr-only">
-          Revenue Chart
-        </h2>
-        <RevenueChart
-          data={analytics.revenueChart.data as any}
-          isLoading={analytics.revenueChart.isLoading}
-          isError={!!analytics.revenueChart.error}
-        />
-      </section>
-
-      {/* 2-Column Grid: Status Donut + Top Services Bar Chart */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        {/* Bookings by Status - Donut Chart */}
-        <section aria-labelledby="status-chart-title">
-          <h2 id="status-chart-title" className="sr-only">
-            Bookings by Status
-          </h2>
-          <StatusDonutChart
-            data={analytics.bookingsByStatus.data as any}
-            isLoading={analytics.bookingsByStatus.isLoading}
-          />
-        </section>
-
-        {/* Top Services - Bar Chart */}
-        <section aria-labelledby="top-services-title">
-          <h2 id="top-services-title" className="sr-only">
-            Top Services
-          </h2>
-          <TopServicesChart
-            data={analytics.topServices.data as any}
-            isLoading={analytics.topServices.isLoading}
-          />
-        </section>
-      </div>
-
-      {/* Staff Utilization Heatmap - Full width */}
-      <section aria-labelledby="utilization-title">
-        <h2 id="utilization-title" className="sr-only">
-          Staff Utilization
-        </h2>
-        <StaffUtilizationHeatmap
-          data={analytics.staffUtilization.data as any}
-          isLoading={analytics.staffUtilization.isLoading}
-          isError={!!analytics.staffUtilization.error}
-        />
-      </section>
-
-      {/* Churn Risk Table - Full width */}
-      <section aria-labelledby="churn-risk-title">
-        <h2 id="churn-risk-title" className="sr-only">
-          Churn Risk Customers
-        </h2>
-        <Card className="p-6">
-          <ChurnRiskTable
-            filters={{
-              from: filters.from,
-              to: filters.to,
-            }}
-          />
-        </Card>
-      </section>
-    </div>
-  )
-}
-
-// ---------------------------------------------------------------------------
-// Loading Skeleton Components
-// ---------------------------------------------------------------------------
-
-function KPICardSkeleton() {
-  return (
-    <Card className="overflow-hidden">
-      <div className="p-6">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex-1 min-w-0 space-y-3">
-            <Skeleton className="h-4 w-24" />
-            <Skeleton className="h-8 w-32" />
+      {/* 6 headline stats */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 10, marginBottom: 28 }}>
+        {[
+          { l: "Revenue", v: "\u00a348k", d: "+14%", h: "MoM", icon: "money" as const },
+          { l: "Active clients", v: "12", d: "+2", h: "this quarter", icon: "users" as const },
+          { l: "Pipeline value", v: "\u00a3184k", d: "+\u00a322k", h: "weighted", icon: "pipeline" as const },
+          { l: "Avg engagement", v: "4.2mo", d: "+0.3", h: "vs last year", icon: "clock" as const },
+          { l: "Hours delivered", v: "192h", d: "+38h", h: "this month", icon: "bolt" as const },
+          { l: "NPS score", v: "72", d: "+4", h: "last 90d", icon: "star" as const },
+        ].map((s) => (
+          <div key={s.l} className="ih-card" style={{ padding: "14px 14px", cursor: "pointer" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+              <span className="ih-eyebrow">{s.l}</span>
+              <Icon name={s.icon} size={12} style={{ color: "var(--ih-ink-30)" }} />
+            </div>
+            <div className="ih-serif" style={{ fontSize: 28, lineHeight: 1 }}>{s.v}</div>
+            <div style={{ marginTop: 6, fontSize: 10.5, color: "var(--ih-ink-50)", display: "flex", gap: 5, alignItems: "center" }}>
+              <span style={{ color: "var(--ih-ok)", fontWeight: 500 }} className="ih-mono">{s.d}</span>
+              <span>{s.h}</span>
+            </div>
           </div>
-          <Skeleton className="h-12 w-16 shrink-0" />
-        </div>
-        <Skeleton className="h-3 w-20 mt-4" />
+        ))}
       </div>
-    </Card>
-  )
-}
 
-function ErrorCard({ message, colSpan }: { message: string; colSpan?: number }) {
-  return (
-    <Card
-      className={`p-6 border-destructive/30 bg-destructive/5 ${colSpan ? `col-span-full lg:col-span-${colSpan}` : ""}`}
-    >
-      <div className="flex items-center justify-center h-24">
-        <div className="text-center">
-          <p className="text-sm font-medium text-destructive">{message}</p>
-          <p className="text-xs text-muted-foreground mt-1">
-            Please try refreshing the page
-          </p>
+      {/* Three sections row */}
+      <div style={{ display: "grid", gridTemplateColumns: "1.4fr 0.8fr 0.8fr", gap: 14, marginBottom: 28 }}>
+        {/* Revenue trend */}
+        <div className="ih-card">
+          <div style={{ padding: "14px 18px", borderBottom: "1px solid var(--ih-line)" }}>
+            <span className="ih-eyebrow">Revenue trend</span>
+            <h3 style={{ margin: "2px 0 0", fontSize: 15, fontWeight: 600 }}>6-month overview</h3>
+          </div>
+          <div style={{ padding: "20px 18px 14px" }}>
+            <div style={{ display: "flex", gap: 4, alignItems: "flex-end", height: 160 }}>
+              {REVENUE_MONTHS.map((m) => {
+                const total = m.paid + m.outstanding
+                const paidH = (m.paid / maxRev) * 140
+                const outH = (m.outstanding / maxRev) * 140
+                return (
+                  <div key={m.month} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 0 }}>
+                    <div style={{ display: "flex", flexDirection: "column", justifyContent: "flex-end", height: 140, width: "100%", gap: 1 }}>
+                      <div style={{ height: outH, background: "var(--ih-warn-soft)", borderRadius: "4px 4px 0 0", minHeight: outH > 0 ? 4 : 0 }} />
+                      <div style={{ height: paidH, background: "var(--ih-ok)", borderRadius: outH > 0 ? "0" : "4px 4px 0 0", opacity: 0.8 }} />
+                    </div>
+                    <div className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-40)", marginTop: 8 }}>{m.month}</div>
+                    <div className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-50)", fontWeight: 500 }}>&pound;{total}k</div>
+                  </div>
+                )
+              })}
+            </div>
+            <div style={{ display: "flex", gap: 16, marginTop: 14, paddingTop: 12, borderTop: "1px solid var(--ih-line)" }}>
+              <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11 }}>
+                <div style={{ width: 10, height: 10, borderRadius: 2, background: "var(--ih-ok)", opacity: 0.8 }} /> Collected
+              </span>
+              <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11 }}>
+                <div style={{ width: 10, height: 10, borderRadius: 2, background: "var(--ih-warn-soft)" }} /> Outstanding
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Client health distribution */}
+        <div className="ih-card">
+          <div style={{ padding: "14px 18px", borderBottom: "1px solid var(--ih-line)" }}>
+            <span className="ih-eyebrow">Client health</span>
+            <h3 style={{ margin: "2px 0 0", fontSize: 15, fontWeight: 600 }}>Distribution</h3>
+          </div>
+          <div style={{ padding: 18, display: "grid", gap: 8 }}>
+            {HEALTH_GRADES.map((g) => (
+              <div key={g.grade} style={{
+                display: "flex", alignItems: "center", gap: 12,
+                padding: "10px 14px", borderRadius: "var(--ih-r-md)",
+                background: g.tone === "ok" ? "var(--ih-ok-soft)" : g.tone === "warn" ? "var(--ih-warn-soft)" : g.tone === "danger" ? "var(--ih-danger-soft)" : "var(--ih-surface-2)",
+              }}>
+                <span className="ih-serif" style={{ fontSize: 24, width: 28, textAlign: "center", color: g.tone === "ok" ? "var(--ih-ok)" : g.tone === "warn" ? "var(--ih-warn)" : g.tone === "danger" ? "var(--ih-danger)" : "var(--ih-ink-40)" }}>{g.grade}</span>
+                <div style={{ flex: 1 }}>
+                  <div className="ih-mono" style={{ fontSize: 12, fontWeight: 500 }}>{g.count} client{g.count !== 1 ? "s" : ""}</div>
+                </div>
+                <div style={{ width: 40, height: 4, background: "rgba(0,0,0,0.06)", borderRadius: 2, overflow: "hidden" }}>
+                  <div style={{ width: `${(g.count / 4) * 100}%`, height: "100%", background: g.tone === "ok" ? "var(--ih-ok)" : g.tone === "warn" ? "var(--ih-warn)" : g.tone === "danger" ? "var(--ih-danger)" : "var(--ih-ink-30)" }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Engagement pipeline */}
+        <div className="ih-card">
+          <div style={{ padding: "14px 18px", borderBottom: "1px solid var(--ih-line)" }}>
+            <span className="ih-eyebrow">Pipeline</span>
+            <h3 style={{ margin: "2px 0 0", fontSize: 15, fontWeight: 600 }}>Engagement funnel</h3>
+          </div>
+          <div style={{ padding: 18, display: "grid", gap: 8 }}>
+            {PIPELINE_STAGES.map((s) => (
+              <div key={s.stage}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                  <span style={{ fontSize: 11, color: "var(--ih-ink-65)" }}>{s.stage}</span>
+                  <span className="ih-mono" style={{ fontSize: 11, fontWeight: 500 }}>{s.count}</span>
+                </div>
+                <div style={{ height: 6, background: "var(--ih-surface-2)", borderRadius: 3, overflow: "hidden" }}>
+                  <div style={{ width: `${s.maxWidth}%`, height: "100%", background: s.tone === "ok" ? "var(--ih-ok)" : s.tone === "warn" ? "var(--ih-warn)" : s.tone === "accent" ? "var(--ih-accent)" : "var(--ih-info)" }} />
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
-    </Card>
-  )
-}
 
-function EmptyCard({ message, colSpan }: { message: string; colSpan?: number }) {
-  return (
-    <Card
-      className={`p-6 border-dashed ${colSpan ? `col-span-full lg:col-span-${colSpan}` : ""}`}
-    >
-      <div className="flex items-center justify-center h-24">
-        <p className="text-sm text-muted-foreground">{message}</p>
+      {/* Top 5 clients by revenue */}
+      <div className="ih-card" style={{ overflow: "hidden" }}>
+        <div style={{ padding: "14px 18px", borderBottom: "1px solid var(--ih-line)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div>
+            <span className="ih-eyebrow">Leaderboard</span>
+            <h3 style={{ margin: "2px 0 0", fontSize: 15, fontWeight: 600 }}>Top 5 clients by revenue</h3>
+          </div>
+          <button className="ih-btn ih-btn-quiet ih-btn-sm">View all &rarr;</button>
+        </div>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+          <thead>
+            <tr style={{ background: "var(--ih-surface-2)" }}>
+              <th style={{ ...TH, paddingLeft: 18, width: 40 }}>#</th>
+              <th style={TH}>Client</th>
+              <th style={TH}>Revenue</th>
+              <th style={TH}>Engagements</th>
+              <th style={TH}>Health</th>
+              <th style={TH}>Share</th>
+            </tr>
+          </thead>
+          <tbody>
+            {TOP_CLIENTS.map((c, i) => {
+              const totalRev = TOP_CLIENTS.reduce((sum, cl) => sum + cl.revenue, 0)
+              const share = Math.round((c.revenue / totalRev) * 100)
+              return (
+                <tr key={c.name} style={{ borderTop: "1px solid var(--ih-line)" }}>
+                  <td style={{ padding: "10px 12px 10px 18px" }}>
+                    <span className="ih-mono" style={{ fontSize: 14, color: "var(--ih-ink-30)" }}>{i + 1}</span>
+                  </td>
+                  <td style={{ padding: "10px 12px", fontWeight: 500 }}>{c.name}</td>
+                  <td style={{ padding: "10px 12px" }}>
+                    <span className="ih-mono" style={{ fontSize: 12, fontWeight: 500 }}>&pound;{c.revenue.toLocaleString()}</span>
+                  </td>
+                  <td style={{ padding: "10px 12px" }}>
+                    <span className="ih-mono" style={{ fontSize: 12 }}>{c.engagements}</span>
+                  </td>
+                  <td style={{ padding: "10px 12px" }}>
+                    <span className={`ih-dot ih-dot-${c.health}`} />
+                  </td>
+                  <td style={{ padding: "10px 12px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <div style={{ width: 60, height: 4, background: "var(--ih-surface-2)", borderRadius: 2, overflow: "hidden" }}>
+                        <div style={{ width: `${share}%`, height: "100%", background: "var(--ih-accent)" }} />
+                      </div>
+                      <span className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-50)" }}>{share}%</span>
+                    </div>
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
       </div>
-    </Card>
+    </div>
   )
 }

@@ -1,1190 +1,186 @@
 "use client"
 
-import { useState, useCallback } from "react"
-import { toast } from "sonner"
-import {
-  Plus,
-  MoreHorizontal,
-  ChevronLeft,
-  ChevronRight,
-  RefreshCw,
-  Send,
-  CreditCard,
-  Ban,
-  Eye,
-} from "lucide-react"
-import { api } from "@/lib/trpc/react"
-import { PageHeader } from "@/components/ui/page-header"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
-import { Skeleton } from "@/components/ui/skeleton"
-import { EmptyState } from "@/components/ui/empty-state"
-import { Label } from "@/components/ui/label"
-import { Separator } from "@/components/ui/separator"
-import { Textarea } from "@/components/ui/textarea"
-import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-  TableCell,
-} from "@/components/ui/table"
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-} from "@/components/ui/sheet"
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog"
+import { Icon } from "@/components/shell"
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
+/* ── Data ────────────────────────────────────────────────────────────────── */
 
-type InvoiceStatus =
-  | "DRAFT"
-  | "SENT"
-  | "VIEWED"
-  | "PARTIALLY_PAID"
-  | "OVERDUE"
-  | "PAID"
-  | "VOID"
-  | "REFUNDED"
-
-type PaymentMethod = "CARD" | "BANK_TRANSFER" | "DIRECT_DEBIT" | "CASH"
-
-type StatusFilter = "ALL" | InvoiceStatus
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-const PAGE_SIZE = 20
-
-function formatCurrency(amountInPence: number | string): string {
-  const numeric =
-    typeof amountInPence === "string"
-      ? parseFloat(amountInPence)
-      : amountInPence
-  return new Intl.NumberFormat("en-GB", {
-    style: "currency",
-    currency: "GBP",
-  }).format(numeric)
+type Invoice = {
+  id: string; number: string; client: string; description: string;
+  amount: number; issued: string; due: string;
+  status: "paid" | "sent" | "overdue" | "draft"; method: string;
 }
 
-function formatDate(date: Date | string | null | undefined): string {
-  if (!date) return " - "
-  const d = typeof date === "string" ? new Date(date) : date
-  return d.toLocaleDateString("en-GB", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  })
-}
-
-function formatRelativeDate(date: Date | string | null | undefined): string {
-  if (!date) return " - "
-  const d = typeof date === "string" ? new Date(date) : date
-  const now = new Date()
-  const diffMs = now.getTime() - d.getTime()
-  const diffDays = Math.floor(Math.abs(diffMs) / (1000 * 60 * 60 * 24))
-  const isFuture = diffMs < 0
-
-  if (diffDays === 0) return "Today"
-
-  if (isFuture) {
-    if (diffDays === 1) return "Tomorrow"
-    if (diffDays < 7) return `in ${diffDays} days`
-    if (diffDays < 30) return `in ${Math.floor(diffDays / 7)}w`
-    if (diffDays < 365) return `in ${Math.floor(diffDays / 30)}mo`
-    return `in ${Math.floor(diffDays / 365)}y`
-  }
-
-  if (diffDays === 1) return "Yesterday"
-  if (diffDays < 7) return `${diffDays} days ago`
-  if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`
-  if (diffDays < 365) return `${Math.floor(diffDays / 30)}mo ago`
-  return `${Math.floor(diffDays / 365)}y ago`
-}
-
-const STATUS_BADGE_VARIANT: Record<
-  InvoiceStatus,
-  "default" | "secondary" | "success" | "destructive" | "outline" | "warning"
-> = {
-  DRAFT: "secondary",
-  SENT: "default",
-  VIEWED: "default",
-  PARTIALLY_PAID: "warning",
-  OVERDUE: "destructive",
-  PAID: "success",
-  VOID: "secondary",
-  REFUNDED: "outline",
-}
-
-const STATUS_LABELS: Record<InvoiceStatus, string> = {
-  DRAFT: "Draft",
-  SENT: "Sent",
-  VIEWED: "Viewed",
-  PARTIALLY_PAID: "Partial",
-  OVERDUE: "Overdue",
-  PAID: "Paid",
-  VOID: "Void",
-  REFUNDED: "Refunded",
-}
-
-const FILTER_OPTIONS: { label: string; value: StatusFilter }[] = [
-  { label: "All", value: "ALL" },
-  { label: "Draft", value: "DRAFT" },
-  { label: "Sent", value: "SENT" },
-  { label: "Overdue", value: "OVERDUE" },
-  { label: "Paid", value: "PAID" },
-  { label: "Void", value: "VOID" },
+const INVOICES: Invoice[] = [
+  { id: "inv-1", number: "INV-2041", client: "Northwind Logistics", description: "Q2 retainer \u00b7 Month 2", amount: 14200, issued: "Apr 28", due: "May 12", status: "sent", method: "Stripe" },
+  { id: "inv-2", number: "INV-2039", client: "Northwind Logistics", description: "Q2 retainer \u00b7 Month 1", amount: 14200, issued: "Mar 28", due: "Apr 11", status: "paid", method: "Stripe" },
+  { id: "inv-3", number: "INV-2035", client: "Vellum & Co.", description: "Portal rebuild \u00b7 Sprint 3", amount: 16000, issued: "Apr 15", due: "Apr 29", status: "paid", method: "Bank transfer" },
+  { id: "inv-4", number: "INV-2032", client: "Castor Foods", description: "Customer ops audit", amount: 22000, issued: "Apr 10", due: "Apr 24", status: "paid", method: "Stripe" },
+  { id: "inv-5", number: "INV-2028", client: "Brigham Architects", description: "Workflow rebuild \u00b7 Phase 2", amount: 4000, issued: "Mar 20", due: "Apr 03", status: "overdue", method: "Bank transfer" },
+  { id: "inv-6", number: "INV-2024", client: "Arden Health", description: "Booking system audit", amount: 38000, issued: "Mar 12", due: "Mar 26", status: "paid", method: "Stripe" },
+  { id: "inv-7", number: "INV-2050", client: "Olsen Brands", description: "Discovery sprint", amount: 8400, issued: "May 8", due: "May 22", status: "draft", method: "\u2014" },
+  { id: "inv-8", number: "INV-2020", client: "Bowery Mills", description: "Monthly retainer \u00b7 April", amount: 4200, issued: "Apr 01", due: "Apr 15", status: "paid", method: "Stripe" },
 ]
 
-const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
-  CARD: "Card",
-  BANK_TRANSFER: "Bank Transfer",
-  DIRECT_DEBIT: "Direct Debit",
-  CASH: "Cash",
+type OverdueItem = {
+  id: string; client: string; amount: number; daysOverdue: number; lastChase: string;
 }
 
-// ---------------------------------------------------------------------------
-// Table skeleton
-// ---------------------------------------------------------------------------
+const OVERDUE: OverdueItem[] = [
+  { id: "od-1", client: "Brigham Architects", amount: 4000, daysOverdue: 37, lastChase: "3 reminders sent \u00b7 no reply" },
+  { id: "od-2", client: "Sea Glass Studio", amount: 1800, daysOverdue: 14, lastChase: "1 reminder sent \u00b7 opened" },
+  { id: "od-3", client: "Greystone Digital", amount: 600, daysOverdue: 8, lastChase: "Invoice sent \u00b7 not opened" },
+]
 
-function TableRowSkeleton() {
-  return (
-    <TableRow>
-      <TableCell><Skeleton className="h-4 w-28" /></TableCell>
-      <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-      <TableCell><Skeleton className="h-4 w-20" /></TableCell>
-      <TableCell><Skeleton className="h-5 w-16 rounded-md" /></TableCell>
-      <TableCell><Skeleton className="h-4 w-20" /></TableCell>
-      <TableCell><Skeleton className="h-4 w-20" /></TableCell>
-      <TableCell><Skeleton className="h-7 w-7 rounded-md" /></TableCell>
-    </TableRow>
-  )
-}
+const STATUS_TONE: Record<string, string> = { paid: "ok", sent: "warn", overdue: "danger", draft: "muted" }
 
-// ---------------------------------------------------------------------------
-// Invoice row
-// ---------------------------------------------------------------------------
+const TH: React.CSSProperties = { textAlign: "left", padding: "10px 12px", fontWeight: 500, fontSize: 10, color: "var(--ih-ink-40)", textTransform: "uppercase", letterSpacing: "0.12em", fontFamily: "var(--ih-font-mono)" }
 
-interface InvoiceRowProps {
-  invoice: Record<string, any>
-  onView: (id: string) => void
-  onSend: (invoice: Record<string, any>) => void
-  onRecordPayment: (invoice: Record<string, any>) => void
-  onVoid: (invoice: Record<string, any>) => void
-}
-
-function InvoiceRow({
-  invoice,
-  onView,
-  onSend,
-  onRecordPayment,
-  onVoid,
-}: InvoiceRowProps) {
-  const status = invoice.status as InvoiceStatus
-  const canSend = status === "DRAFT"
-  const canVoid = status !== "VOID" && status !== "PAID" && status !== "REFUNDED"
-  const canRecordPayment =
-    status !== "VOID" && status !== "PAID" && status !== "REFUNDED"
-
-  return (
-    <TableRow
-      className="cursor-pointer"
-      onClick={() => onView(invoice.id)}
-      aria-label={`View invoice ${invoice.invoiceNumber ?? invoice.id.slice(0, 8)}`}
-    >
-      {/* Invoice # */}
-      <TableCell>
-        <span className="font-medium text-sm text-foreground font-mono">
-          {invoice.invoiceNumber ?? invoice.id.slice(0, 8)}
-        </span>
-      </TableCell>
-
-      {/* Customer */}
-      <TableCell>
-        <span className="text-sm text-muted-foreground truncate max-w-[160px] block">
-          {invoice.customerId?.slice(0, 8) ?? " - "}
-        </span>
-      </TableCell>
-
-      {/* Amount */}
-      <TableCell>
-        <span className="text-sm tabular-nums font-medium">
-          {formatCurrency(invoice.totalAmount)}
-        </span>
-      </TableCell>
-
-      {/* Status */}
-      <TableCell>
-        <Badge variant={STATUS_BADGE_VARIANT[status]} className="text-[10px]">
-          {STATUS_LABELS[status] ?? status}
-        </Badge>
-      </TableCell>
-
-      {/* Due Date */}
-      <TableCell>
-        <span className="text-xs text-muted-foreground">
-          {formatDate(invoice.dueDate)}
-        </span>
-      </TableCell>
-
-      {/* Created */}
-      <TableCell>
-        <span className="text-xs text-muted-foreground">
-          {formatRelativeDate(invoice.createdAt)}
-        </span>
-      </TableCell>
-
-      {/* Actions */}
-      <TableCell onClick={(e) => e.stopPropagation()}>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              aria-label={`Actions for invoice ${invoice.invoiceNumber ?? invoice.id.slice(0, 8)}`}
-            >
-              <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => onView(invoice.id)}>
-              <Eye className="h-4 w-4 mr-2" aria-hidden="true" />
-              View Details
-            </DropdownMenuItem>
-            {canSend && (
-              <DropdownMenuItem onClick={() => onSend(invoice)}>
-                <Send className="h-4 w-4 mr-2" aria-hidden="true" />
-                Send Invoice
-              </DropdownMenuItem>
-            )}
-            {canRecordPayment && (
-              <>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => onRecordPayment(invoice)}>
-                  <CreditCard className="h-4 w-4 mr-2" aria-hidden="true" />
-                  Record Payment
-                </DropdownMenuItem>
-              </>
-            )}
-            {canVoid && (
-              <>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => onVoid(invoice)}
-                  className="text-destructive focus:text-destructive"
-                >
-                  <Ban className="h-4 w-4 mr-2" aria-hidden="true" />
-                  Void Invoice
-                </DropdownMenuItem>
-              </>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </TableCell>
-    </TableRow>
-  )
-}
-
-// ---------------------------------------------------------------------------
-// Page
-// ---------------------------------------------------------------------------
+/* ── Page ─────────────────────────────────────────────────────────────────── */
 
 export default function PaymentsPage() {
-  const utils = api.useUtils()
-
-  // Filter + pagination state
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL")
-  const [cursor, setCursor] = useState<string | undefined>(undefined)
-  const [cursorStack, setCursorStack] = useState<string[]>([])
-
-  // Detail sheet state
-  const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null)
-
-  // Create invoice dialog state
-  const [createDialogOpen, setCreateDialogOpen] = useState(false)
-  const [createForm, setCreateForm] = useState({
-    customerId: "",
-    subtotal: "",
-    taxAmount: "",
-    totalAmount: "",
-    currency: "GBP",
-    dueDate: "",
-    notes: "",
-  })
-
-  // Record payment dialog state
-  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false)
-  const [paymentInvoice, setPaymentInvoice] = useState<Record<string, any> | null>(null)
-  const [paymentForm, setPaymentForm] = useState({
-    amount: "",
-    method: "CARD" as PaymentMethod,
-    notes: "",
-  })
-
-  // -------------------------------------------------------------------------
-  // Queries
-  // -------------------------------------------------------------------------
-
-  const { data, isLoading, isError, refetch } = api.payment.listInvoices.useQuery({
-    status: statusFilter === "ALL" ? undefined : statusFilter,
-    limit: PAGE_SIZE,
-    cursor,
-  })
-
-  const rows = data?.rows ?? []
-  const hasMore = data?.hasMore ?? false
-
-  // Detail query (only when sheet is open)
-  const { data: invoiceDetail, isLoading: isDetailLoading } =
-    api.payment.getInvoice.useQuery(
-      { invoiceId: selectedInvoiceId! },
-      { enabled: !!selectedInvoiceId }
-    )
-
-  // -------------------------------------------------------------------------
-  // Mutations
-  // -------------------------------------------------------------------------
-
-  const createInvoiceMutation = api.payment.createInvoice.useMutation({
-    onSuccess: () => {
-      toast.success("Invoice created")
-      setCreateDialogOpen(false)
-      setCreateForm({
-        customerId: "",
-        subtotal: "",
-        taxAmount: "",
-        totalAmount: "",
-        currency: "GBP",
-        dueDate: "",
-        notes: "",
-      })
-      void utils.payment.listInvoices.invalidate()
-    },
-    onError: (err) => {
-      toast.error(err.message ?? "Failed to create invoice")
-    },
-  })
-
-  const sendInvoiceMutation = api.payment.sendInvoice.useMutation({
-    onSuccess: () => {
-      toast.success("Invoice sent")
-      void utils.payment.listInvoices.invalidate()
-      void utils.payment.getInvoice.invalidate()
-    },
-    onError: (err) => {
-      toast.error(err.message ?? "Failed to send invoice")
-    },
-  })
-
-  const voidInvoiceMutation = api.payment.voidInvoice.useMutation({
-    onSuccess: () => {
-      toast.success("Invoice voided")
-      void utils.payment.listInvoices.invalidate()
-      void utils.payment.getInvoice.invalidate()
-    },
-    onError: (err) => {
-      toast.error(err.message ?? "Failed to void invoice")
-    },
-  })
-
-  const recordPaymentMutation = api.payment.recordPayment.useMutation({
-    onSuccess: () => {
-      toast.success("Payment recorded")
-      setPaymentDialogOpen(false)
-      setPaymentInvoice(null)
-      setPaymentForm({ amount: "", method: "CARD", notes: "" })
-      void utils.payment.listInvoices.invalidate()
-      void utils.payment.getInvoice.invalidate()
-    },
-    onError: (err) => {
-      toast.error(err.message ?? "Failed to record payment")
-    },
-  })
-
-  // -------------------------------------------------------------------------
-  // Pagination helpers
-  // -------------------------------------------------------------------------
-
-  function goToNextPage() {
-    if (!hasMore || rows.length === 0) return
-    const nextCursor = rows[rows.length - 1]!.id
-    setCursorStack((prev) => [...prev, cursor ?? ""])
-    setCursor(nextCursor)
-  }
-
-  function goToPrevPage() {
-    if (cursorStack.length === 0) return
-    const prevCursor = cursorStack[cursorStack.length - 1]
-    setCursorStack((prev) => prev.slice(0, -1))
-    setCursor(prevCursor === "" ? undefined : prevCursor)
-  }
-
-  const isFirstPage = cursorStack.length === 0
-
-  // -------------------------------------------------------------------------
-  // Handlers
-  // -------------------------------------------------------------------------
-
-  function handleStatusFilter(status: StatusFilter) {
-    setStatusFilter(status)
-    setCursor(undefined)
-    setCursorStack([])
-  }
-
-  const handleView = useCallback((invoiceId: string) => {
-    setSelectedInvoiceId(invoiceId)
-  }, [])
-
-  const handleSheetClose = useCallback(() => {
-    setSelectedInvoiceId(null)
-  }, [])
-
-  const handleSend = useCallback((invoice: Record<string, any>) => {
-    sendInvoiceMutation.mutate({
-      invoiceId: invoice.id,
-      version: invoice.version,
-    })
-  }, [sendInvoiceMutation])
-
-  const handleVoid = useCallback((invoice: Record<string, any>) => {
-    voidInvoiceMutation.mutate({
-      invoiceId: invoice.id,
-      version: invoice.version,
-    })
-  }, [voidInvoiceMutation])
-
-  const handleRecordPaymentOpen = useCallback((invoice: Record<string, any>) => {
-    setPaymentInvoice(invoice)
-    setPaymentForm({ amount: "", method: "CARD", notes: "" })
-    setPaymentDialogOpen(true)
-  }, [])
-
-  const handleCreateSubmit = useCallback(() => {
-    const subtotal = parseFloat(createForm.subtotal)
-    const taxAmount = parseFloat(createForm.taxAmount || "0")
-    const totalAmount = parseFloat(createForm.totalAmount)
-
-    if (!createForm.customerId || isNaN(subtotal) || isNaN(totalAmount)) {
-      toast.error("Please fill in all required fields")
-      return
-    }
-
-    createInvoiceMutation.mutate({
-      customerId: createForm.customerId,
-      subtotal,
-      taxAmount,
-      totalAmount,
-      currency: createForm.currency,
-      dueDate: createForm.dueDate || undefined,
-      notes: createForm.notes || undefined,
-    })
-  }, [createForm, createInvoiceMutation])
-
-  const handleRecordPaymentSubmit = useCallback(() => {
-    if (!paymentInvoice) return
-
-    const amount = parseFloat(paymentForm.amount)
-    if (isNaN(amount) || amount <= 0) {
-      toast.error("Please enter a valid payment amount")
-      return
-    }
-
-    recordPaymentMutation.mutate({
-      invoiceId: paymentInvoice.id,
-      amount,
-      method: paymentForm.method,
-      notes: paymentForm.notes || undefined,
-    })
-  }, [paymentInvoice, paymentForm, recordPaymentMutation])
-
-  // -------------------------------------------------------------------------
-  // Render
-  // -------------------------------------------------------------------------
-
   return (
-    <div className="space-y-6 animate-fade-in">
-      {/* Page header */}
-      <PageHeader
-        title="Payments"
-        description="Manage invoices and track payments."
-      >
-        <Button
-          size="sm"
-          onClick={() => setCreateDialogOpen(true)}
-          aria-label="Create a new invoice"
-        >
-          <Plus className="h-4 w-4" aria-hidden="true" />
-          New Invoice
-        </Button>
-      </PageHeader>
+    <div style={{ padding: "24px 28px 48px", maxWidth: 1400, margin: "0 auto" }}>
+      {/* Header */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 24, gap: 24, flexWrap: "wrap" }}>
+        <div>
+          <div className="ih-eyebrow" style={{ marginBottom: 8 }}>Finance &middot; invoices & payments</div>
+          <h1 className="ih-serif" style={{ margin: 0, fontSize: 38, lineHeight: 0.98 }}>
+            &pound;184k invoiced. <span className="ih-italic-red">&pound;142k</span> collected.
+          </h1>
+        </div>
+        <div style={{ display: "flex", gap: 6 }}>
+          <button className="ih-btn ih-btn-ghost ih-btn-sm"><Icon name="download" size={12}/> Export</button>
+          <button className="ih-btn ih-btn-primary ih-btn-sm"><Icon name="plus" size={12}/> New invoice</button>
+        </div>
+      </div>
 
-      {/* Status filter chips */}
-      <div className="flex items-center gap-2 flex-wrap">
-        {FILTER_OPTIONS.map((opt) => (
-          <button
-            key={opt.value}
-            type="button"
-            onClick={() => handleStatusFilter(opt.value)}
-            className={[
-              "inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold transition-colors",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-              statusFilter === opt.value
-                ? "bg-primary text-primary-foreground border-transparent shadow"
-                : "border-input bg-background text-foreground hover:bg-accent",
-            ].join(" ")}
-            aria-pressed={statusFilter === opt.value}
-          >
-            {opt.label}
-          </button>
+      {/* Stat cards */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 10, marginBottom: 24 }}>
+        {[
+          { l: "Total invoiced", v: "\u00a3184k", d: "+12%", h: "this quarter", icon: "invoice" as const, tone: "var(--ih-ink)" },
+          { l: "Collected", v: "\u00a3142k", d: "+\u00a318k", h: "this month", icon: "check" as const, tone: "var(--ih-ok)" },
+          { l: "Outstanding", v: "\u00a328.4k", d: "6 invoices", h: "awaiting payment", icon: "clock" as const, tone: "var(--ih-warn)" },
+          { l: "Overdue", v: "\u00a36.4k", d: "3 invoices", h: "chase required", icon: "flag" as const, tone: "var(--ih-danger)" },
+          { l: "Avg days to pay", v: "14d", d: "\u22122d", h: "improving", icon: "bolt" as const, tone: "var(--ih-ink)" },
+        ].map((s) => (
+          <div key={s.l} className="ih-card" style={{ padding: "14px 14px", cursor: "pointer" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+              <span className="ih-eyebrow">{s.l}</span>
+              <Icon name={s.icon} size={12} style={{ color: "var(--ih-ink-30)" }} />
+            </div>
+            <div className="ih-serif" style={{ fontSize: 28, lineHeight: 1, color: s.tone }}>{s.v}</div>
+            <div style={{ marginTop: 6, fontSize: 10.5, color: "var(--ih-ink-50)", display: "flex", gap: 5, alignItems: "center" }}>
+              <span style={{ color: s.tone === "var(--ih-danger)" ? "var(--ih-danger)" : "var(--ih-ok)", fontWeight: 500 }} className="ih-mono">{s.d}</span>
+              <span>{s.h}</span>
+            </div>
+          </div>
         ))}
       </div>
 
-      {/* Content */}
-      <div className="rounded-xl border border-border overflow-hidden">
-        {isError ? (
-          <div className="flex flex-col items-center justify-center py-16 gap-3">
-            <p className="text-sm text-destructive font-medium">
-              Failed to load invoices
-            </p>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => void refetch()}
-              className="gap-1.5"
-            >
-              <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
-              Retry
-            </Button>
+      {/* Two-column: Invoices + Overdue chase */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: 14 }}>
+        {/* Invoice table */}
+        <div className="ih-card" style={{ overflow: "hidden" }}>
+          <div style={{ padding: "14px 18px", borderBottom: "1px solid var(--ih-line)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div>
+              <span className="ih-eyebrow">All invoices</span>
+              <h3 style={{ margin: "2px 0 0", fontSize: 15, fontWeight: 600 }}>Ledger</h3>
+            </div>
+            <div style={{ display: "flex", gap: 6 }}>
+              <button className="ih-btn ih-btn-quiet ih-btn-sm"><Icon name="filter" size={11}/> Filter</button>
+              <button className="ih-btn ih-btn-quiet ih-btn-sm"><Icon name="search" size={11}/></button>
+            </div>
           </div>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[160px]">Invoice #</TableHead>
-                <TableHead className="w-[140px]">Customer</TableHead>
-                <TableHead className="w-[120px]">Amount</TableHead>
-                <TableHead className="w-[100px]">Status</TableHead>
-                <TableHead className="w-[120px]">Due Date</TableHead>
-                <TableHead className="w-[100px]">Created</TableHead>
-                <TableHead className="w-[48px]">
-                  <span className="sr-only">Actions</span>
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                Array.from({ length: 8 }).map((_, i) => (
-                  <TableRowSkeleton key={i} />
-                ))
-              ) : rows.length === 0 ? (
-                <TableRow>
-                  <td colSpan={7} className="p-0">
-                    <EmptyState
-                      variant="documents"
-                      title="No invoices yet"
-                      description="Create your first invoice to start tracking payments."
-                      action={{
-                        label: "New Invoice",
-                        onClick: () => setCreateDialogOpen(true),
-                      }}
-                    />
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+            <thead>
+              <tr style={{ background: "var(--ih-surface-2)" }}>
+                <th style={{ ...TH, paddingLeft: 18 }}>Number</th>
+                <th style={TH}>Client</th>
+                <th style={TH}>Description</th>
+                <th style={TH}>Amount</th>
+                <th style={TH}>Issued</th>
+                <th style={TH}>Due</th>
+                <th style={TH}>Status</th>
+                <th style={TH}>Method</th>
+              </tr>
+            </thead>
+            <tbody>
+              {INVOICES.map((inv) => (
+                <tr key={inv.id} style={{ borderTop: "1px solid var(--ih-line)", cursor: "pointer" }}>
+                  <td style={{ padding: "10px 12px 10px 18px" }}>
+                    <span className="ih-mono" style={{ fontSize: 11, fontWeight: 500 }}>{inv.number}</span>
                   </td>
-                </TableRow>
-              ) : (
-                rows.map((invoice) => (
-                  <InvoiceRow
-                    key={invoice.id}
-                    invoice={invoice}
-                    onView={handleView}
-                    onSend={handleSend}
-                    onRecordPayment={handleRecordPaymentOpen}
-                    onVoid={handleVoid}
-                  />
-                ))
-              )}
-            </TableBody>
-          </Table>
-        )}
-      </div>
-
-      {/* Pagination */}
-      {!isLoading && !isError && rows.length > 0 && (
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span>
-            Showing {rows.length} invoice{rows.length !== 1 ? "s" : ""}
-          </span>
-          <div className="flex items-center gap-1">
-            <Button
-              variant="outline"
-              size="icon-sm"
-              onClick={goToPrevPage}
-              disabled={isFirstPage}
-              aria-label="Previous page"
-            >
-              <ChevronLeft className="h-4 w-4" aria-hidden="true" />
-            </Button>
-            <Button
-              variant="outline"
-              size="icon-sm"
-              onClick={goToNextPage}
-              disabled={!hasMore}
-              aria-label="Next page"
-            >
-              <ChevronRight className="h-4 w-4" aria-hidden="true" />
-            </Button>
+                  <td style={{ padding: "10px 12px", fontWeight: 500 }}>{inv.client}</td>
+                  <td style={{ padding: "10px 12px", color: "var(--ih-ink-65)" }}>{inv.description}</td>
+                  <td style={{ padding: "10px 12px" }}>
+                    <span className="ih-mono" style={{ fontSize: 12, fontWeight: 500 }}>&pound;{inv.amount.toLocaleString()}</span>
+                  </td>
+                  <td style={{ padding: "10px 12px" }}><span className="ih-mono" style={{ fontSize: 11, color: "var(--ih-ink-50)" }}>{inv.issued}</span></td>
+                  <td style={{ padding: "10px 12px" }}><span className="ih-mono" style={{ fontSize: 11, color: inv.status === "overdue" ? "var(--ih-danger)" : "var(--ih-ink-50)" }}>{inv.due}</span></td>
+                  <td style={{ padding: "10px 12px" }}>
+                    <span className={`ih-pill ih-pill-${STATUS_TONE[inv.status]}`} style={{ fontSize: 9, padding: "2px 6px" }}>{inv.status}</span>
+                  </td>
+                  <td style={{ padding: "10px 12px" }}>
+                    <span className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-40)" }}>{inv.method}</span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div style={{ padding: "10px 18px", borderTop: "1px solid var(--ih-line)", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11, color: "var(--ih-ink-50)" }}>
+            <span>8 invoices</span>
+            <div style={{ display: "flex", gap: 4 }}>
+              <button className="ih-btn ih-btn-quiet ih-btn-icon" style={{ height: 22, width: 22 }}><Icon name="chevronLeft" size={11}/></button>
+              <button className="ih-btn ih-btn-quiet ih-btn-icon" style={{ height: 22, width: 22 }}><Icon name="chevronRight" size={11}/></button>
+            </div>
           </div>
         </div>
-      )}
 
-      {/* ----------------------------------------------------------------- */}
-      {/* Detail sheet                                                       */}
-      {/* ----------------------------------------------------------------- */}
-      <Sheet
-        open={!!selectedInvoiceId}
-        onOpenChange={(open) => {
-          if (!open) handleSheetClose()
-        }}
-      >
-        <SheetContent className="overflow-y-auto sm:max-w-md">
-          <SheetHeader>
-            <SheetTitle>
-              {invoiceDetail?.invoiceNumber ??
-                selectedInvoiceId?.slice(0, 8) ??
-                "Invoice"}
-            </SheetTitle>
-            <SheetDescription>Invoice details and payment history</SheetDescription>
-          </SheetHeader>
-
-          {isDetailLoading ? (
-            <div className="mt-6 space-y-4">
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-3/4" />
-              <Skeleton className="h-4 w-1/2" />
-              <Skeleton className="h-20 w-full" />
-            </div>
-          ) : invoiceDetail ? (
-            <div className="mt-6 space-y-6">
-              {/* Status + amounts */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Status</span>
-                  <Badge
-                    variant={
-                      STATUS_BADGE_VARIANT[
-                        invoiceDetail.status as InvoiceStatus
-                      ]
-                    }
-                    className="text-[10px]"
-                  >
-                    {STATUS_LABELS[invoiceDetail.status as InvoiceStatus] ??
-                      invoiceDetail.status}
-                  </Badge>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">
-                    Subtotal
-                  </span>
-                  <span className="text-sm tabular-nums font-medium">
-                    {formatCurrency(invoiceDetail.subtotal)}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Tax</span>
-                  <span className="text-sm tabular-nums">
-                    {formatCurrency(invoiceDetail.taxAmount)}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">
-                    Discount
-                  </span>
-                  <span className="text-sm tabular-nums">
-                    {formatCurrency(invoiceDetail.discountAmount ?? 0)}
-                  </span>
-                </div>
-                <Separator />
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Total</span>
-                  <span className="text-sm tabular-nums font-semibold">
-                    {formatCurrency(invoiceDetail.totalAmount)}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">
-                    Amount Paid
-                  </span>
-                  <span className="text-sm tabular-nums text-success">
-                    {formatCurrency(invoiceDetail.amountPaid)}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">
-                    Amount Due
-                  </span>
-                  <span className="text-sm tabular-nums font-medium">
-                    {formatCurrency(invoiceDetail.amountDue)}
-                  </span>
-                </div>
+        {/* Overdue chase queue */}
+        <div>
+          <div className="ih-card" style={{ overflow: "hidden" }}>
+            <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--ih-line)", background: "var(--ih-danger-soft)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <Icon name="flag" size={13} style={{ color: "var(--ih-danger)" }} />
+                <span className="ih-eyebrow" style={{ color: "var(--ih-danger)" }}>Chase queue &middot; overdue</span>
               </div>
-
-              <Separator />
-
-              {/* Dates */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">
-                    Issue Date
-                  </span>
-                  <span className="text-sm">
-                    {formatDate(invoiceDetail.issueDate)}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">
-                    Due Date
-                  </span>
-                  <span className="text-sm">
-                    {formatDate(invoiceDetail.dueDate)}
-                  </span>
-                </div>
-                {invoiceDetail.paidAt && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">
-                      Paid At
-                    </span>
-                    <span className="text-sm">
-                      {formatDate(invoiceDetail.paidAt)}
-                    </span>
+              <div className="ih-serif" style={{ fontSize: 20, marginTop: 4, color: "var(--ih-danger)" }}>&pound;6,400 outstanding</div>
+            </div>
+            {OVERDUE.map((item, i) => (
+              <div key={item.id} style={{ padding: 16, borderTop: i === 0 ? "0" : "1px solid var(--ih-line)" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 500 }}>{item.client}</div>
+                    <div className="ih-mono" style={{ fontSize: 11, color: "var(--ih-danger)", marginTop: 2 }}>&pound;{item.amount.toLocaleString()} &middot; {item.daysOverdue}d overdue</div>
                   </div>
-                )}
-              </div>
-
-              <Separator />
-
-              {/* IDs */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">
-                    Customer ID
-                  </span>
-                  <span className="text-xs font-mono text-muted-foreground">
-                    {invoiceDetail.customerId?.slice(0, 12)}...
-                  </span>
                 </div>
-                {invoiceDetail.bookingId && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">
-                      Booking ID
-                    </span>
-                    <span className="text-xs font-mono text-muted-foreground">
-                      {invoiceDetail.bookingId.slice(0, 12)}...
-                    </span>
-                  </div>
-                )}
+                <div style={{ fontSize: 11, color: "var(--ih-ink-50)", marginBottom: 10 }}>{item.lastChase}</div>
+                <div style={{ display: "flex", gap: 6 }}>
+                  <button className="ih-btn ih-btn-accent ih-btn-sm"><Icon name="mail" size={11}/> Chase</button>
+                  <button className="ih-btn ih-btn-ghost ih-btn-sm"><Icon name="phone" size={11}/> Call</button>
+                </div>
               </div>
-
-              {/* Line items */}
-              {Array.isArray(invoiceDetail.lineItems) &&
-                (invoiceDetail.lineItems as Array<Record<string, unknown>>).length > 0 && (
-                  <>
-                    <Separator />
-                    <div className="space-y-2">
-                      <h4 className="text-sm font-medium">Line Items</h4>
-                      <div className="space-y-2">
-                        {(
-                          invoiceDetail.lineItems as Array<Record<string, any>>
-                        ).map((item, idx) => (
-                          <div
-                            key={idx}
-                            className="flex items-center justify-between text-sm"
-                          >
-                            <span className="text-muted-foreground">
-                              {item.description ?? item.name ?? `Item ${idx + 1}`}
-                              {item.quantity && item.quantity > 1
-                                ? ` x${item.quantity}`
-                                : ""}
-                            </span>
-                            <span className="tabular-nums font-medium">
-                              {item.amount != null
-                                ? formatCurrency(item.amount)
-                                : " - "}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </>
-                )}
-
-              {/* Notes */}
-              {invoiceDetail.notes && (
-                <>
-                  <Separator />
-                  <div className="space-y-2">
-                    <h4 className="text-sm font-medium">Notes</h4>
-                    <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                      {invoiceDetail.notes}
-                    </p>
-                  </div>
-                </>
-              )}
-
-              {/* Sheet actions */}
-              <Separator />
-              <div className="flex items-center gap-2">
-                {invoiceDetail.status === "DRAFT" && (
-                  <Button
-                    size="sm"
-                    onClick={() =>
-                      sendInvoiceMutation.mutate({
-                        invoiceId: invoiceDetail.id,
-                        version: invoiceDetail.version,
-                      })
-                    }
-                    disabled={sendInvoiceMutation.isPending}
-                  >
-                    <Send className="h-4 w-4" aria-hidden="true" />
-                    Send
-                  </Button>
-                )}
-                {invoiceDetail.status !== "VOID" &&
-                  invoiceDetail.status !== "PAID" &&
-                  invoiceDetail.status !== "REFUNDED" && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => {
-                        setPaymentInvoice(invoiceDetail)
-                        setPaymentForm({
-                          amount: "",
-                          method: "CARD",
-                          notes: "",
-                        })
-                        setPaymentDialogOpen(true)
-                      }}
-                    >
-                      <CreditCard className="h-4 w-4" aria-hidden="true" />
-                      Record Payment
-                    </Button>
-                  )}
-                {invoiceDetail.status !== "VOID" &&
-                  invoiceDetail.status !== "PAID" &&
-                  invoiceDetail.status !== "REFUNDED" && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="text-destructive hover:text-destructive"
-                      onClick={() =>
-                        voidInvoiceMutation.mutate({
-                          invoiceId: invoiceDetail.id,
-                          version: invoiceDetail.version,
-                        })
-                      }
-                      disabled={voidInvoiceMutation.isPending}
-                    >
-                      <Ban className="h-4 w-4" aria-hidden="true" />
-                      Void
-                    </Button>
-                  )}
-              </div>
-            </div>
-          ) : null}
-        </SheetContent>
-      </Sheet>
-
-      {/* ----------------------------------------------------------------- */}
-      {/* Create invoice dialog                                              */}
-      {/* ----------------------------------------------------------------- */}
-      <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>New Invoice</DialogTitle>
-            <DialogDescription>
-              Create a new invoice. Amounts are entered in pounds (GBP).
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-2">
-            {/* Customer ID */}
-            <div className="space-y-2">
-              <Label htmlFor="create-customer-id">Customer ID</Label>
-              <Input
-                id="create-customer-id"
-                placeholder="Customer UUID"
-                value={createForm.customerId}
-                onChange={(e) =>
-                  setCreateForm((prev) => ({
-                    ...prev,
-                    customerId: e.target.value,
-                  }))
-                }
-              />
-            </div>
-
-            {/* Amounts row */}
-            <div className="grid grid-cols-3 gap-3">
-              <div className="space-y-2">
-                <Label htmlFor="create-subtotal">Subtotal</Label>
-                <Input
-                  id="create-subtotal"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="0.00"
-                  value={createForm.subtotal}
-                  onChange={(e) =>
-                    setCreateForm((prev) => ({
-                      ...prev,
-                      subtotal: e.target.value,
-                    }))
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="create-tax">Tax</Label>
-                <Input
-                  id="create-tax"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="0.00"
-                  value={createForm.taxAmount}
-                  onChange={(e) =>
-                    setCreateForm((prev) => ({
-                      ...prev,
-                      taxAmount: e.target.value,
-                    }))
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="create-total">Total</Label>
-                <Input
-                  id="create-total"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="0.00"
-                  value={createForm.totalAmount}
-                  onChange={(e) =>
-                    setCreateForm((prev) => ({
-                      ...prev,
-                      totalAmount: e.target.value,
-                    }))
-                  }
-                />
-              </div>
-            </div>
-
-            {/* Currency */}
-            <div className="space-y-2">
-              <Label htmlFor="create-currency">Currency</Label>
-              <Select
-                value={createForm.currency}
-                onValueChange={(value) =>
-                  setCreateForm((prev) => ({ ...prev, currency: value }))
-                }
-              >
-                <SelectTrigger id="create-currency">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="GBP">GBP</SelectItem>
-                  <SelectItem value="USD">USD</SelectItem>
-                  <SelectItem value="EUR">EUR</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Due date */}
-            <div className="space-y-2">
-              <Label htmlFor="create-due-date">Due Date</Label>
-              <Input
-                id="create-due-date"
-                type="date"
-                value={createForm.dueDate}
-                onChange={(e) =>
-                  setCreateForm((prev) => ({
-                    ...prev,
-                    dueDate: e.target.value,
-                  }))
-                }
-              />
-            </div>
-
-            {/* Notes */}
-            <div className="space-y-2">
-              <Label htmlFor="create-notes">Notes</Label>
-              <Textarea
-                id="create-notes"
-                placeholder="Optional notes..."
-                value={createForm.notes}
-                onChange={(e) =>
-                  setCreateForm((prev) => ({
-                    ...prev,
-                    notes: e.target.value,
-                  }))
-                }
-                rows={3}
-              />
-            </div>
+            ))}
           </div>
 
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setCreateDialogOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleCreateSubmit}
-              disabled={createInvoiceMutation.isPending}
-            >
-              {createInvoiceMutation.isPending ? "Creating..." : "Create Invoice"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* ----------------------------------------------------------------- */}
-      {/* Record payment dialog                                              */}
-      {/* ----------------------------------------------------------------- */}
-      <Dialog
-        open={paymentDialogOpen}
-        onOpenChange={(open) => {
-          setPaymentDialogOpen(open)
-          if (!open) setPaymentInvoice(null)
-        }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Record Payment</DialogTitle>
-            <DialogDescription>
-              {paymentInvoice
-                ? `Record a payment for invoice ${paymentInvoice.invoiceNumber ?? paymentInvoice.id?.slice(0, 8)}. Outstanding: ${formatCurrency(paymentInvoice.amountDue ?? paymentInvoice.totalAmount)}.`
-                : "Record a payment against this invoice."}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-2">
-            {/* Amount */}
-            <div className="space-y-2">
-              <Label htmlFor="payment-amount">Amount (GBP)</Label>
-              <Input
-                id="payment-amount"
-                type="number"
-                step="0.01"
-                min="0"
-                placeholder="0.00"
-                value={paymentForm.amount}
-                onChange={(e) =>
-                  setPaymentForm((prev) => ({
-                    ...prev,
-                    amount: e.target.value,
-                  }))
-                }
-              />
-            </div>
-
-            {/* Method */}
-            <div className="space-y-2">
-              <Label htmlFor="payment-method">Payment Method</Label>
-              <Select
-                value={paymentForm.method}
-                onValueChange={(value) =>
-                  setPaymentForm((prev) => ({
-                    ...prev,
-                    method: value as PaymentMethod,
-                  }))
-                }
-              >
-                <SelectTrigger id="payment-method">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {(
-                    Object.entries(PAYMENT_METHOD_LABELS) as [
-                      PaymentMethod,
-                      string,
-                    ][]
-                  ).map(([value, label]) => (
-                    <SelectItem key={value} value={value}>
-                      {label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Notes */}
-            <div className="space-y-2">
-              <Label htmlFor="payment-notes">Notes</Label>
-              <Textarea
-                id="payment-notes"
-                placeholder="Optional notes..."
-                value={paymentForm.notes}
-                onChange={(e) =>
-                  setPaymentForm((prev) => ({
-                    ...prev,
-                    notes: e.target.value,
-                  }))
-                }
-                rows={3}
-              />
-            </div>
+          {/* Payment summary */}
+          <div className="ih-card ih-card-pad" style={{ marginTop: 14 }}>
+            <div className="ih-eyebrow" style={{ marginBottom: 10 }}>This month</div>
+            {([
+              ["Paid", "\u00a318,200", "ok"],
+              ["Pending", "\u00a314,200", "warn"],
+              ["Overdue", "\u00a36,400", "danger"],
+            ] as [string, string, string][]).map(([label, value, tone]) => (
+              <div key={label} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0", borderBottom: "1px dashed var(--ih-line)" }}>
+                <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12 }}>
+                  <span className={`ih-dot ih-dot-${tone}`} /> {label}
+                </span>
+                <span className="ih-mono" style={{ fontSize: 12, fontWeight: 500 }}>{value}</span>
+              </div>
+            ))}
           </div>
-
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setPaymentDialogOpen(false)
-                setPaymentInvoice(null)
-              }}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleRecordPaymentSubmit}
-              disabled={recordPaymentMutation.isPending}
-            >
-              {recordPaymentMutation.isPending
-                ? "Recording..."
-                : "Record Payment"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        </div>
+      </div>
     </div>
   )
 }
