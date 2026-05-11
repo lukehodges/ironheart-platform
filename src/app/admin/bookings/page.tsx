@@ -9,26 +9,26 @@ type Tone = "muted" | "info" | "accent" | "warn"
 interface Booking { time: string; dur: string; title: string; sub: string; tone: Tone; tag: string }
 
 const TODAY: Booking[] = [
-  { time: "10:00", dur: "30m", title: "Stand-up \u00b7 internal",         sub: "Mira, Sam",                       tone: "muted",  tag: "internal" },
-  { time: "11:30", dur: "45m", title: "Northwind \u00b7 sprint review",   sub: "Mira Sato \u00b7 Zoom",                  tone: "info",   tag: "engagement" },
-  { time: "14:00", dur: "60m", title: "Olsen Brands \u00b7 kickoff",      sub: "3 attendees \u00b7 discovery",            tone: "accent", tag: "booking" },
-  { time: "16:00", dur: "20m", title: "Acme \u00b7 invoice review",       sub: "Sarah Rowe \u00b7 /inv_2041",            tone: "warn",   tag: "invoice" },
+  { time: "10:00", dur: "30m", title: "Stand-up · internal",         sub: "Mira, Sam",                       tone: "muted",  tag: "internal" },
+  { time: "11:30", dur: "45m", title: "Northwind · sprint review",   sub: "Mira Sato · Zoom",                  tone: "info",   tag: "engagement" },
+  { time: "14:00", dur: "60m", title: "Olsen Brands · kickoff",      sub: "3 attendees · discovery",            tone: "accent", tag: "booking" },
+  { time: "16:00", dur: "20m", title: "Acme · invoice review",       sub: "Sarah Rowe · /inv_2041",            tone: "warn",   tag: "invoice" },
 ]
 
 const TOMORROW: Booking[] = [
-  { time: "09:00", dur: "30m", title: "Stand-up \u00b7 internal",         sub: "Mira, Sam",                       tone: "muted",  tag: "internal" },
-  { time: "11:30", dur: "45m", title: "Northwind \u00b7 sprint review",   sub: "Mira Sato \u00b7 Zoom",                  tone: "info",   tag: "engagement" },
+  { time: "09:00", dur: "30m", title: "Stand-up · internal",         sub: "Mira, Sam",                       tone: "muted",  tag: "internal" },
+  { time: "11:30", dur: "45m", title: "Northwind · sprint review",   sub: "Mira Sato · Zoom",                  tone: "info",   tag: "engagement" },
 ]
 
 const LATER: Booking[] = [
-  { time: "10:00", dur: "30m", title: "Stand-up \u00b7 internal",         sub: "Mira, Sam",                       tone: "muted",  tag: "internal" },
+  { time: "10:00", dur: "30m", title: "Stand-up · internal",         sub: "Mira, Sam",                       tone: "muted",  tag: "internal" },
   { time: "15:00", dur: "45m", title: "Stakeholder demo",              sub: "Northwind HQ",                    tone: "accent", tag: "booking" },
 ]
 
 const GROUPS = [
-  { label: "Today \u00b7 Tue 12", items: TODAY },
-  { label: "Tomorrow \u00b7 Wed 13", items: TOMORROW },
-  { label: "Later \u00b7 Thu 14 +", items: LATER },
+  { label: "Today · Tue 12", items: TODAY },
+  { label: "Tomorrow · Wed 13", items: TOMORROW },
+  { label: "Later · Thu 14 +", items: LATER },
 ]
 
 function toneColor(t: Tone): string {
@@ -43,7 +43,7 @@ export default function BookingsPage() {
       {/* Header */}
       <div style={{ padding: "24px 28px 16px", borderBottom: "1px solid var(--ih-line)", display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
         <div>
-          <div className="ih-eyebrow" style={{ marginBottom: 6 }}>This week \u00b7 23 bookings</div>
+          <div className="ih-eyebrow" style={{ marginBottom: 6 }}>This week · 23 bookings</div>
           <h1 className="ih-serif" style={{ margin: 0, fontSize: 32 }}>Bookings. <span className="ih-italic-red">Tuesday</span>, 12 May.</h1>
         </div>
         <div style={{ display: "flex", gap: 4 }}>
@@ -87,7 +87,7 @@ export default function BookingsPage() {
 
         {/* Right: day rail */}
         <div style={{ borderLeft: "1px solid var(--ih-line)", background: "var(--ih-surface-2)", overflowY: "auto", padding: 18 }}>
-          <div className="ih-eyebrow" style={{ marginBottom: 12 }}>Day \u00b7 12 May</div>
+          <div className="ih-eyebrow" style={{ marginBottom: 12 }}>Day · 12 May</div>
           <div style={{ position: "relative", height: 480, background: "var(--ih-surface)", border: "1px solid var(--ih-line)", borderRadius: 8, overflow: "hidden" }}>
             {[9, 10, 11, 12, 13, 14, 15, 16, 17].map((h, i) => (
               <div key={h} style={{ position: "absolute", top: i * 52, left: 0, right: 0, height: 52, borderBottom: "1px solid var(--ih-line)", paddingLeft: 38 }}>
@@ -96,10 +96,10 @@ export default function BookingsPage() {
             ))}
             {/* Events */}
             {[
-              { top: 56,  h: 26, title: "Stand-up",          tone: "muted" as Tone, at: "10:00 \u00b7 30m" },
-              { top: 134, h: 38, title: "Northwind review",   tone: "info" as Tone,  at: "11:30 \u00b7 45m" },
-              { top: 264, h: 52, title: "Olsen kickoff",      tone: "accent" as Tone, at: "14:00 \u00b7 60m" },
-              { top: 372, h: 18, title: "Acme invoice",       tone: "warn" as Tone,  at: "16:00 \u00b7 20m" },
+              { top: 56,  h: 26, title: "Stand-up",          tone: "muted" as Tone, at: "10:00 · 30m" },
+              { top: 134, h: 38, title: "Northwind review",   tone: "info" as Tone,  at: "11:30 · 45m" },
+              { top: 264, h: 52, title: "Olsen kickoff",      tone: "accent" as Tone, at: "14:00 · 60m" },
+              { top: 372, h: 18, title: "Acme invoice",       tone: "warn" as Tone,  at: "16:00 · 20m" },
             ].map((e, i) => (
               <div key={i} style={{
                 position: "absolute", top: e.top, left: 44, right: 12, height: e.h,
@@ -119,9 +119,9 @@ export default function BookingsPage() {
           </div>
 
           <div className="ih-card ih-card-pad" style={{ marginTop: 14, padding: 14, background: "var(--ih-surface)" }}>
-            <div className="ih-eyebrow" style={{ marginBottom: 8 }}>AI prep \u00b7 next session</div>
+            <div className="ih-eyebrow" style={{ marginBottom: 8 }}>AI prep · next session</div>
             <p style={{ margin: 0, fontSize: 12, color: "var(--ih-ink-65)", lineHeight: 1.5 }}>
-              <strong>Olsen kickoff</strong> in 5h 12m. I drafted a discovery script, pulled their brief from /docs and surfaced 3 risk areas. <span style={{ color: "var(--ih-accent)", cursor: "pointer" }}>Open prep doc \u2192</span>
+              <strong>Olsen kickoff</strong> in 5h 12m. I drafted a discovery script, pulled their brief from /docs and surfaced 3 risk areas. <span style={{ color: "var(--ih-accent)", cursor: "pointer" }}>Open prep doc →</span>
             </p>
           </div>
         </div>

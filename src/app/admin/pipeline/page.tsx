@@ -12,8 +12,8 @@ interface Stage { name: string; count: number; value: string; deals: Deal[] }
 const STAGES: Stage[] = [
   { name: "New", count: 4, value: "$28k", deals: [
     { name: "Marlow Ltd", sub: "Discovery call booked", value: "$8k", size: "S", tone: "muted" },
-    { name: "Pinewood", sub: "Inbound \u00b7 brief in /docs", value: "$6k", size: "S", tone: "muted" },
-    { name: "Halftime", sub: "Referral \u00b7 cold", value: "$4k", size: "M", tone: "muted" },
+    { name: "Pinewood", sub: "Inbound · brief in /docs", value: "$6k", size: "S", tone: "muted" },
+    { name: "Halftime", sub: "Referral · cold", value: "$4k", size: "M", tone: "muted" },
     { name: "Veridian", sub: "Cold outreach reply", value: "$10k", size: "M", tone: "muted" },
   ]},
   { name: "Qualified", count: 7, value: "$64k", deals: [
@@ -23,7 +23,7 @@ const STAGES: Stage[] = [
     { name: "Field Notes", sub: "NDA out", value: "$7k", size: "M", tone: "muted" },
   ]},
   { name: "Proposal", count: 5, value: "$58k", deals: [
-    { name: "Cardinal", sub: "Sent Mon \u00b7 open rate 4", value: "$22k", size: "L", tone: "warn" },
+    { name: "Cardinal", sub: "Sent Mon · open rate 4", value: "$22k", size: "L", tone: "warn" },
     { name: "Lume", sub: "Negotiating scope", value: "$14k", size: "M", tone: "warn" },
     { name: "Hatch & Co", sub: "Verbal yes", value: "$12k", size: "M", tone: "warn" },
   ]},
@@ -43,12 +43,12 @@ export default function PipelinePage() {
       {/* Header */}
       <div style={{ padding: "20px 28px 18px", borderBottom: "1px solid var(--ih-line)", display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
         <div>
-          <div className="ih-eyebrow" style={{ marginBottom: 6 }}>Q2 \u00b7 19 open deals</div>
+          <div className="ih-eyebrow" style={{ marginBottom: 6 }}>Q2 · 19 open deals</div>
           <h1 className="ih-serif" style={{ margin: 0, fontSize: 32 }}>Pipeline. <span className="ih-italic-red">$184k</span> weighted.</h1>
         </div>
         <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 10px", border: "1px solid var(--ih-line)", borderRadius: 999, fontSize: 11.5 }}>
-            <span className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-40)" }}>FORECAST \u00b7 MAY</span>
+            <span className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-40)" }}>FORECAST · MAY</span>
             <span className="ih-num" style={{ fontWeight: 500 }}>$72k</span>
             <span className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ok)" }}>+12%</span>
           </div>
@@ -68,7 +68,7 @@ export default function PipelinePage() {
               <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <span className={`ih-dot ih-dot-${STAGE_TONES[i]}`}/>
                 <strong style={{ fontSize: 12.5 }}>{s.name}</strong>
-                <span className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-40)" }}>\u00b7 {s.count}</span>
+                <span className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-40)" }}>· {s.count}</span>
               </span>
               <button className="ih-btn ih-btn-quiet" style={{ width: 20, height: 20, padding: 0 }}><Icon name="plus" size={11}/></button>
             </div>
@@ -105,10 +105,10 @@ export default function PipelinePage() {
       {/* Forecast strip */}
       <div style={{ padding: "20px 28px", borderTop: "1px solid var(--ih-line)", background: "var(--ih-surface-2)", display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 18 }}>
         {[
-          { l: "Best case", v: "$248k", sub: "all open \u00b7 raw" },
+          { l: "Best case", v: "$248k", sub: "all open · raw" },
           { l: "Weighted", v: "$184k", sub: "by stage probability" },
           { l: "Commit", v: "$72k", sub: "verbal yes + won", color: "var(--ih-ok)" },
-          { l: "Velocity \u00b7 avg", v: "23", vSuffix: "d", sub: "new \u2192 won, last 90d" },
+          { l: "Velocity · avg", v: "23", vSuffix: "d", sub: "new → won, last 90d" },
         ].map((s) => (
           <div key={s.l}>
             <div className="ih-eyebrow" style={{ marginBottom: 6 }}>{s.l}</div>

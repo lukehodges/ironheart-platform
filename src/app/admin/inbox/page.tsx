@@ -20,19 +20,19 @@ interface InboxItem {
 }
 
 const ITEMS: InboxItem[] = [
-  { group: "Needs you \u00b7 3" },
-  { tone: "accent",  icon: "check",    source: "Approval",     who: "Sarah at Acme",        body: "Approve Q2 final invoice \u00b7 $14,200",                      meta: "/inv_2041 \u00b7 4h ago", unread: true,  selected: true },
-  { tone: "warn",    icon: "bolt",     source: "Workflow",      who: "Stripe sync",          body: "Run paused \u2014 rate limit. 12 invoices queued.",            meta: "/wf_887 \u00b7 3h ago",   unread: true },
-  { tone: "info",    icon: "chat",     source: "Portal reply",  who: "Jamie at Westfield",   body: "\"The portal copy looks great but can we tighten\u2026\"",   meta: "design review \u00b7 2h ago", unread: true },
+  { group: "Needs you · 3" },
+  { tone: "accent",  icon: "check",    source: "Approval",     who: "Sarah at Acme",        body: "Approve Q2 final invoice · $14,200",                      meta: "/inv_2041 · 4h ago", unread: true,  selected: true },
+  { tone: "warn",    icon: "bolt",     source: "Workflow",      who: "Stripe sync",          body: "Run paused — rate limit. 12 invoices queued.",            meta: "/wf_887 · 3h ago",   unread: true },
+  { tone: "info",    icon: "chat",     source: "Portal reply",  who: "Jamie at Westfield",   body: "\"The portal copy looks great but can we tighten…\"",   meta: "design review · 2h ago", unread: true },
   { group: "Today" },
-  { tone: "ok",      icon: "money",    source: "Payment",       who: "Stripe",               body: "Acme Studios paid $4,200",                                meta: "/inv_2039 \u00b7 09:42",  unread: false },
-  { tone: "muted",   icon: "audit",    source: "Audit",         who: "you",                  body: "Logged into platform admin",                              meta: "ip 82.34.21.4 \u00b7 08:14", unread: false },
-  { tone: "info",    icon: "user",     source: "Pipeline",      who: "Pipeline",             body: "Deal moved to Won \u00b7 Olsen Brands \u00b7 $12k",                 meta: "/deal_443 \u00b7 auto\u2011engagement created", unread: false },
-  { tone: "ok",      icon: "star",     source: "Review",        who: "Mira at Northwind",    body: "Left a 5\u2605 for sprint 3 demo",                             meta: "/review_88 \u00b7 Sun", unread: false },
+  { tone: "ok",      icon: "money",    source: "Payment",       who: "Stripe",               body: "Acme Studios paid $4,200",                                meta: "/inv_2039 · 09:42",  unread: false },
+  { tone: "muted",   icon: "audit",    source: "Audit",         who: "you",                  body: "Logged into platform admin",                              meta: "ip 82.34.21.4 · 08:14", unread: false },
+  { tone: "info",    icon: "user",     source: "Pipeline",      who: "Pipeline",             body: "Deal moved to Won · Olsen Brands · $12k",                 meta: "/deal_443 · auto‑engagement created", unread: false },
+  { tone: "ok",      icon: "star",     source: "Review",        who: "Mira at Northwind",    body: "Left a 5★ for sprint 3 demo",                             meta: "/review_88 · Sun", unread: false },
   { group: "Yesterday" },
-  { tone: "muted",   icon: "file",     source: "Form",          who: "Form",                 body: "New submission \u00b7 Discovery intake",                        meta: "/form_intake \u00b7 routed to pipeline", unread: false },
-  { tone: "info",    icon: "calendar", source: "Booking",       who: "Northwind",            body: "Booked sprint review \u00b7 Tue 11:30",                        meta: "/bk_2204 \u00b7 Mon", unread: false },
-  { tone: "ok",      icon: "workflow", source: "Workflow",      who: "Monthly digest",       body: "Sent 8 client digests successfully",                      meta: "/wf_310 \u00b7 Sun 09:00", unread: false },
+  { tone: "muted",   icon: "file",     source: "Form",          who: "Form",                 body: "New submission · Discovery intake",                        meta: "/form_intake · routed to pipeline", unread: false },
+  { tone: "info",    icon: "calendar", source: "Booking",       who: "Northwind",            body: "Booked sprint review · Tue 11:30",                        meta: "/bk_2204 · Mon", unread: false },
+  { tone: "ok",      icon: "workflow", source: "Workflow",      who: "Monthly digest",       body: "Sent 8 client digests successfully",                      meta: "/wf_310 · Sun 09:00", unread: false },
 ]
 
 function toneColor(t: Tone): string {
@@ -87,7 +87,7 @@ export default function InboxPage() {
       {/* Stream */}
       <div style={{ overflowY: "auto" }} className="scrollbar-thin">
         <div style={{ padding: "20px 24px 12px" }}>
-          <div className="ih-eyebrow">23 events \u00b7 last 24h</div>
+          <div className="ih-eyebrow">23 events · last 24h</div>
           <h1 className="ih-serif" style={{ margin: "6px 0 0", fontSize: 32 }}>Inbox. <span className="ih-italic-red">One</span> stream, every source.</h1>
         </div>
         <div>
@@ -112,7 +112,7 @@ export default function InboxPage() {
                   <div style={{ fontSize: 12.5, color: "var(--ih-ink-65)", lineHeight: 1.4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.body}</div>
                   <div className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-40)", marginTop: 3 }}>{r.meta}</div>
                 </div>
-                <span className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-40)" }}>\u21b5</span>
+                <span className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-40)" }}>↵</span>
               </div>
             )
           })}
@@ -121,15 +121,15 @@ export default function InboxPage() {
 
       {/* Detail / actions */}
       <div style={{ borderLeft: "1px solid var(--ih-line)", background: "var(--ih-surface-2)", padding: 20, overflowY: "auto" }}>
-        <span className="ih-eyebrow">/inv_2041 \u00b7 approval</span>
-        <h2 className="ih-serif" style={{ margin: "6px 0 14px", fontSize: 22, lineHeight: 1.15 }}>Acme \u00b7 Q2 final<br/><span className="ih-italic-red">$14,200</span> due Apr 28.</h2>
+        <span className="ih-eyebrow">/inv_2041 · approval</span>
+        <h2 className="ih-serif" style={{ margin: "6px 0 14px", fontSize: 22, lineHeight: 1.15 }}>Acme · Q2 final<br/><span className="ih-italic-red">$14,200</span> due Apr 28.</h2>
 
         <div className="ih-card" style={{ padding: 14, marginBottom: 12, background: "var(--ih-surface)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
             <div className="ih-avatar">SR</div>
             <div>
               <div style={{ fontSize: 12, fontWeight: 500 }}>Sarah Rowe</div>
-              <div className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-40)" }}>finance \u00b7 acme \u00b7 4h ago</div>
+              <div className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-40)" }}>finance · acme · 4h ago</div>
             </div>
           </div>
           <p style={{ margin: "8px 0 0", fontSize: 12, color: "var(--ih-ink-65)", lineHeight: 1.6 }}>
@@ -140,7 +140,7 @@ export default function InboxPage() {
         <div className="ih-card" style={{ background: "var(--ih-surface)", padding: 14, marginBottom: 12 }}>
           <div className="ih-eyebrow" style={{ marginBottom: 8 }}>Invoice summary</div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 4, fontSize: 12 }}>
-            <span style={{ color: "var(--ih-ink-65)" }}>Retainer \u00b7 Q2 final</span><span className="ih-num">$12,000</span>
+            <span style={{ color: "var(--ih-ink-65)" }}>Retainer · Q2 final</span><span className="ih-num">$12,000</span>
             <span style={{ color: "var(--ih-ink-65)" }}>Approved scope creep</span><span className="ih-num">$1,800</span>
             <span style={{ color: "var(--ih-ink-65)" }}>VAT @ 0%</span><span className="ih-num">&mdash;</span>
             <div style={{ gridColumn: "1 / -1", height: 1, background: "var(--ih-line)", margin: "6px 0" }}/>
@@ -157,9 +157,9 @@ export default function InboxPage() {
         <div className="ih-hr" style={{ margin: "20px 0 12px" }}/>
         <div className="ih-eyebrow" style={{ marginBottom: 8 }}>Related</div>
         <div style={{ display: "grid", gap: 6, fontSize: 12 }}>
-          <span style={{ display: "flex", gap: 8, alignItems: "center", color: "var(--ih-ink)", cursor: "pointer" }}><Icon name="handshake" size={11}/> Engagement \u00b7 Acme Q2 retainer \u2192</span>
-          <span style={{ display: "flex", gap: 8, alignItems: "center", color: "var(--ih-ink)", cursor: "pointer" }}><Icon name="invoice" size={11}/> Previous \u00b7 /inv_2027 (paid) \u2192</span>
-          <span style={{ display: "flex", gap: 8, alignItems: "center", color: "var(--ih-ink)", cursor: "pointer" }}><Icon name="user" size={11}/> Client \u00b7 Acme Studios \u2192</span>
+          <span style={{ display: "flex", gap: 8, alignItems: "center", color: "var(--ih-ink)", cursor: "pointer" }}><Icon name="handshake" size={11}/> Engagement · Acme Q2 retainer →</span>
+          <span style={{ display: "flex", gap: 8, alignItems: "center", color: "var(--ih-ink)", cursor: "pointer" }}><Icon name="invoice" size={11}/> Previous · /inv_2027 (paid) →</span>
+          <span style={{ display: "flex", gap: 8, alignItems: "center", color: "var(--ih-ink)", cursor: "pointer" }}><Icon name="user" size={11}/> Client · Acme Studios →</span>
         </div>
       </div>
     </div>

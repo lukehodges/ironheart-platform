@@ -109,7 +109,7 @@ function formatRelativeDate(date: Date | string | null | undefined): string {
 function truncate(text: string | null | undefined, maxLength: number): string {
   if (!text) return " - "
   if (text.length <= maxLength) return text
-  return text.slice(0, maxLength) + "\u2026"
+  return text.slice(0, maxLength) + "…"
 }
 
 function issueCategoryLabel(

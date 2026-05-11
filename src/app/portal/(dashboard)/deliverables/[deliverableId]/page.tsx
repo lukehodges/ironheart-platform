@@ -219,7 +219,7 @@ export default function DeliverableDetailPage() {
                 <div className="text-[12px]" style={{ color: "var(--portal-text-muted)" }}>
                   {deliverable.fileSize ? formatFileSize(deliverable.fileSize) : ""}
                   {deliverable.deliveredAt && (
-                    <>{deliverable.fileSize ? " \u00B7 " : ""}Uploaded {formatDate(deliverable.deliveredAt)}</>
+                    <>{deliverable.fileSize ? " · " : ""}Uploaded {formatDate(deliverable.deliveredAt)}</>
                   )}
                 </div>
               </div>

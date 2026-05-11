@@ -11,7 +11,7 @@ type Milestone = { id: string; title: string; status: string; start: number; spa
 
 const MILESTONES: Milestone[] = [
   { id: "m1", title: "Discovery & kickoff", status: "COMPLETED", start: 0, span: 1.0, deliverables: 2, accepted: 2, items: [{ t: "Kickoff agenda + RACI", s: "ACCEPTED" }, { t: "Stakeholder map", s: "ACCEPTED" }] },
-  { id: "m2", title: "Audit fieldwork", status: "COMPLETED", start: 1.0, span: 1.5, deliverables: 3, accepted: 3, items: [{ t: "Interview transcripts (12)", s: "ACCEPTED" }, { t: "Workflow inventory \u00b7 raw", s: "ACCEPTED" }, { t: "Time-on-task spreadsheet", s: "ACCEPTED" }] },
+  { id: "m2", title: "Audit fieldwork", status: "COMPLETED", start: 1.0, span: 1.5, deliverables: 3, accepted: 3, items: [{ t: "Interview transcripts (12)", s: "ACCEPTED" }, { t: "Workflow inventory · raw", s: "ACCEPTED" }, { t: "Time-on-task spreadsheet", s: "ACCEPTED" }] },
   { id: "m3", title: "Audit findings & report", status: "IN_PROGRESS", start: 2.5, span: 1.0, deliverables: 4, accepted: 1, current: true, items: [{ t: "Findings deck (v2)", s: "ACCEPTED" }, { t: "Audit summary", s: "PENDING_APPROVAL" }, { t: "Workflow gap analysis", s: "DELIVERED" }, { t: "Recommendations memo", s: "PENDING" }] },
   { id: "m4", title: "Roadmap & retainer plan", status: "UPCOMING", start: 3.5, span: 1.0, deliverables: 2, accepted: 0, items: [{ t: "3-month roadmap", s: "PENDING" }, { t: "Retainer proposal v1", s: "PENDING" }] },
   { id: "m5", title: "Handover & close", status: "UPCOMING", start: 4.5, span: 1.0, deliverables: 2, accepted: 0, items: [{ t: "Handover doc + recordings", s: "PENDING" }, { t: "Engagement close-out", s: "PENDING" }] },
@@ -35,9 +35,9 @@ const CASHFLOW = [
 ]
 
 const INVOICES = [
-  { n: "NW-001", desc: "Engagement deposit", amt: 12250, date: "Mar 20", paid: "Mar 22", status: "PAID", method: "Stripe \u00b7 card" },
-  { n: "NW-002", desc: "Audit findings (50%)", amt: 6125, date: "Apr 04", due: "Apr 18", status: "SENT", method: "Stripe \u00b7 pending" },
-  { n: "NW-003", desc: "Roadmap & handover", amt: 6125, date: "\u2014", due: "On completion", status: "DRAFT", method: "Auto on milestone" },
+  { n: "NW-001", desc: "Engagement deposit", amt: 12250, date: "Mar 20", paid: "Mar 22", status: "PAID", method: "Stripe · card" },
+  { n: "NW-002", desc: "Audit findings (50%)", amt: 6125, date: "Apr 04", due: "Apr 18", status: "SENT", method: "Stripe · pending" },
+  { n: "NW-003", desc: "Roadmap & handover", amt: 6125, date: "—", due: "On completion", status: "DRAFT", method: "Auto on milestone" },
 ]
 
 /* ── Sub-components ──────────────────────────────────────────────────────── */
@@ -60,9 +60,9 @@ function WorkView() {
     <div style={{ padding: "20px 28px" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 18 }}>
         <div>
-          <div className="ih-eyebrow" style={{ marginBottom: 6 }}>Work {"\u00b7"} milestones + deliverables + approvals, fused</div>
+          <div className="ih-eyebrow" style={{ marginBottom: 6 }}>Work {"·"} milestones + deliverables + approvals, fused</div>
           <h1 className="ih-serif" style={{ fontSize: 28, margin: 0 }}>The <span className="ih-italic-red">work</span></h1>
-          <div style={{ fontSize: 12, color: "var(--ih-ink-50)", marginTop: 6 }}>5 milestones {"\u00b7"} 13 deliverables {"\u00b7"} 8 accepted {"\u00b7"} 1 awaiting client</div>
+          <div style={{ fontSize: 12, color: "var(--ih-ink-50)", marginTop: 6 }}>5 milestones {"·"} 13 deliverables {"·"} 8 accepted {"·"} 1 awaiting client</div>
         </div>
         <div style={{ display: "flex", gap: 6 }}>
           <div style={{ display: "flex", border: "1px solid var(--ih-line)", borderRadius: "var(--ih-r-md)", padding: 2, gap: 2 }}>
@@ -122,9 +122,9 @@ function WorkView() {
                   </div>
                   <div style={{ flex: 1, padding: "7px 12px", display: "flex", alignItems: "center", gap: 10 }}>
                     <StatusDot s={it.s} />
-                    {it.s === "PENDING_APPROVAL" && <button className="ih-btn ih-btn-quiet ih-btn-sm" style={{ height: 20, marginLeft: "auto" }}>Nudge client {"\u2192"}</button>}
-                    {it.s === "DELIVERED" && <button className="ih-btn ih-btn-quiet ih-btn-sm" style={{ height: 20, marginLeft: "auto" }}>Request approval {"\u2192"}</button>}
-                    {it.s === "PENDING" && <button className="ih-btn ih-btn-quiet ih-btn-sm" style={{ height: 20, marginLeft: "auto" }}>Upload {"\u2192"}</button>}
+                    {it.s === "PENDING_APPROVAL" && <button className="ih-btn ih-btn-quiet ih-btn-sm" style={{ height: 20, marginLeft: "auto" }}>Nudge client {"→"}</button>}
+                    {it.s === "DELIVERED" && <button className="ih-btn ih-btn-quiet ih-btn-sm" style={{ height: 20, marginLeft: "auto" }}>Request approval {"→"}</button>}
+                    {it.s === "PENDING" && <button className="ih-btn ih-btn-quiet ih-btn-sm" style={{ height: 20, marginLeft: "auto" }}>Upload {"→"}</button>}
                   </div>
                 </div>
               ))}
@@ -136,7 +136,7 @@ function WorkView() {
       {/* Bottom panels */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 320px", gap: 16, marginTop: 18 }}>
         <div className="ih-card" style={{ padding: 14 }}>
-          <div className="ih-eyebrow" style={{ marginBottom: 10 }}>Approval batch {"\u00b7"} ready to send</div>
+          <div className="ih-eyebrow" style={{ marginBottom: 10 }}>Approval batch {"·"} ready to send</div>
           <div style={{ fontSize: 12, color: "var(--ih-ink-65)", marginBottom: 12 }}>
             2 deliverables are <strong>Delivered</strong> but you haven&apos;t requested client approval yet. Bundle them into one approval request to Sarah?
           </div>
@@ -162,7 +162,7 @@ function WorkView() {
           ].map((s) => (
             <div key={s.l} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px dashed var(--ih-line)", fontSize: 12 }}>
               <span style={{ color: "var(--ih-ink-50)" }}>{s.l}</span>
-              <span className="ih-mono" style={{ color: s.tone === "ok" ? "var(--ih-ok)" : "var(--ih-warn)" }}>{"\u25cf"} {s.v}</span>
+              <span className="ih-mono" style={{ color: s.tone === "ok" ? "var(--ih-ok)" : "var(--ih-warn)" }}>{"●"} {s.v}</span>
             </div>
           ))}
         </div>
@@ -176,15 +176,15 @@ function MoneyView() {
     <div style={{ padding: "20px 28px" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 18 }}>
         <div>
-          <div className="ih-eyebrow" style={{ marginBottom: 6 }}>Money {"\u00b7"} proposal {"\u00b7"} invoices {"\u00b7"} cashflow, fused</div>
+          <div className="ih-eyebrow" style={{ marginBottom: 6 }}>Money {"·"} proposal {"·"} invoices {"·"} cashflow, fused</div>
           <h1 className="ih-serif" style={{ fontSize: 28, margin: 0 }}>The <span className="ih-italic-red">money</span></h1>
         </div>
         <div style={{ display: "flex", gap: 16, fontSize: 11 }}>
           {[
-            { l: "Total value", v: "\u00a324,500", tone: "var(--ih-ink)" },
-            { l: "Paid to date", v: "\u00a312,250", tone: "var(--ih-ok)" },
-            { l: "Outstanding", v: "\u00a36,125", tone: "var(--ih-accent)" },
-            { l: "Upcoming", v: "\u00a36,125", tone: "var(--ih-ink-65)" },
+            { l: "Total value", v: "£24,500", tone: "var(--ih-ink)" },
+            { l: "Paid to date", v: "£12,250", tone: "var(--ih-ok)" },
+            { l: "Outstanding", v: "£6,125", tone: "var(--ih-accent)" },
+            { l: "Upcoming", v: "£6,125", tone: "var(--ih-ink-65)" },
           ].map((s) => (
             <div key={s.l} style={{ textAlign: "right" }}>
               <div className="ih-eyebrow" style={{ fontSize: 9, marginBottom: 4 }}>{s.l}</div>
@@ -198,7 +198,7 @@ function MoneyView() {
       <div className="ih-card" style={{ padding: 16, marginBottom: 16 }}>
         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
           <div>
-            <div className="ih-eyebrow" style={{ marginBottom: 4 }}>Proposal v2 {"\u00b7"} approved Mar 18</div>
+            <div className="ih-eyebrow" style={{ marginBottom: 4 }}>Proposal v2 {"·"} approved Mar 18</div>
             <div style={{ fontSize: 14, fontWeight: 500 }}>Map workflows, audit, deliver 3-mo roadmap</div>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
@@ -208,9 +208,9 @@ function MoneyView() {
         </div>
         <div style={{ display: "flex", gap: 0, alignItems: "stretch", marginTop: 14, border: "1px solid var(--ih-line)", borderRadius: "var(--ih-r-md)", overflow: "hidden", background: "var(--ih-surface-2)" }}>
           {[
-            { label: "Deposit", amt: "\u00a312,250", trigger: "On signing", paid: true, sent: false },
-            { label: "Audit done", amt: "\u00a36,125", trigger: "On milestone #3", paid: false, sent: true },
-            { label: "Handover", amt: "\u00a36,125", trigger: "On completion", paid: false, sent: false },
+            { label: "Deposit", amt: "£12,250", trigger: "On signing", paid: true, sent: false },
+            { label: "Audit done", amt: "£6,125", trigger: "On milestone #3", paid: false, sent: true },
+            { label: "Handover", amt: "£6,125", trigger: "On completion", paid: false, sent: false },
           ].map((s, i, arr) => (
             <div key={s.label} style={{ flex: 1, padding: "12px 14px", borderRight: i < arr.length - 1 ? "1px solid var(--ih-line)" : "none", position: "relative" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
@@ -221,7 +221,7 @@ function MoneyView() {
               <div className="ih-num" style={{ fontSize: 16, marginTop: 4 }}>{s.amt}</div>
               <div className="ih-mono" style={{ fontSize: 9.5, color: "var(--ih-ink-50)", marginTop: 4 }}>{s.trigger}</div>
               <div className="ih-mono" style={{ fontSize: 9.5, color: s.paid ? "var(--ih-ok)" : s.sent ? "var(--ih-warn)" : "var(--ih-ink-40)", marginTop: 2 }}>
-                {s.paid ? "\u25cf paid Mar 22" : s.sent ? "\u25cf sent \u00b7 awaiting" : "\u25cf auto on milestone"}
+                {s.paid ? "● paid Mar 22" : s.sent ? "● sent · awaiting" : "● auto on milestone"}
               </div>
             </div>
           ))}
@@ -232,7 +232,7 @@ function MoneyView() {
       <div className="ih-card" style={{ padding: 16, marginBottom: 16 }}>
         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
           <div>
-            <div className="ih-eyebrow" style={{ marginBottom: 4 }}>Cashflow forecast {"\u00b7"} this engagement</div>
+            <div className="ih-eyebrow" style={{ marginBottom: 4 }}>Cashflow forecast {"·"} this engagement</div>
             <div style={{ fontSize: 12, color: "var(--ih-ink-65)" }}>Includes retainer projection if proposal v3 is signed</div>
           </div>
           <div style={{ display: "flex", gap: 12, fontSize: 11, color: "var(--ih-ink-50)" }}>
@@ -247,7 +247,7 @@ function MoneyView() {
             const max = 14
             return (
               <div key={c.m} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-                <div className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-65)" }}>{"\u00a3"}{(total || c.expected).toFixed(1)}K</div>
+                <div className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-65)" }}>{"£"}{(total || c.expected).toFixed(1)}K</div>
                 <div style={{ width: "100%", maxWidth: 80, height: 96, position: "relative", display: "flex", flexDirection: "column-reverse", gap: 1 }}>
                   {c.paid > 0 && <div style={{ height: `${(c.paid / max) * 96}px`, background: "var(--ih-ok)", borderRadius: c.expected ? 0 : "2px 2px 0 0" }} />}
                   {c.expected > 0 && <div style={{ height: `${(c.expected / max) * 96}px`, background: c.recurring ? "var(--ih-surface-3)" : "var(--ih-accent)", borderTop: c.recurring ? "1px dashed var(--ih-accent)" : "none", borderRadius: "2px 2px 0 0" }} />}
@@ -262,7 +262,7 @@ function MoneyView() {
       {/* Invoice table */}
       <div className="ih-card" style={{ overflow: "hidden" }}>
         <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--ih-line)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div className="ih-eyebrow">Invoices {"\u00b7"} 3</div>
+          <div className="ih-eyebrow">Invoices {"·"} 3</div>
           <button className="ih-btn ih-btn-quiet ih-btn-sm"><Icon name="download" size={11} /> Export CSV</button>
         </div>
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
@@ -278,7 +278,7 @@ function MoneyView() {
               <tr key={inv.n} style={{ borderBottom: "1px solid var(--ih-line)" }}>
                 <td style={{ padding: "10px 12px", fontFamily: "var(--ih-font-mono)", fontSize: 11 }}>{inv.n}</td>
                 <td style={{ padding: "10px 12px" }}>{inv.desc}</td>
-                <td style={{ padding: "10px 12px", fontFamily: "var(--ih-font-mono)", fontWeight: 500 }}>{"\u00a3"}{inv.amt.toLocaleString()}</td>
+                <td style={{ padding: "10px 12px", fontFamily: "var(--ih-font-mono)", fontWeight: 500 }}>{"£"}{inv.amt.toLocaleString()}</td>
                 <td style={{ padding: "10px 12px", color: "var(--ih-ink-65)" }} className="ih-mono">{inv.date}</td>
                 <td style={{ padding: "10px 12px", color: "var(--ih-ink-65)" }} className="ih-mono">{inv.due || inv.paid}</td>
                 <td style={{ padding: "10px 12px" }}>

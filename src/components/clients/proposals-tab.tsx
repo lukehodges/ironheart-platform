@@ -19,7 +19,7 @@ const STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive" | "
 }
 
 function formatDate(date: Date | null): string {
-  if (!date) return "\u2014"
+  if (!date) return "—"
   return new Date(date).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
 }
 

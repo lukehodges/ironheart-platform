@@ -289,7 +289,7 @@ function TemplateDetailDialog({ template, open, onOpenChange, onEdit }: Template
             </span>
             {responses && (
               <span className="text-xs text-muted-foreground">
-                {"\u00B7"} {responses.rows.length > 0 ? `${responses.hasMore ? "1+" : responses.rows.length}` : "0"} response{responses.rows.length !== 1 ? "s" : ""}
+                {"·"} {responses.rows.length > 0 ? `${responses.hasMore ? "1+" : responses.rows.length}` : "0"} response{responses.rows.length !== 1 ? "s" : ""}
               </span>
             )}
           </div>

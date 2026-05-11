@@ -160,7 +160,7 @@ export function PayRatesDialog({
                   </div>
                   <p className="text-[11px] text-muted-foreground">
                     {format(new Date(rate.effectiveFrom), "d MMM yyyy")}
-                    {" \u2192 "}
+                    {" → "}
                     {rate.effectiveUntil
                       ? format(new Date(rate.effectiveUntil), "d MMM yyyy")
                       : "Present"}

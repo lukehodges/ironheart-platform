@@ -14,7 +14,7 @@ interface TestRow {
 const testColumns: DataGridColumn<TestRow>[] = [
   { id: "name", label: "Name", cell: (row) => row.name },
   { id: "status", label: "Status", cell: (row) => row.status },
-  { id: "amount", label: "Amount", cell: (row) => `\u00A3${row.amount}` },
+  { id: "amount", label: "Amount", cell: (row) => `£${row.amount}` },
 ]
 
 const testData: TestRow[] = [
@@ -36,7 +36,7 @@ describe("DataGrid", () => {
       render(<DataGrid columns={testColumns} data={testData} />)
       expect(screen.getByText("Alice")).toBeInTheDocument()
       expect(screen.getByText("Bob")).toBeInTheDocument()
-      expect(screen.getByText("\u00A3300")).toBeInTheDocument()
+      expect(screen.getByText("£300")).toBeInTheDocument()
     })
 
     it("calls onRowClick when a row is clicked", async () => {
@@ -279,7 +279,7 @@ describe("DataGrid", () => {
       const cols: DataGridColumn<TestRow>[] = [
         { id: "name", label: "Name", cell: (r) => r.name, hideable: true },
         { id: "status", label: "Status", cell: (r) => r.status, hideable: true },
-        { id: "amount", label: "Amount", cell: (r) => `\u00A3${r.amount}` },
+        { id: "amount", label: "Amount", cell: (r) => `£${r.amount}` },
       ]
       render(<DataGrid columns={cols} data={testData} />)
       expect(screen.getByLabelText("Toggle column visibility")).toBeInTheDocument()

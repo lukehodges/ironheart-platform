@@ -66,7 +66,7 @@ export function CapacityTab({ memberId }: { memberId: string }) {
                     "text-sm tabular-nums font-semibold",
                     cap.isOver ? "text-destructive" : "text-foreground"
                   )}>
-                    {cap.used} / {cap.max ?? "\u221E"}
+                    {cap.used} / {cap.max ?? "∞"}
                   </span>
                 </div>
                 {cap.max != null && (

@@ -369,7 +369,7 @@ export function ProductDetailClient({ product, tenants, analytics }: ProductDeta
                             {tenant.status}
                           </Badge>
                         </td>
-                        <td className="px-4 py-2 font-mono text-xs text-muted-foreground">{tenant.subscriptionId ?? "\u2014"}</td>
+                        <td className="px-4 py-2 font-mono text-xs text-muted-foreground">{tenant.subscriptionId ?? "—"}</td>
                         <td className="px-4 py-2 text-muted-foreground">{tenant.createdAt.toLocaleDateString("en-GB")}</td>
                       </tr>
                     ))}
@@ -434,7 +434,7 @@ export function ProductDetailClient({ product, tenants, analytics }: ProductDeta
                   <div>
                     <p className="text-sm font-medium">Status</p>
                     <p className="text-sm text-muted-foreground">
-                      {product.isPublished ? "Published \u2014 visible to the public" : "Draft \u2014 not visible"}
+                      {product.isPublished ? "Published — visible to the public" : "Draft — not visible"}
                     </p>
                   </div>
                   <Badge variant={product.isPublished ? "success" : "secondary"}>
@@ -479,7 +479,7 @@ export function ProductDetailClient({ product, tenants, analytics }: ProductDeta
                 <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">MRR</p>
                 <p className="text-2xl font-semibold mt-1">&pound;{(analytics.mrr / 100).toFixed(0)}</p>
                 <p className={`text-xs mt-1 ${analytics.mrrChange >= 0 ? "text-green-500" : "text-red-500"}`}>
-                  {analytics.mrrChange >= 0 ? "\u2191" : "\u2193"} {Math.abs(analytics.mrrChange)}%
+                  {analytics.mrrChange >= 0 ? "↑" : "↓"} {Math.abs(analytics.mrrChange)}%
                 </p>
               </Card>
               <Card className="p-4">

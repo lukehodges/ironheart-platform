@@ -12,7 +12,7 @@ const RAG_TONE: Record<RagScore, { bg: string; color: string; border: string }> 
   GREEN: { bg: "rgba(47,111,92,0.08)", color: "#2F6F5C", border: "rgba(47,111,92,0.25)" },
 }
 
-const fmtGBP = (n: number) => "\u00a3" + (n >= 1000 ? (n / 1000).toFixed(n >= 10000 ? 0 : 1) + "K" : String(n))
+const fmtGBP = (n: number) => "£" + (n >= 1000 ? (n / 1000).toFixed(n >= 10000 ? 0 : 1) + "K" : String(n))
 
 function RagBadge({ score, size = "md" }: { score: RagScore; size?: "sm" | "md" }) {
   const t = RAG_TONE[score]
@@ -50,33 +50,33 @@ interface PhaseRec { lens: string; t: string; cost: number; effort: string }
 const PHASES: { n: number; name: string; dur: string; desc: string; recs: PhaseRec[] }[] = [
   {
     n: 1, name: "Stop the bleed", dur: "Month 1",
-    desc: "Quick wins that recover the most \u00a3 for the least build. Targeted at AMBER/RED items with short effort.",
+    desc: "Quick wins that recover the most £ for the least build. Targeted at AMBER/RED items with short effort.",
     recs: [
-      { lens: "REVENUE",    t: "CRM hygiene workflow \u2014 required fields gating",        cost: 1200, effort: "S \u00b7 3 day" },
-      { lens: "OPERATIONS", t: "Replace WhatsApp handoffs with shift-log app",         cost: 2000, effort: "S \u00b7 1 wk" },
-      { lens: "FINANCE",    t: "Build live cashflow dashboard (Metabase)",             cost: 2500, effort: "S \u00b7 1 wk" },
-      { lens: "TECHNOLOGY", t: "Notion doc-staleness alerts via workflow",             cost: 800,  effort: "S \u00b7 2 day" },
-      { lens: "TEAM",       t: "Codified ops onboarding playbook + checklist",         cost: 1500, effort: "S \u00b7 1 wk" },
+      { lens: "REVENUE",    t: "CRM hygiene workflow — required fields gating",        cost: 1200, effort: "S · 3 day" },
+      { lens: "OPERATIONS", t: "Replace WhatsApp handoffs with shift-log app",         cost: 2000, effort: "S · 1 wk" },
+      { lens: "FINANCE",    t: "Build live cashflow dashboard (Metabase)",             cost: 2500, effort: "S · 1 wk" },
+      { lens: "TECHNOLOGY", t: "Notion doc-staleness alerts via workflow",             cost: 800,  effort: "S · 2 day" },
+      { lens: "TEAM",       t: "Codified ops onboarding playbook + checklist",         cost: 1500, effort: "S · 1 wk" },
     ],
   },
   {
-    n: 2, name: "Build the spine", dur: "Month 2 \u2013 3",
+    n: 2, name: "Build the spine", dur: "Month 2 – 3",
     desc: "The load-bearing automations that replace manual reconciliation work. This is where the studio earns its retainer.",
     recs: [
-      { lens: "OPERATIONS", t: "Build Order \u2192 Fulfillment automation in Plane",        cost: 12000, effort: "L \u00b7 4 wk" },
-      { lens: "OPERATIONS", t: "Inventory sync workflow (3 sources \u2192 SoT)",            cost: 9500,  effort: "L \u00b7 4 wk" },
-      { lens: "TECHNOLOGY", t: "Install n8n + build 6 core automations",               cost: 8500,  effort: "L \u00b7 4 wk" },
-      { lens: "FINANCE",    t: "Automate bank rec via Xero rules + matching",          cost: 4500,  effort: "M \u00b7 2 wk" },
+      { lens: "OPERATIONS", t: "Build Order → Fulfillment automation in Plane",        cost: 12000, effort: "L · 4 wk" },
+      { lens: "OPERATIONS", t: "Inventory sync workflow (3 sources → SoT)",            cost: 9500,  effort: "L · 4 wk" },
+      { lens: "TECHNOLOGY", t: "Install n8n + build 6 core automations",               cost: 8500,  effort: "L · 4 wk" },
+      { lens: "FINANCE",    t: "Automate bank rec via Xero rules + matching",          cost: 4500,  effort: "M · 2 wk" },
     ],
   },
   {
-    n: 3, name: "Scale & retain", dur: "Month 4 \u2013 6",
+    n: 3, name: "Scale & retain", dur: "Month 4 – 6",
     desc: "Once the spine is in place, scale up new workflows and bring suppliers/partners into the same system.",
     recs: [
-      { lens: "OPERATIONS", t: "Single-SKU registry + change events",                  cost: 5000, effort: "M \u00b7 2 wk" },
-      { lens: "OPERATIONS", t: "Supplier onboarding portal (forms + approvals)",       cost: 6500, effort: "M \u00b7 3 wk" },
-      { lens: "REVENUE",    t: "Build ICP scoring model + tag in HubSpot",             cost: 3500, effort: "M \u00b7 2 wk" },
-      { lens: "REVENUE",    t: "Adopt lead-routing automation with weekend rotation",  cost: 4200, effort: "M \u00b7 2 wk" },
+      { lens: "OPERATIONS", t: "Single-SKU registry + change events",                  cost: 5000, effort: "M · 2 wk" },
+      { lens: "OPERATIONS", t: "Supplier onboarding portal (forms + approvals)",       cost: 6500, effort: "M · 3 wk" },
+      { lens: "REVENUE",    t: "Build ICP scoring model + tag in HubSpot",             cost: 3500, effort: "M · 2 wk" },
+      { lens: "REVENUE",    t: "Adopt lead-routing automation with weekend rotation",  cost: 4200, effort: "M · 2 wk" },
     ],
   },
 ]
@@ -94,17 +94,17 @@ export default function AuditReportPage() {
         padding: "10px 14px", marginBottom: 22, background: "var(--ih-surface-2)",
         border: "1px solid var(--ih-line)", borderRadius: "var(--ih-r-md)",
       }}>
-        <span className="ih-pill ih-pill-warn" style={{ fontSize: 9.5 }}>\u25cf DRAFT</span>
-        <span className="ih-mono" style={{ fontSize: 10.5, color: "var(--ih-ink-50)" }}>AR-0027 \u00b7 generated Apr 04 09:42 \u00b7 revision 2</span>
+        <span className="ih-pill ih-pill-warn" style={{ fontSize: 9.5 }}>● DRAFT</span>
+        <span className="ih-mono" style={{ fontSize: 10.5, color: "var(--ih-ink-50)" }}>AR-0027 · generated Apr 04 09:42 · revision 2</span>
         <div style={{ flex: 1 }} />
-        <span className="ih-mono" style={{ fontSize: 10.5, color: "var(--ih-ink-50)" }}>\u2193 Driven by session AS-0027 \u2014 re-runs on any lens change</span>
+        <span className="ih-mono" style={{ fontSize: 10.5, color: "var(--ih-ink-50)" }}>↓ Driven by session AS-0027 — re-runs on any lens change</span>
       </div>
 
       {/* Cover */}
       <div style={{ border: "1px solid var(--ih-line)", borderRadius: "var(--ih-r-xl)", padding: "48px 56px", background: "var(--ih-surface)", marginBottom: 18 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 32 }}>
           <div>
-            <div className="ih-eyebrow" style={{ marginBottom: 12 }}>Q1 Operations Audit \u00b7 for Northwind Logistics</div>
+            <div className="ih-eyebrow" style={{ marginBottom: 12 }}>Q1 Operations Audit · for Northwind Logistics</div>
             <h1 className="ih-serif" style={{ fontSize: 64, lineHeight: 0.95, margin: 0, maxWidth: 720 }}>
               Five lenses on Northwind, and one <span className="ih-italic-red">very large</span> number.
             </h1>
@@ -129,7 +129,7 @@ export default function AuditReportPage() {
             <div style={{ fontSize: 12, color: "var(--ih-ink-50)", marginTop: 4 }}>one-time build cost, paid against milestones</div>
 
             <div className="ih-eyebrow" style={{ marginBottom: 8, marginTop: 18 }}>Return</div>
-            <div className="ih-serif ih-num" style={{ fontSize: 38, lineHeight: 1, color: "var(--ih-ok)" }}>{(TOTAL_WASTE / TOTAL_INVEST).toFixed(1)}\u00d7</div>
+            <div className="ih-serif ih-num" style={{ fontSize: 38, lineHeight: 1, color: "var(--ih-ok)" }}>{(TOTAL_WASTE / TOTAL_INVEST).toFixed(1)}×</div>
             <div style={{ fontSize: 12, color: "var(--ih-ink-50)", marginTop: 4 }}>payback in ~62 days</div>
           </div>
         </div>
@@ -147,7 +147,7 @@ export default function AuditReportPage() {
 
       {/* RAG matrix */}
       <div className="ih-card" style={{ padding: 20, marginBottom: 18 }}>
-        <div className="ih-eyebrow" style={{ marginBottom: 14 }}>The five lenses \u00b7 at a glance</div>
+        <div className="ih-eyebrow" style={{ marginBottom: 14 }}>The five lenses · at a glance</div>
         <div style={{ display: "grid", gridTemplateColumns: "120px 90px 1fr 110px 110px", gap: 0, fontSize: 12 }}>
           {["LENS", "SCORE", "JUSTIFICATION", "FINDINGS", "WASTE / YR"].map((h, i) => (
             <div key={h} className="ih-mono" style={{ fontSize: 9, color: "var(--ih-ink-40)", letterSpacing: "0.12em", padding: "8px 0", borderBottom: "1px solid var(--ih-line)", textAlign: i >= 3 ? "right" : "left" }}>{h}</div>
@@ -172,7 +172,7 @@ export default function AuditReportPage() {
       {/* Roadmap */}
       <div style={{ marginBottom: 14, display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
         <h2 className="ih-serif" style={{ fontSize: 28, margin: 0 }}>The <span className="ih-italic-red">six-month</span> roadmap</h2>
-        <div style={{ fontSize: 11, color: "var(--ih-ink-50)" }}>auto-built from recommendations \u00b7 grouped by priority</div>
+        <div style={{ fontSize: 11, color: "var(--ih-ink-50)" }}>auto-built from recommendations · grouped by priority</div>
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 14, marginBottom: 22 }}>
@@ -210,7 +210,7 @@ export default function AuditReportPage() {
                   return (
                     <div key={i} style={{ display: "grid", gridTemplateColumns: "32px 120px 1fr 100px 90px", gap: 10, padding: "8px 0", borderBottom: "1px dashed var(--ih-line)", alignItems: "center" }}>
                       <span className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-40)" }}>M-{p.n}.{i + 1}</span>
-                      <span className="ih-mono" style={{ fontSize: 9.5, color: toneColor, textTransform: "uppercase", letterSpacing: "0.06em" }}>\u25cf {r.lens}</span>
+                      <span className="ih-mono" style={{ fontSize: 9.5, color: toneColor, textTransform: "uppercase", letterSpacing: "0.06em" }}>● {r.lens}</span>
                       <span style={{ fontSize: 12.5 }}>{r.t}</span>
                       <span className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-50)", textTransform: "uppercase" }}>{r.effort}</span>
                       <span className="ih-num" style={{ fontSize: 12, fontWeight: 600, textAlign: "right" }}>{fmtGBP(r.cost)}</span>
@@ -232,10 +232,10 @@ export default function AuditReportPage() {
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 14, fontWeight: 600 }}>Promote this roadmap into a retainer engagement</div>
           <div style={{ fontSize: 12, color: "var(--ih-ink-65)", marginTop: 4 }}>
-            Creates a new 6-month engagement on a \u00a34,200/mo retainer. Each of the 13 recommendations becomes a milestone with its build cost and effort pre-filled. Invoice schedule auto-built.
+            Creates a new 6-month engagement on a £4,200/mo retainer. Each of the 13 recommendations becomes a milestone with its build cost and effort pre-filled. Invoice schedule auto-built.
           </div>
         </div>
-        <button className="ih-btn ih-btn-accent ih-btn-sm">Promote to retainer \u2192</button>
+        <button className="ih-btn ih-btn-accent ih-btn-sm">Promote to retainer →</button>
       </div>
     </div>
   )

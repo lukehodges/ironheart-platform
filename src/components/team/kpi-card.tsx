@@ -22,7 +22,7 @@ export function KpiCard({ label, value, sub, icon: Icon, trend }: KpiCardProps) 
         <span className="text-3xl font-bold font-mono tabular-nums leading-none text-zinc-900">{value}</span>
         {trend && (
           <span className={cn("text-xs font-medium mb-0.5", trend.positive ? "text-emerald-600" : "text-red-500")}>
-            {trend.positive ? "\u2191" : "\u2193"} {trend.label}
+            {trend.positive ? "↑" : "↓"} {trend.label}
           </span>
         )}
       </div>

@@ -17,7 +17,7 @@ function SectionHead({ eyebrow, title, action }: { eyebrow: string; title: strin
 
 export default function ClientHubPage() {
   const [activeTab, setActiveTab] = useState(0)
-  const tabs = ["Overview", "Engagements \u00b7 1", "Bookings \u00b7 14", "Deals \u00b7 2", "Invoices \u00b7 8", "Workflows \u00b7 3", "Documents", "Activity", "Team"]
+  const tabs = ["Overview", "Engagements · 1", "Bookings · 14", "Deals · 2", "Invoices · 8", "Workflows · 3", "Documents", "Activity", "Team"]
 
   return (
     <div style={{ margin: "-24px -24px" }}>
@@ -29,13 +29,13 @@ export default function ClientHubPage() {
           </div>
           <div>
             <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 6 }}>
-              <span className="ih-eyebrow">/cli_204 {"\u00b7"} client</span>
+              <span className="ih-eyebrow">/cli_204 {"·"} client</span>
               <span className="ih-pill ih-pill-ok"><span className="ih-dot ih-dot-ok"/> Active</span>
               <span className="ih-pill">Q2 retainer</span>
             </div>
             <h1 className="ih-serif" style={{ margin: 0, fontSize: 44, lineHeight: 0.98 }}>Northwind <span className="ih-italic-red">Co.</span></h1>
             <div style={{ marginTop: 10, display: "flex", gap: 18, fontSize: 11.5, color: "var(--ih-ink-50)" }}>
-              <span><Icon name="building" size={11}/> &nbsp;Founder {"\u00b7"} Mira Sato</span>
+              <span><Icon name="building" size={11}/> &nbsp;Founder {"·"} Mira Sato</span>
               <span><Icon name="mail" size={11}/> &nbsp;mira@northwind.co</span>
               <span><Icon name="phone" size={11}/> &nbsp;+44 7700 900482</span>
               <span><Icon name="clock" size={11}/> &nbsp;Client since Mar 2025</span>
@@ -47,7 +47,7 @@ export default function ClientHubPage() {
             ["Lifetime", "$48.2k", "ok"],
             ["This sprint", "32/40h", "accent"],
             ["Open inv.", "$4.2k", "warn"],
-            ["Health", "A\u2212", "ok"],
+            ["Health", "A−", "ok"],
           ] as [string, string, string][]).map(([l, v, t]) => (
             <div key={l}>
               <div className="ih-eyebrow" style={{ marginBottom: 4 }}>{l}</div>
@@ -69,14 +69,14 @@ export default function ClientHubPage() {
         <div style={{ padding: "20px 28px 48px", borderRight: "1px solid var(--ih-line)" }}>
           {/* Connection map */}
           <div style={{ marginBottom: 24 }}>
-            <SectionHead eyebrow="Connection map" title="Everything tied to this client" action={<button className="ih-btn ih-btn-quiet ih-btn-sm">Expand {"\u2192"}</button>} />
+            <SectionHead eyebrow="Connection map" title="Everything tied to this client" action={<button className="ih-btn ih-btn-quiet ih-btn-sm">Expand {"→"}</button>} />
             <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 10 }}>
               {[
-                { l: "Engagement", v: "Q2 retainer \u00b7 sprint 4", icon: "handshake" as const, count: "1 active", tone: "accent" },
-                { l: "Bookings", v: "14 total \u00b7 2 upcoming", icon: "calendar" as const, count: "next Tue 11:30", tone: "info" },
+                { l: "Engagement", v: "Q2 retainer · sprint 4", icon: "handshake" as const, count: "1 active", tone: "accent" },
+                { l: "Bookings", v: "14 total · 2 upcoming", icon: "calendar" as const, count: "next Tue 11:30", tone: "info" },
                 { l: "Pipeline", v: "2 open deals", icon: "pipeline" as const, count: "$32k weighted", tone: "muted" },
-                { l: "Invoices", v: "8 issued \u00b7 1 open", icon: "invoice" as const, count: "$4.2k due", tone: "warn" },
-                { l: "Workflows", v: "3 attached \u00b7 12 runs", icon: "workflow" as const, count: "all healthy", tone: "ok" },
+                { l: "Invoices", v: "8 issued · 1 open", icon: "invoice" as const, count: "$4.2k due", tone: "warn" },
+                { l: "Workflows", v: "3 attached · 12 runs", icon: "workflow" as const, count: "all healthy", tone: "ok" },
                 { l: "Team", v: "Mira, Sam, you", icon: "users" as const, count: "3 assigned", tone: "muted" },
               ].map((c) => (
                 <div key={c.l} className="ih-card" style={{ padding: 12, cursor: "pointer" }}>
@@ -96,8 +96,8 @@ export default function ClientHubPage() {
           <div className="ih-card" style={{ marginBottom: 20 }}>
             <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--ih-line)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
-                <span className="ih-eyebrow">/eng_0481 {"\u00b7"} current engagement</span>
-                <h3 style={{ margin: "4px 0 0", fontSize: 18, fontFamily: "var(--ih-font-serif)", letterSpacing: "-0.01em" }}>Q2 retainer {"\u00b7"} sprint 4 of 6</h3>
+                <span className="ih-eyebrow">/eng_0481 {"·"} current engagement</span>
+                <h3 style={{ margin: "4px 0 0", fontSize: 18, fontFamily: "var(--ih-font-serif)", letterSpacing: "-0.01em" }}>Q2 retainer {"·"} sprint 4 of 6</h3>
               </div>
               <button className="ih-btn ih-btn-ghost ih-btn-sm">Open workspace <Icon name="arrowUpRight" size={11} /></button>
             </div>
@@ -107,7 +107,7 @@ export default function ClientHubPage() {
                   <div key={n} style={{ height: 56, borderRadius: 8, border: "1px solid var(--ih-line)", padding: 10, background: n < 4 ? "var(--ih-surface-2)" : n === 4 ? "var(--ih-accent-soft)" : "transparent", position: "relative" }}>
                     <div className="ih-mono" style={{ fontSize: 9, color: n === 4 ? "var(--ih-accent)" : "var(--ih-ink-40)", textTransform: "uppercase", letterSpacing: "0.1em" }}>SPRINT {n}</div>
                     <div style={{ fontSize: 13, fontWeight: 500, marginTop: 4, color: n > 4 ? "var(--ih-ink-40)" : "var(--ih-ink)" }}>
-                      {n < 4 ? "\u2713 shipped" : n === 4 ? "in progress" : "queued"}
+                      {n < 4 ? "✓ shipped" : n === 4 ? "in progress" : "queued"}
                     </div>
                     {n === 4 && <div style={{ position: "absolute", bottom: 6, left: 10, right: 10, height: 3, background: "rgba(209,58,31,0.2)", borderRadius: 2, overflow: "hidden" }}><div style={{ width: "78%", height: "100%", background: "var(--ih-accent)" }} /></div>}
                   </div>
@@ -115,31 +115,31 @@ export default function ClientHubPage() {
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
                 <div>
-                  <div className="ih-eyebrow" style={{ marginBottom: 8 }}>Deliverables {"\u00b7"} 4</div>
-                  {([["Stripe \u2192 Airtable sync", "ok"], ["Approval workflow", "ok"], ["Client portal v2", "accent"], ["Monthly digest email", "muted"]] as [string, string][]).map(([t, s]) => (
+                  <div className="ih-eyebrow" style={{ marginBottom: 8 }}>Deliverables {"·"} 4</div>
+                  {([["Stripe → Airtable sync", "ok"], ["Approval workflow", "ok"], ["Client portal v2", "accent"], ["Monthly digest email", "muted"]] as [string, string][]).map(([t, s]) => (
                     <div key={t} style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 0", fontSize: 12 }}>
                       <span className={`ih-dot ih-dot-${s}`} /> {t}
                     </div>
                   ))}
                 </div>
                 <div>
-                  <div className="ih-eyebrow" style={{ marginBottom: 8 }}>Recent decisions {"\u00b7"} 3</div>
+                  <div className="ih-eyebrow" style={{ marginBottom: 8 }}>Recent decisions {"·"} 3</div>
                   <div style={{ fontSize: 11.5, color: "var(--ih-ink-65)", lineHeight: 1.6 }}>
-                    <p style={{ margin: "0 0 6px" }}>{"\u00b7"} <span className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-40)" }}>Fri</span> Move portal launch to sprint 5.</p>
-                    <p style={{ margin: "0 0 6px" }}>{"\u00b7"} <span className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-40)" }}>Wed</span> Approved scope creep {"\u00b7"} +6h budget.</p>
-                    <p style={{ margin: "0" }}>{"\u00b7"} <span className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-40)" }}>Mon</span> Sam takes over Stripe sync ownership.</p>
+                    <p style={{ margin: "0 0 6px" }}>{"·"} <span className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-40)" }}>Fri</span> Move portal launch to sprint 5.</p>
+                    <p style={{ margin: "0 0 6px" }}>{"·"} <span className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-40)" }}>Wed</span> Approved scope creep {"·"} +6h budget.</p>
+                    <p style={{ margin: "0" }}>{"·"} <span className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-40)" }}>Mon</span> Sam takes over Stripe sync ownership.</p>
                   </div>
                 </div>
                 <div>
-                  <div className="ih-eyebrow" style={{ marginBottom: 8 }}>Risk {"\u00b7"} radar</div>
+                  <div className="ih-eyebrow" style={{ marginBottom: 8 }}>Risk {"·"} radar</div>
                   <div style={{ display: "grid", gap: 6 }}>
                     <div style={{ display: "flex", gap: 8, padding: "6px 8px", border: "1px solid var(--ih-line)", borderRadius: 6, fontSize: 11.5 }}>
                       <span className="ih-dot ih-dot-warn" style={{ marginTop: 4 }} />
-                      <span><strong>Portal v2 scope</strong> {"\u00b7"} 6h over forecast</span>
+                      <span><strong>Portal v2 scope</strong> {"·"} 6h over forecast</span>
                     </div>
                     <div style={{ display: "flex", gap: 8, padding: "6px 8px", border: "1px solid var(--ih-line)", borderRadius: 6, fontSize: 11.5 }}>
                       <span className="ih-dot ih-dot-ok" style={{ marginTop: 4 }} />
-                      <span><strong>Renewal signal</strong> {"\u00b7"} NPS 9 last touch</span>
+                      <span><strong>Renewal signal</strong> {"·"} NPS 9 last touch</span>
                     </div>
                   </div>
                 </div>
@@ -152,12 +152,12 @@ export default function ClientHubPage() {
             <div className="ih-card">
               <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--ih-line)", display: "flex", justifyContent: "space-between" }}>
                 <span className="ih-eyebrow">Upcoming bookings</span>
-                <button className="ih-btn ih-btn-quiet ih-btn-sm">All 14 {"\u2192"}</button>
+                <button className="ih-btn ih-btn-quiet ih-btn-sm">All 14 {"→"}</button>
               </div>
               {([
-                ["Tue 13", "11:30", "Sprint review", "30m \u00b7 Zoom", "info"],
-                ["Wed 14", "09:00", "Stand\u2011up \u00b7 Sam", "15m \u00b7 internal", "muted"],
-                ["Fri 16", "15:00", "Stakeholder demo", "45m \u00b7 Northwind HQ", "accent"],
+                ["Tue 13", "11:30", "Sprint review", "30m · Zoom", "info"],
+                ["Wed 14", "09:00", "Stand‑up · Sam", "15m · internal", "muted"],
+                ["Fri 16", "15:00", "Stakeholder demo", "45m · Northwind HQ", "accent"],
               ] as [string, string, string, string, string][]).map(([d, t, title, sub, tone], i) => (
                 <div key={i} style={{ padding: "10px 16px", borderTop: i === 0 ? "0" : "1px solid var(--ih-line)", display: "grid", gridTemplateColumns: "auto 1fr auto", gap: 12, alignItems: "center" }}>
                   <div style={{ width: 44, textAlign: "center", padding: "4px 0", border: "1px solid var(--ih-line)", borderRadius: 6 }}>
@@ -165,7 +165,7 @@ export default function ClientHubPage() {
                     <div className="ih-serif" style={{ fontSize: 18, lineHeight: 1 }}>{d.split(" ")[1]}</div>
                   </div>
                   <div>
-                    <div style={{ fontSize: 12.5, fontWeight: 500 }}>{title} <span className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-40)", marginLeft: 4 }}>{"\u00b7"} {t}</span></div>
+                    <div style={{ fontSize: 12.5, fontWeight: 500 }}>{title} <span className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-40)", marginLeft: 4 }}>{"·"} {t}</span></div>
                     <div className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-40)", marginTop: 2 }}>{sub}</div>
                   </div>
                   <Icon name="chevronRight" size={11} style={{ color: "var(--ih-ink-30)" }} />
@@ -175,11 +175,11 @@ export default function ClientHubPage() {
             <div className="ih-card">
               <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--ih-line)", display: "flex", justifyContent: "space-between" }}>
                 <span className="ih-eyebrow">Recent invoices</span>
-                <button className="ih-btn ih-btn-quiet ih-btn-sm">All 8 {"\u2192"}</button>
+                <button className="ih-btn ih-btn-quiet ih-btn-sm">All 8 {"→"}</button>
               </div>
               {([
-                ["/inv_2041", "Q2 \u00b7 M2 retainer", "$14,200", "Apr 28", "warn", "sent"],
-                ["/inv_2027", "Q2 \u00b7 M1 retainer", "$14,200", "Mar 28", "ok", "paid"],
+                ["/inv_2041", "Q2 · M2 retainer", "$14,200", "Apr 28", "warn", "sent"],
+                ["/inv_2027", "Q2 · M1 retainer", "$14,200", "Mar 28", "ok", "paid"],
                 ["/inv_2013", "Discovery sprint", "$ 8,400", "Mar 03", "ok", "paid"],
                 ["/inv_1991", "Onboarding setup", "$ 2,400", "Feb 14", "ok", "paid"],
               ] as [string, string, string, string, string, string][]).map(([id, label, amt, when, tone, status], i) => (
@@ -199,14 +199,14 @@ export default function ClientHubPage() {
           {/* Workflows */}
           <div className="ih-card">
             <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--ih-line)", display: "flex", justifyContent: "space-between" }}>
-              <span className="ih-eyebrow">Workflows attached {"\u00b7"} this client</span>
-              <button className="ih-btn ih-btn-quiet ih-btn-sm">Attach more {"\u2192"}</button>
+              <span className="ih-eyebrow">Workflows attached {"·"} this client</span>
+              <button className="ih-btn ih-btn-quiet ih-btn-sm">Attach more {"→"}</button>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 0 }}>
               {([
-                ["Onboarding \u00b7 Northwind", "Triggered on new booking", "12 runs \u00b7 100% ok", "ok", "/wf_204"],
-                ["Invoice \u2192 Stripe sync", "Hourly \u00b7 paid sync", "186 runs \u00b7 1 paused", "warn", "/wf_887"],
-                ["Monthly digest", "1st of month \u00b7 09:00", "3 runs \u00b7 all sent", "ok", "/wf_310"],
+                ["Onboarding · Northwind", "Triggered on new booking", "12 runs · 100% ok", "ok", "/wf_204"],
+                ["Invoice → Stripe sync", "Hourly · paid sync", "186 runs · 1 paused", "warn", "/wf_887"],
+                ["Monthly digest", "1st of month · 09:00", "3 runs · all sent", "ok", "/wf_310"],
               ] as [string, string, string, string, string][]).map(([t, sub, runs, tone, id], i) => (
                 <div key={id} style={{ padding: 16, borderLeft: i === 0 ? "0" : "1px solid var(--ih-line)" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
@@ -224,16 +224,16 @@ export default function ClientHubPage() {
 
         {/* Right rail */}
         <div style={{ padding: "20px 20px 48px", background: "var(--ih-surface-2)" }}>
-          <div className="ih-eyebrow" style={{ marginBottom: 14 }}>Right rail {"\u00b7"} contextual</div>
+          <div className="ih-eyebrow" style={{ marginBottom: 14 }}>Right rail {"·"} contextual</div>
 
           {/* Contacts */}
           <div className="ih-card" style={{ marginBottom: 12, background: "var(--ih-surface)" }}>
             <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--ih-line)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span className="ih-eyebrow">Contacts {"\u00b7"} 4</span>
+              <span className="ih-eyebrow">Contacts {"·"} 4</span>
               <button className="ih-btn ih-btn-quiet ih-btn-sm" style={{ height: 22, padding: "0 6px" }}><Icon name="plus" size={11} /></button>
             </div>
             {([
-              ["Mira Sato", "Founder \u00b7 primary", "green"],
+              ["Mira Sato", "Founder · primary", "green"],
               ["Sam Park", "Ops lead", "muted"],
               ["Lara Kim", "Finance", "muted"],
               ["Jamie F.", "Engineering", "muted"],
@@ -253,7 +253,7 @@ export default function ClientHubPage() {
           <div className="ih-card ih-card-pad" style={{ marginBottom: 12, background: "var(--ih-ink)", color: "#fff", padding: 16, borderColor: "transparent" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
               <Icon name="sparkles" size={13} style={{ color: "#fff" }} />
-              <span className="ih-eyebrow" style={{ color: "rgba(255,255,255,0.6)" }}>Copilot {"\u00b7"} this client</span>
+              <span className="ih-eyebrow" style={{ color: "rgba(255,255,255,0.6)" }}>Copilot {"·"} this client</span>
             </div>
             <p style={{ margin: 0, fontSize: 12, lineHeight: 1.55, color: "rgba(255,255,255,0.85)" }}>
               Sprint 4 is <strong style={{ color: "#fff" }}>78% complete</strong> and 6h over forecast. Mira&apos;s last touch was a NPS 9 &mdash; good renewal window. Outstanding invoice is 14 days old; I drafted a friendly chase ready to send.
@@ -267,16 +267,16 @@ export default function ClientHubPage() {
           {/* Pinned notes */}
           <div className="ih-card" style={{ marginBottom: 12, background: "var(--ih-surface)" }}>
             <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--ih-line)" }}>
-              <span className="ih-eyebrow">Pinned {"\u00b7"} 2</span>
+              <span className="ih-eyebrow">Pinned {"·"} 2</span>
             </div>
             <div style={{ padding: "12px 14px" }}>
               <div style={{ fontSize: 12, lineHeight: 1.5, paddingBottom: 10, marginBottom: 10, borderBottom: "1px solid var(--ih-line)" }}>
                 <strong>Prefers async.</strong> Don&apos;t book past 16:00 UK. Lara approves all spend &gt; $500.
-                <div className="ih-mono" style={{ fontSize: 9.5, color: "var(--ih-ink-40)", marginTop: 6 }}>luke {"\u00b7"} 4 weeks ago</div>
+                <div className="ih-mono" style={{ fontSize: 9.5, color: "var(--ih-ink-40)", marginTop: 6 }}>luke {"·"} 4 weeks ago</div>
               </div>
               <div style={{ fontSize: 12, lineHeight: 1.5 }}>
                 Renewal conversation slot: <strong>last week of June</strong>. Q3 brief drafted in /docs.
-                <div className="ih-mono" style={{ fontSize: 9.5, color: "var(--ih-ink-40)", marginTop: 6 }}>luke {"\u00b7"} 6 days ago</div>
+                <div className="ih-mono" style={{ fontSize: 9.5, color: "var(--ih-ink-40)", marginTop: 6 }}>luke {"·"} 6 days ago</div>
               </div>
             </div>
           </div>
@@ -284,7 +284,7 @@ export default function ClientHubPage() {
           {/* Recent activity */}
           <div className="ih-card" style={{ background: "var(--ih-surface)" }}>
             <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--ih-line)" }}>
-              <span className="ih-eyebrow">Recent {"\u00b7"} 5</span>
+              <span className="ih-eyebrow">Recent {"·"} 5</span>
             </div>
             {([
               ["09:42", "Stripe", "paid /inv_2039", "ok"],

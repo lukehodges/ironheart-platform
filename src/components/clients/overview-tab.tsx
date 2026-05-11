@@ -29,7 +29,7 @@ const ACTIVITY_DOT_COLOR: Record<string, string> = {
 }
 
 function formatDate(date: Date | null): string {
-  if (!date) return "\u2014"
+  if (!date) return "—"
   return new Date(date).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
 }
 
@@ -81,7 +81,7 @@ export function OverviewTab({
             ["Type", engagement.type === "PROJECT" ? "Project (Fixed Price)" : engagement.type === "HYBRID" ? "Hybrid" : "Retainer (Monthly)"],
             ["Start Date", formatDate(engagement.startDate)],
             ["Target Completion", formatDate(engagement.endDate)],
-            ["Total Value", totalValue ? formatCurrency(totalValue) : "\u2014"],
+            ["Total Value", totalValue ? formatCurrency(totalValue) : "—"],
             ["Amount Paid", formatCurrency(totalPaid)],
             ["Outstanding", formatCurrency(outstanding)],
           ].map(([label, value], i) => (

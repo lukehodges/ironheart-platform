@@ -355,7 +355,7 @@ function TeamPageInner() {
             />
             <KpiCard
               label="Avg Capacity"
-              value={stats.avgCapacityMax > 0 ? String(stats.avgCapacityUsed) : "\u2014"}
+              value={stats.avgCapacityMax > 0 ? String(stats.avgCapacityUsed) : "—"}
               sub={stats.avgCapacityMax > 0 ? `Out of ${stats.avgCapacityMax} max` : "No capacity data"}
               icon={Activity}
             />

@@ -374,7 +374,7 @@ export function SecurityTab() {
                     <TableCell className="font-medium">{apiKey.name}</TableCell>
                     <TableCell className="font-mono text-sm">
                       <code className="text-muted-foreground">
-                        {apiKey.key.substring(0, apiKey.key.length - 4).replace(/./g, "\u2022")}
+                        {apiKey.key.substring(0, apiKey.key.length - 4).replace(/./g, "•")}
                         {apiKey.key.slice(-4)}
                       </code>
                     </TableCell>
