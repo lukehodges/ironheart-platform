@@ -1,240 +1,106 @@
 "use client"
 
-import { useState, useMemo } from "react"
-import { Filter, Download, Loader2, AlertCircle } from "lucide-react"
-import { PageHeader } from "@/components/ui/page-header"
-import { Button } from "@/components/ui/button"
-import { AuditFilters } from "@/components/audit/audit-filters"
-import { AuditTimeline } from "@/components/audit/audit-timeline"
-import { useAuditLog } from "@/hooks/use-audit-log"
-import { api } from "@/lib/trpc/react"
-import { toast } from "sonner"
-import { SkeletonList } from "@/components/ui/skeleton"
+import { Icon } from "@/components/shell"
 
-/**
- * Audit Log Page
- *
- * Displays a chronological timeline of all system changes with filtering capabilities.
- *
- * Features:
- * - PageHeader with filters toggle and export button
- * - Collapsible filter panel at top (AuditFilters component)
- * - Main content: AuditTimeline component with infinite scroll
- * - Loading skeleton during initial load (timeline shape)
- * - Empty state when no entries match filters
- * - Error boundary with retry button
- * - CSV export respecting current filters
- * - Infinite scroll triggered by AuditTimeline's onLoadMore via IntersectionObserver
- *
- * Layout (from spec):
- * ```
- * ┌─────────────────────────────────────────────────┐
- * │ Audit Log                    [Filters] [Export] │
- * ├─────────────────────────────────────────────────┤
- * │ ┌─────────────────────────────────────────────┐ │
- * │ │ [Filter panel - collapsible]                │ │
- * │ └─────────────────────────────────────────────┘ │
- * ├─────────────────────────────────────────────────┤
- * │ ○ 2 hours ago - John Doe updated Booking #123   │
- * │   └─ Changed status from PENDING to CONFIRMED   │
- * ├─────────────────────────────────────────────────┤
- * │ ○ 5 hours ago - Jane Smith created Customer #45 │
- * ├─────────────────────────────────────────────────┤
- * │ ○ 1 day ago - Admin deleted Service #7          │
- * │   └─ [View changes]                             │
- * └─────────────────────────────────────────────────┘
- * ```
- *
- * @route /admin/audit
- */
-export default function AuditLogPage() {
-  // Filter panel visibility
-  const [isFiltersPanelOpen, setIsFiltersPanelOpen] = useState(false)
+/* -- Data ----------------------------------------------------------------- */
+const SYSLOG_ROWS = [
+  { sev: "WARNING",  t: "10:42:18",    actor: { name: "Luke Hodges", role: "owner" },     action: "ENGAGEMENT.STAGE_CHANGE",      entity: "ENG-0027", diff: "AUDITING → REPORTING",              ip: "82.14.12.4" },
+  { sev: "INFO",     t: "10:42:17",    actor: { name: "system",      role: "workflow" },   action: "AUDIT_REPORT.GENERATE",        entity: "AR-0027",  diff: "status: NULL → DRAFT",             ip: "—" },
+  { sev: "INFO",     t: "10:39:02",    actor: { name: "Luke Hodges", role: "owner" },     action: "FINDING.CREATE",               entity: "F-0431",   diff: "OPS · \u2018Shift handoff via WhatsApp’", ip: "82.14.12.4" },
+  { sev: "INFO",     t: "10:21:55",    actor: { name: "Sarah Chen",  role: "client" },    action: "APPROVAL.GRANT",               entity: "DEL-0099", diff: "PENDING → ACCEPTED",               ip: "212.45.9.18" },
+  { sev: "INFO",     t: "09:11:30",    actor: { name: "system",      role: "workflow" },   action: "INVOICE.CREATE",               entity: "NW-002",   diff: "amount: £6,125 · status: SENT", ip: "—" },
+  { sev: "ERROR",    t: "08:54:12",    actor: { name: "system",      role: "scheduler" }, action: "WORKFLOW.RUN_FAILED",           entity: "WF-021",   diff: "step 3 timeout · retry 1/3",       ip: "—" },
+  { sev: "WARNING",  t: "Wed 16:24",   actor: { name: "Luke Hodges", role: "owner" },     action: "PERMISSION.IMPERSONATE",       entity: "USR-209",  diff: "started · target Sarah Chen",      ip: "82.14.12.4" },
+  { sev: "INFO",     t: "Wed 14:02",   actor: { name: "Tom Hardy",   role: "client_admin" }, action: "USER.INVITE",               entity: "USR-213",  diff: "tom@northwind.co → portal_viewer",  ip: "212.45.9.18" },
+  { sev: "INFO",     t: "Wed 11:18",   actor: { name: "Priya Patel", role: "staff" },     action: "DELIVERABLE.UPLOAD",           entity: "DEL-0098", diff: "file: workflow-gap-v3.pdf · 4.2MB", ip: "82.14.12.4" },
+  { sev: "CRITICAL", t: "Tue 22:01",   actor: { name: "—",      role: "external" },  action: "AUTH.LOGIN_FAILED",            entity: "USR-209",  diff: "5 attempts · IP blocked 1h",       ip: "104.28.12.9" },
+  { sev: "INFO",     t: "Tue 18:33",   actor: { name: "Alex Wong",   role: "staff" },     action: "AUDIT_SESSION.UPDATE_LENS",    entity: "AS-0027",  diff: "TECHNOLOGY · rag: NULL → AMBER", ip: "82.14.12.4" },
+  { sev: "INFO",     t: "Tue 14:00",   actor: { name: "system",      role: "billing" },   action: "PAYMENT.RECEIVED",             entity: "INV-NW-001", diff: "Stripe · £12,250 · card_visa", ip: "—" },
+]
 
-  // Audit log data hook
-  const {
-    entries,
-    hasMore,
-    isLoading,
-    error,
-    filters,
-    setFilters,
-    loadMore,
-    exportCsv,
-  } = useAuditLog()
+const SEV_TONE: Record<string, { c: string; bold?: boolean }> = {
+  DEBUG:    { c: "var(--ih-ink-40)" },
+  INFO:     { c: "var(--ih-ink-65)" },
+  WARNING:  { c: "#B8821F" },
+  ERROR:    { c: "#C0392B" },
+  CRITICAL: { c: "#C0392B", bold: true },
+}
 
-  // Fetch team members for actor dropdown
-  const { data: teamData, isLoading: loadingUsers } = api.team.list.useQuery({ limit: 100 })
-  const users = useMemo(
-    () =>
-      (teamData?.rows ?? []).map((member) => ({
-        id: member.id,
-        name: member.name,
-        email: member.email,
-      })),
-    [teamData?.rows],
-  )
-
-  /**
-   * Handle filter changes from AuditFilters component
-   */
-  const handleFiltersChange = (newFilters: typeof filters) => {
-    setFilters(newFilters)
-  }
-
-  /**
-   * Reset filters to empty state
-   */
-  const handleResetFilters = () => {
-    setFilters({})
-  }
-
-  /**
-   * Export audit log to CSV with current filters
-   */
-  const handleExport = async () => {
-    try {
-      await exportCsv.mutateAsync({
-        action: filters.action,
-        resourceType: filters.resourceType,
-        userId: filters.userId ?? filters.actorId,
-        dateFrom: filters.dateFrom ?? filters.from,
-        dateTo: filters.dateTo ?? filters.to,
-      })
-      toast.success("Audit log exported successfully")
-    } catch (err) {
-      toast.error("Failed to export audit log")
-    }
-  }
-
-  /**
-   * Retry loading on error
-   */
-  const handleRetry = () => {
-    // Reset filters to trigger a fresh query
-    setFilters({ ...filters })
-  }
-
+/* -- Page ----------------------------------------------------------------- */
+export default function AuditSystemLogPage() {
   return (
-    <div className="flex flex-col h-full">
-      {/* Page Header */}
-      <div className="flex-shrink-0 border-b border-border bg-background px-6 py-4 md:px-8">
-        <PageHeader
-          title="Audit Log"
-          description="View all system changes and modifications"
-        >
-          <div className="flex items-center gap-2">
-            {/* Filters Toggle Button */}
-            <Button
-              variant={isFiltersPanelOpen ? "secondary" : "outline"}
-              size="default"
-              onClick={() => setIsFiltersPanelOpen(!isFiltersPanelOpen)}
-              aria-label="Toggle filters panel"
-            >
-              <Filter className="h-4 w-4" />
-              <span className="hidden sm:inline">Filters</span>
-            </Button>
-
-            {/* Export Button */}
-            <Button
-              variant="outline"
-              size="default"
-              onClick={handleExport}
-              disabled={exportCsv.isPending || entries.length === 0}
-              loading={exportCsv.isPending}
-              aria-label="Export audit log to CSV"
-            >
-              <Download className="h-4 w-4" />
-              <span className="hidden sm:inline">Export</span>
-            </Button>
+    <div style={{ padding: "20px 28px" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 16 }}>
+        <div>
+          <div className="ih-eyebrow" style={{ marginBottom: 6 }}>System {"·"} Audit log {"·"} the other audit</div>
+          <h1 className="ih-serif" style={{ fontSize: 28, margin: 0 }}>Every <span className="ih-italic-red">change</span>, recorded.</h1>
+          <div style={{ fontSize: 12, color: "var(--ih-ink-50)", marginTop: 6 }}>
+            The RBAC + compliance trail. Distinct from the per-engagement <strong>Audit Workspace</strong>. Retained 7 years. SOC-2 ready.
           </div>
-        </PageHeader>
+        </div>
+        <div style={{ display: "flex", gap: 18, fontSize: 11 }}>
+          {[
+            { l: "Events today",    v: "1,247",   tone: "var(--ih-ink)" },
+            { l: "Warnings",        v: "12",      tone: "#B8821F" },
+            { l: "Errors / 24h",    v: "2",       tone: "#C0392B" },
+            { l: "Logins",          v: "48",      tone: "var(--ih-ink-65)" },
+          ].map((s) => (
+            <div key={s.l} style={{ textAlign: "right" }}>
+              <div className="ih-eyebrow" style={{ fontSize: 9, marginBottom: 4 }}>{s.l}</div>
+              <div className="ih-serif ih-num" style={{ fontSize: 22, color: s.tone, lineHeight: 1 }}>{s.v}</div>
+            </div>
+          ))}
+        </div>
       </div>
 
-      {/* Main Content */}
-      <main className="flex-1 overflow-y-auto p-6 md:p-8">
-        <div className="max-w-5xl mx-auto space-y-6">
-          {/* Filters Panel (Collapsible) */}
-          {isFiltersPanelOpen && (
-            <AuditFilters
-              filters={filters}
-              onFiltersChange={handleFiltersChange}
-              onReset={handleResetFilters}
-              users={users}
-              loadingUsers={loadingUsers}
-              defaultOpen={true}
-            />
-          )}
-
-          {/* Error State */}
-          {error && (
-            <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-6">
-              <div className="flex items-start gap-4">
-                <AlertCircle className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
-                <div className="flex-1 space-y-2">
-                  <h3 className="font-semibold text-destructive">
-                    Failed to load audit log
-                  </h3>
-                  <p className="text-sm text-destructive/80">
-                    {error instanceof Error
-                      ? error.message
-                      : "An unexpected error occurred. Please try again."}
-                  </p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleRetry}
-                    className="mt-2"
-                  >
-                    Retry
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Loading Skeleton */}
-          {isLoading && entries.length === 0 && (
-            <div className="space-y-4">
-              <SkeletonList items={5} />
-            </div>
-          )}
-
-          {/* Audit Timeline */}
-          {!error && entries.length > 0 && (
-            <AuditTimeline
-              entries={entries}
-              hasMore={hasMore}
-              onLoadMore={loadMore}
-              isLoading={isLoading}
-            />
-          )}
-
-          {/* Empty State */}
-          {!isLoading && !error && entries.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
-              <div className="rounded-full bg-muted p-6 mb-4">
-                <Filter className="h-8 w-8 text-muted-foreground" />
-              </div>
-              <h3 className="text-lg font-semibold mb-2">No audit entries found</h3>
-              <p className="text-sm text-muted-foreground max-w-md mb-4">
-                {Object.keys(filters).length > 0
-                  ? "No audit log entries match your current filters. Try adjusting your filter criteria."
-                  : "Audit log entries will appear here as changes are made to your resources."}
-              </p>
-              {Object.keys(filters).length > 0 && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleResetFilters}
-                >
-                  Clear Filters
-                </Button>
-              )}
-            </div>
-          )}
+      {/* Filter chips */}
+      <div style={{ display: "flex", gap: 6, marginBottom: 14, flexWrap: "wrap", alignItems: "center" }}>
+        <span className="ih-eyebrow" style={{ marginRight: 6 }}>Filters</span>
+        <span className="ih-pill" style={{ fontSize: 10 }}>Severity {"≥"} INFO {"×"}</span>
+        <span className="ih-pill" style={{ fontSize: 10 }}>Last 24h {"×"}</span>
+        <span className="ih-pill" style={{ fontSize: 10 }}>All actors {"×"}</span>
+        <span className="ih-pill" style={{ fontSize: 10 }}>All entities {"×"}</span>
+        <button className="ih-btn ih-btn-quiet ih-btn-sm" style={{ height: 22 }}><Icon name="plus" size={10} /> Add</button>
+        <div style={{ flex: 1 }} />
+        <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 10.5, color: "var(--ih-ink-50)" }}>
+          <Icon name="sparkles" size={10} style={{ color: "var(--ih-accent)" }} />
+          Try: &ldquo;show me Sarah&apos;s actions on ENG-0027 since Friday&rdquo;
         </div>
-      </main>
+      </div>
+
+      {/* Log table */}
+      <div className="ih-card" style={{ overflow: "hidden" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11.5, fontFamily: "var(--ih-font-mono)" }}>
+          <thead>
+            <tr style={{ background: "var(--ih-surface-2)", borderBottom: "1px solid var(--ih-line)" }}>
+              {["sev", "when", "actor", "action", "entity", "diff", "ip"].map((h) => (
+                <th key={h} style={{ textAlign: "left", padding: "8px 12px", fontSize: 9, textTransform: "uppercase", letterSpacing: "0.12em", color: "var(--ih-ink-40)", fontWeight: 500 }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {SYSLOG_ROWS.map((r, i) => {
+              const t = SEV_TONE[r.sev] ?? SEV_TONE.INFO
+              return (
+                <tr key={i} style={{ borderBottom: "1px solid var(--ih-line)" }}>
+                  <td style={{ padding: "9px 12px", color: t.c, fontWeight: t.bold ? 700 : 500, fontSize: 10 }}>
+                    {r.sev === "CRITICAL" ? "● ● ●" : r.sev === "ERROR" ? "● ●" : r.sev === "WARNING" ? "● " : "·"} {r.sev}
+                  </td>
+                  <td style={{ padding: "9px 12px", color: "var(--ih-ink-50)" }}>{r.t}</td>
+                  <td style={{ padding: "9px 12px" }}>
+                    <span style={{ color: "var(--ih-ink-90)" }}>{r.actor.name}</span>
+                    <span style={{ color: "var(--ih-ink-40)", fontSize: 9.5, marginLeft: 4 }}>{"·"} {r.actor.role}</span>
+                  </td>
+                  <td style={{ padding: "9px 12px", color: "var(--ih-accent)" }}>{r.action}</td>
+                  <td style={{ padding: "9px 12px", color: "var(--ih-ink-65)" }}>{r.entity}</td>
+                  <td style={{ padding: "9px 12px", color: "var(--ih-ink-65)", fontFamily: "var(--ih-font-sans)" }}>{r.diff}</td>
+                  <td style={{ padding: "9px 12px", color: "var(--ih-ink-40)" }}>{r.ip}</td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }
