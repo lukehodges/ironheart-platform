@@ -1,13 +1,12 @@
 import { redirect } from "next/navigation"
 import { withAuth } from "@workos-inc/authkit-nextjs"
-import { AdminSidebar } from "@/components/layout/admin-sidebar"
-import { AdminTopbar } from "@/components/layout/admin-topbar"
 import { ImpersonationBanner } from "@/components/platform/impersonation-banner"
 import { db } from "@/shared/db"
 import { users, userRoles, rolePermissions, permissions as permissionsTable } from "@/shared/db/schemas/auth.schema"
 import { eq } from "drizzle-orm"
 import { tenantRepository } from "@/modules/tenant/tenant.repository"
 import { redis } from "@/shared/redis"
+import { AdminShellClient } from "./admin-shell-client"
 
 export default async function AdminLayout({
   children,
@@ -71,7 +70,7 @@ export default async function AdminLayout({
       permissions = ["*:*"]
     }
 
-    // MEMBER users: load actual permissions from DB via userRoles → rolePermissions → permissions
+    // MEMBER users: load actual permissions from DB via userRoles -> rolePermissions -> permissions
     if (dbUser && permissions.length === 0) {
       const rows = await db
         .select({
@@ -106,37 +105,25 @@ export default async function AdminLayout({
     ? `${workosUser.firstName} ${workosUser.lastName ?? ""}`.trim()
     : workosUser.email
 
-  const userForDisplay = {
+  const initials = workosUser.firstName
+    ? `${workosUser.firstName[0]}${workosUser.lastName?.[0] ?? ""}`.toUpperCase()
+    : (workosUser.email?.[0] ?? "U").toUpperCase()
+
+  const userForShell = {
     name: displayName,
     email: workosUser.email,
-    imageUrl: workosUser.profilePictureUrl ?? null,
+    initials,
+    role: isPlatformAdmin ? "platform admin" : (dbUser?.type?.toLowerCase() ?? "member"),
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
-      <AdminSidebar
-        user={userForDisplay}
-        permissions={permissions}
-        isPlatformAdmin={isPlatformAdmin}
-        enabledModuleSlugs={enabledModuleSlugs}
-      />
-      <div className="flex flex-1 flex-col min-w-0 overflow-hidden">
-        <ImpersonationBanner />
-        <AdminTopbar
-          user={userForDisplay}
-          permissions={permissions}
-          isPlatformAdmin={isPlatformAdmin}
-          enabledModuleSlugs={enabledModuleSlugs}
-        />
-        <main
-          className="flex-1 overflow-y-auto scrollbar-thin"
-          id="main-content"
-        >
-          <div className="container mx-auto p-6 max-w-screen-2xl">
-            {children}
-          </div>
-        </main>
-      </div>
+    <div className="h-screen overflow-hidden">
+      <ImpersonationBanner />
+      <AdminShellClient user={userForShell}>
+        <div className="p-6 max-w-screen-2xl mx-auto">
+          {children}
+        </div>
+      </AdminShellClient>
     </div>
   )
 }

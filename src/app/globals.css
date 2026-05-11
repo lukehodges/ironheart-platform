@@ -1,7 +1,32 @@
 @import "tailwindcss";
 
+/* ==========================================================================
+   Ironheart Design System — Font Faces
+   ========================================================================== */
+
+@font-face {
+  font-family: "Instrument Serif";
+  src: url("/fonts/InstrumentSerif-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Instrument Serif";
+  src: url("/fonts/InstrumentSerif-Italic.ttf") format("truetype");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+
+/* ==========================================================================
+   Tailwind v4 @theme — shadcn variable bridge
+   ========================================================================== */
+
 @theme inline {
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Instrument Serif", Georgia, serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
   --color-background: hsl(var(--background));
   --color-foreground: hsl(var(--foreground));
   --color-card: hsl(var(--card));
@@ -43,121 +68,203 @@
   --radius-xl: calc(var(--radius) + 4px);
 }
 
+/* ==========================================================================
+   Base layer — shadcn HSL variables + Ironheart tokens
+   ========================================================================== */
+
 @layer base {
   :root {
-    /* Background */
-    --background: 0 0% 100%;
-    --foreground: 240 10% 3.9%;
+    /* ── shadcn primitives (mapped to Ironheart palette) ── */
 
-    /* Card */
+    /* Background: warm neutral #FAFAF7 ≈ 60 13% 97.3% */
+    --background: 50 18% 97%;
+    --foreground: 220 14% 6%;
+
+    /* Card: white on warm background */
     --card: 0 0% 100%;
-    --card-foreground: 240 10% 3.9%;
+    --card-foreground: 220 14% 6%;
 
     /* Popover */
     --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 3.9%;
+    --popover-foreground: 220 14% 6%;
 
-    /* Primary — Blue 600 */
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
+    /* Primary: Ironheart ink #0E1013 */
+    --primary: 220 14% 6%;
+    --primary-foreground: 0 0% 100%;
 
     /* Secondary */
-    --secondary: 240 4.8% 95.9%;
-    --secondary-foreground: 240 5.9% 10%;
+    --secondary: 40 16% 94%;
+    --secondary-foreground: 220 14% 6%;
 
     /* Muted */
-    --muted: 240 4.8% 95.9%;
-    --muted-foreground: 240 3.8% 46.1%;
+    --muted: 40 16% 94%;
+    --muted-foreground: 220 6% 45%;
 
-    /* Accent */
-    --accent: 240 4.8% 95.9%;
-    --accent-foreground: 240 5.9% 10%;
+    /* Accent (shadcn "accent" = subtle highlight, not Ironheart ember) */
+    --accent: 40 16% 94%;
+    --accent-foreground: 220 14% 6%;
 
-    /* Destructive */
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
+    /* Destructive: Ironheart accent/danger */
+    --destructive: 8 76% 47%;
+    --destructive-foreground: 0 0% 100%;
 
-    /* Success */
-    --success: 142.1 76.2% 36.3%;
-    --success-foreground: 0 0% 98%;
+    /* Success: Ironheart --ok #2F6F5C */
+    --success: 161 41% 31%;
+    --success-foreground: 0 0% 100%;
 
-    /* Warning */
-    --warning: 32.1 94.6% 43.7%;
-    --warning-foreground: 0 0% 98%;
+    /* Warning: Ironheart --warn #B8860B */
+    --warning: 43 89% 38%;
+    --warning-foreground: 0 0% 100%;
 
     /* Border, Input, Ring */
-    --border: 240 5.9% 90%;
-    --input: 240 5.9% 90%;
-    --ring: 221.2 83.2% 53.3%;
+    --border: 40 12% 90%;
+    --input: 40 12% 90%;
+    --ring: 220 14% 6%;
 
-    /* Sidebar */
-    --sidebar: 240 10% 3.9%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-accent: 240 3.7% 10.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-ring: 221.2 83.2% 53.3%;
-    --sidebar-muted-foreground: 240 3.8% 56.1%;
+    /* Sidebar: Ironheart surface-2 #F4F2EC */
+    --sidebar: 40 16% 94%;
+    --sidebar-foreground: 220 14% 6%;
+    --sidebar-border: 40 12% 88%;
+    --sidebar-accent: 40 16% 91%;
+    --sidebar-accent-foreground: 220 14% 6%;
+    --sidebar-ring: 220 14% 6%;
+    --sidebar-muted-foreground: 220 6% 45%;
 
     /* Radius */
     --radius: 0.5rem;
 
     /* Chart colours */
-    --chart-1: 221.2 83.2% 53.3%;
-    --chart-2: 142.1 76.2% 36.3%;
-    --chart-3: 32.1 94.6% 43.7%;
-    --chart-4: 271.9 81.3% 55.9%;
-    --chart-5: 0 84.2% 60.2%;
+    --chart-1: 8 76% 47%;
+    --chart-2: 161 41% 31%;
+    --chart-3: 43 89% 38%;
+    --chart-4: 217 65% 50%;
+    --chart-5: 220 14% 6%;
+
+    /* ── Ironheart-specific tokens ── */
+    --ih-bg:        #FAFAF7;
+    --ih-surface:   #FFFFFF;
+    --ih-surface-2: #F4F2EC;
+    --ih-surface-3: #ECE9E1;
+
+    --ih-ink:       #0E1013;
+    --ih-ink-90:    rgba(14,16,19,0.92);
+    --ih-ink-65:    rgba(14,16,19,0.65);
+    --ih-ink-50:    rgba(14,16,19,0.50);
+    --ih-ink-40:    rgba(14,16,19,0.40);
+    --ih-ink-30:    rgba(14,16,19,0.30);
+
+    --ih-line:      rgba(14,16,19,0.08);
+    --ih-line-2:    rgba(14,16,19,0.14);
+    --ih-line-3:    rgba(14,16,19,0.24);
+
+    --ih-accent:    #D13A1F;
+    --ih-accent-fg: #FFFFFF;
+    --ih-accent-soft: rgba(209,58,31,0.10);
+    --ih-accent-soft-2: rgba(209,58,31,0.06);
+
+    --ih-ok:        #2F6F5C;
+    --ih-ok-soft:   rgba(47,111,92,0.10);
+    --ih-warn:      #B8860B;
+    --ih-warn-soft: rgba(184,134,11,0.12);
+    --ih-info:      #2A5DBF;
+    --ih-info-soft: rgba(42,93,191,0.10);
+    --ih-danger:    #C0392B;
+    --ih-danger-soft: rgba(192,57,43,0.10);
+
+    --ih-font-serif: "Instrument Serif", Georgia, serif;
+    --ih-font-sans:  "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+    --ih-font-mono:  "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+    --ih-r-xs: 4px;
+    --ih-r-sm: 6px;
+    --ih-r-md: 8px;
+    --ih-r-lg: 10px;
+    --ih-r-xl: 12px;
+    --ih-r-2xl: 16px;
+    --ih-r-pill: 999px;
+
+    --ih-s-1: 4px;
+    --ih-s-2: 8px;
+    --ih-s-3: 12px;
+    --ih-s-4: 16px;
+    --ih-s-5: 20px;
+    --ih-s-6: 24px;
+    --ih-s-8: 32px;
+    --ih-s-10: 40px;
+    --ih-s-12: 48px;
+
+    --ih-shadow-pop: 0 1px 2px rgba(14,16,19,0.04), 0 8px 24px rgba(14,16,19,0.08);
+    --ih-shadow-modal: 0 24px 64px rgba(14,16,19,0.18);
+
+    --ih-sidebar-w: 232px;
+    --ih-sidebar-w-collapsed: 56px;
+    --ih-topbar-h: 48px;
   }
 
   .dark {
-    --background: 240 10% 3.9%;
-    --foreground: 0 0% 98%;
+    --background: 220 14% 6%;
+    --foreground: 0 0% 96%;
 
-    --card: 240 10% 3.9%;
-    --card-foreground: 0 0% 98%;
+    --card: 220 12% 10%;
+    --card-foreground: 0 0% 96%;
 
-    --popover: 240 10% 3.9%;
-    --popover-foreground: 0 0% 98%;
+    --popover: 220 12% 10%;
+    --popover-foreground: 0 0% 96%;
 
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 0 0% 96%;
+    --primary-foreground: 220 14% 6%;
 
-    --secondary: 240 3.7% 15.9%;
-    --secondary-foreground: 0 0% 98%;
+    --secondary: 220 10% 16%;
+    --secondary-foreground: 0 0% 96%;
 
-    --muted: 240 3.7% 15.9%;
-    --muted-foreground: 240 5% 64.9%;
+    --muted: 220 10% 16%;
+    --muted-foreground: 220 6% 60%;
 
-    --accent: 240 3.7% 15.9%;
-    --accent-foreground: 0 0% 98%;
+    --accent: 220 10% 16%;
+    --accent-foreground: 0 0% 96%;
 
-    --destructive: 0 62.8% 30.6%;
+    --destructive: 8 68% 40%;
     --destructive-foreground: 0 0% 98%;
 
-    --success: 142.1 70.6% 45.3%;
+    --success: 161 41% 38%;
     --success-foreground: 0 0% 98%;
 
-    --warning: 32.1 94.6% 43.7%;
+    --warning: 43 89% 43%;
     --warning-foreground: 0 0% 98%;
 
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
-    --ring: 217.2 91.2% 59.8%;
+    --border: 220 10% 18%;
+    --input: 220 10% 18%;
+    --ring: 0 0% 96%;
 
-    --sidebar: 240 10% 3.9%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-accent: 240 3.7% 10.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
-    --sidebar-muted-foreground: 240 3.8% 56.1%;
+    --sidebar: 220 14% 8%;
+    --sidebar-foreground: 0 0% 96%;
+    --sidebar-border: 220 10% 16%;
+    --sidebar-accent: 220 10% 12%;
+    --sidebar-accent-foreground: 0 0% 96%;
+    --sidebar-ring: 0 0% 96%;
+    --sidebar-muted-foreground: 220 6% 55%;
 
-    --chart-1: 217.2 91.2% 59.8%;
-    --chart-2: 142.1 70.6% 45.3%;
-    --chart-3: 32.1 94.6% 43.7%;
-    --chart-4: 271.9 81.3% 55.9%;
-    --chart-5: 0 62.8% 30.6%;
+    --chart-1: 8 68% 50%;
+    --chart-2: 161 41% 40%;
+    --chart-3: 43 89% 48%;
+    --chart-4: 217 65% 55%;
+    --chart-5: 0 0% 80%;
+
+    --ih-bg:        #0E1013;
+    --ih-surface:   #1a1c20;
+    --ih-surface-2: #141618;
+    --ih-surface-3: #22252a;
+
+    --ih-ink:       #E8E6E1;
+    --ih-ink-90:    rgba(232,230,225,0.92);
+    --ih-ink-65:    rgba(232,230,225,0.65);
+    --ih-ink-50:    rgba(232,230,225,0.50);
+    --ih-ink-40:    rgba(232,230,225,0.40);
+    --ih-ink-30:    rgba(232,230,225,0.30);
+
+    --ih-line:      rgba(232,230,225,0.08);
+    --ih-line-2:    rgba(232,230,225,0.14);
+    --ih-line-3:    rgba(232,230,225,0.24);
   }
 }
 
@@ -167,25 +274,191 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-feature-settings: "rlig" 1, "calt" 1;
+    font-family: var(--ih-font-sans);
+    font-size: 13px;
+    line-height: 1.45;
+    font-feature-settings: "ss01", "cv11";
+    -webkit-font-smoothing: antialiased;
   }
-  /* Smooth scrolling */
   html {
     scroll-behavior: smooth;
   }
-  /* Better focus outline */
   :focus-visible {
     outline: 2px solid hsl(var(--ring));
     outline-offset: 2px;
   }
-  /* Selection colour */
   ::selection {
-    background: hsl(var(--primary) / 0.2);
-    color: hsl(var(--foreground));
+    background: var(--ih-accent-soft);
+    color: var(--ih-ink);
   }
 }
 
-/* Custom scrollbar — thin and theme-aware */
+/* ==========================================================================
+   Ironheart Typography Utilities
+   ========================================================================== */
+
+@layer utilities {
+  .ih-serif { font-family: var(--ih-font-serif); letter-spacing: -0.02em; line-height: 1.02; }
+  .ih-mono { font-family: var(--ih-font-mono); }
+  .ih-eyebrow {
+    font-family: var(--ih-font-mono);
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--ih-ink-50);
+  }
+  .ih-italic-red { font-style: italic; color: var(--ih-accent); font-family: var(--ih-font-serif); }
+  .ih-num { font-family: var(--ih-font-mono); font-variant-numeric: tabular-nums; }
+}
+
+/* ==========================================================================
+   Ironheart Atoms
+   ========================================================================== */
+
+@layer utilities {
+  .ih-hr { height: 1px; background: var(--ih-line); border: 0; }
+
+  .ih-dot { width: 6px; height: 6px; border-radius: var(--ih-r-pill); display: inline-block; }
+  .ih-dot-ok    { background: var(--ih-ok); }
+  .ih-dot-warn  { background: var(--ih-warn); }
+  .ih-dot-info  { background: var(--ih-info); }
+  .ih-dot-danger{ background: var(--ih-danger); }
+  .ih-dot-muted { background: var(--ih-ink-30); }
+  .ih-dot-accent{ background: var(--ih-accent); }
+
+  .ih-kbd {
+    font-family: var(--ih-font-mono);
+    font-size: 10px;
+    padding: 1px 5px;
+    border: 1px solid var(--ih-line);
+    border-radius: var(--ih-r-xs);
+    background: var(--ih-surface);
+    color: var(--ih-ink-65);
+    line-height: 1.4;
+  }
+}
+
+/* ==========================================================================
+   Ironheart Button System
+   ========================================================================== */
+
+@layer utilities {
+  .ih-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    font: 500 12px/1 var(--ih-font-sans);
+    height: 28px; padding: 0 10px;
+    border-radius: var(--ih-r-md);
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: background .15s ease, border-color .15s ease, color .15s ease, transform .1s ease;
+    white-space: nowrap;
+  }
+  .ih-btn:hover { transform: translateY(-0.5px); }
+  .ih-btn-primary { background: var(--ih-ink); color: #fff; }
+  .ih-btn-primary:hover { background: #1c1f24; }
+  .ih-btn-accent { background: var(--ih-accent); color: #fff; }
+  .ih-btn-accent:hover { background: #B73117; }
+  .ih-btn-ghost { background: transparent; color: var(--ih-ink); border-color: var(--ih-line); }
+  .ih-btn-ghost:hover { background: var(--ih-surface-2); border-color: var(--ih-line-2); }
+  .ih-btn-quiet { background: transparent; color: var(--ih-ink-65); }
+  .ih-btn-quiet:hover { color: var(--ih-ink); background: rgba(14,16,19,0.04); }
+  .ih-btn-sm { height: 24px; padding: 0 8px; font-size: 11px; }
+  .ih-btn-lg { height: 36px; padding: 0 14px; font-size: 13px; }
+  .ih-btn-icon { width: 28px; padding: 0; justify-content: center; }
+}
+
+/* ==========================================================================
+   Ironheart Card
+   ========================================================================== */
+
+@layer utilities {
+  .ih-card {
+    background: var(--ih-surface);
+    border: 1px solid var(--ih-line);
+    border-radius: var(--ih-r-xl);
+  }
+  .ih-card-pad { padding: var(--ih-s-5); }
+  .ih-card-flat { background: transparent; border: 1px solid var(--ih-line); border-radius: var(--ih-r-xl); }
+}
+
+/* ==========================================================================
+   Ironheart Pill / Badge
+   ========================================================================== */
+
+@layer utilities {
+  .ih-pill {
+    display: inline-flex; align-items: center; gap: 4px;
+    font: 500 10px/1 var(--ih-font-mono);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 3px 7px;
+    border-radius: var(--ih-r-pill);
+    border: 1px solid var(--ih-line);
+    color: var(--ih-ink-65);
+    background: var(--ih-surface);
+  }
+  .ih-pill-ink   { background: var(--ih-ink); color: #fff; border-color: transparent; }
+  .ih-pill-ok    { background: var(--ih-ok-soft); color: var(--ih-ok); border-color: transparent; }
+  .ih-pill-warn  { background: var(--ih-warn-soft); color: var(--ih-warn); border-color: transparent; }
+  .ih-pill-info  { background: var(--ih-info-soft); color: var(--ih-info); border-color: transparent; }
+  .ih-pill-accent{ background: var(--ih-accent-soft); color: var(--ih-accent); border-color: transparent; }
+  .ih-pill-danger{ background: var(--ih-danger-soft); color: var(--ih-danger); border-color: transparent; }
+}
+
+/* ==========================================================================
+   Ironheart Input
+   ========================================================================== */
+
+@layer utilities {
+  .ih-input {
+    height: 30px;
+    padding: 0 10px;
+    border: 1px solid var(--ih-line);
+    background: var(--ih-surface);
+    border-radius: var(--ih-r-md);
+    font: 400 12px/1 var(--ih-font-sans);
+    color: var(--ih-ink);
+    width: 100%;
+    outline: none;
+  }
+  .ih-input:focus { border-color: var(--ih-line-3); box-shadow: 0 0 0 3px var(--ih-accent-soft-2); }
+}
+
+/* ==========================================================================
+   Ironheart Avatar
+   ========================================================================== */
+
+@layer utilities {
+  .ih-avatar {
+    width: 24px; height: 24px;
+    border-radius: var(--ih-r-pill);
+    background: var(--ih-surface-2);
+    border: 1px solid var(--ih-line);
+    display: inline-flex; align-items: center; justify-content: center;
+    font: 500 10px/1 var(--ih-font-mono);
+    color: var(--ih-ink-65);
+    text-transform: uppercase;
+    flex-shrink: 0;
+  }
+  .ih-avatar-lg { width: 36px; height: 36px; font-size: 12px; }
+  .ih-avatar-xl { width: 56px; height: 56px; font-size: 18px; font-family: var(--ih-font-serif); font-style: italic; }
+}
+
+/* ==========================================================================
+   Ironheart Hatch Pattern
+   ========================================================================== */
+
+@layer utilities {
+  .ih-hatch {
+    background-image: repeating-linear-gradient(135deg, var(--ih-line) 0 1px, transparent 1px 10px);
+  }
+}
+
+/* ==========================================================================
+   Scrollbar — thin and theme-aware
+   ========================================================================== */
+
 @layer utilities {
   .scrollbar-thin {
     scrollbar-width: thin;
@@ -199,19 +472,11 @@
     background: transparent;
   }
   .scrollbar-thin::-webkit-scrollbar-thumb {
-    background: hsl(var(--border));
+    background: var(--ih-line-2);
     border-radius: 3px;
   }
   .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-    background: hsl(var(--muted-foreground) / 0.5);
-  }
-
-  /* Gradient text utility */
-  .text-gradient {
-    background: linear-gradient(135deg, hsl(var(--primary)), hsl(271.9 81.3% 55.9%));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    background: var(--ih-line-3);
   }
 
   /* Glass card effect */
@@ -239,7 +504,6 @@
     100% { background-position: -200% 0; }
   }
 
-  /* Fade in */
   .animate-fade-in {
     animation: fade-in 0.2s ease-out;
   }
@@ -248,7 +512,6 @@
     to { opacity: 1; transform: translateY(0); }
   }
 
-  /* Slide in from left (sidebar) */
   .animate-slide-in-left {
     animation: slide-in-left 0.2s ease-out;
   }
