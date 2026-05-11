@@ -1,583 +1,168 @@
 "use client"
 
-import { useState, useCallback } from "react"
-import { useRouter } from "next/navigation"
-import {
-  Search,
-  Plus,
-  MoreHorizontal,
-  ChevronLeft,
-  ChevronRight,
-  RefreshCw,
-  Trash2,
-} from "lucide-react"
-import { api } from "@/lib/trpc/react"
-import { useDebounce } from "@/hooks/use-debounce"
-import { useWorkflowMutations } from "@/hooks/use-workflow-mutations"
-import { PageHeader } from "@/components/ui/page-header"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
-import { Switch } from "@/components/ui/switch"
-import { Skeleton } from "@/components/ui/skeleton"
-import { EmptyState } from "@/components/ui/empty-state"
-import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-  TableCell,
-} from "@/components/ui/table"
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import type { WorkflowRecord } from "@/modules/workflow/workflow.types"
+import { Icon } from "@/components/shell"
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-const PAGE_SIZE = 25
-
-function formatRelativeDate(date: Date | string | null | undefined): string {
-  if (!date) return "-"
-  const d = typeof date === "string" ? new Date(date) : date
-  const now = new Date()
-  const diffMs = now.getTime() - d.getTime()
-  const diffDays = Math.floor(Math.abs(diffMs) / (1000 * 60 * 60 * 24))
-  const isFuture = diffMs < 0
-
-  if (diffDays === 0) return "Today"
-
-  if (isFuture) {
-    if (diffDays === 1) return "Tomorrow"
-    if (diffDays < 7) return `in ${diffDays} days`
-    if (diffDays < 30) return `in ${Math.floor(diffDays / 7)}w`
-    if (diffDays < 365) return `in ${Math.floor(diffDays / 30)}mo`
-    return `in ${Math.floor(diffDays / 365)}y`
-  }
-
-  if (diffDays === 1) return "Yesterday"
-  if (diffDays < 7) return `${diffDays} days ago`
-  if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`
-  if (diffDays < 365) return `${Math.floor(diffDays / 30)}mo ago`
-  return `${Math.floor(diffDays / 365)}y ago`
-}
-
-/**
- * Extract trigger events from a workflow's nodes array
- */
-function getTriggerEvents(workflow: WorkflowRecord): string[] {
-  if (!workflow.nodes || !Array.isArray(workflow.nodes)) return []
-
-  return workflow.nodes
-    .filter((node: any) => node.type === 'TRIGGER')
-    .map((node: any) => node.config?.eventType as string)
-    .filter(Boolean)
-}
-
-type StatusFilter = "ALL" | "ACTIVE" | "INACTIVE"
-
-// ---------------------------------------------------------------------------
-// Table skeleton
-// ---------------------------------------------------------------------------
-
-function TableRowSkeleton() {
-  return (
-    <TableRow>
-      <TableCell><Skeleton className="h-4 w-48" /></TableCell>
-      <TableCell><Skeleton className="h-4 w-32" /></TableCell>
-      <TableCell><Skeleton className="h-5 w-16 rounded-md" /></TableCell>
-      <TableCell><Skeleton className="h-4 w-20" /></TableCell>
-      <TableCell>
-        <div className="flex items-center gap-2">
-          <Skeleton className="h-5 w-9 rounded-full" />
-          <Skeleton className="h-7 w-7 rounded-md" />
-        </div>
-      </TableCell>
-    </TableRow>
-  )
-}
-
-// ---------------------------------------------------------------------------
-// Workflow row
-// ---------------------------------------------------------------------------
-
-interface WorkflowRowProps {
-  workflow: WorkflowRecord
-  onView: (id: string) => void
-  onToggleActive: (id: string, isActive: boolean) => void
-  onDelete: (id: string) => void
-}
-
-function WorkflowRow({ workflow, onView, onToggleActive, onDelete }: WorkflowRowProps) {
-  return (
-    <TableRow
-      className="cursor-pointer"
-      onClick={() => onView(workflow.id)}
-      aria-label={`View workflow ${workflow.name}`}
-    >
-      {/* Name */}
-      <TableCell>
-        <div className="flex flex-col gap-0.5">
-          <span className="font-medium text-sm text-foreground truncate max-w-[280px]">
-            {workflow.name}
-          </span>
-          {workflow.description && (
-            <span className="text-xs text-muted-foreground truncate max-w-[280px]">
-              {workflow.description}
-            </span>
-          )}
-        </div>
-      </TableCell>
-
-      {/* Trigger Events */}
-      <TableCell>
-        <div className="flex flex-wrap gap-1">
-          {getTriggerEvents(workflow).length > 0 ? (
-            getTriggerEvents(workflow).map((event, idx) => (
-              <code key={idx} className="text-xs px-2 py-0.5 rounded bg-muted text-muted-foreground font-mono">
-                {event}
-              </code>
-            ))
-          ) : (
-            <span className="text-xs text-muted-foreground">-</span>
-          )}
-        </div>
-      </TableCell>
-
-      {/* Status */}
-      <TableCell>
-        <Badge
-          variant={workflow.isActive ? "success" : "secondary"}
-          className="text-[10px]"
-        >
-          {workflow.isActive ? "Active" : "Inactive"}
-        </Badge>
-      </TableCell>
-
-      {/* Last Run - not available in WorkflowRecord, show dash for now */}
-      <TableCell>
-        <span className="text-xs text-muted-foreground">
-          {formatRelativeDate(null)}
-        </span>
-      </TableCell>
-
-      {/* Actions */}
-      <TableCell onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center gap-2">
-          {/* Active toggle */}
-          <Switch
-            checked={workflow.isActive}
-            onCheckedChange={(checked) => onToggleActive(workflow.id, checked)}
-            aria-label={workflow.isActive ? "Deactivate workflow" : "Activate workflow"}
-          />
-
-          {/* Actions menu */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                aria-label={`Actions for ${workflow.name}`}
-              >
-                <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => onView(workflow.id)}>
-                View
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={() => onDelete(workflow.id)}
-                className="text-destructive focus:text-destructive"
-              >
-                <Trash2 className="h-4 w-4 mr-2" aria-hidden="true" />
-                Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </TableCell>
-    </TableRow>
-  )
-}
-
-// ---------------------------------------------------------------------------
-// Page
-// ---------------------------------------------------------------------------
+/* ── Workflow Canvas ─────────────────────────────────────────────────────── */
 
 export default function WorkflowsPage() {
-  const router = useRouter()
-  const [searchInput, setSearchInput] = useState("")
-  const debouncedSearch = useDebounce(searchInput, 300)
-
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL")
-  const [triggerEventFilter, setTriggerEventFilter] = useState<string>("")
-  const [cursor, setCursor] = useState<string | undefined>(undefined)
-  const [cursorStack, setCursorStack] = useState<string[]>([])
-
-  // Delete confirmation dialog
-  const [deleteDialog, setDeleteDialog] = useState<{
-    open: boolean
-    workflowId: string
-    workflowName: string
-  }>({ open: false, workflowId: "", workflowName: "" })
-
-  const { activate, deactivate, deleteWorkflow } = useWorkflowMutations()
-
-  // Derive isActive filter
-  const isActiveFilter =
-    statusFilter === "ACTIVE" ? true : statusFilter === "INACTIVE" ? false : undefined
-
-  const { data, isLoading, isError, refetch } = api.workflow.list.useQuery({
-    isActive: isActiveFilter,
-    triggerEvent: triggerEventFilter || undefined,
-    limit: PAGE_SIZE,
-    cursor,
-  })
-
-  // Client-side filtering for search (backend doesn't support search yet)
-  const allRows = (data?.rows ?? []) as WorkflowRecord[]
-  const rows = debouncedSearch
-    ? allRows.filter((workflow) =>
-        workflow.name.toLowerCase().includes(debouncedSearch.toLowerCase())
-      )
-    : allRows
-  const hasMore = data?.hasMore ?? false
-
-  // Pagination helpers
-  function goToNextPage() {
-    if (!hasMore || rows.length === 0) return
-    const nextCursor = rows[rows.length - 1]!.id
-    setCursorStack((prev) => [...prev, cursor ?? ""])
-    setCursor(nextCursor)
-  }
-
-  function goToPrevPage() {
-    if (cursorStack.length === 0) return
-    const prevCursor = cursorStack[cursorStack.length - 1]
-    setCursorStack((prev) => prev.slice(0, -1))
-    setCursor(prevCursor === "" ? undefined : prevCursor)
-  }
-
-  const isFirstPage = cursorStack.length === 0
-
-  // Reset pagination when filters change
-  function handleSearchChange(value: string) {
-    setSearchInput(value)
-    setCursor(undefined)
-    setCursorStack([])
-  }
-
-  function handleStatusFilter(status: StatusFilter) {
-    setStatusFilter(status)
-    setCursor(undefined)
-    setCursorStack([])
-  }
-
-  function handleTriggerEventFilter(event: string) {
-    setTriggerEventFilter(event)
-    setCursor(undefined)
-    setCursorStack([])
-  }
-
-  const handleView = useCallback(
-    (id: string) => {
-      router.push(`/admin/workflows/${id}`)
-    },
-    [router]
-  )
-
-  const handleToggleActive = useCallback(
-    (id: string, isActive: boolean) => {
-      if (isActive) {
-        activate.mutate({ id })
-      } else {
-        deactivate.mutate({ id })
-      }
-    },
-    [activate, deactivate]
-  )
-
-  const handleDeleteClick = useCallback((id: string, name: string) => {
-    setDeleteDialog({ open: true, workflowId: id, workflowName: name })
-  }, [])
-
-  const handleDeleteConfirm = useCallback(() => {
-    if (!deleteDialog.workflowId) return
-    deleteWorkflow.mutate(
-      { id: deleteDialog.workflowId },
-      {
-        onSuccess: () => {
-          setDeleteDialog({ open: false, workflowId: "", workflowName: "" })
-        },
-      }
-    )
-  }, [deleteDialog.workflowId, deleteWorkflow])
-
-  const handleCreateNew = useCallback(() => {
-    router.push("/admin/workflows/new")
-  }, [router])
-
-  // Extract unique trigger events from all workflows
-  const triggerEvents = Array.from(
-    new Set(
-      rows.flatMap((w) => getTriggerEvents(w))
-    )
-  ).sort()
-
-  const statusOptions: { label: string; value: StatusFilter }[] = [
-    { label: "All", value: "ALL" },
-    { label: "Active", value: "ACTIVE" },
-    { label: "Inactive", value: "INACTIVE" },
-  ]
-
   return (
-    <div className="space-y-6 animate-fade-in">
-      {/* Page header */}
-      <PageHeader
-        title="Workflows"
-        description="Automate actions based on events in your business."
-      >
-        <Button
-          size="sm"
-          onClick={handleCreateNew}
-          aria-label="Create new workflow"
-        >
-          <Plus className="h-4 w-4" aria-hidden="true" />
-          Create Workflow
-        </Button>
-      </PageHeader>
-
-      {/* Search + filters */}
-      <div className="space-y-3">
-        {/* Search bar */}
-        <div className="relative max-w-sm">
-          <Search
-            className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none"
-            aria-hidden="true"
-          />
-          <Input
-            type="search"
-            placeholder="Search workflows..."
-            value={searchInput}
-            onChange={(e) => handleSearchChange(e.target.value)}
-            className="pl-9"
-            aria-label="Search workflows"
-          />
+    <div style={{ margin: "-24px -24px 0", height: "calc(100vh - 64px)" }}>
+      {/* Header bar with status + actions — handled inline since no Frame */}
+      <div style={{ padding: "10px 18px", borderBottom: "1px solid var(--ih-line)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span className="ih-eyebrow">Workflows</span>
+          <Icon name="chevronRight" size={10} style={{ color: "var(--ih-ink-30)" }}/>
+          <span style={{ fontSize: 13, fontWeight: 500 }}>Onboarding · Northwind</span>
         </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <span className="ih-pill ih-pill-ok" style={{ marginRight: 4 }}><span className="ih-dot ih-dot-ok"/> Active</span>
+          <button className="ih-btn ih-btn-quiet ih-btn-sm"><Icon name="play" size={11}/> Test run</button>
+          <button className="ih-btn ih-btn-ghost ih-btn-sm">History</button>
+          <button className="ih-btn ih-btn-primary ih-btn-sm">Publish v3</button>
+        </div>
+      </div>
 
-        {/* Filter row */}
-        <div className="flex items-center gap-4 flex-wrap">
-          {/* Status filter */}
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground font-medium">Status:</span>
-            {statusOptions.map((opt) => (
-              <button
-                key={opt.value}
-                type="button"
-                onClick={() => handleStatusFilter(opt.value)}
-                className={[
-                  "inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold transition-colors",
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                  statusFilter === opt.value
-                    ? "bg-primary text-primary-foreground border-transparent shadow"
-                    : "border-input bg-background text-foreground hover:bg-accent",
-                ].join(" ")}
-                aria-pressed={statusFilter === opt.value}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 320px", height: "calc(100% - 46px)" }}>
+        {/* Canvas */}
+        <div style={{ position: "relative", background: "var(--ih-surface-2)", overflow: "hidden", borderRight: "1px solid var(--ih-line)" }}>
+          {/* Grid background */}
+          <div style={{
+            position: "absolute", inset: 0, opacity: 0.4,
+            backgroundImage: "radial-gradient(circle, var(--ih-ink-30) 0.5px, transparent 0.5px)",
+            backgroundSize: "20px 20px",
+          }}/>
 
-          {/* Trigger event filter */}
-          {triggerEvents.length > 0 && (
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground font-medium">Event:</span>
-              <button
-                type="button"
-                onClick={() => handleTriggerEventFilter("")}
-                className={[
-                  "inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold transition-colors",
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                  triggerEventFilter === ""
-                    ? "bg-primary text-primary-foreground border-transparent shadow"
-                    : "border-input bg-background text-foreground hover:bg-accent",
-                ].join(" ")}
-                aria-pressed={triggerEventFilter === ""}
-              >
-                All
-              </button>
-              {triggerEvents.slice(0, 5).map((event) => (
-                <button
-                  key={event}
-                  type="button"
-                  onClick={() => handleTriggerEventFilter(event)}
-                  className={[
-                    "inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-mono transition-colors",
-                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                    triggerEventFilter === event
-                      ? "bg-primary text-primary-foreground border-transparent shadow"
-                      : "border-input bg-background text-foreground hover:bg-accent",
-                  ].join(" ")}
-                  aria-pressed={triggerEventFilter === event}
-                >
-                  {event}
-                </button>
+          {/* Toolbar */}
+          <div style={{ position: "absolute", top: 16, left: 16, right: 16, display: "flex", justifyContent: "space-between", zIndex: 2 }}>
+            <div className="ih-card" style={{ display: "flex", padding: 4, gap: 2 }}>
+              {([
+                ["bolt", "Trigger"],
+                ["sliders", "Action"],
+                ["filter", "Branch"],
+                ["clock", "Delay"],
+                ["sparkles", "AI step"],
+                ["mail", "Notify"],
+              ] as const).map(([i, l]) => (
+                <button key={l} className="ih-btn ih-btn-quiet ih-btn-sm" style={{ height: 26 }}><Icon name={i} size={11}/> {l}</button>
               ))}
             </div>
-          )}
-        </div>
-      </div>
-
-      {/* Content */}
-      <div className="rounded-xl border border-border overflow-hidden">
-        {isError ? (
-          <div className="flex flex-col items-center justify-center py-16 gap-3">
-            <p className="text-sm text-destructive font-medium">
-              Failed to load workflows
-            </p>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => void refetch()}
-              className="gap-1.5"
-            >
-              <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
-              Retry
-            </Button>
+            <div className="ih-card" style={{ display: "flex", padding: 4, gap: 2 }}>
+              <button className="ih-btn ih-btn-quiet ih-btn-sm" style={{ height: 26 }}>Fit</button>
+              <button className="ih-btn ih-btn-quiet ih-btn-sm" style={{ height: 26 }}>100%</button>
+              <span className="ih-kbd" style={{ alignSelf: "center" }}>&#8984;+</span>
+            </div>
           </div>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[320px]">Name</TableHead>
-                <TableHead className="w-[200px]">Trigger Events</TableHead>
-                <TableHead className="w-[100px]">Status</TableHead>
-                <TableHead className="w-[120px]">Last Run</TableHead>
-                <TableHead className="w-[120px]">
-                  <span className="sr-only">Actions</span>
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                Array.from({ length: 8 }).map((_, i) => (
-                  <TableRowSkeleton key={i} />
-                ))
-              ) : rows.length === 0 ? (
-                <TableRow>
-                  <td colSpan={5} className="p-0">
-                    <EmptyState
-                      variant={debouncedSearch ? "search" : "default"}
-                      title={
-                        debouncedSearch
-                          ? "No workflows found"
-                          : "No workflows yet"
-                      }
-                      description={
-                        debouncedSearch
-                          ? `No workflows match "${debouncedSearch}". Try adjusting your search.`
-                          : "Create your first workflow to automate your business processes."
-                      }
-                      action={
-                        !debouncedSearch
-                          ? {
-                              label: "Create Workflow",
-                              onClick: handleCreateNew,
-                            }
-                          : undefined
-                      }
-                    />
-                  </td>
-                </TableRow>
-              ) : (
-                rows.map((workflow) => (
-                  <WorkflowRow
-                    key={workflow.id}
-                    workflow={workflow}
-                    onView={handleView}
-                    onToggleActive={handleToggleActive}
-                    onDelete={(id) => handleDeleteClick(id, workflow.name)}
-                  />
-                ))
-              )}
-            </TableBody>
-          </Table>
-        )}
-      </div>
 
-      {/* Pagination */}
-      {!isLoading && !isError && rows.length > 0 && (
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span>
-            Showing {rows.length} workflow{rows.length !== 1 ? "s" : ""}
-          </span>
-          <div className="flex items-center gap-1">
-            <Button
-              variant="outline"
-              size="icon-sm"
-              onClick={goToPrevPage}
-              disabled={isFirstPage}
-              aria-label="Previous page"
-            >
-              <ChevronLeft className="h-4 w-4" aria-hidden="true" />
-            </Button>
-            <Button
-              variant="outline"
-              size="icon-sm"
-              onClick={goToNextPage}
-              disabled={!hasMore}
-              aria-label="Next page"
-            >
-              <ChevronRight className="h-4 w-4" aria-hidden="true" />
-            </Button>
+          {/* Connection lines */}
+          <svg style={{ position: "absolute", inset: 0 }}>
+            <line x1="140" y1="170" x2="320" y2="170" stroke="var(--ih-line-2)" strokeWidth="1.5"/>
+            <line x1="460" y1="170" x2="640" y2="170" stroke="var(--ih-line-2)" strokeWidth="1.5"/>
+            <line x1="780" y1="170" x2="780" y2="290" stroke="var(--ih-line-2)" strokeWidth="1.5"/>
+            <line x1="780" y1="170" x2="960" y2="170" stroke="var(--ih-accent)" strokeWidth="1.5"/>
+            <line x1="780" y1="290" x2="620" y2="380" stroke="var(--ih-line-2)" strokeWidth="1.5"/>
+            <line x1="780" y1="290" x2="940" y2="380" stroke="var(--ih-line-2)" strokeWidth="1.5"/>
+          </svg>
+
+          {/* Nodes */}
+          {([
+            { x: 40, y: 130, w: 100, kind: "TRIGGER", title: "New booking", sub: "from /bookings", icon: "bolt" as const, live: false },
+            { x: 320, y: 130, w: 140, kind: "ACTION", title: "Create client folder", sub: "drive · synced", icon: "folder" as const, live: false },
+            { x: 640, y: 130, w: 140, kind: "BRANCH", title: "Plan tier?", sub: "if plan = pro", icon: "filter" as const, live: true },
+            { x: 960, y: 130, w: 140, kind: "AI", title: "Draft welcome", sub: "claude · tone:warm", icon: "sparkles" as const, live: true },
+            { x: 520, y: 340, w: 120, kind: "ACTION", title: "Send simple welcome", sub: "tier = lite", icon: "mail" as const, live: false },
+            { x: 880, y: 340, w: 120, kind: "ACTION", title: "Book kickoff", sub: "calendar · auto", icon: "calendar" as const, live: false },
+          ]).map((n, i) => (
+            <div key={i} style={{
+              position: "absolute", left: n.x, top: n.y, width: n.w,
+              background: "var(--ih-surface)", border: "1px solid " + (n.live ? "var(--ih-accent)" : "var(--ih-line-2)"),
+              borderRadius: 10, padding: 12,
+              boxShadow: n.live ? "0 0 0 4px var(--ih-accent-soft)" : "none",
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
+                <Icon name={n.icon} size={11} style={{ color: n.live ? "var(--ih-accent)" : "var(--ih-ink-50)" }}/>
+                <span className="ih-mono" style={{ fontSize: 8.5, color: "var(--ih-ink-40)", textTransform: "uppercase", letterSpacing: "0.12em" }}>{n.kind}</span>
+              </div>
+              <div style={{ fontSize: 12, fontWeight: 500, lineHeight: 1.2 }}>{n.title}</div>
+              <div className="ih-mono" style={{ fontSize: 9.5, color: "var(--ih-ink-40)", marginTop: 4 }}>{n.sub}</div>
+              {n.live && <span className="ih-pill ih-pill-accent" style={{ position: "absolute", top: -8, right: 8, fontSize: 8, padding: "2px 5px" }}><span className="ih-dot ih-dot-accent"/> live</span>}
+            </div>
+          ))}
+
+          {/* Mini-map */}
+          <div className="ih-card" style={{ position: "absolute", bottom: 16, left: 16, width: 200, height: 80, padding: 8, opacity: 0.95 }}>
+            <div className="ih-eyebrow" style={{ fontSize: 8, marginBottom: 4 }}>Overview</div>
+            <div style={{ position: "relative", height: 50, background: "var(--ih-surface-2)", borderRadius: 4 }}>
+              <div style={{ position: "absolute", top: 8, left: 10, width: 50, height: 30, border: "1px solid var(--ih-accent)", borderRadius: 2 }}/>
+              {[8, 30, 60, 90, 150].map((x, i) => <div key={i} style={{ position: "absolute", top: 18 + (i % 2) * 12, left: x, width: 18, height: 8, background: "var(--ih-ink-30)", borderRadius: 2 }}/>)}
+            </div>
+          </div>
+
+          {/* Run state indicator */}
+          <div className="ih-card" style={{ position: "absolute", bottom: 16, right: 16, padding: "10px 14px", display: "flex", alignItems: "center", gap: 14 }}>
+            <span className="ih-dot ih-dot-accent" style={{ animation: "pulse 1.8s infinite" }}/>
+            <div>
+              <div className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-40)" }}>RUNNING /run_2041</div>
+              <div style={{ fontSize: 12, fontWeight: 500 }}>Branch · evaluating plan tier</div>
+            </div>
+            <span className="ih-mono" style={{ fontSize: 11, color: "var(--ih-ink-65)" }}>0.34s</span>
           </div>
         </div>
-      )}
 
-      {/* Delete confirmation dialog */}
-      <AlertDialog open={deleteDialog.open} onOpenChange={(open) => setDeleteDialog((prev) => ({ ...prev, open }))}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Workflow</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete{" "}
-              <span className="font-semibold text-foreground">
-                {deleteDialog.workflowName}
-              </span>
-              ? This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDeleteConfirm}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        {/* Inspector panel */}
+        <div style={{ background: "var(--ih-surface-2)", padding: 18, overflowY: "auto" }}>
+          <div style={{ marginBottom: 14 }}>
+            <span className="ih-eyebrow">Selected · /node_3</span>
+            <h2 className="ih-serif" style={{ margin: "6px 0 0", fontSize: 22, lineHeight: 1.1 }}>Plan tier? <span className="ih-italic-red">branch</span></h2>
+          </div>
+
+          {/* Condition card */}
+          <div className="ih-card" style={{ background: "var(--ih-surface)", padding: 14, marginBottom: 10 }}>
+            <div className="ih-eyebrow" style={{ marginBottom: 8 }}>Condition</div>
+            <div style={{ padding: 10, background: "var(--ih-surface-2)", borderRadius: 6, fontFamily: "var(--ih-font-mono)", fontSize: 11.5 }}>
+              <span style={{ color: "var(--ih-accent)" }}>if</span> client.plan === <span style={{ color: "var(--ih-info)" }}>&apos;pro&apos;</span>
+            </div>
+            <div style={{ marginTop: 8, fontSize: 11, color: "var(--ih-ink-65)" }}>Outcome → routes to <strong>Draft welcome</strong> (AI). Else routes to <strong>Send simple welcome</strong>.</div>
+          </div>
+
+          {/* Test inputs card */}
+          <div className="ih-card" style={{ background: "var(--ih-surface)", padding: 14, marginBottom: 10 }}>
+            <div className="ih-eyebrow" style={{ marginBottom: 10 }}>Test inputs</div>
+            <div style={{ display: "grid", gap: 8 }}>
+              <div>
+                <div className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-50)", marginBottom: 4 }}>client.plan</div>
+                <select className="ih-input" defaultValue="pro">
+                  <option>pro</option>
+                  <option>lite</option>
+                </select>
+              </div>
+              <div>
+                <div className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-50)", marginBottom: 4 }}>client.name</div>
+                <input className="ih-input" defaultValue="Northwind Co."/>
+              </div>
+              <button className="ih-btn ih-btn-primary ih-btn-sm" style={{ marginTop: 6 }}><Icon name="play" size={11}/> Run from here</button>
+            </div>
+          </div>
+
+          {/* Last 5 runs card */}
+          <div className="ih-card" style={{ background: "var(--ih-surface)", padding: 14 }}>
+            <div className="ih-eyebrow" style={{ marginBottom: 10 }}>Last 5 runs</div>
+            {([
+              ["10:14", "ok", "204ms", "pro"],
+              ["08:42", "ok", "189ms", "pro"],
+              ["07:14", "ok", "312ms", "lite"],
+              ["Mon", "fail", "timeout", "pro"],
+              ["Mon", "ok", "178ms", "pro"],
+            ] as const).map((r, i) => (
+              <div key={i} style={{ display: "grid", gridTemplateColumns: "40px 12px 1fr auto", gap: 8, alignItems: "center", padding: "6px 0", borderTop: i === 0 ? "0" : "1px solid var(--ih-line)", fontSize: 11.5 }}>
+                <span className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-40)" }}>{r[0]}</span>
+                <span className={`ih-dot ${r[1] === "ok" ? "ih-dot-ok" : "ih-dot-danger"}`}/>
+                <span className="ih-mono" style={{ fontSize: 10.5, color: "var(--ih-ink-65)" }}>{r[3]}</span>
+                <span className="ih-mono" style={{ fontSize: 10.5 }}>{r[2]}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
