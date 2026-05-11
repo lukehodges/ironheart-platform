@@ -1,34 +1,19 @@
-"use client"
-
-import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 
-export type EngagementStage =
-  | "DISCOVERY"
-  | "PROPOSAL"
-  | "CONTRACTED"
-  | "ONBOARDING"
-  | "AUDITING"
-  | "REPORTING"
-  | "IMPLEMENTING"
-  | "RETAINER"
-  | "CLOSED_WON"
-  | "CLOSED_LOST"
-
-const STAGE_STYLES: Record<EngagementStage, string> = {
-  DISCOVERY: "bg-red-100 text-red-700 border-red-200",
-  PROPOSAL: "bg-amber-100 text-amber-700 border-amber-200",
-  CONTRACTED: "bg-emerald-100 text-emerald-700 border-emerald-200",
-  ONBOARDING: "bg-emerald-100 text-emerald-700 border-emerald-200",
-  AUDITING: "bg-emerald-100 text-emerald-700 border-emerald-200",
-  REPORTING: "bg-emerald-100 text-emerald-700 border-emerald-200",
-  IMPLEMENTING: "bg-emerald-100 text-emerald-700 border-emerald-200",
-  RETAINER: "bg-zinc-900 text-white border-zinc-800",
-  CLOSED_WON: "bg-green-100 text-green-700 border-green-200",
-  CLOSED_LOST: "bg-zinc-100 text-zinc-500 border-zinc-200",
+const STAGE_STYLES: Record<string, string> = {
+  DISCOVERY: "bg-[#D13A1F]/10 text-[#D13A1F] border-[#D13A1F]/20",
+  PROPOSAL: "bg-[#B8860B]/10 text-[#B8860B] border-[#B8860B]/20",
+  CONTRACTED: "bg-[#2F6F5C]/10 text-[#2F6F5C] border-[#2F6F5C]/20",
+  ONBOARDING: "bg-[#2F6F5C]/10 text-[#2F6F5C] border-[#2F6F5C]/20",
+  AUDITING: "bg-[#2F6F5C]/10 text-[#2F6F5C] border-[#2F6F5C]/20",
+  REPORTING: "bg-[#2F6F5C]/10 text-[#2F6F5C] border-[#2F6F5C]/20",
+  IMPLEMENTING: "bg-[#2F6F5C]/10 text-[#2F6F5C] border-[#2F6F5C]/20",
+  RETAINER: "bg-[#0E1013]/10 text-[#0E1013] border-[#0E1013]/20",
+  CLOSED_WON: "bg-[#2F6F5C]/10 text-[#2F6F5C] border-[#2F6F5C]/20",
+  CLOSED_LOST: "bg-[#0E1013]/5 text-[#0E1013]/40",
 }
 
-const STAGE_LABELS: Record<EngagementStage, string> = {
+const STAGE_LABELS: Record<string, string> = {
   DISCOVERY: "Discovery",
   PROPOSAL: "Proposal",
   CONTRACTED: "Contracted",
@@ -42,18 +27,40 @@ const STAGE_LABELS: Record<EngagementStage, string> = {
 }
 
 interface StageBadgeProps {
-  stage: EngagementStage | string | null
+  stage: string | null
   className?: string
 }
 
 export function StageBadge({ stage, className }: StageBadgeProps) {
-  const key = (stage ?? "DISCOVERY") as EngagementStage
-  const styles = STAGE_STYLES[key] ?? STAGE_STYLES.DISCOVERY
-  const label = STAGE_LABELS[key] ?? key
-
+  const key = stage ?? "DISCOVERY"
   return (
-    <Badge className={cn(styles, "font-medium", className)}>
-      {label}
-    </Badge>
+    <span
+      className={cn(
+        "inline-flex items-center font-mono text-[10px] uppercase tracking-wider px-2.5 py-1 rounded-full border",
+        STAGE_STYLES[key] ?? STAGE_STYLES.DISCOVERY,
+        className
+      )}
+    >
+      {STAGE_LABELS[key] ?? key}
+    </span>
+  )
+}
+
+interface TypeBadgeProps {
+  type: string
+  className?: string
+}
+
+export function TypeBadge({ type, className }: TypeBadgeProps) {
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center font-mono text-[10px] uppercase tracking-wider px-2.5 py-1 rounded-full border",
+        "bg-[#0E1013]/5 text-[#0E1013]/65 border-[#0E1013]/10",
+        className
+      )}
+    >
+      {type}
+    </span>
   )
 }
