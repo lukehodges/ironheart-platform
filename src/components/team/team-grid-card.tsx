@@ -39,7 +39,7 @@ export function TeamGridCard({ member, deptColor, onNavigate, onQuickView }: Tea
 
   return (
     <div
-      className="relative rounded-xl border border-zinc-200 bg-white p-4 space-y-3 hover:-translate-y-px hover:shadow-md transition-all duration-200 cursor-pointer overflow-hidden"
+      className="relative rounded-xl border border-[var(--ih-line)] bg-[var(--ih-surface)] p-4 space-y-3 hover:-translate-y-px hover:shadow-md transition-all duration-200 cursor-pointer overflow-hidden"
       style={{ borderLeft: `3px solid ${deptColor}` }}
       onClick={() => onNavigate(member.id)}
     >
@@ -51,7 +51,7 @@ export function TeamGridCard({ member, deptColor, onNavigate, onQuickView }: Tea
           </Avatar>
           <div className="min-w-0">
             <p className="text-sm font-semibold text-zinc-900 truncate leading-tight">{member.name}</p>
-            <p className="text-xs text-zinc-500 truncate leading-tight">{member.jobTitle ?? "No title"}</p>
+            <p className="text-xs text-[var(--ih-ink-50)] truncate leading-tight">{member.jobTitle ?? "No title"}</p>
           </div>
         </div>
         <StatusBadge status={member.status} />
@@ -61,7 +61,7 @@ export function TeamGridCard({ member, deptColor, onNavigate, onQuickView }: Tea
         {deptName && (
           <>
             <span className="inline-flex h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: deptColor }} />
-            <span className="text-xs text-zinc-600 truncate">{deptName}</span>
+            <span className="text-xs text-[var(--ih-ink-65)] truncate">{deptName}</span>
           </>
         )}
         {member.employeeType && <EmployeeTypeBadge type={member.employeeType} />}
@@ -72,20 +72,20 @@ export function TeamGridCard({ member, deptColor, onNavigate, onQuickView }: Tea
           {(member.skills ?? []).slice(0, 3).map((s) => (
             <span
               key={s.skillName}
-              className="inline-flex items-center rounded-md border border-zinc-200 bg-zinc-50 px-1.5 py-0.5 text-[10px] font-medium text-zinc-600"
+              className="inline-flex items-center rounded-md border border-[var(--ih-line)] bg-[var(--ih-surface-2)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--ih-ink-65)]"
             >
               {s.skillName}
             </span>
           ))}
           {(member.skills ?? []).length > 3 && (
-            <span className="inline-flex items-center rounded-md border border-zinc-200 bg-zinc-50 px-1.5 py-0.5 text-[10px] font-medium text-zinc-400">
+            <span className="inline-flex items-center rounded-md border border-[var(--ih-line)] bg-[var(--ih-surface-2)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--ih-ink-40)]">
               +{(member.skills ?? []).length - 3}
             </span>
           )}
         </div>
       )}
 
-      <Separator className="bg-zinc-100" />
+      <Separator className="bg-[var(--ih-surface-2)]" />
 
       <div className="flex items-center justify-between gap-3">
         <AvailabilityLabel availability={member.availability ?? "unavailable"} />
@@ -99,7 +99,7 @@ export function TeamGridCard({ member, deptColor, onNavigate, onQuickView }: Tea
           <TooltipTrigger asChild>
             <button
               type="button"
-              className="text-[11px] font-medium text-zinc-500 hover:text-zinc-900 transition-colors"
+              className="text-[11px] font-medium text-[var(--ih-ink-50)] hover:text-zinc-900 transition-colors"
               onClick={(e) => { e.stopPropagation(); onQuickView(member.id) }}
             >
               Quick View

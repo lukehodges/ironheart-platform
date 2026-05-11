@@ -128,14 +128,14 @@ export function CreateEngagementDialog({ onCreated }: CreateEngagementDialogProp
   return (
     <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) resetForm() }}>
       <DialogTrigger asChild>
-        <Button className="bg-[#D13A1F] hover:bg-[#9B2A12] text-white">
+        <Button className="bg-[var(--ih-accent)] hover:bg-[#B73117] text-white">
           <Plus className="h-4 w-4 mr-1.5" />
           New Engagement
         </Button>
       </DialogTrigger>
-      <DialogContent className="bg-[#FBF7EE] border-[#0E1013]/10 sm:max-w-[480px]">
+      <DialogContent className="bg-[var(--ih-surface)] border-[var(--ih-line)] sm:max-w-[480px]">
         <DialogHeader>
-          <DialogTitle className="font-serif text-xl text-[#0E1013]">
+          <DialogTitle className="ih-serif text-xl text-[var(--ih-ink)]">
             Create Engagement
           </DialogTitle>
         </DialogHeader>
@@ -143,27 +143,27 @@ export function CreateEngagementDialog({ onCreated }: CreateEngagementDialogProp
         <div className="space-y-5 mt-2">
           {/* Customer selection */}
           <div className="space-y-2">
-            <Label className="text-sm font-medium text-[#0E1013]">Customer</Label>
+            <Label className="text-sm font-medium text-[var(--ih-ink)]">Customer</Label>
 
             {selectedCustomerId && !creatingNew ? (
-              <div className="flex items-center justify-between bg-[#F5F1E8] rounded-lg px-3 py-2.5 border border-[#0E1013]/10">
-                <span className="text-sm text-[#0E1013]">{selectedCustomerName}</span>
+              <div className="flex items-center justify-between bg-[var(--ih-surface-2)] rounded-lg px-3 py-2.5 border border-[var(--ih-line)]">
+                <span className="text-sm text-[var(--ih-ink)]">{selectedCustomerName}</span>
                 <button
                   type="button"
                   onClick={() => { setSelectedCustomerId(null); setSelectedCustomerName("") }}
-                  className="text-xs text-[#D13A1F] hover:underline"
+                  className="text-xs text-[var(--ih-accent)] hover:underline"
                 >
                   Change
                 </button>
               </div>
             ) : creatingNew ? (
-              <div className="space-y-3 bg-[#F5F1E8] rounded-lg p-3 border border-[#0E1013]/10">
+              <div className="space-y-3 bg-[var(--ih-surface-2)] rounded-lg p-3 border border-[var(--ih-line)]">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-mono uppercase tracking-wider text-[#0E1013]/50">New Customer</span>
+                  <span className="text-xs font-mono uppercase tracking-wider text-[var(--ih-ink-50)]">New Customer</span>
                   <button
                     type="button"
                     onClick={() => setCreatingNew(false)}
-                    className="text-xs text-[#D13A1F] hover:underline"
+                    className="text-xs text-[var(--ih-accent)] hover:underline"
                   >
                     Choose existing
                   </button>
@@ -172,31 +172,31 @@ export function CreateEngagementDialog({ onCreated }: CreateEngagementDialogProp
                   placeholder="Company or contact name"
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
-                  className="bg-[#FBF7EE] border-[#0E1013]/10"
+                  className="bg-[var(--ih-surface)] border-[var(--ih-line)]"
                 />
                 <Input
                   type="email"
                   placeholder="Email (optional)"
                   value={newEmail}
                   onChange={(e) => setNewEmail(e.target.value)}
-                  className="bg-[#FBF7EE] border-[#0E1013]/10"
+                  className="bg-[var(--ih-surface)] border-[var(--ih-line)]"
                 />
               </div>
             ) : (
               <div className="space-y-1">
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#0E1013]/30" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[var(--ih-ink-30)]" />
                   <Input
                     placeholder="Search customers..."
                     value={customerSearch}
                     onChange={(e) => setCustomerSearch(e.target.value)}
-                    className="pl-9 bg-[#FBF7EE] border-[#0E1013]/10"
+                    className="pl-9 bg-[var(--ih-surface)] border-[var(--ih-line)]"
                   />
                 </div>
-                <div className="max-h-[160px] overflow-y-auto rounded-lg border border-[#0E1013]/10 bg-[#FBF7EE]">
+                <div className="max-h-[160px] overflow-y-auto rounded-lg border border-[var(--ih-line)] bg-[var(--ih-surface)]">
                   {customersQuery.isLoading ? (
                     <div className="flex items-center justify-center py-6">
-                      <Loader2 className="h-4 w-4 animate-spin text-[#0E1013]/30" />
+                      <Loader2 className="h-4 w-4 animate-spin text-[var(--ih-ink-30)]" />
                     </div>
                   ) : filteredCustomers.length > 0 ? (
                     filteredCustomers.map((c) => (
@@ -204,21 +204,21 @@ export function CreateEngagementDialog({ onCreated }: CreateEngagementDialogProp
                         key={c.id}
                         type="button"
                         onClick={() => { setSelectedCustomerId(c.id); setSelectedCustomerName(c.name) }}
-                        className="w-full text-left px-3 py-2 hover:bg-[#F5F1E8] transition-colors text-sm border-b border-[#0E1013]/5 last:border-0"
+                        className="w-full text-left px-3 py-2 hover:bg-[var(--ih-surface-2)] transition-colors text-sm border-b border-[var(--ih-line)] last:border-0"
                       >
-                        <span className="text-[#0E1013]">{c.name}</span>
-                        {c.email && <span className="text-[#0E1013]/40 ml-2 text-xs">{c.email}</span>}
+                        <span className="text-[var(--ih-ink)]">{c.name}</span>
+                        {c.email && <span className="text-[var(--ih-ink-40)] ml-2 text-xs">{c.email}</span>}
                       </button>
                     ))
                   ) : (
-                    <div className="px-3 py-4 text-center text-sm text-[#0E1013]/40">
+                    <div className="px-3 py-4 text-center text-sm text-[var(--ih-ink-40)]">
                       No customers found
                     </div>
                   )}
                   <button
                     type="button"
                     onClick={() => { setCreatingNew(true); setNewName(customerSearch) }}
-                    className="w-full text-left px-3 py-2.5 hover:bg-[#F5F1E8] transition-colors text-sm border-t border-[#0E1013]/10 flex items-center gap-1.5 text-[#D13A1F]"
+                    className="w-full text-left px-3 py-2.5 hover:bg-[var(--ih-surface-2)] transition-colors text-sm border-t border-[var(--ih-line)] flex items-center gap-1.5 text-[var(--ih-accent)]"
                   >
                     <Plus className="h-3.5 w-3.5" />
                     Create new customer{customerSearch ? `: "${customerSearch}"` : ""}
@@ -230,18 +230,18 @@ export function CreateEngagementDialog({ onCreated }: CreateEngagementDialogProp
 
           {/* Title */}
           <div className="space-y-2">
-            <Label className="text-sm font-medium text-[#0E1013]">Title</Label>
+            <Label className="text-sm font-medium text-[var(--ih-ink)]">Title</Label>
             <Input
               placeholder="e.g. Q2 Operations Audit"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="bg-[#FBF7EE] border-[#0E1013]/10"
+              className="bg-[var(--ih-surface)] border-[var(--ih-line)]"
             />
           </div>
 
           {/* Type */}
           <div className="space-y-2">
-            <Label className="text-sm font-medium text-[#0E1013]">Type</Label>
+            <Label className="text-sm font-medium text-[var(--ih-ink)]">Type</Label>
             <div className="flex gap-2">
               {(["PROJECT", "RETAINER", "HYBRID"] as const).map((t) => (
                 <button
@@ -251,8 +251,8 @@ export function CreateEngagementDialog({ onCreated }: CreateEngagementDialogProp
                   className={cn(
                     "flex-1 py-2 rounded-lg border text-sm font-medium transition-all duration-200",
                     type === t
-                      ? "bg-[#0E1013] text-white border-[#0E1013]"
-                      : "bg-[#FBF7EE] text-[#0E1013]/65 border-[#0E1013]/10 hover:border-[#0E1013]/25"
+                      ? "bg-[var(--ih-ink)] text-white border-[var(--ih-ink)]"
+                      : "bg-[var(--ih-surface)] text-[var(--ih-ink-65)] border-[var(--ih-line)] hover:border-[var(--ih-line-2)]"
                   )}
                 >
                   {t.charAt(0) + t.slice(1).toLowerCase()}
@@ -263,15 +263,15 @@ export function CreateEngagementDialog({ onCreated }: CreateEngagementDialogProp
 
           {/* Description */}
           <div className="space-y-2">
-            <Label className="text-sm font-medium text-[#0E1013]">
-              Description <span className="text-[#0E1013]/40 font-normal">(optional)</span>
+            <Label className="text-sm font-medium text-[var(--ih-ink)]">
+              Description <span className="text-[var(--ih-ink-40)] font-normal">(optional)</span>
             </Label>
             <Textarea
               placeholder="Brief context for this engagement..."
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
-              className="bg-[#FBF7EE] border-[#0E1013]/10 resize-none"
+              className="bg-[var(--ih-surface)] border-[var(--ih-line)] resize-none"
             />
           </div>
 
@@ -279,7 +279,7 @@ export function CreateEngagementDialog({ onCreated }: CreateEngagementDialogProp
           <Button
             onClick={handleSubmit}
             disabled={isPending}
-            className="w-full bg-[#D13A1F] hover:bg-[#9B2A12] text-white h-11"
+            className="w-full bg-[var(--ih-accent)] hover:bg-[#B73117] text-white h-11"
           >
             {isPending ? (
               <Loader2 className="h-4 w-4 animate-spin mr-1.5" />

@@ -25,7 +25,7 @@ export function AvailabilityLabel({ availability }: { availability: Availability
   return (
     <div className="flex items-center gap-1.5">
       <AvailabilityDot availability={availability} />
-      <span className="text-[11px] text-zinc-500">{labels[availability]}</span>
+      <span className="text-[11px] text-[var(--ih-ink-50)]">{labels[availability]}</span>
     </div>
   )
 }

@@ -240,7 +240,7 @@ function WorkflowCanvasInner({
       onDrop={handleDrop}
       className={cn(
         "relative w-full h-full overflow-hidden rounded-lg border",
-        "bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800",
+        "bg-[var(--ih-surface)] dark:bg-[var(--ih-surface)] border-[var(--ih-line)] dark:border-[var(--ih-line)]",
         className
       )}
       role="region"
@@ -277,7 +277,7 @@ function WorkflowCanvasInner({
           position="bottom-left"
           className={cn(
             "flex gap-2 p-2 rounded-lg border",
-            "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700"
+            "bg-[var(--ih-surface)] dark:bg-[var(--ih-surface)] border-[var(--ih-line)] dark:border-[var(--ih-line)]"
           )}
           style={{
             display: "flex",
@@ -293,7 +293,7 @@ function WorkflowCanvasInner({
             position="top-right"
             className={cn(
               "rounded-lg border overflow-hidden",
-              "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700"
+              "bg-[var(--ih-surface)] dark:bg-[var(--ih-surface)] border-[var(--ih-line)] dark:border-[var(--ih-line)]"
             )}
             nodeColor={(node) => {
               if (selectedNodeId === node.id) {
@@ -321,7 +321,7 @@ function WorkflowCanvasInner({
         >
           <div className={cn(
             "text-center p-8 rounded-lg border",
-            "bg-slate-50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-700"
+            "bg-[var(--ih-surface-2)] dark:bg-[var(--ih-surface)]/50 border-[var(--ih-line)] dark:border-[var(--ih-line)]"
           )}>
             <p className="text-sm font-medium text-slate-600 dark:text-slate-400">
               Drag nodes from the palette to start building your workflow

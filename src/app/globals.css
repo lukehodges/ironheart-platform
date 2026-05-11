@@ -76,8 +76,8 @@
   :root {
     /* ── shadcn primitives (mapped to Ironheart palette) ── */
 
-    /* Background: warm neutral #FAFAF7 ≈ 60 13% 97.3% */
-    --background: 50 18% 97%;
+    /* Background: warm neutral #FAFAF7 ≈ 60 23% 97.5% (closest HSL) */
+    --background: 60 20% 98%;
     --foreground: 220 14% 6%;
 
     /* Card: white on warm background */
@@ -530,7 +530,7 @@
 }
 
 .workflow-canvas-bg {
-  background-color: rgb(255, 255, 255);
+  background-color: var(--ih-bg);
 }
 .workflow-canvas-bg .react-flow__background-pattern {
   color: #e2e8f0 !important;

@@ -22,16 +22,16 @@ const STAGES = [
 ] as const
 
 const STAGE_TAB_COLORS: Record<string, string> = {
-  DISCOVERY: "bg-[#D13A1F] text-white",
-  PROPOSAL: "bg-[#B8860B] text-white",
-  CONTRACTED: "bg-[#2F6F5C] text-white",
-  ONBOARDING: "bg-[#2F6F5C] text-white",
-  AUDITING: "bg-[#2F6F5C] text-white",
-  REPORTING: "bg-[#2F6F5C] text-white",
-  IMPLEMENTING: "bg-[#2F6F5C] text-white",
-  RETAINER: "bg-[#0E1013] text-white",
-  CLOSED_WON: "bg-[#2F6F5C] text-white",
-  CLOSED_LOST: "bg-[#0E1013]/60 text-white",
+  DISCOVERY: "bg-[var(--ih-accent)] text-white",
+  PROPOSAL: "bg-[var(--ih-warn)] text-white",
+  CONTRACTED: "bg-[var(--ih-ok)] text-white",
+  ONBOARDING: "bg-[var(--ih-ok)] text-white",
+  AUDITING: "bg-[var(--ih-ok)] text-white",
+  REPORTING: "bg-[var(--ih-ok)] text-white",
+  IMPLEMENTING: "bg-[var(--ih-ok)] text-white",
+  RETAINER: "bg-[var(--ih-ink)] text-white",
+  CLOSED_WON: "bg-[var(--ih-ok)] text-white",
+  CLOSED_LOST: "bg-[var(--ih-ink-50)] text-white",
 }
 
 type StageFilter = (typeof STAGES)[number]["value"]
@@ -50,15 +50,15 @@ export default function EngagementsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#EFEAE0]">
+    <div className="min-h-screen" style={{ background: "var(--ih-bg)" }}>
       <div className="max-w-5xl mx-auto px-6 py-10">
         {/* Header */}
         <div className="flex items-start justify-between">
           <div>
-            <h1 className="font-serif text-3xl text-[#0E1013]">
-              Your <em className="italic text-[#D13A1F]">Engagements</em>
+            <h1 className="ih-serif" style={{ fontSize: 32, margin: 0, color: "var(--ih-ink)" }}>
+              Your <span className="ih-italic-red">Engagements</span>
             </h1>
-            <p className="text-sm text-[#0E1013]/65 mt-1">
+            <p className="text-sm mt-1" style={{ color: "var(--ih-ink-65)" }}>
               Track clients through every stage of the consulting pipeline.
             </p>
           </div>
@@ -69,7 +69,7 @@ export default function EngagementsPage() {
         <div className="mt-8 flex flex-wrap gap-1.5">
           {STAGES.map((s) => {
             const isActive = activeStage === s.value
-            const activeColor = s.value ? STAGE_TAB_COLORS[s.value] : "bg-[#0E1013] text-white"
+            const activeColor = s.value ? STAGE_TAB_COLORS[s.value] : "bg-[var(--ih-ink)] text-white"
             return (
               <button
                 key={s.label}
@@ -79,7 +79,7 @@ export default function EngagementsPage() {
                   "px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200",
                   isActive
                     ? activeColor
-                    : "text-[#0E1013]/50 hover:text-[#0E1013]/80 hover:bg-[#0E1013]/5"
+                    : "hover:bg-[rgba(14,16,19,0.05)]"
                 )}
               >
                 {s.label}
@@ -102,11 +102,11 @@ export default function EngagementsPage() {
             ))
           ) : (
             <div className="flex flex-col items-center justify-center py-20">
-              <div className="w-14 h-14 rounded-2xl bg-[#D13A1F]/10 flex items-center justify-center mb-4">
-                <Briefcase className="h-6 w-6 text-[#D13A1F]" />
+              <div className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4" style={{ background: "var(--ih-accent-soft)" }}>
+                <Briefcase className="h-6 w-6" style={{ color: "var(--ih-accent)" }} />
               </div>
-              <h2 className="font-serif text-xl text-[#0E1013] mb-1">No engagements yet</h2>
-              <p className="text-sm text-[#0E1013]/50 text-center max-w-sm mb-6">
+              <h2 className="ih-serif text-xl mb-1" style={{ color: "var(--ih-ink)" }}>No engagements yet</h2>
+              <p className="text-sm text-center max-w-sm mb-6" style={{ color: "var(--ih-ink-50)" }}>
                 Create your first engagement to start tracking a client through the consulting pipeline.
               </p>
               <CreateEngagementDialog onCreated={handleCreated} />

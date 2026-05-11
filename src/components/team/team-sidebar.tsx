@@ -63,7 +63,7 @@ export function TeamSidebar({
         <Button
           variant="ghost"
           size="sm"
-          className="h-6 text-xs text-zinc-400 hover:text-zinc-700 gap-1"
+          className="h-6 text-xs text-[var(--ih-ink-40)] hover:text-zinc-700 gap-1"
           onClick={onToggle}
         >
           <ChevronLeft className="h-3 w-3" />
@@ -71,9 +71,9 @@ export function TeamSidebar({
         </Button>
       </div>
 
-      <div className="rounded-xl border border-zinc-200 bg-white overflow-hidden">
-        <div className="px-4 py-3 border-b border-zinc-100">
-          <span className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400">
+      <div className="rounded-xl border border-[var(--ih-line)] bg-[var(--ih-surface)] overflow-hidden">
+        <div className="px-4 py-3 border-b border-[var(--ih-line)]">
+          <span className="text-[11px] font-semibold uppercase tracking-widest text-[var(--ih-ink-40)]">
             Departments
           </span>
         </div>
@@ -85,16 +85,16 @@ export function TeamSidebar({
               "flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-xs transition-colors",
               deptFilter === null
                 ? "bg-zinc-900 text-white font-semibold"
-                : "text-zinc-600 hover:bg-zinc-50 font-medium"
+                : "text-[var(--ih-ink-65)] hover:bg-[var(--ih-surface-2)] font-medium"
             )}
           >
             <span>All members</span>
-            <span className={cn("font-mono text-[11px]", deptFilter === null ? "text-white/70" : "text-zinc-400")}>
+            <span className={cn("font-mono text-[11px]", deptFilter === null ? "text-white/70" : "text-[var(--ih-ink-40)]")}>
               {totalMembers}
             </span>
           </button>
 
-          <Separator className="bg-zinc-100 my-1" />
+          <Separator className="bg-[var(--ih-surface-2)] my-1" />
 
           {departments.map((dept) => (
             <button
@@ -104,8 +104,8 @@ export function TeamSidebar({
               className={cn(
                 "flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-xs transition-colors",
                 deptFilter === dept.id
-                  ? "bg-zinc-100 font-semibold text-zinc-900"
-                  : "text-zinc-600 hover:bg-zinc-50 font-medium"
+                  ? "bg-[var(--ih-surface-2)] font-semibold text-zinc-900"
+                  : "text-[var(--ih-ink-65)] hover:bg-[var(--ih-surface-2)] font-medium"
               )}
             >
               <span className="flex items-center gap-2 min-w-0">
@@ -115,15 +115,15 @@ export function TeamSidebar({
                 />
                 <span className="truncate">{dept.name}</span>
               </span>
-              <span className="font-mono text-[11px] text-zinc-400 shrink-0">{dept.memberCount}</span>
+              <span className="font-mono text-[11px] text-[var(--ih-ink-40)] shrink-0">{dept.memberCount}</span>
             </button>
           ))}
         </div>
       </div>
 
-      <div className="rounded-xl border border-zinc-200 bg-white overflow-hidden">
-        <div className="px-4 py-3 border-b border-zinc-100">
-          <span className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400">
+      <div className="rounded-xl border border-[var(--ih-line)] bg-[var(--ih-surface)] overflow-hidden">
+        <div className="px-4 py-3 border-b border-[var(--ih-line)]">
+          <span className="text-[11px] font-semibold uppercase tracking-widest text-[var(--ih-ink-40)]">
             Type
           </span>
         </div>
@@ -136,8 +136,8 @@ export function TeamSidebar({
               className={cn(
                 "flex w-full items-center rounded-lg px-2.5 py-1.5 text-xs transition-colors",
                 employeeTypeFilter === opt.value
-                  ? "bg-zinc-100 font-semibold text-zinc-900"
-                  : "text-zinc-600 hover:bg-zinc-50 font-medium"
+                  ? "bg-[var(--ih-surface-2)] font-semibold text-zinc-900"
+                  : "text-[var(--ih-ink-65)] hover:bg-[var(--ih-surface-2)] font-medium"
               )}
             >
               {opt.label}

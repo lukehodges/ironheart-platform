@@ -62,8 +62,8 @@ export const IfNode = memo(({ data, selected }: NodeProps<IfNodeData>) => {
   return (
     <div
       className={cn(
-        "relative min-w-[200px] rounded-lg border-2 bg-white shadow-md transition-all",
-        "dark:bg-slate-900",
+        "relative min-w-[200px] rounded-lg border-2 bg-[var(--ih-surface)] shadow-md transition-all",
+        "dark:bg-[var(--ih-surface)]",
         selected
           ? "border-amber-500 shadow-lg shadow-amber-500/20 ring-2 ring-amber-500/30"
           : "border-amber-400 hover:border-amber-500 hover:shadow-lg",
@@ -78,8 +78,8 @@ export const IfNode = memo(({ data, selected }: NodeProps<IfNodeData>) => {
         position={Position.Top}
         id="input"
         className={cn(
-          "!w-3 !h-3 !bg-amber-500 !border-2 !border-white",
-          "dark:!border-slate-900",
+          "!w-3 !h-3 !bg-amber-500 !border-2 !border-[var(--ih-surface)]",
+          "dark:!border-[var(--ih-surface)]",
           "hover:!w-4 hover:!h-4 transition-all"
         )}
         aria-label="If input connection point"
@@ -122,8 +122,8 @@ export const IfNode = memo(({ data, selected }: NodeProps<IfNodeData>) => {
         position={Position.Right}
         id="true"
         className={cn(
-          "!w-3 !h-3 !bg-green-500 !border-2 !border-white",
-          "dark:!border-slate-900",
+          "!w-3 !h-3 !bg-green-500 !border-2 !border-[var(--ih-surface)]",
+          "dark:!border-[var(--ih-surface)]",
           "hover:!w-4 hover:!h-4 transition-all",
           "!top-[50%]"
         )}
@@ -136,8 +136,8 @@ export const IfNode = memo(({ data, selected }: NodeProps<IfNodeData>) => {
         position={Position.Left}
         id="false"
         className={cn(
-          "!w-3 !h-3 !bg-red-500 !border-2 !border-white",
-          "dark:!border-slate-900",
+          "!w-3 !h-3 !bg-red-500 !border-2 !border-[var(--ih-surface)]",
+          "dark:!border-[var(--ih-surface)]",
           "hover:!w-4 hover:!h-4 transition-all",
           "!top-[50%]"
         )}

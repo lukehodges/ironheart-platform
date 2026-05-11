@@ -3,7 +3,7 @@ import type { StaffStatus } from "@/modules/team/team.types"
 
 const styles: Record<StaffStatus, string> = {
   ACTIVE: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  INACTIVE: "bg-zinc-100 text-zinc-500 border-zinc-200",
+  INACTIVE: "bg-[var(--ih-surface-2)] text-[var(--ih-ink-50)] border-[var(--ih-line)]",
   SUSPENDED: "bg-amber-50 text-amber-700 border-amber-200",
 }
 

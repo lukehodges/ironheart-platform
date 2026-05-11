@@ -55,8 +55,8 @@ export const TriggerNode = memo(({ data, selected }: NodeProps<TriggerNodeData>)
   return (
     <div
       className={cn(
-        "relative min-w-[200px] rounded-lg border-2 bg-white shadow-md transition-all",
-        "dark:bg-slate-900",
+        "relative min-w-[200px] rounded-lg border-2 bg-[var(--ih-surface)] shadow-md transition-all",
+        "dark:bg-[var(--ih-surface)]",
         selected
           ? "border-purple-500 shadow-lg shadow-purple-500/20 ring-2 ring-purple-500/30"
           : "border-purple-400 hover:border-purple-500 hover:shadow-lg",
@@ -102,8 +102,8 @@ export const TriggerNode = memo(({ data, selected }: NodeProps<TriggerNodeData>)
         position={Position.Bottom}
         id="output"
         className={cn(
-          "!w-3 !h-3 !bg-purple-500 !border-2 !border-white",
-          "dark:!border-slate-900",
+          "!w-3 !h-3 !bg-purple-500 !border-2 !border-[var(--ih-surface)]",
+          "dark:!border-[var(--ih-surface)]",
           "hover:!w-4 hover:!h-4 transition-all"
         )}
         aria-label="Trigger output connection point"

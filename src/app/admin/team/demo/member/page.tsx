@@ -268,9 +268,9 @@ function SkillDots({ level }: { level: number }) {
 
 function SidebarCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-xl border border-zinc-200 bg-white overflow-hidden">
-      <div className="px-4 py-3 border-b border-zinc-100">
-        <span className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400">{title}</span>
+    <div className="rounded-xl border border-[var(--ih-line)] bg-[var(--ih-surface)] overflow-hidden">
+      <div className="px-4 py-3 border-b border-[var(--ih-line)]">
+        <span className="text-[11px] font-semibold uppercase tracking-widest text-[var(--ih-ink-40)]">{title}</span>
       </div>
       <div className="p-4">{children}</div>
     </div>
@@ -288,10 +288,10 @@ function ContactCard() {
           { icon: CalendarDays, label: `Joined ${MEMBER.joined}` },
         ].map(({ icon: Icon, label }) => (
           <div key={label} className="flex items-center gap-2.5">
-            <div className="h-6 w-6 rounded-md bg-zinc-100 flex items-center justify-center shrink-0">
-              <Icon className="h-3 w-3 text-zinc-400" />
+            <div className="h-6 w-6 rounded-md bg-[var(--ih-surface-2)] flex items-center justify-center shrink-0">
+              <Icon className="h-3 w-3 text-[var(--ih-ink-40)]" />
             </div>
-            <span className="text-xs text-zinc-600 truncate">{label}</span>
+            <span className="text-xs text-[var(--ih-ink-65)] truncate">{label}</span>
           </div>
         ))}
       </div>
@@ -310,8 +310,8 @@ function DeptCard() {
           <Building2 className="h-3 w-3" style={{ color: DEPT_COLOR }} />
         </div>
         <div>
-          <p className="text-xs font-semibold text-zinc-900">{MEMBER.department}</p>
-          <p className="text-[11px] text-zinc-400">Primary</p>
+          <p className="text-xs font-semibold text-[var(--ih-ink)]">{MEMBER.department}</p>
+          <p className="text-[11px] text-[var(--ih-ink-40)]">Primary</p>
         </div>
       </div>
     </SidebarCard>
@@ -331,8 +331,8 @@ function ReportsToCard() {
           </AvatarFallback>
         </Avatar>
         <div>
-          <p className="text-xs font-semibold text-zinc-900">{MEMBER.reportsTo}</p>
-          <p className="text-[11px] text-zinc-400">{MEMBER.reportsToTitle}</p>
+          <p className="text-xs font-semibold text-[var(--ih-ink)]">{MEMBER.reportsTo}</p>
+          <p className="text-[11px] text-[var(--ih-ink-40)]">{MEMBER.reportsToTitle}</p>
         </div>
       </div>
     </SidebarCard>
@@ -344,12 +344,12 @@ function PayRateCard() {
     <SidebarCard title="Pay Rate">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="font-mono text-xl font-bold text-zinc-900">
+          <span className="font-mono text-xl font-bold text-[var(--ih-ink)]">
             £{MEMBER.hourlyRate}
           </span>
-          <span className="text-xs text-zinc-400">/hr</span>
+          <span className="text-xs text-[var(--ih-ink-40)]">/hr</span>
         </div>
-        <button type="button" className="text-[11px] font-medium text-zinc-400 hover:text-zinc-700 transition-colors flex items-center gap-1">
+        <button type="button" className="text-[11px] font-medium text-[var(--ih-ink-40)] hover:text-[var(--ih-ink-65)] transition-colors flex items-center gap-1">
           History <ChevronRight className="h-3 w-3" />
         </button>
       </div>
@@ -363,28 +363,28 @@ function OverviewTab() {
   return (
     <div className="space-y-6">
       {/* Bio */}
-      <div className="rounded-xl border border-zinc-200 bg-white p-5 space-y-2">
-        <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400">Bio</p>
-        <p className="text-sm text-zinc-600 leading-relaxed">{MEMBER.bio}</p>
+      <div className="rounded-xl border border-[var(--ih-line)] bg-[var(--ih-surface)] p-5 space-y-2">
+        <p className="text-[11px] font-semibold uppercase tracking-widest text-[var(--ih-ink-40)]">Bio</p>
+        <p className="text-sm text-[var(--ih-ink-65)] leading-relaxed">{MEMBER.bio}</p>
       </div>
 
       {/* Current assignments */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-zinc-900">Active Assignments</h3>
-          <span className="font-mono text-xs text-zinc-400">{ASSIGNMENTS.length} projects</span>
+          <h3 className="text-sm font-semibold text-[var(--ih-ink)]">Active Assignments</h3>
+          <span className="font-mono text-xs text-[var(--ih-ink-40)]">{ASSIGNMENTS.length} projects</span>
         </div>
         <div className="space-y-2">
           {ASSIGNMENTS.map((a) => (
             <div
               key={a.id}
-              className="rounded-xl border border-zinc-200 bg-white p-4 hover:bg-zinc-50/80 cursor-pointer transition-colors"
+              className="rounded-xl border border-[var(--ih-line)] bg-[var(--ih-surface)] p-4 hover:bg-[var(--ih-surface-2)]/80 cursor-pointer transition-colors"
               style={{ borderLeft: `3px solid ${a.color}` }}
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold text-zinc-900 truncate">{a.project}</p>
-                  <p className="text-xs text-zinc-500 mt-0.5">{a.client}</p>
+                  <p className="text-sm font-semibold text-[var(--ih-ink)] truncate">{a.project}</p>
+                  <p className="text-xs text-[var(--ih-ink-50)] mt-0.5">{a.client}</p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <span
@@ -401,18 +401,18 @@ function OverviewTab() {
               </div>
               <div className="mt-3 flex items-center gap-4">
                 <div className="flex items-center gap-1.5">
-                  <div className="h-1.5 w-24 rounded-full bg-zinc-100 overflow-hidden">
+                  <div className="h-1.5 w-24 rounded-full bg-[var(--ih-surface-2)] overflow-hidden">
                     <div
                       className="h-full rounded-full"
                       style={{ width: `${a.capacityPct}%`, backgroundColor: a.color }}
                     />
                   </div>
-                  <span className="font-mono text-[11px] font-semibold text-zinc-600">
+                  <span className="font-mono text-[11px] font-semibold text-[var(--ih-ink-65)]">
                     {a.capacityPct}%
                   </span>
-                  <span className="text-[11px] text-zinc-400">capacity</span>
+                  <span className="text-[11px] text-[var(--ih-ink-40)]">capacity</span>
                 </div>
-                <span className="text-[11px] text-zinc-400">{a.from} – {a.to}</span>
+                <span className="text-[11px] text-[var(--ih-ink-40)]">{a.from} – {a.to}</span>
               </div>
             </div>
           ))}
@@ -420,8 +420,8 @@ function OverviewTab() {
       </div>
 
       {/* Emergency contact */}
-      <div className="rounded-xl border border-zinc-200 bg-white p-5 space-y-3">
-        <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400">Emergency Contact</p>
+      <div className="rounded-xl border border-[var(--ih-line)] bg-[var(--ih-surface)] p-5 space-y-3">
+        <p className="text-[11px] font-semibold uppercase tracking-widest text-[var(--ih-ink-40)]">Emergency Contact</p>
         <div className="grid grid-cols-3 gap-4">
           {[
             { label: "Name", value: MEMBER.emergencyContact.name },
@@ -429,8 +429,8 @@ function OverviewTab() {
             { label: "Relationship", value: MEMBER.emergencyContact.relation },
           ].map(({ label, value }) => (
             <div key={label}>
-              <p className="text-[11px] text-zinc-400 mb-0.5">{label}</p>
-              <p className="text-xs font-medium text-zinc-700">{value}</p>
+              <p className="text-[11px] text-[var(--ih-ink-40)] mb-0.5">{label}</p>
+              <p className="text-xs font-medium text-[var(--ih-ink-65)]">{value}</p>
             </div>
           ))}
         </div>
@@ -444,10 +444,10 @@ function ScheduleTab() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-sm font-semibold text-zinc-900">Week of 3 Mar 2026</h3>
-          <p className="text-xs text-zinc-400 mt-0.5">09:00–18:00 working window · 9h/day</p>
+          <h3 className="text-sm font-semibold text-[var(--ih-ink)]">Week of 3 Mar 2026</h3>
+          <p className="text-xs text-[var(--ih-ink-40)] mt-0.5">09:00–18:00 working window · 9h/day</p>
         </div>
-        <div className="flex items-center gap-3 text-[11px] text-zinc-400">
+        <div className="flex items-center gap-3 text-[11px] text-[var(--ih-ink-40)]">
           <span className="flex items-center gap-1.5">
             <span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: `${DEPT_COLOR}40` }} />
             Available
@@ -457,7 +457,7 @@ function ScheduleTab() {
             Blocked
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded-sm bg-zinc-100" />
+            <span className="h-2.5 w-2.5 rounded-sm bg-[var(--ih-surface-2)]" />
             Off
           </span>
         </div>
@@ -475,11 +475,11 @@ function ScheduleTab() {
             <div key={day.day} className="flex flex-col items-center gap-2">
               {/* Day header */}
               <div className="text-center">
-                <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400">{day.day}</p>
+                <p className="text-[11px] font-semibold uppercase tracking-widest text-[var(--ih-ink-40)]">{day.day}</p>
                 <div
                   className={cn(
                     "text-sm font-bold mt-0.5 mx-auto flex items-center justify-center",
-                    isToday ? "text-white rounded-full" : "text-zinc-700"
+                    isToday ? "text-white rounded-full" : "text-[var(--ih-ink-65)]"
                   )}
                   style={
                     isToday
@@ -502,7 +502,7 @@ function ScheduleTab() {
                         block.type === "blocked"
                           ? "bg-amber-100 border-amber-200"
                           : block.type === "off"
-                            ? "bg-zinc-100 border-zinc-200"
+                            ? "bg-[var(--ih-surface-2)] border-[var(--ih-line)]"
                             : ""
                       )}
                       style={{
@@ -521,13 +521,13 @@ function ScheduleTab() {
               <div className="text-center">
                 {totalAvailableHours > 0 ? (
                   <>
-                    <p className="font-mono text-xs font-bold text-zinc-700">{totalAvailableHours}h</p>
-                    <p className="text-[10px] text-zinc-400 leading-tight">{day.label}</p>
+                    <p className="font-mono text-xs font-bold text-[var(--ih-ink-65)]">{totalAvailableHours}h</p>
+                    <p className="text-[10px] text-[var(--ih-ink-40)] leading-tight">{day.label}</p>
                   </>
                 ) : (
                   <>
                     <Minus className="h-3 w-3 text-zinc-300 mx-auto" />
-                    <p className="text-[10px] text-zinc-400 mt-0.5">Off</p>
+                    <p className="text-[10px] text-[var(--ih-ink-40)] mt-0.5">Off</p>
                   </>
                 )}
               </div>
@@ -555,13 +555,13 @@ function SkillsTab() {
     Advanced: "text-violet-700 bg-violet-50 border-violet-200",
     Proficient: "text-emerald-700 bg-emerald-50 border-emerald-200",
     Familiar: "text-amber-700 bg-amber-50 border-amber-200",
-    Learning: "text-zinc-600 bg-zinc-100 border-zinc-200",
+    Learning: "text-[var(--ih-ink-65)] bg-[var(--ih-surface-2)] border-[var(--ih-line)]",
   }
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400">
+        <p className="text-[11px] font-semibold uppercase tracking-widest text-[var(--ih-ink-40)]">
           {SKILLS.length} skills verified
         </p>
         <Button variant="outline" size="sm" className="text-xs h-7 gap-1.5">
@@ -574,11 +574,11 @@ function SkillsTab() {
         {SKILLS.map((skill) => (
           <div
             key={skill.name}
-            className="rounded-xl border border-zinc-200 bg-white p-4 flex items-center justify-between hover:bg-zinc-50/80 transition-colors"
+            className="rounded-xl border border-[var(--ih-line)] bg-[var(--ih-surface)] p-4 flex items-center justify-between hover:bg-[var(--ih-surface-2)]/80 transition-colors"
           >
             <div className="space-y-1.5">
               <div className="flex items-center gap-2">
-                <span className="text-sm font-semibold text-zinc-900">{skill.name}</span>
+                <span className="text-sm font-semibold text-[var(--ih-ink)]">{skill.name}</span>
                 <span
                   className={cn(
                     "inline-flex items-center rounded-full border px-1.5 py-0.5 text-[10px] font-medium",
@@ -590,7 +590,7 @@ function SkillsTab() {
               </div>
               <SkillDots level={skill.level} />
             </div>
-            <span className="text-[10px] text-zinc-400 font-mono">{skill.category}</span>
+            <span className="text-[10px] text-[var(--ih-ink-40)] font-mono">{skill.category}</span>
           </div>
         ))}
       </div>
@@ -614,19 +614,19 @@ function CapacityTab() {
       <div className="grid grid-cols-3 gap-3">
         {[
           { label: "Today", value: `${today?.used ?? "-"}/10`, color: todayTextClass },
-          { label: "Week Avg", value: `${avg}/10`, color: "text-zinc-900" },
+          { label: "Week Avg", value: `${avg}/10`, color: "text-[var(--ih-ink)]" },
           { label: "Peak", value: `${peak}/10`, color: "text-red-600" },
         ].map(({ label, value, color }) => (
-          <div key={label} className="rounded-xl border border-zinc-200 bg-white p-4 space-y-1">
-            <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400">{label}</p>
+          <div key={label} className="rounded-xl border border-[var(--ih-line)] bg-[var(--ih-surface)] p-4 space-y-1">
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-[var(--ih-ink-40)]">{label}</p>
             <p className={cn("font-mono text-2xl font-bold tabular-nums", color)}>{value}</p>
           </div>
         ))}
       </div>
 
       {/* Sparkline */}
-      <div className="rounded-xl border border-zinc-200 bg-white p-5 space-y-4">
-        <p className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400">
+      <div className="rounded-xl border border-[var(--ih-line)] bg-[var(--ih-surface)] p-5 space-y-4">
+        <p className="text-[11px] font-semibold uppercase tracking-widest text-[var(--ih-ink-40)]">
           Last 6 working days
         </p>
         <div className="flex items-end gap-3 h-24">
@@ -654,7 +654,7 @@ function CapacityTab() {
                     <span
                       className={cn(
                         "font-mono text-[10px] font-bold",
-                        day.today ? "text-zinc-900" : "text-zinc-400"
+                        day.today ? "text-[var(--ih-ink)]" : "text-[var(--ih-ink-40)]"
                       )}
                     >
                       {day.label}
@@ -671,7 +671,7 @@ function CapacityTab() {
         </div>
 
         {/* Legend */}
-        <div className="flex items-center justify-between text-[11px] text-zinc-400 pt-1 border-t border-zinc-100">
+        <div className="flex items-center justify-between text-[11px] text-[var(--ih-ink-40)] pt-1 border-t border-[var(--ih-line)]">
           <span>Max daily capacity: {CAPACITY_WEEK[0]?.max ?? 10}</span>
           <span>
             <TrendingUp className="h-3 w-3 inline mr-1 text-emerald-500" />
@@ -710,20 +710,20 @@ function ActivityTab() {
                 <Icon className="h-3.5 w-3.5" style={{ color }} />
               </div>
               {!isLast && (
-                <div className="w-px flex-1 bg-zinc-100 my-1" />
+                <div className="w-px flex-1 bg-[var(--ih-surface-2)] my-1" />
               )}
             </div>
 
             {/* Content */}
             <div className={cn("flex-1 pb-5", isLast ? "pb-0" : "")}>
-              <div className="rounded-xl border border-zinc-200 bg-white p-3.5 space-y-1">
-                <p className="text-sm font-medium text-zinc-800">{item.action}</p>
+              <div className="rounded-xl border border-[var(--ih-line)] bg-[var(--ih-surface)] p-3.5 space-y-1">
+                <p className="text-sm font-medium text-[var(--ih-ink-90)]">{item.action}</p>
                 <div className="flex items-center gap-3">
-                  <span className="flex items-center gap-1 text-[11px] text-zinc-400">
+                  <span className="flex items-center gap-1 text-[11px] text-[var(--ih-ink-40)]">
                     <Clock className="h-3 w-3" />
                     {item.time}
                   </span>
-                  <span className="text-[11px] text-zinc-400">by {item.author}</span>
+                  <span className="text-[11px] text-[var(--ih-ink-40)]">by {item.author}</span>
                 </div>
               </div>
             </div>
@@ -756,14 +756,14 @@ export default function TeamMemberDemoPage() {
       <div className="space-y-5">
         {/* ── Nav ──────────────────────────────────────────────────────────── */}
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" className="gap-1.5 text-zinc-500 hover:text-zinc-900 -ml-2" asChild>
+          <Button variant="ghost" size="sm" className="gap-1.5 text-[var(--ih-ink-50)] hover:text-[var(--ih-ink)] -ml-2" asChild>
             <Link href="/admin/team/demo">
               <ArrowLeft className="h-4 w-4" />
               People
             </Link>
           </Button>
           <ChevronRight className="h-3.5 w-3.5 text-zinc-300" />
-          <span className="text-sm text-zinc-600 font-medium">{MEMBER.name}</span>
+          <span className="text-sm text-[var(--ih-ink-65)] font-medium">{MEMBER.name}</span>
           <span className="ml-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-600 uppercase tracking-wide">
             Demo
           </span>
@@ -771,7 +771,7 @@ export default function TeamMemberDemoPage() {
 
         {/* ── Hero Header ──────────────────────────────────────────────────── */}
         <div
-          className="rounded-xl border border-zinc-200 bg-white overflow-hidden"
+          className="rounded-xl border border-[var(--ih-line)] bg-[var(--ih-surface)] overflow-hidden"
           style={{ borderLeft: `4px solid ${DEPT_COLOR}` }}
         >
           <div className="p-6">
@@ -792,8 +792,8 @@ export default function TeamMemberDemoPage() {
               <div className="flex-1 min-w-0 space-y-3">
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <h1 className="text-2xl font-bold text-zinc-900">{MEMBER.name}</h1>
-                    <p className="text-sm text-zinc-500 mt-0.5">
+                    <h1 className="text-2xl font-bold text-[var(--ih-ink)]">{MEMBER.name}</h1>
+                    <p className="text-sm text-[var(--ih-ink-50)] mt-0.5">
                       {MEMBER.title}
                       <span className="mx-2 text-zinc-300">·</span>
                       <span style={{ color: DEPT_COLOR }} className="font-medium">{MEMBER.department}</span>
@@ -830,20 +830,20 @@ export default function TeamMemberDemoPage() {
                   <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
                     Active
                   </span>
-                  <span className="inline-flex items-center rounded border border-zinc-200 bg-zinc-50 px-1.5 py-0.5 font-mono text-[10px] font-medium text-zinc-500">
+                  <span className="inline-flex items-center rounded border border-[var(--ih-line)] bg-[var(--ih-surface-2)] px-1.5 py-0.5 font-mono text-[10px] font-medium text-[var(--ih-ink-50)]">
                     FTE
                   </span>
                   <Separator orientation="vertical" className="h-4" />
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <div className="flex items-center gap-1.5 cursor-default">
-                        <span className="text-xs text-zinc-400">Capacity</span>
+                        <span className="text-xs text-[var(--ih-ink-40)]">Capacity</span>
                         <span className={cn("font-mono text-xs font-bold tabular-nums", capTextClass)}>
                           {MEMBER.capacity.used}
                         </span>
                         <span className="text-xs text-zinc-300">/</span>
-                        <span className="text-xs text-zinc-400">{MEMBER.capacity.max}</span>
-                        <div className="w-20 h-1.5 rounded-full bg-zinc-100 overflow-hidden">
+                        <span className="text-xs text-[var(--ih-ink-40)]">{MEMBER.capacity.max}</span>
+                        <div className="w-20 h-1.5 rounded-full bg-[var(--ih-surface-2)] overflow-hidden">
                           <div
                             className="h-full rounded-full transition-all"
                             style={{
@@ -868,7 +868,7 @@ export default function TeamMemberDemoPage() {
                     { icon: MapPin, text: MEMBER.location },
                     { icon: CalendarDays, text: `Joined ${MEMBER.joined}` },
                   ].map(({ icon: Icon, text }) => (
-                    <span key={text} className="flex items-center gap-1.5 text-xs text-zinc-400">
+                    <span key={text} className="flex items-center gap-1.5 text-xs text-[var(--ih-ink-40)]">
                       <Icon className="h-3 w-3 shrink-0" />
                       {text}
                     </span>
@@ -892,7 +892,7 @@ export default function TeamMemberDemoPage() {
           {/* Main content */}
           <div className="flex-1 min-w-0 space-y-4">
             {/* Custom underline tab bar */}
-            <div className="flex border-b border-zinc-200">
+            <div className="flex border-b border-[var(--ih-line)]">
               {TABS.map(({ id, label }) => (
                 <button
                   key={id}
@@ -901,8 +901,8 @@ export default function TeamMemberDemoPage() {
                   className={cn(
                     "px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px",
                     activeTab === id
-                      ? "border-zinc-900 text-zinc-900"
-                      : "border-transparent text-zinc-400 hover:text-zinc-700"
+                      ? "border-zinc-900 text-[var(--ih-ink)]"
+                      : "border-transparent text-[var(--ih-ink-40)] hover:text-[var(--ih-ink-65)]"
                   )}
                 >
                   {label}

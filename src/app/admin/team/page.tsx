@@ -74,7 +74,7 @@ function KpiSkeleton() {
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
       {Array.from({ length: 4 }).map((_, i) => (
-        <div key={i} className="rounded-xl border border-zinc-200 p-5 space-y-3">
+        <div key={i} className="rounded-xl border border-[var(--ih-line)] p-5 space-y-3">
           <Skeleton className="h-3 w-20" />
           <Skeleton className="h-8 w-16" />
           <Skeleton className="h-3 w-28" />
@@ -86,7 +86,7 @@ function KpiSkeleton() {
 
 function TableSkeleton() {
   return (
-    <div className="rounded-xl border border-zinc-200 bg-white overflow-hidden">
+    <div className="rounded-xl border border-[var(--ih-line)] bg-[var(--ih-surface)] overflow-hidden">
       <div className="p-4 space-y-3">
         {Array.from({ length: 6 }).map((_, i) => (
           <div key={i} className="flex items-center gap-4">
@@ -292,17 +292,17 @@ function TeamPageInner() {
     <TooltipProvider>
       <div className="space-y-6 animate-fade-in">
         {/* Breadcrumb */}
-        <div className="flex items-center gap-1.5 text-xs text-zinc-400">
+        <div className="flex items-center gap-1.5 text-xs text-[var(--ih-ink-40)]">
           <span>Admin</span>
           <ChevronRight className="h-3 w-3" />
-          <span className="text-zinc-600 font-medium">People</span>
+          <span className="text-[var(--ih-ink-65)] font-medium">People</span>
         </div>
 
         {/* Header */}
         <div className="flex items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-zinc-900">People</h1>
-            <p className="mt-0.5 text-sm text-zinc-500">
+            <h1 className="text-2xl font-bold tracking-tight text-[var(--ih-ink)]">People</h1>
+            <p className="mt-0.5 text-sm text-[var(--ih-ink-50)]">
               Manage staff capacity, availability, and department structure.
             </p>
           </div>
@@ -381,16 +381,16 @@ function TeamPageInner() {
             {/* Search + view toggle */}
             <div className="flex items-center gap-2">
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-400" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[var(--ih-ink-40)]" />
                 <Input
                   placeholder="Search by name, title, skill..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="pl-9 h-9 text-sm border-zinc-200 bg-white placeholder:text-zinc-400"
+                  className="pl-9 h-9 text-sm border-[var(--ih-line)] bg-[var(--ih-surface)] placeholder:text-[var(--ih-ink-40)]"
                 />
               </div>
               {/* View toggle */}
-              <div className="flex items-center rounded-lg border border-zinc-200 bg-white p-0.5 gap-0.5">
+              <div className="flex items-center rounded-lg border border-[var(--ih-line)] bg-[var(--ih-surface)] p-0.5 gap-0.5">
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button
@@ -398,7 +398,7 @@ function TeamPageInner() {
                       onClick={() => setViewMode("table")}
                       className={cn(
                         "h-7 w-7 flex items-center justify-center rounded-md transition-colors",
-                        viewMode === "table" ? "bg-zinc-900 text-white" : "text-zinc-400 hover:text-zinc-700"
+                        viewMode === "table" ? "bg-zinc-900 text-white" : "text-[var(--ih-ink-40)] hover:text-[var(--ih-ink-65)]"
                       )}
                     >
                       <List className="h-3.5 w-3.5" />
@@ -413,7 +413,7 @@ function TeamPageInner() {
                       onClick={() => setViewMode("grid")}
                       className={cn(
                         "h-7 w-7 flex items-center justify-center rounded-md transition-colors",
-                        viewMode === "grid" ? "bg-zinc-900 text-white" : "text-zinc-400 hover:text-zinc-700"
+                        viewMode === "grid" ? "bg-zinc-900 text-white" : "text-[var(--ih-ink-40)] hover:text-[var(--ih-ink-65)]"
                       )}
                     >
                       <LayoutGrid className="h-3.5 w-3.5" />
@@ -444,7 +444,7 @@ function TeamPageInner() {
                     "inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium transition-colors",
                     statusFilter === f.value
                       ? "border-zinc-900 bg-zinc-900 text-white"
-                      : "border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50"
+                      : "border-[var(--ih-line)] bg-[var(--ih-surface)] text-[var(--ih-ink-65)] hover:bg-[var(--ih-surface-2)]"
                   )}
                 >
                   {f.label}
@@ -455,14 +455,14 @@ function TeamPageInner() {
                   <Separator orientation="vertical" className="h-4 mx-1" />
                   <button
                     type="button"
-                    className="text-xs text-zinc-400 hover:text-zinc-700 transition-colors"
+                    className="text-xs text-[var(--ih-ink-40)] hover:text-[var(--ih-ink-65)] transition-colors"
                     onClick={clearFilters}
                   >
                     Clear filters
                   </button>
                 </>
               )}
-              <span className="ml-auto font-mono text-xs text-zinc-400 tabular-nums">
+              <span className="ml-auto font-mono text-xs text-[var(--ih-ink-40)] tabular-nums">
                 {allMembers.length} member{allMembers.length !== 1 ? "s" : ""}
                 {data?.hasMore ? "+" : ""}
               </span>
@@ -483,8 +483,8 @@ function TeamPageInner() {
               />
             ) : (
               allMembers.length === 0 ? (
-                <div className="flex h-24 items-center justify-center rounded-xl border border-zinc-200 bg-white">
-                  <p className="text-sm text-zinc-400">No members match your filters.</p>
+                <div className="flex h-24 items-center justify-center rounded-xl border border-[var(--ih-line)] bg-[var(--ih-surface)]">
+                  <p className="text-sm text-[var(--ih-ink-40)]">No members match your filters.</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -531,7 +531,7 @@ function TeamPageInner() {
 
         {/* Bulk actions toolbar */}
         {selectedIds.size > 0 && (
-          <div className="sticky bottom-4 z-10 mx-auto w-fit rounded-lg border border-zinc-200 bg-white shadow-lg px-4 py-2 flex items-center gap-3">
+          <div className="sticky bottom-4 z-10 mx-auto w-fit rounded-lg border border-[var(--ih-line)] bg-[var(--ih-surface)] shadow-lg px-4 py-2 flex items-center gap-3">
             <span className="text-xs font-medium">{selectedIds.size} selected</span>
             <Separator orientation="vertical" className="h-5" />
             <DropdownMenu>

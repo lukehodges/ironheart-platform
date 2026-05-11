@@ -11,11 +11,11 @@ interface KpiCardProps {
 
 export function KpiCard({ label, value, sub, icon: Icon, trend }: KpiCardProps) {
   return (
-    <div className="rounded-xl border border-zinc-200 bg-white p-5 space-y-3">
+    <div className="rounded-xl border border-[var(--ih-line)] bg-[var(--ih-surface)] p-5 space-y-3">
       <div className="flex items-center justify-between">
-        <span className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400">{label}</span>
-        <div className="h-7 w-7 rounded-lg bg-zinc-100 flex items-center justify-center">
-          <Icon className="h-3.5 w-3.5 text-zinc-400" />
+        <span className="text-[11px] font-semibold uppercase tracking-widest text-[var(--ih-ink-40)]">{label}</span>
+        <div className="h-7 w-7 rounded-lg bg-[var(--ih-surface-2)] flex items-center justify-center">
+          <Icon className="h-3.5 w-3.5 text-[var(--ih-ink-40)]" />
         </div>
       </div>
       <div className="flex items-end gap-2">
@@ -26,7 +26,7 @@ export function KpiCard({ label, value, sub, icon: Icon, trend }: KpiCardProps) 
           </span>
         )}
       </div>
-      {sub && <p className="text-xs text-zinc-400">{sub}</p>}
+      {sub && <p className="text-xs text-[var(--ih-ink-40)]">{sub}</p>}
     </div>
   )
 }

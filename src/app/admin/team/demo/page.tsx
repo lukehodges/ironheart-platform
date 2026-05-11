@@ -165,7 +165,7 @@ function AvailabilityDot({ availability }: { availability: Availability }) {
 function StatusBadge({ status }: { status: Status }) {
   const styles: Record<Status, string> = {
     active: "bg-emerald-50 text-emerald-700 border-emerald-200",
-    inactive: "bg-zinc-100 text-zinc-500 border-zinc-200",
+    inactive: "bg-[var(--ih-surface-2)] text-[var(--ih-ink-50)] border-[var(--ih-line)]",
     suspended: "bg-amber-50 text-amber-700 border-amber-200",
   }
   const labels: Record<Status, string> = {
@@ -187,7 +187,7 @@ function EmployeeTypeBadge({ type }: { type: EmployeeType }) {
     contractor: "Contract",
   }
   return (
-    <span className="inline-flex items-center rounded border border-zinc-200 bg-zinc-50 px-1.5 py-0.5 font-mono text-[10px] font-medium text-zinc-500">
+    <span className="inline-flex items-center rounded border border-[var(--ih-line)] bg-[var(--ih-surface-2)] px-1.5 py-0.5 font-mono text-[10px] font-medium text-[var(--ih-ink-50)]">
       {labels[type]}
     </span>
   )
@@ -202,10 +202,10 @@ function CapacityBar({ used, max }: { used: number; max: number }) {
       <div className="flex items-center justify-between">
         <span className={cn("font-mono text-[11px] font-semibold tabular-nums", textClass)}>
           {used}
-          <span className="text-zinc-400 font-normal">/{max}</span>
+          <span className="text-[var(--ih-ink-40)] font-normal">/{max}</span>
         </span>
       </div>
-      <div className="h-1 w-full rounded-full bg-zinc-100 overflow-hidden">
+      <div className="h-1 w-full rounded-full bg-[var(--ih-surface-2)] overflow-hidden">
         <div
           className="h-full rounded-full transition-all duration-500"
           style={{ width: `${pct}%`, backgroundColor: color }}
@@ -229,22 +229,22 @@ function KpiCard({
   trend?: { label: string; positive: boolean }
 }) {
   return (
-    <div className="rounded-xl border border-zinc-200 bg-white p-5 space-y-3">
+    <div className="rounded-xl border border-[var(--ih-line)] bg-[var(--ih-surface)] p-5 space-y-3">
       <div className="flex items-center justify-between">
-        <span className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400">{label}</span>
-        <div className="h-7 w-7 rounded-lg bg-zinc-100 flex items-center justify-center">
-          <Icon className="h-3.5 w-3.5 text-zinc-400" />
+        <span className="text-[11px] font-semibold uppercase tracking-widest text-[var(--ih-ink-40)]">{label}</span>
+        <div className="h-7 w-7 rounded-lg bg-[var(--ih-surface-2)] flex items-center justify-center">
+          <Icon className="h-3.5 w-3.5 text-[var(--ih-ink-40)]" />
         </div>
       </div>
       <div className="flex items-end gap-2">
-        <span className="text-3xl font-bold font-mono tabular-nums leading-none text-zinc-900">{value}</span>
+        <span className="text-3xl font-bold font-mono tabular-nums leading-none text-[var(--ih-ink)]">{value}</span>
         {trend && (
           <span className={cn("text-xs font-medium mb-0.5", trend.positive ? "text-emerald-600" : "text-red-500")}>
             {trend.positive ? "↑" : "↓"} {trend.label}
           </span>
         )}
       </div>
-      {sub && <p className="text-xs text-zinc-400">{sub}</p>}
+      {sub && <p className="text-xs text-[var(--ih-ink-40)]">{sub}</p>}
     </div>
   )
 }
@@ -291,7 +291,7 @@ function MemberGridCard({ member }: { member: Member }) {
   }
   return (
     <div
-      className="relative rounded-xl border border-zinc-200 bg-white p-4 space-y-3 hover:-translate-y-px hover:shadow-md transition-all duration-200 cursor-pointer overflow-hidden"
+      className="relative rounded-xl border border-[var(--ih-line)] bg-[var(--ih-surface)] p-4 space-y-3 hover:-translate-y-px hover:shadow-md transition-all duration-200 cursor-pointer overflow-hidden"
       style={{ borderLeft: `3px solid ${dept?.color ?? "#e4e4e7"}` }}
     >
       {/* Header */}
@@ -309,8 +309,8 @@ function MemberGridCard({ member }: { member: Member }) {
             </AvatarFallback>
           </Avatar>
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-zinc-900 truncate leading-tight">{member.name}</p>
-            <p className="text-xs text-zinc-500 truncate leading-tight">{member.title}</p>
+            <p className="text-sm font-semibold text-[var(--ih-ink)] truncate leading-tight">{member.name}</p>
+            <p className="text-xs text-[var(--ih-ink-50)] truncate leading-tight">{member.title}</p>
           </div>
         </div>
         <StatusBadge status={member.status} />
@@ -322,7 +322,7 @@ function MemberGridCard({ member }: { member: Member }) {
           className="inline-flex h-2 w-2 rounded-full shrink-0"
           style={{ backgroundColor: dept?.color }}
         />
-        <span className="text-xs text-zinc-600 truncate">{member.department}</span>
+        <span className="text-xs text-[var(--ih-ink-65)] truncate">{member.department}</span>
         <EmployeeTypeBadge type={member.employeeType} />
       </div>
 
@@ -331,25 +331,25 @@ function MemberGridCard({ member }: { member: Member }) {
         {member.skills.slice(0, 3).map((s) => (
           <span
             key={s}
-            className="inline-flex items-center rounded-md border border-zinc-200 bg-zinc-50 px-1.5 py-0.5 text-[10px] font-medium text-zinc-600"
+            className="inline-flex items-center rounded-md border border-[var(--ih-line)] bg-[var(--ih-surface-2)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--ih-ink-65)]"
           >
             {s}
           </span>
         ))}
         {member.skills.length > 3 && (
-          <span className="inline-flex items-center rounded-md border border-zinc-200 bg-zinc-50 px-1.5 py-0.5 text-[10px] font-medium text-zinc-400">
+          <span className="inline-flex items-center rounded-md border border-[var(--ih-line)] bg-[var(--ih-surface-2)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--ih-ink-40)]">
             +{member.skills.length - 3}
           </span>
         )}
       </div>
 
-      <Separator className="bg-zinc-100" />
+      <Separator className="bg-[var(--ih-surface-2)]" />
 
       {/* Availability + capacity */}
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-1.5">
           <AvailabilityDot availability={member.availability} />
-          <span className="text-[11px] text-zinc-500">{availLabel[member.availability]}</span>
+          <span className="text-[11px] text-[var(--ih-ink-50)]">{availLabel[member.availability]}</span>
         </div>
         <CapacityBar used={member.capacity.used} max={member.capacity.max} />
       </div>
@@ -358,7 +358,7 @@ function MemberGridCard({ member }: { member: Member }) {
       <div className="flex items-center justify-between pt-0.5">
         <button
           type="button"
-          className="text-[11px] font-medium text-zinc-500 hover:text-zinc-900 transition-colors"
+          className="text-[11px] font-medium text-[var(--ih-ink-50)] hover:text-[var(--ih-ink)] transition-colors"
         >
           View Profile
         </button>
@@ -423,10 +423,10 @@ export default function TeamDemoPage() {
     <TooltipProvider>
       <div className="space-y-6">
         {/* ── Breadcrumb ─────────────────────────────────────────────────────── */}
-        <div className="flex items-center gap-1.5 text-xs text-zinc-400">
+        <div className="flex items-center gap-1.5 text-xs text-[var(--ih-ink-40)]">
           <span>Admin</span>
           <ChevronRight className="h-3 w-3" />
-          <span className="text-zinc-600 font-medium">People</span>
+          <span className="text-[var(--ih-ink-65)] font-medium">People</span>
           <span className="ml-2 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-600 uppercase tracking-wide">
             Demo
           </span>
@@ -435,8 +435,8 @@ export default function TeamDemoPage() {
         {/* ── Header ─────────────────────────────────────────────────────────── */}
         <div className="flex items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-zinc-900">People</h1>
-            <p className="mt-0.5 text-sm text-zinc-500">
+            <h1 className="text-2xl font-bold tracking-tight text-[var(--ih-ink)]">People</h1>
+            <p className="mt-0.5 text-sm text-[var(--ih-ink-50)]">
               Manage staff capacity, availability, and department structure.
             </p>
           </div>
@@ -492,9 +492,9 @@ export default function TeamDemoPage() {
           {/* ── Sidebar ─────────────────────────────────────────────────────── */}
           <aside className="w-52 shrink-0 sticky top-4 space-y-4">
             {/* Department filter */}
-            <div className="rounded-xl border border-zinc-200 bg-white overflow-hidden">
-              <div className="px-4 py-3 border-b border-zinc-100">
-                <span className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400">
+            <div className="rounded-xl border border-[var(--ih-line)] bg-[var(--ih-surface)] overflow-hidden">
+              <div className="px-4 py-3 border-b border-[var(--ih-line)]">
+                <span className="text-[11px] font-semibold uppercase tracking-widest text-[var(--ih-ink-40)]">
                   Departments
                 </span>
               </div>
@@ -507,21 +507,21 @@ export default function TeamDemoPage() {
                     "flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-xs transition-colors",
                     deptFilter === null
                       ? "bg-zinc-900 text-white font-semibold"
-                      : "text-zinc-600 hover:bg-zinc-50 font-medium"
+                      : "text-[var(--ih-ink-65)] hover:bg-[var(--ih-surface-2)] font-medium"
                   )}
                 >
                   <span>All members</span>
                   <span
                     className={cn(
                       "font-mono text-[11px]",
-                      deptFilter === null ? "text-white/70" : "text-zinc-400"
+                      deptFilter === null ? "text-white/70" : "text-[var(--ih-ink-40)]"
                     )}
                   >
                     {MEMBERS.length}
                   </span>
                 </button>
 
-                <Separator className="bg-zinc-100 my-1" />
+                <Separator className="bg-[var(--ih-surface-2)] my-1" />
 
                 {DEPARTMENTS.map((dept) => (
                   <button
@@ -531,8 +531,8 @@ export default function TeamDemoPage() {
                     className={cn(
                       "flex w-full items-center justify-between rounded-lg px-2.5 py-1.5 text-xs transition-colors",
                       deptFilter === dept.name
-                        ? "bg-zinc-100 font-semibold text-zinc-900"
-                        : "text-zinc-600 hover:bg-zinc-50 font-medium"
+                        ? "bg-[var(--ih-surface-2)] font-semibold text-[var(--ih-ink)]"
+                        : "text-[var(--ih-ink-65)] hover:bg-[var(--ih-surface-2)] font-medium"
                     )}
                   >
                     <span className="flex items-center gap-2 min-w-0">
@@ -542,7 +542,7 @@ export default function TeamDemoPage() {
                       />
                       <span className="truncate">{dept.name}</span>
                     </span>
-                    <span className="font-mono text-[11px] text-zinc-400 shrink-0">{dept.count}</span>
+                    <span className="font-mono text-[11px] text-[var(--ih-ink-40)] shrink-0">{dept.count}</span>
                   </button>
                 ))}
               </div>
@@ -557,16 +557,16 @@ export default function TeamDemoPage() {
             {/* Search + view toggle */}
             <div className="flex items-center gap-2">
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-400" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[var(--ih-ink-40)]" />
                 <Input
                   placeholder="Search by name, title, skill…"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="pl-9 h-9 text-sm border-zinc-200 bg-white placeholder:text-zinc-400"
+                  className="pl-9 h-9 text-sm border-[var(--ih-line)] bg-[var(--ih-surface)] placeholder:text-[var(--ih-ink-40)]"
                 />
               </div>
               {/* View toggle */}
-              <div className="flex items-center rounded-lg border border-zinc-200 bg-white p-0.5 gap-0.5">
+              <div className="flex items-center rounded-lg border border-[var(--ih-line)] bg-[var(--ih-surface)] p-0.5 gap-0.5">
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button
@@ -576,7 +576,7 @@ export default function TeamDemoPage() {
                         "h-7 w-7 flex items-center justify-center rounded-md transition-colors",
                         view === "table"
                           ? "bg-zinc-900 text-white"
-                          : "text-zinc-400 hover:text-zinc-700"
+                          : "text-[var(--ih-ink-40)] hover:text-[var(--ih-ink-65)]"
                       )}
                     >
                       <List className="h-3.5 w-3.5" />
@@ -593,7 +593,7 @@ export default function TeamDemoPage() {
                         "h-7 w-7 flex items-center justify-center rounded-md transition-colors",
                         view === "grid"
                           ? "bg-zinc-900 text-white"
-                          : "text-zinc-400 hover:text-zinc-700"
+                          : "text-[var(--ih-ink-40)] hover:text-[var(--ih-ink-65)]"
                       )}
                     >
                       <LayoutGrid className="h-3.5 w-3.5" />
@@ -615,7 +615,7 @@ export default function TeamDemoPage() {
                     "inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium transition-colors",
                     statusFilter === f.value
                       ? "border-zinc-900 bg-zinc-900 text-white"
-                      : "border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50"
+                      : "border-[var(--ih-line)] bg-[var(--ih-surface)] text-[var(--ih-ink-65)] hover:bg-[var(--ih-surface-2)]"
                   )}
                 >
                   {f.label}
@@ -626,40 +626,40 @@ export default function TeamDemoPage() {
                   <Separator orientation="vertical" className="h-4 mx-1" />
                   <button
                     type="button"
-                    className="text-xs text-zinc-400 hover:text-zinc-700 transition-colors"
+                    className="text-xs text-[var(--ih-ink-40)] hover:text-[var(--ih-ink-65)] transition-colors"
                     onClick={() => { setSearch(""); setStatusFilter("all"); setDeptFilter(null) }}
                   >
                     Clear filters
                   </button>
                 </>
               )}
-              <span className="ml-auto font-mono text-xs text-zinc-400 tabular-nums">
+              <span className="ml-auto font-mono text-xs text-[var(--ih-ink-40)] tabular-nums">
                 {filtered.length} member{filtered.length !== 1 ? "s" : ""}
               </span>
             </div>
 
             {/* ── TABLE VIEW ──────────────────────────────────────────────── */}
             {view === "table" && (
-              <div className="rounded-xl border border-zinc-200 bg-white overflow-hidden">
+              <div className="rounded-xl border border-[var(--ih-line)] bg-[var(--ih-surface)] overflow-hidden">
                 <Table>
                   <TableHeader>
-                    <TableRow className="hover:bg-transparent border-zinc-200">
-                      <TableHead className="pl-5 text-[11px] font-semibold uppercase tracking-widest text-zinc-400 w-[220px]">
+                    <TableRow className="hover:bg-transparent border-[var(--ih-line)]">
+                      <TableHead className="pl-5 text-[11px] font-semibold uppercase tracking-widest text-[var(--ih-ink-40)] w-[220px]">
                         Member
                       </TableHead>
-                      <TableHead className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400 w-[140px]">
+                      <TableHead className="text-[11px] font-semibold uppercase tracking-widest text-[var(--ih-ink-40)] w-[140px]">
                         Department
                       </TableHead>
-                      <TableHead className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400 w-[80px]">
+                      <TableHead className="text-[11px] font-semibold uppercase tracking-widest text-[var(--ih-ink-40)] w-[80px]">
                         Status
                       </TableHead>
-                      <TableHead className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400 w-[100px]">
+                      <TableHead className="text-[11px] font-semibold uppercase tracking-widest text-[var(--ih-ink-40)] w-[100px]">
                         Availability
                       </TableHead>
-                      <TableHead className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400 w-[110px]">
+                      <TableHead className="text-[11px] font-semibold uppercase tracking-widest text-[var(--ih-ink-40)] w-[110px]">
                         Capacity
                       </TableHead>
-                      <TableHead className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400">
+                      <TableHead className="text-[11px] font-semibold uppercase tracking-widest text-[var(--ih-ink-40)]">
                         Skills
                       </TableHead>
                       <TableHead className="w-10" />
@@ -668,7 +668,7 @@ export default function TeamDemoPage() {
                   <TableBody>
                     {filtered.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={7} className="h-24 text-center text-sm text-zinc-400">
+                        <TableCell colSpan={7} className="h-24 text-center text-sm text-[var(--ih-ink-40)]">
                           No members match your filters.
                         </TableCell>
                       </TableRow>
@@ -678,7 +678,7 @@ export default function TeamDemoPage() {
                         return (
                           <TableRow
                             key={member.id}
-                            className="group hover:bg-zinc-50/80 cursor-pointer border-zinc-100 transition-colors"
+                            className="group hover:bg-[var(--ih-surface-2)]/80 cursor-pointer border-[var(--ih-line)] transition-colors"
                             style={{ borderLeft: `3px solid ${dept?.color ?? "transparent"}` }}
                           >
                             {/* Member */}
@@ -696,10 +696,10 @@ export default function TeamDemoPage() {
                                   </AvatarFallback>
                                 </Avatar>
                                 <div className="min-w-0">
-                                  <p className="text-sm font-semibold text-zinc-900 truncate leading-tight">
+                                  <p className="text-sm font-semibold text-[var(--ih-ink)] truncate leading-tight">
                                     {member.name}
                                   </p>
-                                  <p className="text-xs text-zinc-400 truncate leading-tight flex items-center gap-1.5">
+                                  <p className="text-xs text-[var(--ih-ink-40)] truncate leading-tight flex items-center gap-1.5">
                                     {member.title}
                                     <EmployeeTypeBadge type={member.employeeType} />
                                   </p>
@@ -714,7 +714,7 @@ export default function TeamDemoPage() {
                                   className="h-2 w-2 rounded-full shrink-0"
                                   style={{ backgroundColor: dept?.color }}
                                 />
-                                <span className="text-xs text-zinc-600 truncate">{member.department}</span>
+                                <span className="text-xs text-[var(--ih-ink-65)] truncate">{member.department}</span>
                               </div>
                             </TableCell>
 
@@ -727,7 +727,7 @@ export default function TeamDemoPage() {
                             <TableCell className="py-3">
                               <div className="flex items-center gap-1.5">
                                 <AvailabilityDot availability={member.availability} />
-                                <span className="text-xs text-zinc-500">{availLabel[member.availability]}</span>
+                                <span className="text-xs text-[var(--ih-ink-50)]">{availLabel[member.availability]}</span>
                               </div>
                             </TableCell>
 
@@ -742,7 +742,7 @@ export default function TeamDemoPage() {
                                 {member.skills.slice(0, 2).map((s) => (
                                   <span
                                     key={s}
-                                    className="inline-flex items-center rounded border border-zinc-200 bg-zinc-50 px-1.5 py-0.5 text-[10px] font-medium text-zinc-600"
+                                    className="inline-flex items-center rounded border border-[var(--ih-line)] bg-[var(--ih-surface-2)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--ih-ink-65)]"
                                   >
                                     {s}
                                   </span>
@@ -750,7 +750,7 @@ export default function TeamDemoPage() {
                                 {member.skills.length > 2 && (
                                   <Tooltip>
                                     <TooltipTrigger asChild>
-                                      <span className="inline-flex items-center rounded border border-zinc-200 bg-zinc-50 px-1.5 py-0.5 text-[10px] font-medium text-zinc-400 cursor-default">
+                                      <span className="inline-flex items-center rounded border border-[var(--ih-line)] bg-[var(--ih-surface-2)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--ih-ink-40)] cursor-default">
                                         +{member.skills.length - 2}
                                       </span>
                                     </TooltipTrigger>
@@ -801,8 +801,8 @@ export default function TeamDemoPage() {
             {view === "grid" && (
               <>
                 {filtered.length === 0 ? (
-                  <div className="flex h-24 items-center justify-center rounded-xl border border-zinc-200 bg-white">
-                    <p className="text-sm text-zinc-400">No members match your filters.</p>
+                  <div className="flex h-24 items-center justify-center rounded-xl border border-[var(--ih-line)] bg-[var(--ih-surface)]">
+                    <p className="text-sm text-[var(--ih-ink-40)]">No members match your filters.</p>
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">

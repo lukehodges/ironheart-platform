@@ -93,8 +93,8 @@ export const ActionNode = memo(({ data, selected }: NodeProps<ActionNodeData>) =
   return (
     <div
       className={cn(
-        "relative min-w-[200px] rounded-lg border-2 bg-white shadow-md transition-all",
-        "dark:bg-slate-900",
+        "relative min-w-[200px] rounded-lg border-2 bg-[var(--ih-surface)] shadow-md transition-all",
+        "dark:bg-[var(--ih-surface)]",
         selected
           ? "border-blue-500 shadow-lg shadow-blue-500/20 ring-2 ring-blue-500/30"
           : "border-blue-400 hover:border-blue-500 hover:shadow-lg",
@@ -109,8 +109,8 @@ export const ActionNode = memo(({ data, selected }: NodeProps<ActionNodeData>) =
         position={Position.Top}
         id="input"
         className={cn(
-          "!w-3 !h-3 !bg-blue-500 !border-2 !border-white",
-          "dark:!border-slate-900",
+          "!w-3 !h-3 !bg-blue-500 !border-2 !border-[var(--ih-surface)]",
+          "dark:!border-[var(--ih-surface)]",
           "hover:!w-4 hover:!h-4 transition-all"
         )}
         aria-label="Action input connection point"
@@ -153,8 +153,8 @@ export const ActionNode = memo(({ data, selected }: NodeProps<ActionNodeData>) =
         position={Position.Bottom}
         id="output"
         className={cn(
-          "!w-3 !h-3 !bg-blue-500 !border-2 !border-white",
-          "dark:!border-slate-900",
+          "!w-3 !h-3 !bg-blue-500 !border-2 !border-[var(--ih-surface)]",
+          "dark:!border-[var(--ih-surface)]",
           "hover:!w-4 hover:!h-4 transition-all"
         )}
         aria-label="Action output connection point"

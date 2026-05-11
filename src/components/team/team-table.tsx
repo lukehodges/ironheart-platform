@@ -59,27 +59,27 @@ export function TeamTable({
   onToggleSelect,
 }: TeamTableProps) {
   return (
-    <div className="rounded-xl border border-zinc-200 bg-white overflow-hidden">
+    <div className="rounded-xl border border-[var(--ih-line)] bg-[var(--ih-surface)] overflow-hidden">
       <Table>
         <TableHeader>
-          <TableRow className="hover:bg-transparent border-zinc-200">
+          <TableRow className="hover:bg-transparent border-[var(--ih-line)]">
             {bulkMode && <TableHead className="w-10 pl-4" />}
-            <TableHead className="pl-5 text-[11px] font-semibold uppercase tracking-widest text-zinc-400 w-[220px]">
+            <TableHead className="pl-5 text-[11px] font-semibold uppercase tracking-widest text-[var(--ih-ink-40)] w-[220px]">
               Member
             </TableHead>
-            <TableHead className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400 w-[140px]">
+            <TableHead className="text-[11px] font-semibold uppercase tracking-widest text-[var(--ih-ink-40)] w-[140px]">
               Department
             </TableHead>
-            <TableHead className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400 w-[80px]">
+            <TableHead className="text-[11px] font-semibold uppercase tracking-widest text-[var(--ih-ink-40)] w-[80px]">
               Status
             </TableHead>
-            <TableHead className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400 w-[100px]">
+            <TableHead className="text-[11px] font-semibold uppercase tracking-widest text-[var(--ih-ink-40)] w-[100px]">
               Availability
             </TableHead>
-            <TableHead className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400 w-[110px]">
+            <TableHead className="text-[11px] font-semibold uppercase tracking-widest text-[var(--ih-ink-40)] w-[110px]">
               Capacity
             </TableHead>
-            <TableHead className="text-[11px] font-semibold uppercase tracking-widest text-zinc-400">
+            <TableHead className="text-[11px] font-semibold uppercase tracking-widest text-[var(--ih-ink-40)]">
               Skills
             </TableHead>
             <TableHead className="w-16" />
@@ -88,7 +88,7 @@ export function TeamTable({
         <TableBody>
           {members.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={bulkMode ? 8 : 7} className="h-24 text-center text-sm text-zinc-400">
+              <TableCell colSpan={bulkMode ? 8 : 7} className="h-24 text-center text-sm text-[var(--ih-ink-40)]">
                 No members match your filters.
               </TableCell>
             </TableRow>
@@ -100,7 +100,7 @@ export function TeamTable({
               return (
                 <TableRow
                   key={member.id}
-                  className="group hover:bg-zinc-50/80 cursor-pointer border-zinc-100 transition-colors"
+                  className="group hover:bg-[var(--ih-surface-2)]/80 cursor-pointer border-[var(--ih-line)] transition-colors"
                   style={{ borderLeft: `3px solid ${deptColor}` }}
                   onClick={() => bulkMode ? onToggleSelect(member.id) : onNavigate(member.id)}
                 >
@@ -127,7 +127,7 @@ export function TeamTable({
                         <p className="text-sm font-semibold text-zinc-900 truncate leading-tight">
                           {member.name}
                         </p>
-                        <p className="text-xs text-zinc-400 truncate leading-tight flex items-center gap-1.5">
+                        <p className="text-xs text-[var(--ih-ink-40)] truncate leading-tight flex items-center gap-1.5">
                           {member.jobTitle ?? "No title"}
                           {member.employeeType && <EmployeeTypeBadge type={member.employeeType} />}
                         </p>
@@ -139,10 +139,10 @@ export function TeamTable({
                     {deptName ? (
                       <div className="flex items-center gap-1.5">
                         <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: deptColor }} />
-                        <span className="text-xs text-zinc-600 truncate">{deptName}</span>
+                        <span className="text-xs text-[var(--ih-ink-65)] truncate">{deptName}</span>
                       </div>
                     ) : (
-                      <span className="text-xs text-zinc-400">—</span>
+                      <span className="text-xs text-[var(--ih-ink-40)]">—</span>
                     )}
                   </TableCell>
 
@@ -158,7 +158,7 @@ export function TeamTable({
                     {member.capacityMax != null ? (
                       <CapacityBar used={member.capacityUsed ?? 0} max={member.capacityMax} />
                     ) : (
-                      <span className="text-xs text-zinc-400">—</span>
+                      <span className="text-xs text-[var(--ih-ink-40)]">—</span>
                     )}
                   </TableCell>
 
@@ -167,7 +167,7 @@ export function TeamTable({
                       {(member.skills ?? []).slice(0, 2).map((s) => (
                         <span
                           key={s.skillName}
-                          className="inline-flex items-center rounded border border-zinc-200 bg-zinc-50 px-1.5 py-0.5 text-[10px] font-medium text-zinc-600"
+                          className="inline-flex items-center rounded border border-[var(--ih-line)] bg-[var(--ih-surface-2)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--ih-ink-65)]"
                         >
                           {s.skillName}
                         </span>
@@ -175,7 +175,7 @@ export function TeamTable({
                       {(member.skills ?? []).length > 2 && (
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <span className="inline-flex items-center rounded border border-zinc-200 bg-zinc-50 px-1.5 py-0.5 text-[10px] font-medium text-zinc-400 cursor-default">
+                            <span className="inline-flex items-center rounded border border-[var(--ih-line)] bg-[var(--ih-surface-2)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--ih-ink-40)] cursor-default">
                               +{(member.skills ?? []).length - 2}
                             </span>
                           </TooltipTrigger>

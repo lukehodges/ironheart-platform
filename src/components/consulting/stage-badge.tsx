@@ -1,16 +1,16 @@
 import { cn } from "@/lib/utils"
 
 const STAGE_STYLES: Record<string, string> = {
-  DISCOVERY: "bg-[#D13A1F]/10 text-[#D13A1F] border-[#D13A1F]/20",
-  PROPOSAL: "bg-[#B8860B]/10 text-[#B8860B] border-[#B8860B]/20",
-  CONTRACTED: "bg-[#2F6F5C]/10 text-[#2F6F5C] border-[#2F6F5C]/20",
-  ONBOARDING: "bg-[#2F6F5C]/10 text-[#2F6F5C] border-[#2F6F5C]/20",
-  AUDITING: "bg-[#2F6F5C]/10 text-[#2F6F5C] border-[#2F6F5C]/20",
-  REPORTING: "bg-[#2F6F5C]/10 text-[#2F6F5C] border-[#2F6F5C]/20",
-  IMPLEMENTING: "bg-[#2F6F5C]/10 text-[#2F6F5C] border-[#2F6F5C]/20",
-  RETAINER: "bg-[#0E1013]/10 text-[#0E1013] border-[#0E1013]/20",
-  CLOSED_WON: "bg-[#2F6F5C]/10 text-[#2F6F5C] border-[#2F6F5C]/20",
-  CLOSED_LOST: "bg-[#0E1013]/5 text-[#0E1013]/40",
+  DISCOVERY: "ih-pill ih-pill-accent",
+  PROPOSAL: "ih-pill ih-pill-warn",
+  CONTRACTED: "ih-pill ih-pill-ok",
+  ONBOARDING: "ih-pill ih-pill-ok",
+  AUDITING: "ih-pill ih-pill-ok",
+  REPORTING: "ih-pill ih-pill-ok",
+  IMPLEMENTING: "ih-pill ih-pill-ok",
+  RETAINER: "ih-pill ih-pill-ink",
+  CLOSED_WON: "ih-pill ih-pill-ok",
+  CLOSED_LOST: "ih-pill",
 }
 
 const STAGE_LABELS: Record<string, string> = {
@@ -36,7 +36,6 @@ export function StageBadge({ stage, className }: StageBadgeProps) {
   return (
     <span
       className={cn(
-        "inline-flex items-center font-mono text-[10px] uppercase tracking-wider px-2.5 py-1 rounded-full border",
         STAGE_STYLES[key] ?? STAGE_STYLES.DISCOVERY,
         className
       )}
@@ -53,13 +52,7 @@ interface TypeBadgeProps {
 
 export function TypeBadge({ type, className }: TypeBadgeProps) {
   return (
-    <span
-      className={cn(
-        "inline-flex items-center font-mono text-[10px] uppercase tracking-wider px-2.5 py-1 rounded-full border",
-        "bg-[#0E1013]/5 text-[#0E1013]/65 border-[#0E1013]/10",
-        className
-      )}
-    >
+    <span className={cn("ih-pill", className)}>
       {type}
     </span>
   )

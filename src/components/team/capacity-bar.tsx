@@ -23,10 +23,10 @@ export function CapacityBar({ used, max }: { used: number; max: number }) {
       <div className="flex items-center justify-between">
         <span className={cn("font-mono text-[11px] font-semibold tabular-nums", textClass)}>
           {used}
-          <span className="text-zinc-400 font-normal">/{max}</span>
+          <span className="text-[var(--ih-ink-40)] font-normal">/{max}</span>
         </span>
       </div>
-      <div className="h-1 w-full rounded-full bg-zinc-100 overflow-hidden">
+      <div className="h-1 w-full rounded-full bg-[var(--ih-surface-2)] overflow-hidden">
         <div
           className="h-full rounded-full transition-all duration-500"
           style={{ width: `${Math.min(pct, 100)}%`, backgroundColor: color }}

@@ -221,7 +221,7 @@ export function LogoUploader({
           {/* Logo Preview */}
           <div className="flex-shrink-0">
             {preview ? (
-              <div className="relative h-32 w-32 overflow-hidden rounded-lg border border-input bg-white dark:bg-slate-950">
+              <div className="relative h-32 w-32 overflow-hidden rounded-lg border border-input bg-[var(--ih-surface)] dark:bg-[var(--ih-surface)]">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={preview} alt="Logo preview" className="h-full w-full object-contain p-2" />
               </div>

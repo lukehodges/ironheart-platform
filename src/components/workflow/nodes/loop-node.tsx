@@ -69,8 +69,8 @@ export const LoopNode = memo(({ data, selected }: NodeProps<LoopNodeData>) => {
   return (
     <div
       className={cn(
-        "relative min-w-[200px] rounded-lg border-2 bg-white shadow-md transition-all",
-        "dark:bg-slate-900",
+        "relative min-w-[200px] rounded-lg border-2 bg-[var(--ih-surface)] shadow-md transition-all",
+        "dark:bg-[var(--ih-surface)]",
         selected
           ? "border-green-500 shadow-lg shadow-green-500/20 ring-2 ring-green-500/30"
           : "border-green-400 hover:border-green-500 hover:shadow-lg",
@@ -85,8 +85,8 @@ export const LoopNode = memo(({ data, selected }: NodeProps<LoopNodeData>) => {
         position={Position.Top}
         id="input"
         className={cn(
-          "!w-3 !h-3 !bg-green-500 !border-2 !border-white",
-          "dark:!border-slate-900",
+          "!w-3 !h-3 !bg-green-500 !border-2 !border-[var(--ih-surface)]",
+          "dark:!border-[var(--ih-surface)]",
           "hover:!w-4 hover:!h-4 transition-all"
         )}
         aria-label="Loop input connection point"
@@ -143,8 +143,8 @@ export const LoopNode = memo(({ data, selected }: NodeProps<LoopNodeData>) => {
         position={Position.Bottom}
         id="loop-body"
         className={cn(
-          "!w-3 !h-3 !bg-green-500 !border-2 !border-white",
-          "dark:!border-slate-900",
+          "!w-3 !h-3 !bg-green-500 !border-2 !border-[var(--ih-surface)]",
+          "dark:!border-[var(--ih-surface)]",
           "hover:!w-4 hover:!h-4 transition-all"
         )}
         aria-label="Loop body output (executes for each item)"
@@ -156,8 +156,8 @@ export const LoopNode = memo(({ data, selected }: NodeProps<LoopNodeData>) => {
         position={Position.Right}
         id="loop-end"
         className={cn(
-          "!w-3 !h-3 !bg-slate-500 !border-2 !border-white",
-          "dark:!border-slate-900",
+          "!w-3 !h-3 !bg-[var(--ih-surface-2)]0 !border-2 !border-[var(--ih-surface)]",
+          "dark:!border-[var(--ih-surface)]",
           "hover:!w-4 hover:!h-4 transition-all",
           "!top-[50%]"
         )}
