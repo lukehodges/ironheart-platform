@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Icon } from "@/components/shell"
+import { NotificationToast } from "@/components/shared"
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -73,6 +74,7 @@ const DEFAULT_TERMS = `1. This proposal is valid for 30 days from the date of is
 
 export default function NewProposalPage() {
   const router = useRouter()
+  const [toast, setToast] = useState<{ message: string; tone?: string } | null>(null)
 
   const [problemStatement, setProblemStatement] = useState("")
   const [sections, setSections] = useState<Section[]>([])
@@ -386,17 +388,19 @@ export default function NewProposalPage() {
           Cancel
         </button>
         <div style={{ display: "flex", gap: 8 }}>
-          <button className="ih-btn ih-btn-ghost">
+          <button className="ih-btn ih-btn-ghost" onClick={() => setToast({ message: "Proposal saved as draft", tone: "ok" })}>
             Save Draft
           </button>
-          <button className="ih-btn ih-btn-ghost">
+          <button className="ih-btn ih-btn-ghost" onClick={() => setToast({ message: "Preview mode not yet connected", tone: "info" })}>
             <Icon name="eye" size={12} /> Preview
           </button>
-          <button className="ih-btn ih-btn-accent" style={{ padding: "10px 20px" }}>
+          <button className="ih-btn ih-btn-accent" style={{ padding: "10px 20px" }} onClick={() => { setToast({ message: "Proposal sent to client", tone: "ok" }); setTimeout(() => router.back(), 1500) }}>
             <Icon name="mail" size={12} /> Send to Client
           </button>
         </div>
       </div>
+
+      {toast && <NotificationToast message={toast.message} tone={toast.tone as "ok"} onDismiss={() => setToast(null)} />}
     </div>
   )
 }

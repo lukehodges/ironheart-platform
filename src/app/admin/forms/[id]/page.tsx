@@ -2,7 +2,8 @@
 
 import Link from "next/link"
 import { Icon } from "@/components/shell"
-import { useState } from "react"
+import { NotificationToast } from "@/components/shared"
+import { useState, useRef } from "react"
 
 /* ── Demo Data ─────────────────────────────────────────────────────────── */
 
@@ -40,8 +41,47 @@ const INITIAL_FIELDS: FormField[] = [
 /* ── Page ──────────────────────────────────────────────────────────────── */
 
 export default function FormEditorPage() {
-  const [fields] = useState(INITIAL_FIELDS)
+  const [fields, setFields] = useState(INITIAL_FIELDS)
   const [selectedId, setSelectedId] = useState<string | null>("f4")
+  const [toast, setToast] = useState<{ message: string; tone?: string } | null>(null)
+  const fieldIdCounter = useRef(INITIAL_FIELDS.length + 1)
+
+  // Refs for inspector controlled inputs
+  const labelRef = useRef<HTMLInputElement>(null)
+  const typeRef = useRef<HTMLSelectElement>(null)
+  const requiredRef = useRef<HTMLInputElement>(null)
+  const placeholderRef = useRef<HTMLInputElement>(null)
+  const optionsRef = useRef<HTMLTextAreaElement>(null)
+  const helpRef = useRef<HTMLInputElement>(null)
+
+  const addField = (type: FieldType = "text") => {
+    const id = `f${fieldIdCounter.current++}`
+    const ft = FIELD_TYPES.find(f => f.type === type)
+    setFields(prev => [...prev, { id, label: `New ${ft?.label || type} field`, type, required: false }])
+    setSelectedId(id)
+  }
+
+  const removeField = (id: string) => {
+    setFields(prev => prev.filter(f => f.id !== id))
+    if (selectedId === id) setSelectedId(null)
+  }
+
+  const applyFieldChanges = () => {
+    if (!selectedId) return
+    setFields(prev => prev.map(f => {
+      if (f.id !== selectedId) return f
+      return {
+        ...f,
+        label: labelRef.current?.value ?? f.label,
+        type: (typeRef.current?.value as FieldType) ?? f.type,
+        required: requiredRef.current?.checked ?? f.required,
+        placeholder: placeholderRef.current?.value ?? f.placeholder,
+        options: optionsRef.current ? optionsRef.current.value.split("\n").filter(Boolean) : f.options,
+        helpText: helpRef.current?.value ?? f.helpText,
+      }
+    }))
+    setToast({ message: "Field updated", tone: "ok" })
+  }
 
   const selected = fields.find((f) => f.id === selectedId)
 
@@ -59,11 +99,11 @@ export default function FormEditorPage() {
           <span className="ih-pill ih-pill-ok" style={{ marginLeft: 6 }}><span className="ih-dot ih-dot-ok"/> Active</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <button className="ih-btn ih-btn-quiet ih-btn-sm"><Icon name="eye" size={11}/> Preview</button>
-          <button className="ih-btn ih-btn-quiet ih-btn-sm"><Icon name="link" size={11}/> Copy link</button>
-          <button className="ih-btn ih-btn-quiet ih-btn-sm" style={{ color: "var(--ih-danger)" }}><Icon name="x" size={11}/> Delete</button>
+          <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => setToast({ message: "Preview mode opened", tone: "info" })}><Icon name="eye" size={11}/> Preview</button>
+          <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => setToast({ message: "Link copied to clipboard", tone: "ok" })}><Icon name="link" size={11}/> Copy link</button>
+          <button className="ih-btn ih-btn-quiet ih-btn-sm" style={{ color: "var(--ih-danger)" }} onClick={() => setToast({ message: "Template deleted", tone: "danger" })}><Icon name="x" size={11}/> Delete</button>
           <div style={{ width: 1, height: 20, background: "var(--ih-line)", margin: "0 4px" }}/>
-          <button className="ih-btn ih-btn-primary ih-btn-sm"><Icon name="check" size={11}/> Save template</button>
+          <button className="ih-btn ih-btn-primary ih-btn-sm" onClick={() => setToast({ message: "Template saved", tone: "ok" })}><Icon name="check" size={11}/> Save template</button>
         </div>
       </div>
 
@@ -178,7 +218,7 @@ export default function FormEditorPage() {
           <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--ih-line)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
               <span className="ih-eyebrow">Fields &middot; {fields.length}</span>
-              <button className="ih-btn ih-btn-primary ih-btn-sm" style={{ height: 24, fontSize: 11 }}><Icon name="plus" size={10}/> Add field</button>
+              <button className="ih-btn ih-btn-primary ih-btn-sm" style={{ height: 24, fontSize: 11 }} onClick={() => addField("text")}><Icon name="plus" size={10}/> Add field</button>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
               {fields.map((f, i) => (
@@ -213,13 +253,13 @@ export default function FormEditorPage() {
                 {/* Label */}
                 <div>
                   <div className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-50)", marginBottom: 4 }}>Label</div>
-                  <input className="ih-input" defaultValue={selected.label} style={{ fontSize: 12 }}/>
+                  <input key={selected.id + "-label"} ref={labelRef} className="ih-input" defaultValue={selected.label} style={{ fontSize: 12 }}/>
                 </div>
 
                 {/* Type */}
                 <div>
                   <div className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-50)", marginBottom: 4 }}>Field type</div>
-                  <select className="ih-input" defaultValue={selected.type} style={{ fontSize: 12 }}>
+                  <select key={selected.id + "-type"} ref={typeRef} className="ih-input" defaultValue={selected.type} style={{ fontSize: 12 }}>
                     {FIELD_TYPES.map((ft) => <option key={ft.type} value={ft.type}>{ft.label}</option>)}
                   </select>
                 </div>
@@ -227,7 +267,7 @@ export default function FormEditorPage() {
                 {/* Required */}
                 <div>
                   <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, cursor: "pointer" }}>
-                    <input type="checkbox" defaultChecked={selected.required} style={{ accentColor: "var(--ih-accent)" }}/>
+                    <input key={selected.id + "-req"} ref={requiredRef} type="checkbox" defaultChecked={selected.required} style={{ accentColor: "var(--ih-accent)" }}/>
                     Required field
                   </label>
                 </div>
@@ -236,7 +276,7 @@ export default function FormEditorPage() {
                 {(selected.type === "text" || selected.type === "textarea" || selected.type === "number") && (
                   <div>
                     <div className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-50)", marginBottom: 4 }}>Placeholder</div>
-                    <input className="ih-input" defaultValue={selected.placeholder || ""} style={{ fontSize: 12 }}/>
+                    <input key={selected.id + "-ph"} ref={placeholderRef} className="ih-input" defaultValue={selected.placeholder || ""} style={{ fontSize: 12 }}/>
                   </div>
                 )}
 
@@ -244,21 +284,21 @@ export default function FormEditorPage() {
                 {selected.type === "select" && selected.options && (
                   <div>
                     <div className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-50)", marginBottom: 4 }}>Options (one per line)</div>
-                    <textarea className="ih-input" defaultValue={selected.options.join("\n")} rows={5} style={{ fontSize: 12, resize: "vertical" }}/>
+                    <textarea key={selected.id + "-opts"} ref={optionsRef} className="ih-input" defaultValue={selected.options.join("\n")} rows={5} style={{ fontSize: 12, resize: "vertical" }}/>
                   </div>
                 )}
 
                 {/* Help text */}
                 <div>
                   <div className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-50)", marginBottom: 4 }}>Help text (optional)</div>
-                  <input className="ih-input" defaultValue={selected.helpText || ""} placeholder="Shown below the field" style={{ fontSize: 12 }}/>
+                  <input key={selected.id + "-help"} ref={helpRef} className="ih-input" defaultValue={selected.helpText || ""} placeholder="Shown below the field" style={{ fontSize: 12 }}/>
                 </div>
               </div>
 
               {/* Actions */}
               <div style={{ marginTop: 20, display: "flex", gap: 6 }}>
-                <button className="ih-btn ih-btn-ghost ih-btn-sm" style={{ flex: 1 }}><Icon name="check" size={11}/> Apply</button>
-                <button className="ih-btn ih-btn-quiet ih-btn-sm" style={{ color: "var(--ih-danger)" }}><Icon name="x" size={11}/> Remove</button>
+                <button className="ih-btn ih-btn-ghost ih-btn-sm" style={{ flex: 1 }} onClick={applyFieldChanges}><Icon name="check" size={11}/> Apply</button>
+                <button className="ih-btn ih-btn-quiet ih-btn-sm" style={{ color: "var(--ih-danger)" }} onClick={() => removeField(selected.id)}><Icon name="x" size={11}/> Remove</button>
               </div>
             </div>
           ) : (
@@ -274,7 +314,7 @@ export default function FormEditorPage() {
             <div className="ih-eyebrow" style={{ marginBottom: 8 }}>Quick add</div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 4 }}>
               {FIELD_TYPES.map((ft) => (
-                <button key={ft.type} className="ih-btn ih-btn-quiet ih-btn-sm" style={{ justifyContent: "flex-start", fontSize: 11 }}>
+                <button key={ft.type} className="ih-btn ih-btn-quiet ih-btn-sm" style={{ justifyContent: "flex-start", fontSize: 11 }} onClick={() => addField(ft.type)}>
                   <Icon name={ft.icon} size={10}/> {ft.label}
                 </button>
               ))}
@@ -282,6 +322,8 @@ export default function FormEditorPage() {
           </div>
         </div>
       </div>
+
+      {toast && <NotificationToast message={toast.message} tone={toast.tone as "ok"} onDismiss={() => setToast(null)} />}
     </div>
   )
 }

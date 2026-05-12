@@ -1,15 +1,26 @@
 "use client"
 
 import { useState } from "react"
+import { NotificationToast } from "@/components/shared"
 import { Icon } from "@/components/shell"
+import { NotificationToast } from "@/components/shared"
 
 /* ── Demo data ──────────────────────────────────────────────────────────── */
 
-const DELIVERABLES = [
+interface Deliverable {
+  id: string
+  title: string
+  status: "live" | "in-review" | "queued"
+  description: string
+  shippedDate: string | null
+  file: string | null
+}
+
+const DELIVERABLES: Deliverable[] = [
   {
     id: "d1",
     title: "Stripe \u2192 Airtable sync",
-    status: "live" as const,
+    status: "live",
     description: "Bi-directional sync between Stripe payments and Airtable project tracker. Runs every 15 minutes via scheduled Inngest function.",
     shippedDate: "22 Apr 2026",
     file: "stripe-sync-runbook.pdf",
@@ -17,7 +28,7 @@ const DELIVERABLES = [
   {
     id: "d2",
     title: "Approval workflow",
-    status: "live" as const,
+    status: "live",
     description: "Multi-step approval chain for invoices and deliverables. Supports delegation, escalation, and automatic reminders after 48h.",
     shippedDate: "06 May 2026",
     file: "approval-workflow-spec.pdf",
@@ -25,7 +36,7 @@ const DELIVERABLES = [
   {
     id: "d3",
     title: "Portal v2",
-    status: "in-review" as const,
+    status: "in-review",
     description: "Redesigned client portal with deliverables view, invoice management, document hub, and real-time messaging. Currently awaiting your review.",
     shippedDate: null,
     file: null,
@@ -33,7 +44,7 @@ const DELIVERABLES = [
   {
     id: "d4",
     title: "Monthly digest email",
-    status: "queued" as const,
+    status: "queued",
     description: "Automated monthly summary email with sprint progress, hours consumed, upcoming sessions, and outstanding approvals.",
     shippedDate: null,
     file: null,
@@ -50,21 +61,24 @@ const STATUS_CONFIG = {
 
 export default function DeliverablesPage() {
   const [reviewComment, setReviewComment] = useState("")
-  const liveCount = DELIVERABLES.filter(d => d.status === "live").length
-  const reviewCount = DELIVERABLES.filter(d => d.status === "in-review").length
-  const queuedCount = DELIVERABLES.filter(d => d.status === "queued").length
+  const [toast, setToast] = useState<{message: string; tone?: string} | null>(null)
+  const [toast, setToast] = useState<{ message: string; tone?: string } | null>(null)
+  const [deliverables, setDeliverables] = useState(DELIVERABLES)
+  const liveCount = deliverables.filter(d => d.status === "live").length
+  const reviewCount = deliverables.filter(d => d.status === "in-review").length
+  const queuedCount = deliverables.filter(d => d.status === "queued").length
 
   return (
     <div style={{ padding: "40px 40px 64px", maxWidth: 900, margin: "0 auto" }}>
       {/* Header */}
       <h1 className="ih-serif" style={{ margin: 0, fontSize: 40, lineHeight: 1 }}>Your deliverables</h1>
       <p style={{ marginTop: 10, fontSize: 14, color: "var(--ih-ink-50)", lineHeight: 1.5 }}>
-        {DELIVERABLES.length} items &middot; {liveCount} shipped, {reviewCount} in review, {queuedCount} queued
+        {deliverables.length} items &middot; {liveCount} shipped, {reviewCount} in review, {queuedCount} queued
       </p>
 
       {/* Deliverable cards */}
       <div style={{ display: "flex", flexDirection: "column", gap: 16, marginTop: 32 }}>
-        {DELIVERABLES.map((d) => {
+        {deliverables.map((d) => {
           const cfg = STATUS_CONFIG[d.status]
           return (
             <div key={d.id} className="ih-card" style={{ padding: "24px 28px" }}>
@@ -90,7 +104,7 @@ export default function DeliverablesPage() {
                   </span>
                 )}
                 {d.file && (
-                  <button className="ih-btn ih-btn-ghost ih-btn-sm" style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                  <button className="ih-btn ih-btn-ghost ih-btn-sm" style={{ display: "flex", alignItems: "center", gap: 5 }} onClick={() => setToast({message: "Download started — check your downloads", tone: "ok"})}>
                     <Icon name="download" size={11} />
                     {d.file}
                   </button>
@@ -122,7 +136,11 @@ export default function DeliverablesPage() {
                     }}
                   />
                   <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 10 }}>
-                    <button className="ih-btn ih-btn-accent ih-btn-sm">Submit feedback</button>
+                    <button className="ih-btn ih-btn-accent ih-btn-sm" onClick={() => {
+                      setDeliverables(prev => prev.map(item => item.id === d.id ? { ...item, status: "live" as const, shippedDate: new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) } : item))
+                      setReviewComment("")
+                      setToast({ message: "Feedback submitted", tone: "ok" })
+                    }}>Submit feedback</button>
                   </div>
                 </div>
               )}
@@ -130,6 +148,9 @@ export default function DeliverablesPage() {
           )
         })}
       </div>
+
+      {toast && <NotificationToast message={toast.message} tone={toast.tone as "ok"} onDismiss={() => setToast(null)} />}
+      {toast && <NotificationToast message={toast.message} tone={toast.tone as any} onDismiss={() => setToast(null)} />}
     </div>
   )
 }

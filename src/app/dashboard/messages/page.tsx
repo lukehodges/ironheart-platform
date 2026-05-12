@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef, useEffect } from "react"
 import { Icon } from "@/components/shell"
 
 /* ── Demo data ──────────────────────────────────────────────────────────── */
@@ -63,6 +63,29 @@ const MESSAGES: Message[] = [
 
 export default function MessagesPage() {
   const [draft, setDraft] = useState("")
+  const [messages, setMessages] = useState<Message[]>(MESSAGES)
+  const [nextId, setNextId] = useState(MESSAGES.length + 1)
+  const scrollRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+  }, [messages])
+
+  const handleSend = () => {
+    const text = draft.trim()
+    if (!text) return
+    const id = `m${nextId}`
+    setNextId(prev => prev + 1)
+    setMessages(prev => [...prev, {
+      id,
+      sender: "client",
+      name: "Mira",
+      initials: "MS",
+      text,
+      time: new Date().toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" }) + ", " + new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }),
+    }])
+    setDraft("")
+  }
 
   return (
     <div style={{ padding: "40px 40px 64px", maxWidth: 900, margin: "0 auto" }}>
@@ -73,8 +96,8 @@ export default function MessagesPage() {
       </p>
 
       {/* Messages thread */}
-      <div style={{ marginTop: 32, display: "flex", flexDirection: "column", gap: 16 }}>
-        {MESSAGES.map((msg) => {
+      <div ref={scrollRef} style={{ marginTop: 32, display: "flex", flexDirection: "column", gap: 16 }}>
+        {messages.map((msg) => {
           const isClient = msg.sender === "client"
           return (
             <div
@@ -172,6 +195,7 @@ export default function MessagesPage() {
         <textarea
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend() } }}
           placeholder="Write a message..."
           rows={1}
           style={{
@@ -188,7 +212,7 @@ export default function MessagesPage() {
             minHeight: 36,
           }}
         />
-        <button className="ih-btn ih-btn-accent ih-btn-sm" style={{ height: 36, flexShrink: 0 }}>
+        <button className="ih-btn ih-btn-accent ih-btn-sm" style={{ height: 36, flexShrink: 0 }} onClick={handleSend}>
           Send
         </button>
       </div>

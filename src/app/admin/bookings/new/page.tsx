@@ -1,7 +1,9 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Icon } from "@/components/shell"
+import { NotificationToast } from "@/components/shared"
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -44,6 +46,8 @@ function Btn({ children, accent, ghost, sm, onClick, style }: { children: React.
 /* ------------------------------------------------------------------ */
 
 export default function NewBookingPage() {
+  const router = useRouter()
+  const [toast, setToast] = useState<{ message: string; tone?: string } | null>(null)
   const [selectedClient, setSelectedClient] = useState("")
   const [clientSearch, setClientSearch] = useState("")
   const [bookingType, setBookingType] = useState<BookingType>("sprint_review")
@@ -84,7 +88,7 @@ export default function NewBookingPage() {
       <div style={{ padding: "24px 28px 18px", borderBottom: "1px solid var(--ih-line)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div>
           <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
-            <button className="ih-btn ih-btn-quiet ih-btn-sm" style={{ padding: "2px 6px" }}>
+            <button className="ih-btn ih-btn-quiet ih-btn-sm" style={{ padding: "2px 6px" }} onClick={() => router.push("/admin/bookings")}>
               <Icon name="chevronLeft" size={12} /> Back
             </button>
             <span className="ih-eyebrow">new booking</span>
@@ -92,8 +96,8 @@ export default function NewBookingPage() {
           <h1 className="ih-serif" style={{ margin: 0, fontSize: 32, lineHeight: 1 }}>Book a session</h1>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
-          <Btn sm ghost>Cancel</Btn>
-          <Btn sm accent><Icon name="calendar" size={11} /> Book</Btn>
+          <Btn sm ghost onClick={() => router.push("/admin/bookings")}>Cancel</Btn>
+          <Btn sm accent onClick={() => { setToast({ message: "Booking created", tone: "ok" }); setTimeout(() => router.push("/admin/bookings"), 1500) }}><Icon name="calendar" size={11} /> Book</Btn>
         </div>
       </div>
 
@@ -257,10 +261,12 @@ export default function NewBookingPage() {
 
         {/* Submit */}
         <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-          <Btn sm ghost>Cancel</Btn>
-          <Btn sm accent><Icon name="calendar" size={11} /> Book session</Btn>
+          <Btn sm ghost onClick={() => router.push("/admin/bookings")}>Cancel</Btn>
+          <Btn sm accent onClick={() => { setToast({ message: "Booking created", tone: "ok" }); setTimeout(() => router.push("/admin/bookings"), 1500) }}><Icon name="calendar" size={11} /> Book session</Btn>
         </div>
       </div>
+
+      {toast && <NotificationToast message={toast.message} tone={toast.tone as "ok"} onDismiss={() => setToast(null)} />}
     </div>
   )
 }

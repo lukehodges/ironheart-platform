@@ -1,7 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef, useEffect } from "react"
 import { Icon } from "@/components/shell"
+import { NotificationToast } from "@/components/shared"
 
 const DEMO_MESSAGES = [
   {
@@ -50,9 +51,43 @@ const SUGGESTED_PROMPTS = [
 
 const CONTEXTS = ["All", "Northwind", "Vellum", "Acme", "Olsen", "Brigham"]
 
+const DEMO_RESPONSES = [
+  "Based on current engagement data, your pipeline looks healthy. Three clients are in active sprints, and two proposals are pending review. I would recommend following up on the Olsen proposal this week.",
+  "Looking at your calendar and workload, you have capacity for one more discovery call this week. Thursday afternoon looks clear.",
+  "Revenue is tracking 12% above forecast for this quarter. The main driver is the Northwind retainer expansion. Outstanding invoices total $23,400 across 4 clients.",
+  "I have analysed the engagement patterns. Your average client lifecycle is 8.2 months, with the strongest retention in retainer-based engagements. Consider converting more project clients to retainers.",
+]
+
 export default function AIChatPage() {
   const [input, setInput] = useState("")
   const [context, setContext] = useState("All")
+  const [messages, setMessages] = useState(DEMO_MESSAGES)
+  const [toast, setToast] = useState<{ message: string; tone?: string } | null>(null)
+  const [nextId, setNextId] = useState(DEMO_MESSAGES.length + 1)
+  const scrollRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+  }, [messages])
+
+  const handleSend = () => {
+    const text = input.trim()
+    if (!text) return
+    const userId = nextId
+    const aiId = nextId + 1
+    setNextId(prev => prev + 2)
+    setMessages(prev => [...prev, { id: userId, role: "user" as const, content: text }])
+    setInput("")
+    setTimeout(() => {
+      setMessages(prev => [...prev, {
+        id: aiId,
+        role: "assistant" as const,
+        content: "",
+        toolUse: { label: "Searched engagement and business data", count: 2 },
+        body: DEMO_RESPONSES[aiId % DEMO_RESPONSES.length],
+      }])
+    }, 1000)
+  }
 
   return (
     <div style={{ padding: "24px 28px 48px", maxWidth: 1000, margin: "0 auto", display: "flex", flexDirection: "column", height: "calc(100vh - 8rem)" }}>
@@ -80,8 +115,8 @@ export default function AIChatPage() {
 
       {/* Chat area */}
       <div className="ih-card" style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", minHeight: 0 }}>
-        <div style={{ flex: 1, overflowY: "auto", padding: "8px 0" }}>
-          {DEMO_MESSAGES.map((msg) => (
+        <div ref={scrollRef} style={{ flex: 1, overflowY: "auto", padding: "8px 0" }}>
+          {messages.map((msg) => (
             <div key={msg.id} style={{ padding: "12px 20px" }}>
               {msg.role === "user" ? (
                 <div style={{ display: "flex", justifyContent: "flex-end" }}>
@@ -126,7 +161,7 @@ export default function AIChatPage() {
                     {msg.actions && (
                       <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
                         {msg.actions.map((a) => (
-                          <button key={a.label} className="ih-btn ih-btn-ghost ih-btn-sm" style={{ height: 26, fontSize: 10.5 }}>
+                          <button key={a.label} className="ih-btn ih-btn-ghost ih-btn-sm" style={{ height: 26, fontSize: 10.5 }} onClick={() => setToast({ message: `${a.label} — done`, tone: "ok" })}>
                             <Icon name={a.icon} size={10} /> {a.label}
                           </button>
                         ))}
@@ -146,7 +181,19 @@ export default function AIChatPage() {
               key={p}
               className="ih-btn ih-btn-quiet ih-btn-sm"
               style={{ height: 26, fontSize: 10.5 }}
-              onClick={() => setInput(p)}
+              onClick={() => {
+                const userId = nextId
+                const aiId = nextId + 1
+                setNextId(prev => prev + 2)
+                setMessages(prev => [...prev, { id: userId, role: "user" as const, content: p }])
+                setTimeout(() => {
+                  setMessages(prev => [...prev, {
+                    id: aiId, role: "assistant" as const, content: "",
+                    toolUse: { label: "Searched engagement and business data", count: 2 },
+                    body: DEMO_RESPONSES[aiId % DEMO_RESPONSES.length],
+                  }])
+                }, 1000)
+              }}
             >
               {p}
             </button>
@@ -159,6 +206,7 @@ export default function AIChatPage() {
             <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend() } }}
               placeholder='Ask anything... Use "/" for commands, "@" to mention'
               rows={1}
               style={{
@@ -168,11 +216,13 @@ export default function AIChatPage() {
               }}
             />
           </div>
-          <button className="ih-btn ih-btn-primary" style={{ height: 42, width: 42, padding: 0, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          <button className="ih-btn ih-btn-primary" style={{ height: 42, width: 42, padding: 0, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }} onClick={handleSend}>
             <Icon name="arrowRight" size={16} />
           </button>
         </div>
       </div>
+
+      {toast && <NotificationToast message={toast.message} tone={toast.tone as "ok"} onDismiss={() => setToast(null)} />}
     </div>
   )
 }
