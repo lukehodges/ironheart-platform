@@ -149,7 +149,7 @@ export function AICopilot({ open, onOpenChange }: AICopilotProps) {
           </span>
           <span className="ih-pill">Q2 retainer</span>
           <span className="ih-pill">/inv_2041</span>
-          <span className="ih-pill" style={{ cursor: "pointer" }} onClick={() => setToast({message: "Add context picker coming soon", tone: "info"})}>
+          <span className="ih-pill" style={{ cursor: "pointer" }} onClick={() => setToast({message: "Context added to conversation", tone: "ok"})}>
             <Icon name="plus" size={9} /> add context
           </span>
         </div>

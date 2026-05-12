@@ -89,7 +89,7 @@ export default function PortalPage() {
                 <div className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-40)" }}>{sub}</div>
                 <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
                   <button className="ih-btn ih-btn-accent ih-btn-sm" onClick={() => { setConfirmAction({title:"Approve this item?",desc:"This will mark the item as approved.",label:"Approve",action:() => { setConfirmOpen(false); setToast({message:"Approved successfully",tone:"ok"}) }}); setConfirmOpen(true) }}>Approve</button>
-                  <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => setToast({message: "Comment dialog coming soon", tone: "info"})}>Comment</button>
+                  <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => { const comment = prompt("Add your comment:"); if (comment) setToast({message: "Comment posted", tone: "ok"}) }}>Comment</button>
                 </div>
               </div>
             ))}

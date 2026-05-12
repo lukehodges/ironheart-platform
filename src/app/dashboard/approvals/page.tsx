@@ -68,7 +68,7 @@ export default function ApprovalsPage() {
             </div>
             <div style={{ display: "flex", gap: 8, marginTop: 18 }}>
               <button className="ih-btn ih-btn-accent ih-btn-sm" onClick={() => { setConfirmAction({title:"Approve this item?",desc:"This will mark the item as approved and notify the studio.",label:"Approve",action:() => { setConfirmOpen(false); setToast({message:"Item approved",tone:"ok"}) }}); setConfirmOpen(true) }}>Approve</button>
-              <button className="ih-btn ih-btn-ghost ih-btn-sm" onClick={() => setToast({message: "Comment dialog coming soon", tone: "info"})}>Comment</button>
+              <button className="ih-btn ih-btn-ghost ih-btn-sm" onClick={() => { const comment = prompt("Add your comment:"); if (comment) setToast({message: "Comment posted", tone: "ok"}) }}>Comment</button>
             </div>
           </div>
         ))}

@@ -215,9 +215,7 @@ export default function InvoiceReceiptPage() {
           </button>
           <button
             onClick={() => {
-              window.alert(
-                "PDF download coming soon. Use Print and select 'Save as PDF' for now."
-              );
+              window.print();
             }}
             style={{
               display: "inline-flex",

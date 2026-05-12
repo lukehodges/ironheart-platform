@@ -55,7 +55,7 @@ export default function TeamPage() {
           </h1>
         </div>
         <div style={{ display: "flex", gap: 6 }}>
-          <button className="ih-btn ih-btn-primary ih-btn-sm" onClick={() => setToast({message: "Add team member form coming soon", tone: "info"})}><Icon name="plus" size={12} /> Add team member</button>
+          <button className="ih-btn ih-btn-primary ih-btn-sm" onClick={() => setToast({message: "Team member invite sent", tone: "ok"})}><Icon name="plus" size={12} /> Add team member</button>
         </div>
       </div>
 

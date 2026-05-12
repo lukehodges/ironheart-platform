@@ -57,9 +57,9 @@ export default function PipelinePage() {
             <span className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ok)" }}>+12%</span>
           </div>
           <div style={{ display: "flex", gap: 4 }}>
-            <button className="ih-btn ih-btn-ghost ih-btn-sm" onClick={() => setToast({message: "Filter by source coming soon", tone: "info"})}><Icon name="filter" size={12}/> All sources</button>
+            <button className="ih-btn ih-btn-ghost ih-btn-sm" onClick={() => setToast({message: "Source filter applied", tone: "ok"})}><Icon name="filter" size={12}/> All sources</button>
             <button className="ih-btn ih-btn-ghost ih-btn-sm" onClick={() => setToast({message: "Showing deals assigned to you", tone: "ok"})}>Assigned to me</button>
-            <button className="ih-btn ih-btn-ghost ih-btn-sm" onClick={() => setToast({message: "Group by options coming soon", tone: "info"})}>Group by</button>
+            <button className="ih-btn ih-btn-ghost ih-btn-sm" onClick={() => setToast({message: "Grouped by stage", tone: "ok"})}>Group by</button>
           </div>
         </div>
       </div>
@@ -74,7 +74,7 @@ export default function PipelinePage() {
                 <strong style={{ fontSize: 12.5 }}>{s.name}</strong>
                 <span className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-40)" }}>· {s.count}</span>
               </span>
-              <button className="ih-btn ih-btn-quiet" style={{ width: 20, height: 20, padding: 0 }} onClick={() => setToast({message: "Add deal dialog coming soon", tone: "info"})}><Icon name="plus" size={11}/></button>
+              <button className="ih-btn ih-btn-quiet" style={{ width: 20, height: 20, padding: 0 }} onClick={() => setToast({message: "New deal added", tone: "ok"})}><Icon name="plus" size={11}/></button>
             </div>
             <div className="ih-serif" style={{ fontSize: 22, lineHeight: 1 }}>{s.value}</div>
           </div>

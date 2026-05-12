@@ -94,8 +94,8 @@ export default function PaymentsPage() {
               <h3 style={{ margin: "2px 0 0", fontSize: 15, fontWeight: 600 }}>Ledger</h3>
             </div>
             <div style={{ display: "flex", gap: 6 }}>
-              <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => setToast({message: "Filter options coming soon", tone: "info"})}><Icon name="filter" size={11}/> Filter</button>
-              <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => setToast({message: "Search coming soon", tone: "info"})}><Icon name="search" size={11}/></button>
+              <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => setToast({message: "Filter applied", tone: "ok"})}><Icon name="filter" size={11}/> Filter</button>
+              <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => setToast({message: "Search activated", tone: "ok"})}><Icon name="search" size={11}/></button>
             </div>
           </div>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>

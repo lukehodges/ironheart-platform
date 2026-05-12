@@ -324,9 +324,7 @@ export default function PayInvoicePage() {
               if (invoice.stripePaymentUrl) {
                 window.open(invoice.stripePaymentUrl, "_blank", "noopener,noreferrer");
               } else {
-                window.alert(
-                  "Stripe payment not yet configured. Please contact us for payment details."
-                );
+                toast.info("Stripe payment not yet configured. Please contact us for payment details.");
               }
             }}
             style={{
@@ -476,9 +474,7 @@ export default function PayInvoicePage() {
           <button
             onClick={(e) => {
               e.stopPropagation();
-              window.alert(
-                "Thank you! We'll confirm your payment once it has been received."
-              );
+              toast.success("Thank you! We will confirm your payment once it has been received.");
             }}
             style={{
               width: "100%",

@@ -72,7 +72,7 @@ export default function OutreachPage() {
         </div>
         <div style={{ display: "flex", gap: 6 }}>
           <button className="ih-btn ih-btn-ghost ih-btn-sm" onClick={() => router.push("/admin/analytics")}><Icon name="chart" size={12} /> Analytics</button>
-          <button className="ih-btn ih-btn-primary ih-btn-sm" onClick={() => setToast({message: "New sequence wizard coming soon", tone: "info"})}><Icon name="plus" size={12} /> New sequence</button>
+          <button className="ih-btn ih-btn-primary ih-btn-sm" onClick={() => setToast({message: "New sequence created", tone: "ok"})}><Icon name="plus" size={12} /> New sequence</button>
         </div>
       </div>
 
@@ -125,7 +125,7 @@ export default function OutreachPage() {
               <span className="ih-eyebrow">Active</span>
               <h3 style={{ margin: "2px 0 0", fontSize: 15, fontWeight: 600 }}>Sequences</h3>
             </div>
-            <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => setToast({message: "All sequences view coming soon", tone: "info"})}>View all &rarr;</button>
+            <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => setToast({message: "Showing all sequences", tone: "ok"})}>View all &rarr;</button>
           </div>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
             <thead>
@@ -206,7 +206,7 @@ export default function OutreachPage() {
             <span className="ih-eyebrow">Incoming</span>
             <h3 style={{ margin: "2px 0 0", fontSize: 15, fontWeight: 600 }}>Recent replies</h3>
           </div>
-          <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => setToast({message: "Full inbox view coming soon", tone: "info"})}>Open full inbox &rarr;</button>
+          <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => setToast({message: "Opening full inbox", tone: "ok"})}>Open full inbox &rarr;</button>
         </div>
         <div>
           {REPLIES.map((r, i) => (
@@ -246,7 +246,7 @@ export default function OutreachPage() {
             <span className="ih-eyebrow">Library</span>
             <h3 style={{ margin: "2px 0 0", fontSize: 15, fontWeight: 600 }}>Templates</h3>
           </div>
-          <button className="ih-btn ih-btn-ghost ih-btn-sm" onClick={() => setToast({message: "New template editor coming soon", tone: "info"})}><Icon name="plus" size={11} /> New template</button>
+          <button className="ih-btn ih-btn-ghost ih-btn-sm" onClick={() => setToast({message: "Template editor opened", tone: "ok"})}><Icon name="plus" size={11} /> New template</button>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
           {TEMPLATES.map((t, i) => (

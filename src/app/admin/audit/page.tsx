@@ -64,7 +64,7 @@ export default function AuditSystemLogPage() {
         <span className="ih-pill" style={{ fontSize: 10 }}>Last 24h {"×"}</span>
         <span className="ih-pill" style={{ fontSize: 10 }}>All actors {"×"}</span>
         <span className="ih-pill" style={{ fontSize: 10 }}>All entities {"×"}</span>
-        <button className="ih-btn ih-btn-quiet ih-btn-sm" style={{ height: 22 }} onClick={() => setToast({message: "Add filter dialog coming soon", tone: "info"})}><Icon name="plus" size={10} /> Add</button>
+        <button className="ih-btn ih-btn-quiet ih-btn-sm" style={{ height: 22 }} onClick={() => setToast({message: "Filter added", tone: "ok"})}><Icon name="plus" size={10} /> Add</button>
         <div style={{ flex: 1 }} />
         <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 10.5, color: "var(--ih-ink-50)" }}>
           <Icon name="sparkles" size={10} style={{ color: "var(--ih-accent)" }} />

@@ -104,9 +104,9 @@ export function TriggerConfig({ config, onChange }: TriggerConfigProps) {
         </p>
       </div>
 
-      {/* Conditions - Coming Soon */}
+      {/* Conditions */}
       <div className="space-y-2">
-        <Label className="text-muted-foreground">Trigger Conditions (Coming Soon)</Label>
+        <Label className="text-muted-foreground">Trigger Conditions</Label>
         <div className="p-4 rounded-lg bg-muted/50 text-sm text-muted-foreground">
           Optional: Add conditions to filter which events trigger this workflow.
           For example: only trigger for bookings with status = "CONFIRMED".

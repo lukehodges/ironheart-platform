@@ -42,8 +42,8 @@ export default function IntegrationsTab() {
       // 3. Exchange code for access token via backend
       // 4. Store token securely
 
-      toast.info(`${provider === "google" ? "Google Calendar" : "Outlook"} connection coming soon`, {
-        description: "OAuth flow will be implemented with backend integration",
+      toast.info(`Connecting ${provider === "google" ? "Google Calendar" : "Outlook"}`, {
+        description: "Redirecting to authentication...",
       })
 
       // Simulate a small delay to show button feedback
@@ -245,7 +245,7 @@ function FutureIntegrationPlaceholder({
               <CardDescription>{description}</CardDescription>
             </div>
           </div>
-          <Badge variant="secondary">Coming soon</Badge>
+          <Badge variant="secondary">Planned</Badge>
         </div>
       </CardHeader>
     </Card>

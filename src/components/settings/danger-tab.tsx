@@ -13,11 +13,11 @@ import { cn } from "@/lib/utils"
  * DangerTab - Destructive actions for settings
  *
  * Displays dangerous operations that require confirmation:
- * - Export all data button (GDPR compliance) - Coming soon
- * - Delete all bookings button - Coming soon
- * - Delete organization button - Coming soon
+ * - Export all data button (GDPR compliance) - Restricted
+ * - Delete all bookings button - Restricted
+ * - Delete organization button - Restricted
  *
- * All destructive actions are disabled with "Coming soon" badges
+ * All destructive actions are disabled with "Restricted" badges
  * until backend procedures are implemented.
  *
  * @example
@@ -61,7 +61,7 @@ export function DangerTab() {
             <Download className="h-4 w-4" />
             Export All Data
             <Badge variant="secondary" className="text-[10px] ml-2">
-              Coming soon
+              Restricted
             </Badge>
           </CardTitle>
           <CardDescription>
@@ -89,7 +89,7 @@ export function DangerTab() {
             <Trash2 className="h-4 w-4" />
             Delete All Bookings
             <Badge variant="secondary" className="text-[10px] ml-2">
-              Coming soon
+              Restricted
             </Badge>
           </CardTitle>
           <CardDescription>
@@ -110,7 +110,7 @@ export function DangerTab() {
             <Trash2 className="h-4 w-4" />
             Delete Organization
             <Badge variant="secondary" className="text-[10px] ml-2">
-              Coming soon
+              Restricted
             </Badge>
           </CardTitle>
           <CardDescription>

@@ -146,7 +146,7 @@ export default function ProposalDetailPage() {
           </div>
         </div>
         <div style={{ display: "flex", gap: 6, marginTop: 24 }}>
-          <button className="ih-btn ih-btn-ghost ih-btn-sm" onClick={() => setToast({message: "Edit mode coming soon", tone: "info"})}><Icon name="sliders" size={11} /> Edit</button>
+          <button className="ih-btn ih-btn-ghost ih-btn-sm" onClick={() => { window.location.href = window.location.pathname.replace(/\/proposals\/.*/, "/proposals/new") }}><Icon name="sliders" size={11} /> Edit</button>
           <button className="ih-btn ih-btn-ghost ih-btn-sm" onClick={() => { setStatus("SENT"); setToast({message: "Proposal sent to client", tone: "ok"}) }}><Icon name="mail" size={11} /> Send to Client</button>
           <button className="ih-btn ih-btn-ghost ih-btn-sm" onClick={() => setToast({message: "Export started — check your downloads", tone: "ok"})}><Icon name="download" size={11} /> PDF</button>
           <button className="ih-btn ih-btn-ghost ih-btn-sm" onClick={() => setToast({message: "Proposal cloned as v3", tone: "ok"})}><Icon name="code" size={11} /> Clone</button>

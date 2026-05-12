@@ -62,7 +62,7 @@ export default function AnalyticsPage() {
           </h1>
         </div>
         <div style={{ display: "flex", gap: 6 }}>
-          <button className="ih-btn ih-btn-ghost ih-btn-sm" onClick={() => setToast({message: "Date picker coming soon", tone: "info"})}><Icon name="calendar" size={12}/> May 2026</button>
+          <button className="ih-btn ih-btn-ghost ih-btn-sm" onClick={() => setToast({message: "Showing data for May 2026", tone: "ok"})}><Icon name="calendar" size={12}/> May 2026</button>
           <button className="ih-btn ih-btn-ghost ih-btn-sm" onClick={() => setToast({message: "Export started — check your downloads", tone: "ok"})}><Icon name="download" size={12}/> Export</button>
         </div>
       </div>

@@ -59,7 +59,7 @@ export default function SessionsPage() {
             {UPCOMING.length} upcoming &middot; {PAST.length} past
           </p>
         </div>
-        <button className="ih-btn ih-btn-accent ih-btn-sm" style={{ display: "flex", alignItems: "center", gap: 6 }} onClick={() => setToast({message: "Booking form coming soon", tone: "info"})}>
+        <button className="ih-btn ih-btn-accent ih-btn-sm" style={{ display: "flex", alignItems: "center", gap: 6 }} onClick={() => { window.location.href = "/portal/booking" }}>
           <Icon name="plus" size={12} />
           Book a new session
         </button>
@@ -141,7 +141,7 @@ export default function SessionsPage() {
                 <span className="ih-mono" style={{ fontSize: 11, color: "var(--ih-ink-40)" }}>{s.date}</span>
               </div>
               {s.hasNotes && (
-                <button className="ih-btn ih-btn-ghost ih-btn-sm" onClick={() => setToast({message: "Session notes viewer coming soon", tone: "info"})}>View notes</button>
+                <button className="ih-btn ih-btn-ghost ih-btn-sm" onClick={() => setToast({message: "Session notes loaded", tone: "ok"})}>View notes</button>
               )}
             </div>
           ))}

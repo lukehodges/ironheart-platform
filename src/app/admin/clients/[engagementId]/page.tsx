@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { NotificationToast } from "@/components/shared"
+import { NotificationToast, InlineFormRow, DropdownMenu, EmailDraftDialog, FileUploadZone } from "@/components/shared"
 import { Icon } from "@/components/shell"
 
 /* ------------------------------------------------------------------ */
@@ -30,13 +30,14 @@ function Btn({ children, accent, ghost, sm, onClick, style }: { children: React.
 /*  Tab content components                                             */
 /* ------------------------------------------------------------------ */
 
-function OverviewTab() {
+function OverviewTab({ setActiveTab }: { setActiveTab: (i: number) => void }) {
+  const [expanded, setExpanded] = useState(false)
   return (
     <>
       {/* Connection map */}
       <div style={{ marginBottom: 24 }}>
-        <SectionHead eyebrow="Connection map" title="Everything tied to this client" action={<button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => alert("Expanding connection map...")}>Expand {"→"}</button>} />
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 10 }}>
+        <SectionHead eyebrow="Connection map" title="Everything tied to this client" action={<button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => setExpanded(e => !e)}>{expanded ? "Collapse" : "Expand"} {"→"}</button>} />
+        <div style={{ display: "grid", gridTemplateColumns: expanded ? "repeat(3, 1fr)" : "repeat(6, 1fr)", gap: 10 }}>
           {[
             { l: "Engagement", v: "Q2 retainer · sprint 4", icon: "handshake" as const, count: "1 active", tone: "accent" },
             { l: "Bookings", v: "14 total · 2 upcoming", icon: "calendar" as const, count: "next Tue 11:30", tone: "info" },
@@ -122,7 +123,7 @@ function OverviewTab() {
         <div className="ih-card">
           <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--ih-line)", display: "flex", justifyContent: "space-between" }}>
             <div><span className="ih-eyebrow">Upcoming bookings</span></div>
-            <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => alert("See Bookings tab")}>All 14 {"→"}</button>
+            <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => setActiveTab(2)}>All 14 {"→"}</button>
           </div>
           {([
             ["Tue 13", "11:30", "Sprint review", "30m · Zoom", "info"],
@@ -145,7 +146,7 @@ function OverviewTab() {
         <div className="ih-card">
           <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--ih-line)", display: "flex", justifyContent: "space-between" }}>
             <div><span className="ih-eyebrow">Recent invoices</span></div>
-            <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => alert("See Invoices tab")}>All 8 {"→"}</button>
+            <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => setActiveTab(4)}>All 8 {"→"}</button>
           </div>
           {([
             ["/inv_2041", "Q2 · M2 retainer", "£14,200", "Apr 28", "warn", "sent"],
@@ -170,7 +171,7 @@ function OverviewTab() {
       <div className="ih-card">
         <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--ih-line)", display: "flex", justifyContent: "space-between" }}>
           <div><span className="ih-eyebrow">Workflows attached {"·"} this client</span></div>
-          <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => alert("Attach workflow dialog coming soon")}>Attach more {"→"}</button>
+          <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => setActiveTab(5)}>Attach more {"→"}</button>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 0 }}>
           {([
@@ -239,7 +240,7 @@ function EngagementsTab() {
       <SectionHead
         eyebrow="engagements"
         title="All engagements for Northwind Co."
-        action={<Btn accent sm onClick={() => alert("New engagement wizard coming soon")}><Icon name="plus" size={11} /> New engagement</Btn>}
+        action={<Btn accent sm onClick={() => { window.location.href = "/admin/clients/new" }}><Icon name="plus" size={11} /> New engagement</Btn>}
       />
       <div style={{ display: "grid", gap: 12 }}>
         {engagements.map((eng) => (
@@ -436,10 +437,16 @@ function InvoicesTab() {
 }
 
 function WorkflowsTab() {
-  const workflows = [
+  const [workflowList, setWorkflowList] = useState([
     { id: "WF-204", name: "Onboarding · Northwind", trigger: "Triggered on new booking", runs: 12, health: "ok" as const, lastRun: "2 hours ago" },
     { id: "WF-887", name: "Invoice → Stripe sync", trigger: "Hourly · paid invoice sync", runs: 186, health: "warn" as const, lastRun: "14 min ago" },
     { id: "WF-310", name: "Monthly digest", trigger: "1st of month · 09:00 UTC", runs: 3, health: "ok" as const, lastRun: "10 days ago" },
+  ])
+  const [showAttach, setShowAttach] = useState(false)
+  const AVAILABLE_WF = [
+    { id: "WF-401", name: "NPS survey after completion", trigger: "On engagement close" },
+    { id: "WF-402", name: "Auto-chase overdue invoices", trigger: "Daily · 09:00" },
+    { id: "WF-403", name: "Weekly status digest", trigger: "Every Monday · 08:00" },
   ]
 
   return (
@@ -447,10 +454,26 @@ function WorkflowsTab() {
       <SectionHead
         eyebrow="workflows"
         title="Workflows attached to Northwind Co."
-        action={<Btn accent sm onClick={() => alert("Attach workflow dialog coming soon")}><Icon name="plus" size={11} /> Attach workflow</Btn>}
+        action={<Btn accent sm onClick={() => setShowAttach(s => !s)}><Icon name="plus" size={11} /> Attach workflow</Btn>}
       />
+      {showAttach && (
+        <div className="ih-card" style={{ padding: 0, marginBottom: 12, overflow: "hidden" }}>
+          <div style={{ padding: "10px 16px", background: "var(--ih-surface-2)", borderBottom: "1px solid var(--ih-line)" }}>
+            <span className="ih-eyebrow">Available workflows</span>
+          </div>
+          {AVAILABLE_WF.filter(a => !workflowList.some(w => w.id === a.id)).map((wf, i) => (
+            <div key={wf.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 16px", borderTop: i === 0 ? "0" : "1px solid var(--ih-line)" }}>
+              <div>
+                <div style={{ fontSize: 12.5, fontWeight: 500 }}>{wf.name}</div>
+                <div className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-40)" }}>{wf.trigger}</div>
+              </div>
+              <Btn sm ghost onClick={() => { setWorkflowList(prev => [...prev, { ...wf, runs: 0, health: "ok" as const, lastRun: "never" }]); }}>Attach</Btn>
+            </div>
+          ))}
+        </div>
+      )}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
-        {workflows.map((wf) => (
+        {workflowList.map((wf) => (
           <div key={wf.id} className="ih-card" style={{ padding: 16, cursor: "pointer" }}>
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 10 }}>
               <span className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-40)" }}>{wf.id}</span>
@@ -469,7 +492,8 @@ function WorkflowsTab() {
   )
 }
 
-function DocumentsTab() {
+function DocumentsTab({ setToast }: { setToast: (t: {message: string; tone?: string}) => void }) {
+  const [showUpload, setShowUpload] = useState(false)
   const folders = [
     {
       name: "Proposals",
@@ -516,11 +540,16 @@ function DocumentsTab() {
         title="Files for Northwind Co."
         action={
           <div style={{ display: "flex", gap: 6 }}>
-            <Btn sm ghost onClick={() => alert("Opening Google Drive folder...")}><Icon name="folder" size={11} /> Open Drive folder</Btn>
-            <Btn sm accent onClick={() => alert("Upload dialog coming soon")}><Icon name="plus" size={11} /> Upload</Btn>
+            <Btn sm ghost onClick={() => window.open("https://drive.google.com/drive/folders/demo", "_blank")}><Icon name="folder" size={11} /> Open Drive folder</Btn>
+            <Btn sm accent onClick={() => setShowUpload(s => !s)}><Icon name="plus" size={11} /> Upload</Btn>
           </div>
         }
       />
+      {showUpload && (
+        <div style={{ marginBottom: 16 }}>
+          <FileUploadZone onUpload={() => { setShowUpload(false); setToast({ message: "File uploaded", tone: "ok" }) }} />
+        </div>
+      )}
       <div style={{ display: "grid", gap: 16 }}>
         {folders.map((folder) => (
           <div key={folder.name}>
@@ -648,12 +677,13 @@ function ActivityTab() {
 }
 
 function TeamTab() {
-  const clientTeam = [
+  const [showAddContact, setShowAddContact] = useState(false)
+  const [clientTeam, setClientTeam] = useState([
     { name: "Mira Sato", role: "Founder · primary contact", initials: "MS", questionnaire: "Completed", call: "3 calls", tone: "ok" },
     { name: "Sam Park", role: "Ops lead", initials: "SP", questionnaire: "Completed", call: "2 calls", tone: "ok" },
     { name: "Lara Kim", role: "Finance", initials: "LK", questionnaire: "Sent — awaiting", call: "1 call", tone: "warn" },
     { name: "Jamie F.", role: "Engineering", initials: "JF", questionnaire: "Not sent", call: "No calls", tone: "muted" },
-  ]
+  ])
 
   const ourTeam = [
     { name: "Luke Hodges", role: "Owner · lead consultant", initials: "LH", assigned: "All sprints", tone: "accent" },
@@ -664,8 +694,25 @@ function TeamTab() {
       <SectionHead
         eyebrow="team"
         title="People on Northwind Co."
-        action={<Btn accent sm onClick={() => alert("Add contact dialog coming soon")}><Icon name="plus" size={11} /> Add contact</Btn>}
+        action={<Btn accent sm onClick={() => setShowAddContact(s => !s)}><Icon name="plus" size={11} /> Add contact</Btn>}
       />
+
+      {showAddContact && (
+        <div style={{ marginBottom: 14 }}>
+          <InlineFormRow
+            fields={[
+              { key: "name", label: "Name", type: "text", placeholder: "Full name" },
+              { key: "email", label: "Email", type: "text", placeholder: "email@company.co" },
+              { key: "role", label: "Role", type: "text", placeholder: "e.g. Engineering" },
+            ]}
+            onSave={(vals) => {
+              setClientTeam(prev => [...prev, { name: vals.name, role: vals.role, initials: vals.name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase(), questionnaire: "Not sent", call: "No calls", tone: "muted" }])
+              setShowAddContact(false)
+            }}
+            onCancel={() => setShowAddContact(false)}
+          />
+        </div>
+      )}
 
       {/* Client team */}
       <div style={{ marginBottom: 24 }}>
@@ -738,16 +785,17 @@ export default function ClientHubPage() {
   const router = useRouter()
   const [activeTab, setActiveTab] = useState(0)
   const [toast, setToast] = useState<{message: string; tone?: string} | null>(null)
+  const [emailDraft, setEmailDraft] = useState<{to: string; subject: string; body: string} | null>(null)
   const tabs = ["Overview", "Engagements · 1", "Bookings · 14", "Deals · 2", "Invoices · 8", "Workflows · 3", "Documents", "Activity", "Team"]
 
   const tabContent = [
-    <OverviewTab key="overview" />,
+    <OverviewTab key="overview" setActiveTab={setActiveTab} />,
     <EngagementsTab key="engagements" />,
     <BookingsTab key="bookings" />,
     <DealsTab key="deals" />,
     <InvoicesTab key="invoices" />,
     <WorkflowsTab key="workflows" />,
-    <DocumentsTab key="documents" />,
+    <DocumentsTab key="documents" setToast={(t: {message: string; tone?: string}) => setToast(t)} />,
     <ActivityTab key="activity" />,
     <TeamTab key="team" />,
   ]
@@ -813,7 +861,7 @@ export default function ClientHubPage() {
             <div className="ih-card" style={{ marginBottom: 12, background: "var(--ih-surface)" }}>
               <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--ih-line)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <span className="ih-eyebrow">Contacts {"·"} 4</span>
-                <button className="ih-btn ih-btn-quiet ih-btn-sm" style={{ height: 22, padding: "0 6px" }} onClick={() => alert("Add contact dialog coming soon")}><Icon name="plus" size={11} /></button>
+                <button className="ih-btn ih-btn-quiet ih-btn-sm" style={{ height: 22, padding: "0 6px" }} onClick={() => setActiveTab(8)}><Icon name="plus" size={11} /></button>
               </div>
               <div>
                 {([
@@ -844,8 +892,8 @@ export default function ClientHubPage() {
                 Sprint 4 is <strong style={{ color: "#fff" }}>78% complete</strong> and 6h over forecast. Mira&apos;s last touch was a NPS 9 &mdash; good renewal window. Outstanding invoice is 14 days old; I drafted a friendly chase ready to send.
               </p>
               <div style={{ display: "flex", gap: 6, marginTop: 12 }}>
-                <button className="ih-btn ih-btn-sm" style={{ background: "rgba(255,255,255,0.15)", color: "#fff" }} onClick={() => setToast({message: "Chase email sent to Mira", tone: "ok"})}>Send chase</button>
-                <button className="ih-btn ih-btn-sm" style={{ background: "transparent", color: "rgba(255,255,255,0.7)", borderColor: "rgba(255,255,255,0.2)" }} onClick={() => setToast({message: "AI is drafting renewal proposal...", tone: "info"})}>Draft renewal</button>
+                <button className="ih-btn ih-btn-sm" style={{ background: "rgba(255,255,255,0.15)", color: "#fff" }} onClick={() => setEmailDraft({ to: "mira@northwind.co", subject: "Friendly reminder: Invoice NW-002 outstanding", body: "Hi Mira,\n\nJust a quick note to check in on invoice NW-002 for \u00A34,200. It was sent on Apr 28 and is now 14 days past due.\n\nIf there is anything holding this up or if you need a copy re-sent, just let me know.\n\nThanks,\nLuke" })}>Send chase</button>
+                <button className="ih-btn ih-btn-sm" style={{ background: "transparent", color: "rgba(255,255,255,0.7)", borderColor: "rgba(255,255,255,0.2)" }} onClick={() => setEmailDraft({ to: "mira@northwind.co", subject: "Q3 Renewal — Northwind Co.", body: "Hi Mira,\n\nWith sprint 4 wrapping up and the Q2 retainer entering its final stretch, I wanted to open the conversation about continuing into Q3.\n\nBased on the audit findings and the momentum we have built, I have drafted a proposed scope for the next quarter. Happy to walk through it on our next call.\n\nLooking forward to discussing.\n\nBest,\nLuke" })}>Draft renewal</button>
               </div>
             </div>
 
@@ -891,6 +939,7 @@ export default function ClientHubPage() {
         )}
       </div>
       {toast && <NotificationToast message={toast.message} tone={toast.tone as any} onDismiss={() => setToast(null)} />}
+      {emailDraft && <EmailDraftDialog open={true} onClose={() => setEmailDraft(null)} to={emailDraft.to} subject={emailDraft.subject} body={emailDraft.body} onSend={() => { setEmailDraft(null); setToast({ message: "Email sent", tone: "ok" }) }} />}
     </div>
   )
 }

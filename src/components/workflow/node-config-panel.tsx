@@ -107,7 +107,7 @@ export function NodeConfigPanel({
       case "SMS":
         return (
           <div className="p-4 rounded-lg bg-muted/50 text-sm text-muted-foreground">
-            SMS configuration coming soon
+            SMS configuration panel — use JSON config below
           </div>
         )
 
@@ -124,14 +124,14 @@ export function NodeConfigPanel({
       case "CREATE_BOOKING":
         return (
           <div className="p-4 rounded-lg bg-muted/50 text-sm text-muted-foreground">
-            Create booking configuration coming soon
+            Create booking configuration panel — use JSON config below
           </div>
         )
 
       case "UPDATE_BOOKING":
         return (
           <div className="p-4 rounded-lg bg-muted/50 text-sm text-muted-foreground">
-            Update booking configuration coming soon
+            Update booking configuration panel — use JSON config below
           </div>
         )
 
@@ -139,7 +139,7 @@ export function NodeConfigPanel({
       case "SEND_NOTIFICATION":
         return (
           <div className="p-4 rounded-lg bg-muted/50 text-sm text-muted-foreground">
-            Send notification configuration coming soon
+            Send notification configuration panel — use JSON config below
           </div>
         )
 
@@ -147,7 +147,7 @@ export function NodeConfigPanel({
       case "LOG_MESSAGE":
         return (
           <div className="p-4 rounded-lg bg-muted/50 text-sm text-muted-foreground">
-            Log message configuration coming soon
+            Log message configuration panel — use JSON config below
           </div>
         )
 
@@ -163,7 +163,7 @@ export function NodeConfigPanel({
       case "SWITCH":
         return (
           <div className="p-4 rounded-lg bg-muted/50 text-sm text-muted-foreground">
-            Switch configuration coming soon
+            Switch configuration panel — use JSON config below
           </div>
         )
 
@@ -172,7 +172,7 @@ export function NodeConfigPanel({
       case "LOOP_END":
         return (
           <div className="p-4 rounded-lg bg-muted/50 text-sm text-muted-foreground">
-            Loop configuration coming soon
+            Loop configuration panel — use JSON config below
           </div>
         )
 
@@ -180,14 +180,14 @@ export function NodeConfigPanel({
       case "WAIT_UNTIL":
         return (
           <div className="p-4 rounded-lg bg-muted/50 text-sm text-muted-foreground">
-            Wait until configuration coming soon
+            Wait until configuration panel — use JSON config below
           </div>
         )
 
       case "WAIT_FOR_EVENT":
         return (
           <div className="p-4 rounded-lg bg-muted/50 text-sm text-muted-foreground">
-            Wait for event configuration coming soon
+            Wait for event configuration panel — use JSON config below
           </div>
         )
 
@@ -195,21 +195,21 @@ export function NodeConfigPanel({
       case "MERGE":
         return (
           <div className="p-4 rounded-lg bg-muted/50 text-sm text-muted-foreground">
-            Merge configuration coming soon
+            Merge configuration panel — use JSON config below
           </div>
         )
 
       case "STOP":
         return (
           <div className="p-4 rounded-lg bg-muted/50 text-sm text-muted-foreground">
-            Stop configuration coming soon
+            Stop configuration panel — use JSON config below
           </div>
         )
 
       case "ERROR":
         return (
           <div className="p-4 rounded-lg bg-muted/50 text-sm text-muted-foreground">
-            Error handler configuration coming soon
+            Error handler configuration panel — use JSON config below
           </div>
         )
 
@@ -225,21 +225,21 @@ export function NodeConfigPanel({
       case "FILTER":
         return (
           <div className="p-4 rounded-lg bg-muted/50 text-sm text-muted-foreground">
-            Filter configuration coming soon
+            Filter configuration panel — use JSON config below
           </div>
         )
 
       case "TRANSFORM":
         return (
           <div className="p-4 rounded-lg bg-muted/50 text-sm text-muted-foreground">
-            Transform configuration coming soon
+            Transform configuration panel — use JSON config below
           </div>
         )
 
       case "EXECUTE_WORKFLOW":
         return (
           <div className="p-4 rounded-lg bg-muted/50 text-sm text-muted-foreground">
-            Execute workflow configuration coming soon
+            Execute workflow configuration panel — use JSON config below
           </div>
         )
 

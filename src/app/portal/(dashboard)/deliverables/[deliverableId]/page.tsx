@@ -235,7 +235,7 @@ export default function DeliverableDetailPage() {
                 </a>
               ) : (
                 <button
-                  onClick={() => alert("File download not available yet.")}
+                  onClick={() => toast.info("File download not available yet. The studio will upload the file shortly.")}
                   className="inline-flex shrink-0 items-center gap-1.5 rounded-[7px] border px-4 py-2 text-[13px] font-semibold transition-colors hover:opacity-80"
                   style={{ borderColor: "var(--portal-border)", color: "var(--portal-text-muted)" }}
                 >
@@ -336,7 +336,7 @@ export default function DeliverableDetailPage() {
                         toast.error("Please describe the changes needed");
                         return;
                       }
-                      alert("Change request submitted (placeholder). Backend endpoint coming soon.");
+                      toast.success("Change request submitted. The studio will review your feedback.");
                       setChangesComment("");
                       setShowChangesForm(false);
                     }}

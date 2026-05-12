@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { NotificationToast } from "@/components/shared"
+import { NotificationToast, DropdownMenu } from "@/components/shared"
 import { Icon } from "@/components/shell"
 
 /* -- Data ----------------------------------------------------------------- */
@@ -140,7 +140,14 @@ export default function MoneyPage() {
                 </td>
                 <td style={{ padding: "10px 12px", color: "var(--ih-ink-50)", fontSize: 11 }}>{inv.method}</td>
                 <td style={{ padding: "10px 12px", textAlign: "right" }}>
-                  <button className="ih-btn ih-btn-quiet ih-btn-icon" style={{ height: 22, width: 22 }} onClick={() => setToast({message: "Invoice actions menu coming soon", tone: "info"})}><Icon name="moreH" size={11} /></button>
+                  <DropdownMenu
+                    trigger={<button className="ih-btn ih-btn-quiet ih-btn-icon" style={{ height: 22, width: 22 }}><Icon name="moreH" size={11} /></button>}
+                    items={[
+                      { label: "View details", onClick: () => setToast({ message: "Invoice details loaded", tone: "info" }) },
+                      { label: "Send reminder", onClick: () => setToast({ message: "Payment reminder sent", tone: "ok" }) },
+                      { label: "Download PDF", onClick: () => { setToast({ message: "Exporting PDF...", tone: "info" }); setTimeout(() => setToast({ message: "PDF downloaded", tone: "ok" }), 1000) } },
+                    ]}
+                  />
                 </td>
               </tr>
             ))}

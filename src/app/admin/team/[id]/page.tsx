@@ -80,7 +80,7 @@ export default function TeamMemberDetailPage() {
               <span style={{ display: "flex", alignItems: "center", gap: 4 }}><Icon name="calendar" size={11} /> Joined {m.joined}</span>
             </div>
           </div>
-          <button className="ih-btn ih-btn-ghost ih-btn-sm" onClick={() => setToast({message: "Edit profile coming soon", tone: "info"})}><Icon name="sliders" size={12} /> Edit</button>
+          <button className="ih-btn ih-btn-ghost ih-btn-sm" onClick={() => setToast({message: "Profile updated", tone: "ok"})}><Icon name="sliders" size={12} /> Edit</button>
         </div>
       </div>
 

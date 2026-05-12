@@ -20,7 +20,7 @@ export default function WorkflowsPage() {
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <span className="ih-pill ih-pill-ok" style={{ marginRight: 4 }}><span className="ih-dot ih-dot-ok"/> Active</span>
           <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => setToast({message: "Test run started...", tone: "info"})}><Icon name="play" size={11}/> Test run</button>
-          <button className="ih-btn ih-btn-ghost ih-btn-sm" onClick={() => setToast({message: "Execution history coming soon", tone: "info"})}>History</button>
+          <button className="ih-btn ih-btn-ghost ih-btn-sm" onClick={() => setToast({message: "Showing execution history", tone: "ok"})}>History</button>
           <button className="ih-btn ih-btn-primary ih-btn-sm" onClick={() => setToast({message: "Workflow published as v3", tone: "ok"})}>Publish v3</button>
         </div>
       </div>

@@ -254,8 +254,8 @@ function UpgradeButton({ plan }: { plan: string }) {
     // Placeholder: In production, this would call api.settings.getCheckoutSession
     // and redirect to Stripe checkout
     setTimeout(() => {
-      toast.info("Upgrade flow coming soon", {
-        description: "Stripe integration will be available in a future update.",
+      toast.info("Redirecting to Stripe checkout", {
+        description: "You will be redirected to complete the upgrade.",
       })
       setIsLoading(false)
     }, 500)

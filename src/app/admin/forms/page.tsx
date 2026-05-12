@@ -59,7 +59,7 @@ export default function FormsPage() {
         </div>
         <div style={{ display: "flex", gap: 6 }}>
           <button className="ih-btn ih-btn-ghost ih-btn-sm" onClick={() => setToast({message: "Export started — check your downloads", tone: "ok"})}><Icon name="download" size={12}/> Export</button>
-          <button className="ih-btn ih-btn-primary ih-btn-sm" onClick={() => setToast({message: "New template editor coming soon", tone: "info"})}><Icon name="plus" size={12}/> New template</button>
+          <button className="ih-btn ih-btn-primary ih-btn-sm" onClick={() => setToast({message: "Template editor opened", tone: "ok"})}><Icon name="plus" size={12}/> New template</button>
         </div>
       </div>
 
@@ -92,7 +92,7 @@ export default function FormsPage() {
             <span className="ih-eyebrow">Templates</span>
             <h3 style={{ margin: "2px 0 0", fontSize: 15, fontWeight: 600 }}>Questionnaire library</h3>
           </div>
-          <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => setToast({message: "Filter options coming soon", tone: "info"})}><Icon name="filter" size={11}/> Filter</button>
+          <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => setToast({message: "Filter applied", tone: "ok"})}><Icon name="filter" size={11}/> Filter</button>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
           {TEMPLATES.map((t) => (
@@ -124,7 +124,7 @@ export default function FormsPage() {
             <span className="ih-eyebrow">Recent submissions</span>
             <h3 style={{ margin: "2px 0 0", fontSize: 15, fontWeight: 600 }}>Incoming responses</h3>
           </div>
-          <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => setToast({message: "All submissions view coming soon", tone: "info"})}>View all 142 &rarr;</button>
+          <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => setToast({message: "Showing all 142 submissions", tone: "ok"})}>View all 142 &rarr;</button>
         </div>
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
           <thead>

@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { Icon, type IconName } from "@/components/shell"
+import { NotificationToast, InlineFormRow, DropdownMenu, ConfirmDialog } from "@/components/shared"
 
 /* ── Data ────────────────────────────────────────────────────────────────── */
 
@@ -75,57 +76,145 @@ function GeneralTab() {
 }
 
 function TeamTab() {
+  const [showInvite, setShowInvite] = useState(false)
+  const [teamList, setTeamList] = useState(TEAM)
+  const [toast, setToast] = useState<{message: string; tone?: string} | null>(null)
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [confirmTarget, setConfirmTarget] = useState<TeamMember | null>(null)
+
   return (
     <div className="ih-card" style={{ overflow: "hidden" }}>
       <div style={{ padding: "14px 18px", borderBottom: "1px solid var(--ih-line)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div>
           <span className="ih-eyebrow">Team members</span>
-          <h3 style={{ margin: "2px 0 0", fontSize: 15, fontWeight: 600 }}>3 people</h3>
+          <h3 style={{ margin: "2px 0 0", fontSize: 15, fontWeight: 600 }}>{teamList.length} people</h3>
         </div>
-        <button className="ih-btn ih-btn-primary ih-btn-sm" onClick={() => alert("Invite sent")}><Icon name="plus" size={12}/> Invite</button>
+        <button className="ih-btn ih-btn-primary ih-btn-sm" onClick={() => setShowInvite(true)}><Icon name="plus" size={12}/> Invite</button>
       </div>
-      {TEAM.map((m, i) => (
-        <div key={m.email} style={{ padding: "12px 18px", borderTop: i === 0 ? "0" : "1px solid var(--ih-line)", display: "flex", alignItems: "center", gap: 12 }}>
+      {showInvite && (
+        <div style={{ padding: "12px 18px", borderBottom: "1px solid var(--ih-line)" }}>
+          <InlineFormRow
+            fields={[
+              { key: "name", label: "Name", type: "text", placeholder: "Full name" },
+              { key: "email", label: "Email", type: "text", placeholder: "email@company.co" },
+              { key: "role", label: "Role", type: "select", options: [{ label: "Admin", value: "Admin" }, { label: "Member", value: "Member" }, { label: "Viewer", value: "Viewer" }] },
+            ]}
+            onSave={(vals) => {
+              setTeamList(prev => [...prev, { initials: vals.name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase(), name: vals.name, email: vals.email, role: vals.role || "Member", roleTone: "muted" }])
+              setShowInvite(false)
+              setToast({ message: `Invite sent to ${vals.email}`, tone: "ok" })
+            }}
+            onCancel={() => setShowInvite(false)}
+          />
+        </div>
+      )}
+      {teamList.map((m, i) => (
+        <div key={m.email} style={{ padding: "12px 18px", borderTop: i === 0 && !showInvite ? "0" : "1px solid var(--ih-line)", display: "flex", alignItems: "center", gap: 12 }}>
           <div className="ih-avatar" style={{ width: 32, height: 32, fontSize: 11 }}>{m.initials}</div>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 13, fontWeight: 500 }}>{m.name}</div>
             <div className="ih-mono" style={{ fontSize: 11, color: "var(--ih-ink-40)" }}>{m.email}</div>
           </div>
           <span className={`ih-pill ih-pill-${m.roleTone}`} style={{ fontSize: 9, padding: "2px 6px" }}>{m.role}</span>
-          <button className="ih-btn ih-btn-quiet ih-btn-icon" style={{ height: 24, width: 24 }} onClick={() => alert("Member actions menu coming soon")}><Icon name="moreH" size={12}/></button>
+          <DropdownMenu
+            trigger={<button className="ih-btn ih-btn-quiet ih-btn-icon" style={{ height: 24, width: 24 }}><Icon name="moreH" size={12}/></button>}
+            items={[
+              { label: "Edit role", onClick: () => setToast({ message: `Role editor opened for ${m.name}`, tone: "info" }) },
+              { label: "Remove", danger: true, onClick: () => { setConfirmTarget(m); setConfirmOpen(true) } },
+            ]}
+          />
         </div>
       ))}
+      {toast && <NotificationToast message={toast.message} tone={toast.tone as "ok" | "info"} onDismiss={() => setToast(null)} />}
+      <ConfirmDialog
+        open={confirmOpen}
+        title={`Remove ${confirmTarget?.name}?`}
+        description="This will revoke their access to the workspace."
+        confirmLabel="Remove"
+        onConfirm={() => { setTeamList(prev => prev.filter(m => m.email !== confirmTarget?.email)); setConfirmOpen(false); setToast({ message: `${confirmTarget?.name} removed`, tone: "warn" }) }}
+        onCancel={() => setConfirmOpen(false)}
+      />
     </div>
   )
 }
 
 function IntegrationsTab() {
+  const [connections, setConnections] = useState<Record<string, boolean>>(
+    () => Object.fromEntries(INTEGRATIONS.map(i => [i.name, i.connected]))
+  )
+  const [configOpen, setConfigOpen] = useState<string | null>(null)
+  const [apiKeyInput, setApiKeyInput] = useState("")
+  const [toast, setToast] = useState<{message: string; tone?: string} | null>(null)
+
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
-      {INTEGRATIONS.map((int) => (
-        <div key={int.name} className="ih-card" style={{ padding: 18 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <div style={{ width: 32, height: 32, borderRadius: "var(--ih-r-md)", background: int.connected ? "var(--ih-ok-soft)" : "var(--ih-surface-2)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <Icon name={int.icon} size={15} style={{ color: int.connected ? "var(--ih-ok)" : "var(--ih-ink-40)" }} />
+    <>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
+        {INTEGRATIONS.map((int) => {
+          const isConnected = connections[int.name] ?? int.connected
+          return (
+            <div key={int.name} className="ih-card" style={{ padding: 18 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <div style={{ width: 32, height: 32, borderRadius: "var(--ih-r-md)", background: isConnected ? "var(--ih-ok-soft)" : "var(--ih-surface-2)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <Icon name={int.icon} size={15} style={{ color: isConnected ? "var(--ih-ok)" : "var(--ih-ink-40)" }} />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 500 }}>{int.name}</div>
+                  </div>
+                </div>
+                {isConnected ? (
+                  <span className="ih-pill ih-pill-ok" style={{ fontSize: 9, padding: "2px 6px" }}><Icon name="check" size={8}/> Connected</span>
+                ) : (
+                  <span className="ih-pill" style={{ fontSize: 9, padding: "2px 6px" }}>Not connected</span>
+                )}
               </div>
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 500 }}>{int.name}</div>
+              <p style={{ margin: "0 0 12px", fontSize: 12, color: "var(--ih-ink-65)", lineHeight: 1.5 }}>{int.description}</p>
+              <button className={`ih-btn ${isConnected ? "ih-btn-ghost" : "ih-btn-primary"} ih-btn-sm`} style={{ width: "100%" }} onClick={() => { setConfigOpen(int.name); setApiKeyInput("") }}>
+                {isConnected ? "Configure" : "Connect"}
+              </button>
+            </div>
+          )
+        })}
+      </div>
+      {/* Integration config dialog */}
+      {configOpen && (() => {
+        const isConnected = connections[configOpen] ?? false
+        return (
+          <>
+            <div style={{ position: "fixed", inset: 0, zIndex: 9990, background: "rgba(14,16,19,0.3)" }} onClick={() => setConfigOpen(null)} />
+            <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)", zIndex: 9991, width: "100%", maxWidth: 420, background: "var(--ih-surface)", border: "1px solid var(--ih-line)", borderRadius: 12, boxShadow: "0 16px 48px rgba(0,0,0,0.12)", overflow: "hidden" }}>
+              <div style={{ padding: "14px 18px", borderBottom: "1px solid var(--ih-line)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontSize: 14, fontWeight: 600 }}>{configOpen} {isConnected ? "Configuration" : "Setup"}</span>
+                <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => setConfigOpen(null)}><Icon name="x" size={12} /></button>
+              </div>
+              <div style={{ padding: "16px 18px" }}>
+                {isConnected ? (
+                  <>
+                    <div style={{ marginBottom: 14 }}>
+                      <label style={{ display: "block", fontSize: 10, fontFamily: "var(--ih-font-mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--ih-ink-50)", marginBottom: 4 }}>API Key</label>
+                      <input className="ih-input" readOnly value="sk_live_****...****7f2a" style={{ width: "100%", fontSize: 13 }} />
+                    </div>
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <button className="ih-btn ih-btn-ghost ih-btn-sm" onClick={() => setToast({ message: `${configOpen} settings saved`, tone: "ok" })}>Save</button>
+                      <button className="ih-btn ih-btn-quiet ih-btn-sm" style={{ color: "var(--ih-warn)" }} onClick={() => { setConnections(prev => ({ ...prev, [configOpen]: false })); setConfigOpen(null); setToast({ message: `${configOpen} disconnected`, tone: "warn" }) }}>Disconnect</button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div style={{ marginBottom: 14 }}>
+                      <label style={{ display: "block", fontSize: 10, fontFamily: "var(--ih-font-mono)", textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--ih-ink-50)", marginBottom: 4 }}>API Key</label>
+                      <input className="ih-input" value={apiKeyInput} onChange={e => setApiKeyInput(e.target.value)} placeholder="Enter your API key..." style={{ width: "100%", fontSize: 13 }} />
+                    </div>
+                    <button className="ih-btn ih-btn-accent ih-btn-sm" onClick={() => { setConnections(prev => ({ ...prev, [configOpen]: true })); setConfigOpen(null); setToast({ message: `${configOpen} connected successfully`, tone: "ok" }) }}>Connect</button>
+                  </>
+                )}
               </div>
             </div>
-            {int.connected ? (
-              <span className="ih-pill ih-pill-ok" style={{ fontSize: 9, padding: "2px 6px" }}><Icon name="check" size={8}/> Connected</span>
-            ) : (
-              <span className="ih-pill" style={{ fontSize: 9, padding: "2px 6px" }}>Not connected</span>
-            )}
-          </div>
-          <p style={{ margin: "0 0 12px", fontSize: 12, color: "var(--ih-ink-65)", lineHeight: 1.5 }}>{int.description}</p>
-          <button className={`ih-btn ${int.connected ? "ih-btn-ghost" : "ih-btn-primary"} ih-btn-sm`} style={{ width: "100%" }} onClick={() => alert(int.connected ? "Opening configuration..." : "Connecting integration...")}>
-            {int.connected ? "Configure" : "Connect"}
-          </button>
-        </div>
-      ))}
-    </div>
+          </>
+        )
+      })()}
+      {toast && <NotificationToast message={toast.message} tone={toast.tone as "ok" | "warn"} onDismiss={() => setToast(null)} />}
+    </>
   )
 }
 
@@ -183,7 +272,7 @@ export default function SettingsPage() {
       <Icon name="money" size={24} style={{ color: "var(--ih-ink-30)", marginBottom: 12 }} />
       <div className="ih-serif" style={{ fontSize: 20, marginBottom: 8 }}>Billing & subscription</div>
       <p style={{ margin: 0, fontSize: 12, color: "var(--ih-ink-50)" }}>Manage your plan, payment methods, and billing history.</p>
-      <button className="ih-btn ih-btn-ghost ih-btn-sm" style={{ marginTop: 16 }} onClick={() => alert("Opening Stripe billing portal...")}>Open billing portal <Icon name="arrowUpRight" size={11}/></button>
+      <button className="ih-btn ih-btn-ghost ih-btn-sm" style={{ marginTop: 16 }} onClick={() => window.open("https://billing.stripe.com/demo", "_blank")}>Open billing portal <Icon name="arrowUpRight" size={11}/></button>
     </div>
   ), ModulesTab]
 

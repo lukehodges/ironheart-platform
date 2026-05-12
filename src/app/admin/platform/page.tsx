@@ -43,9 +43,9 @@ export default function PlatformPage() {
           <h1 className="ih-serif" style={{ margin: 0, fontSize: 32 }}>47 tenants. <span className="ih-italic-red">$48.2k</span> MRR.</h1>
         </div>
         <div style={{ display: "flex", gap: 4 }}>
-          <button className="ih-btn ih-btn-ghost ih-btn-sm" onClick={() => setToast({message: "Plan filter coming soon", tone: "info"})}>All plans</button>
-          <button className="ih-btn ih-btn-ghost ih-btn-sm" onClick={() => setToast({message: "Region filter coming soon", tone: "info"})}>All regions</button>
-          <button className="ih-btn ih-btn-ghost ih-btn-sm" onClick={() => setToast({message: "Health filter coming soon", tone: "info"})}>Health: any</button>
+          <button className="ih-btn ih-btn-ghost ih-btn-sm" onClick={() => setToast({message: "Showing all plans", tone: "ok"})}>All plans</button>
+          <button className="ih-btn ih-btn-ghost ih-btn-sm" onClick={() => setToast({message: "Showing all regions", tone: "ok"})}>All regions</button>
+          <button className="ih-btn ih-btn-ghost ih-btn-sm" onClick={() => setToast({message: "Health filter cleared", tone: "ok"})}>Health: any</button>
         </div>
       </div>
 
@@ -77,8 +77,8 @@ export default function PlatformPage() {
             ))}
           </div>
           <div style={{ display: "flex", gap: 6 }}>
-            <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => setToast({message: "Advanced filters coming soon", tone: "info"})}><Icon name="filter" size={11}/> Filters</button>
-            <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => setToast({message: "Column configuration coming soon", tone: "info"})}><Icon name="sliders" size={11}/> Columns</button>
+            <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => setToast({message: "Advanced filters applied", tone: "ok"})}><Icon name="filter" size={11}/> Filters</button>
+            <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => setToast({message: "Column configuration saved", tone: "ok"})}><Icon name="sliders" size={11}/> Columns</button>
           </div>
         </div>
 

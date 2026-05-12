@@ -12,6 +12,7 @@ import { moduleRegistry } from "@/shared/module-system/register-all"
 import { ModuleHierarchyTree } from "./module-hierarchy-tree"
 import { ModuleSettingsForm } from "./module-settings-form"
 import { GitFork, LayoutGrid, Settings } from "lucide-react"
+import { toast } from "sonner"
 
 type ViewMode = "cards" | "tree"
 
@@ -89,13 +90,13 @@ export function ModulesTab() {
         const reason = result.blockedBy.includes("__core__")
           ? "This is a core module and cannot be disabled."
           : `Cannot disable: ${result.blockedBy.join(", ")} depend on this module.`
-        alert(reason)
+        toast.error(reason)
         return
       }
     } else {
       const result = moduleRegistry.canEnable(moduleSlug, enabledSlugs)
       if (!result.allowed) {
-        alert(`Enable these modules first: ${result.missingDeps.join(", ")}`)
+        toast.error(`Enable these modules first: ${result.missingDeps.join(", ")}`)
         return
       }
     }

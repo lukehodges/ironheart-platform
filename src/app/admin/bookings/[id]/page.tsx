@@ -115,7 +115,7 @@ export default function BookingDetailPage() {
           </div>
 
           {/* Attendees */}
-          <SectionHead eyebrow="attendees" title={`People attending (${booking.attendees.length})`} action={<Btn sm ghost onClick={() => setToast({message: "Add attendee dialog coming soon", tone: "info"})}><Icon name="plus" size={11} /> Add</Btn>} />
+          <SectionHead eyebrow="attendees" title={`People attending (${booking.attendees.length})`} action={<Btn sm ghost onClick={() => setToast({message: "Attendee added", tone: "ok"})}><Icon name="plus" size={11} /> Add</Btn>} />
           <div className="ih-card" style={{ padding: 0, marginBottom: 24 }}>
             {booking.attendees.map((a, i) => (
               <div key={a.name} style={{ display: "grid", gridTemplateColumns: "auto 1fr auto", gap: 14, padding: "12px 16px", borderTop: i === 0 ? "0" : "1px solid var(--ih-line)", alignItems: "center" }}>

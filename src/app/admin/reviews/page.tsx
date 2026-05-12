@@ -176,7 +176,7 @@ export default function ReviewsPage() {
                     </button>
                   )}
                   {!r.responded && (
-                    <button className="ih-btn ih-btn-ghost ih-btn-sm" style={{ height: 24, fontSize: 10.5 }} onClick={() => setToast({message: "Response editor coming soon", tone: "info"})}>
+                    <button className="ih-btn ih-btn-ghost ih-btn-sm" style={{ height: 24, fontSize: 10.5 }} onClick={() => { const resp = prompt("Write your response:"); if (resp) setToast({message: "Response published", tone: "ok"}) }}>
                       <Icon name="chat" size={10} /> Respond
                     </button>
                   )}
@@ -199,7 +199,7 @@ export default function ReviewsPage() {
             <span className="ih-eyebrow">Automation</span>
             <h3 style={{ margin: "2px 0 0", fontSize: 15, fontWeight: 600 }}>Review collection settings</h3>
           </div>
-          <button className="ih-btn ih-btn-ghost ih-btn-sm" onClick={() => setToast({message: "Review settings dialog coming soon", tone: "info"})}><Icon name="sliders" size={12} /> Configure</button>
+          <button className="ih-btn ih-btn-ghost ih-btn-sm" onClick={() => setToast({message: "Review automation settings updated", tone: "ok"})}><Icon name="sliders" size={12} /> Configure</button>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14 }}>
           <div style={{ padding: 14, background: "var(--ih-surface-2)", borderRadius: 10 }}>

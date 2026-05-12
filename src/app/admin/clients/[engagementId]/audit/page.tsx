@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useMemo } from "react"
-import { NotificationToast } from "@/components/shared"
+import { NotificationToast, InlineFormRow } from "@/components/shared"
 import { Icon, type IconName } from "@/components/shell"
 
 /* ── Data ───────────────────────────────────────────────────────────────── */
@@ -195,6 +195,12 @@ function LensCard({ lens }: { lens: Lens }) {
 
 function LensDetail({ lens, selectedRag, onRagChange }: { lens: Lens; selectedRag: RagScore; onRagChange: (r: RagScore) => void }) {
   const tone = RAG_TONE[selectedRag]
+  const [showAddFinding, setShowAddFinding] = useState(false)
+  const [showAddRec, setShowAddRec] = useState(false)
+  const [localFindings, setLocalFindings] = useState(lens.findings)
+  const [localRecs, setLocalRecs] = useState(lens.recs)
+  const [promoted, setPromoted] = useState<Set<number>>(new Set())
+  const [toast, setToast] = useState<{message: string; tone?: string} | null>(null)
   return (
     <>
       {/* Header */}
@@ -255,9 +261,26 @@ function LensDetail({ lens, selectedRag, onRagChange }: { lens: Lens; selectedRa
 
       {/* Findings table */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-        <div className="ih-eyebrow">Findings · {lens.findings.length} · total {fmtGBP(lens.waste)} / yr</div>
-        <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => alert("Add finding form coming soon")}><Icon name="plus" size={11} /> Add finding</button>
+        <div className="ih-eyebrow">Findings · {localFindings.length} · total {fmtGBP(lens.waste)} / yr</div>
+        <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => setShowAddFinding(s => !s)}><Icon name="plus" size={11} /> Add finding</button>
       </div>
+      {showAddFinding && (
+        <div style={{ marginBottom: 10 }}>
+          <InlineFormRow
+            fields={[
+              { key: "t", label: "Finding", type: "text", placeholder: "Describe the finding" },
+              { key: "impact", label: "Impact", type: "select", options: [{ label: "High", value: "HIGH" }, { label: "Medium", value: "MEDIUM" }, { label: "Low", value: "LOW" }] },
+              { key: "ev", label: "Evidence", type: "text", placeholder: "Source of evidence" },
+              { key: "waste", label: "Annual waste (£)", type: "number", placeholder: "0" },
+            ]}
+            onSave={(vals) => {
+              setLocalFindings(prev => [...prev, { t: vals.t, impact: (vals.impact || "MEDIUM") as Impact, ev: vals.ev, waste: Number(vals.waste) || 0 }])
+              setShowAddFinding(false)
+            }}
+            onCancel={() => setShowAddFinding(false)}
+          />
+        </div>
+      )}
       <div className="ih-card" style={{ marginBottom: 22, overflow: "hidden" }}>
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
           <thead>
@@ -268,7 +291,7 @@ function LensDetail({ lens, selectedRag, onRagChange }: { lens: Lens; selectedRa
             </tr>
           </thead>
           <tbody>
-            {lens.findings.map((f, i) => (
+            {localFindings.map((f, i) => (
               <tr key={i} style={{ borderBottom: "1px solid var(--ih-line)" }}>
                 <td style={{ padding: "10px 12px", fontFamily: "var(--ih-font-mono)", color: "var(--ih-ink-40)" }}>{i + 1}</td>
                 <td style={{ padding: "10px 12px" }}>{f.t}</td>
@@ -287,11 +310,27 @@ function LensDetail({ lens, selectedRag, onRagChange }: { lens: Lens; selectedRa
 
       {/* Recommendations */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-        <div className="ih-eyebrow">Recommendations · {lens.recs.length}</div>
-        <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => alert("Add recommendation form coming soon")}><Icon name="plus" size={11} /> Add rec</button>
+        <div className="ih-eyebrow">Recommendations · {localRecs.length}</div>
+        <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => setShowAddRec(s => !s)}><Icon name="plus" size={11} /> Add rec</button>
       </div>
+      {showAddRec && (
+        <div style={{ marginBottom: 10 }}>
+          <InlineFormRow
+            fields={[
+              { key: "t", label: "Action", type: "text", placeholder: "Recommendation" },
+              { key: "effort", label: "Effort", type: "text", placeholder: "S/M/L + duration" },
+              { key: "cost", label: "Cost (£)", type: "number", placeholder: "0" },
+            ]}
+            onSave={(vals) => {
+              setLocalRecs(prev => [...prev, { t: vals.t, effort: vals.effort, cost: Number(vals.cost) || 0 }])
+              setShowAddRec(false)
+            }}
+            onCancel={() => setShowAddRec(false)}
+          />
+        </div>
+      )}
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        {lens.recs.map((r, i) => (
+        {localRecs.map((r, i) => (
           <div key={i} className="ih-card" style={{ padding: 14, display: "flex", alignItems: "center", gap: 12 }}>
             <div style={{
               width: 28, height: 28, borderRadius: "var(--ih-r-md)",
@@ -303,10 +342,15 @@ function LensDetail({ lens, selectedRag, onRagChange }: { lens: Lens; selectedRa
               <div style={{ fontSize: 13, fontWeight: 500 }}>{r.t}</div>
               <div className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-50)", marginTop: 3, letterSpacing: "0.06em" }}>EFFORT {r.effort} · INVEST {fmtGBP(r.cost)}</div>
             </div>
-            <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => alert("Promoted to milestone")}><Icon name="arrowRight" size={11} /> Promote to milestone</button>
+            {promoted.has(i) ? (
+              <span className="ih-pill ih-pill-ok" style={{ fontSize: 9 }}><Icon name="check" size={9} /> Milestone</span>
+            ) : (
+              <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => { setPromoted(prev => new Set(prev).add(i)); setToast({ message: "Finding promoted to implementation roadmap", tone: "ok" }) }}><Icon name="arrowRight" size={11} /> Promote to milestone</button>
+            )}
           </div>
         ))}
       </div>
+      {toast && <NotificationToast message={toast.message} tone={toast.tone as any} onDismiss={() => setToast(null)} />}
     </>
   )
 }
@@ -317,6 +361,14 @@ export default function AuditWorkspacePage() {
   const [activeLens, setActiveLens] = useState<string | null>(null)
   const [toast, setToast] = useState<{message: string; tone?: string} | null>(null)
   const [ragOverrides, setRagOverrides] = useState<Record<string, RagScore>>({})
+  const [showCallNote, setShowCallNote] = useState(false)
+  const [callNoteText, setCallNoteText] = useState("")
+  const [callNotes, setCallNotes] = useState([
+    { who: "Sarah Chen",   role: "Head of Ops",  date: "Mar 26", min: 62, tag: "OPERATIONS" },
+    { who: "Tom Hardy",    role: "COO",          date: "Mar 27", min: 48, tag: "FINANCE" },
+    { who: "Priya Patel",  role: "CFO",          date: "Mar 28", min: 55, tag: "FINANCE" },
+    { who: "Alex Wong",    role: "Eng lead",     date: "Mar 29", min: 71, tag: "TECHNOLOGY" },
+  ])
   const selectedLens = LENSES.find(l => l.id === activeLens)
 
   const handleRagChange = (lensId: string, rag: RagScore) => {
@@ -452,15 +504,25 @@ export default function AuditWorkspacePage() {
         </div>
         <div className="ih-card" style={{ padding: 16 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-            <div className="ih-eyebrow">Call notes · 4</div>
-            <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => alert("Add call note form coming soon")}><Icon name="plus" size={11} /> Add</button>
+            <div className="ih-eyebrow">Call notes · {callNotes.length}</div>
+            <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => setShowCallNote(s => !s)}><Icon name="plus" size={11} /> Add</button>
           </div>
-          {[
-            { who: "Sarah Chen",   role: "Head of Ops",  date: "Mar 26", min: 62, tag: "OPERATIONS" },
-            { who: "Tom Hardy",    role: "COO",          date: "Mar 27", min: 48, tag: "FINANCE" },
-            { who: "Priya Patel",  role: "CFO",          date: "Mar 28", min: 55, tag: "FINANCE" },
-            { who: "Alex Wong",    role: "Eng lead",     date: "Mar 29", min: 71, tag: "TECHNOLOGY" },
-          ].map((n) => (
+          {showCallNote && (
+            <div style={{ padding: "8px 0", borderBottom: "1px dashed var(--ih-line)" }}>
+              <textarea
+                value={callNoteText}
+                onChange={e => setCallNoteText(e.target.value)}
+                placeholder="Add call note..."
+                rows={3}
+                style={{ width: "100%", padding: "8px 10px", border: "1px solid var(--ih-line)", borderRadius: 6, fontSize: 12, lineHeight: 1.5, fontFamily: "inherit", resize: "none", outline: "none", marginBottom: 8 }}
+              />
+              <div style={{ display: "flex", gap: 4, justifyContent: "flex-end" }}>
+                <button className="ih-btn ih-btn-accent ih-btn-sm" onClick={() => { if (callNoteText.trim()) { setCallNotes(prev => [...prev, { who: "You", role: "consultant", date: "Today", min: 0, tag: "GENERAL" }]); setCallNoteText(""); setShowCallNote(false); setToast({ message: "Call note saved", tone: "ok" }) } }}>Save</button>
+                <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => setShowCallNote(false)}>Cancel</button>
+              </div>
+            </div>
+          )}
+          {callNotes.map((n) => (
             <div key={n.who} style={{ display: "flex", gap: 10, padding: "8px 0", borderBottom: "1px dashed var(--ih-line)" }}>
               <div className="ih-avatar" style={{ background: "var(--ih-surface-2)", color: "var(--ih-accent)" }}>{n.who.split(" ").map(s => s[0]).join("")}</div>
               <div style={{ flex: 1 }}>

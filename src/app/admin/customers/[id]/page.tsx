@@ -3,7 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { NotificationToast, ConfirmDialog } from "@/components/shared"
+import { NotificationToast, ConfirmDialog, InlineFormRow } from "@/components/shared"
 import { Icon } from "@/components/shell"
 
 /* ------------------------------------------------------------------ */
@@ -229,12 +229,13 @@ function FormsTab() {
 function NotesTab() {
   const [newNote, setNewNote] = useState("")
   const [noteType, setNoteType] = useState<"GENERAL" | "PREFERENCE" | "FOLLOWUP">("GENERAL")
-  const notes = [
+  const [toast, setToast] = useState<{message: string; tone?: string} | null>(null)
+  const [notes, setNotes] = useState([
     { type: "PREFERENCE", text: "Prefers async. Don\u2019t book past 16:00 UK. Lara approves all spend > \u00A3500.", by: "luke", when: "4 weeks ago" },
     { type: "FOLLOWUP", text: "Renewal conversation slot: last week of June. Q3 brief drafted in /docs.", by: "luke", when: "6 days ago" },
     { type: "GENERAL", text: "Mira mentioned wanting to explore a second product line audit. Discuss in Q3 renewal.", by: "luke", when: "2 days ago" },
     { type: "GENERAL", text: "Great NPS score (9) after sprint 3 retro. Strong renewal signal.", by: "system", when: "1 week ago" },
-  ]
+  ])
 
   const toneLookup: Record<string, string> = { PREFERENCE: "info", FOLLOWUP: "accent", GENERAL: "" }
 
@@ -253,7 +254,7 @@ function NotesTab() {
           {(["GENERAL", "PREFERENCE", "FOLLOWUP"] as const).map(t => (
             <Btn key={t} sm ghost={noteType !== t} accent={noteType === t} onClick={() => setNoteType(t)} style={noteType === t ? {} : undefined}>{t}</Btn>
           ))}
-          <Btn sm accent onClick={() => alert("Note saved")}><Icon name="plus" size={11} /> Save note</Btn>
+          <Btn sm accent onClick={() => { if (newNote.trim()) { setNotes(prev => [{ type: noteType, text: newNote, by: "luke", when: "just now" }, ...prev]); setNewNote(""); setToast({ message: "Note saved", tone: "ok" }) } }}><Icon name="plus" size={11} /> Save note</Btn>
         </div>
       </div>
 
@@ -269,6 +270,7 @@ function NotesTab() {
           </div>
         ))}
       </div>
+      {toast && <NotificationToast message={toast.message} tone={toast.tone as any} onDismiss={() => setToast(null)} />}
     </div>
   )
 }
@@ -282,6 +284,10 @@ export default function CustomerDetailPage() {
   const [activeTab, setActiveTab] = useState(0)
   const [toast, setToast] = useState<{message: string; tone?: string} | null>(null)
   const [confirmOpen, setConfirmOpen] = useState(false)
+  const [editMode, setEditMode] = useState(false)
+  const [tags, setTags] = useState(["Founder", "Primary contact", "High NPS", "Northwind"])
+  const [newTag, setNewTag] = useState("")
+  const [showTagInput, setShowTagInput] = useState(false)
   const [confirmAction, setConfirmAction] = useState<{title: string; desc: string; label: string; action: () => void}>({title:"",desc:"",label:"",action:()=>{}})
   const tabs = ["Overview", "Engagements", "Bookings", "Invoices", "Forms", "Notes"]
 
@@ -342,7 +348,7 @@ export default function CustomerDetailPage() {
         </div>
         {/* Actions */}
         <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
-          <Btn sm ghost onClick={() => setToast({message: "Edit mode coming soon", tone: "info"})}><Icon name="user" size={11} /> Edit</Btn>
+          <Btn sm ghost onClick={() => { setEditMode(e => !e); if (editMode) setToast({ message: "Changes saved", tone: "ok" }) }}><Icon name={editMode ? "check" : "user"} size={11} /> {editMode ? "Save" : "Edit"}</Btn>
           <Btn sm ghost onClick={() => setActiveTab(5)}>Add Note</Btn>
           <Btn sm ghost onClick={() => { setConfirmAction({title:"Merge customer?",desc:"This will merge this customer record into another. This action cannot be undone.",label:"Merge",action:() => { setConfirmOpen(false); setToast({message:"Customer merge initiated",tone:"ok"}) }}); setConfirmOpen(true) }}>Merge</Btn>
           <Btn sm ghost style={{ color: "var(--ih-warn)" }} onClick={() => { setConfirmAction({title:"Anonymise customer?",desc:"This will permanently remove all personal data for this customer. This action cannot be undone.",label:"Anonymise",action:() => { setConfirmOpen(false); setToast({message:"Customer data anonymised",tone:"warn"}) }}); setConfirmOpen(true) }}>Anonymise</Btn>
@@ -414,12 +420,23 @@ export default function CustomerDetailPage() {
             <div className="ih-card" style={{ background: "var(--ih-surface)" }}>
               <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--ih-line)", display: "flex", justifyContent: "space-between" }}>
                 <span className="ih-eyebrow">Tags</span>
-                <button className="ih-btn ih-btn-quiet ih-btn-sm" style={{ height: 22, padding: "0 6px" }} onClick={() => setToast({message: "Add tag coming soon", tone: "info"})}><Icon name="plus" size={11} /></button>
+                <button className="ih-btn ih-btn-quiet ih-btn-sm" style={{ height: 22, padding: "0 6px" }} onClick={() => setShowTagInput(true)}><Icon name="plus" size={11} /></button>
               </div>
-              <div style={{ padding: "12px 14px", display: "flex", gap: 6, flexWrap: "wrap" }}>
-                {["Founder", "Primary contact", "High NPS", "Northwind"].map(t => (
+              <div style={{ padding: "12px 14px", display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+                {tags.map(t => (
                   <span key={t} className="ih-pill" style={{ fontSize: 10 }}>{t}</span>
                 ))}
+                {showTagInput && (
+                  <input
+                    autoFocus
+                    value={newTag}
+                    onChange={e => setNewTag(e.target.value)}
+                    onKeyDown={e => { if (e.key === "Enter" && newTag.trim()) { setTags(prev => [...prev, newTag.trim()]); setNewTag(""); setShowTagInput(false) } if (e.key === "Escape") setShowTagInput(false) }}
+                    onBlur={() => { if (newTag.trim()) { setTags(prev => [...prev, newTag.trim()]) } setNewTag(""); setShowTagInput(false) }}
+                    placeholder="New tag..."
+                    style={{ width: 80, fontSize: 10, padding: "2px 6px", border: "1px solid var(--ih-accent)", borderRadius: "var(--ih-r-pill)", outline: "none", background: "var(--ih-surface)" }}
+                  />
+                )}
               </div>
             </div>
           </div>

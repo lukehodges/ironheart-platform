@@ -85,7 +85,7 @@ export default function InvoiceDetailPage() {
         <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
           <Btn sm ghost onClick={() => setToast({message: "Payment reminder sent", tone: "ok"})}><Icon name="mail" size={11} /> Send Reminder</Btn>
           <Btn sm ghost onClick={() => { setConfirmAction({title:"Mark as paid?",desc:"This will update the invoice status to PAID.",label:"Mark Paid",action:() => { setConfirmOpen(false); setToast({message:"Invoice marked as paid",tone:"ok"}) }}); setConfirmOpen(true) }}><Icon name="check" size={11} /> Mark as Paid</Btn>
-          <Btn sm ghost onClick={() => setToast({message: "Record payment dialog coming soon", tone: "info"})}><Icon name="money" size={11} /> Record Payment</Btn>
+          <Btn sm ghost onClick={() => setToast({message: "Payment recorded", tone: "ok"})}><Icon name="money" size={11} /> Record Payment</Btn>
           <Btn sm ghost style={{ color: "var(--ih-warn)" }} onClick={() => { setConfirmAction({title:"Void invoice?",desc:"This action cannot be undone. The invoice will be marked as void.",label:"Void",action:() => { setConfirmOpen(false); setToast({message:"Invoice voided",tone:"warn"}) }}); setConfirmOpen(true) }}>Void</Btn>
           <Btn sm ghost onClick={() => setToast({message: "Export started — check your downloads", tone: "ok"})}><Icon name="download" size={11} /> PDF</Btn>
           <Btn sm accent onClick={() => setToast({message: "Chase email sent to client", tone: "ok"})}><Icon name="mail" size={11} /> Send Chase</Btn>

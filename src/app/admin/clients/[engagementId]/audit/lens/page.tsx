@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { NotificationToast } from "@/components/shared"
+import { NotificationToast, InlineFormRow } from "@/components/shared"
 import { Icon, type IconName } from "@/components/shell"
 
 /* -- Data ----------------------------------------------------------------- */
@@ -139,6 +139,13 @@ export default function AuditLensPage() {
   const getRag = (l: Lens): RagScore => ragOverrides[l.id] ?? l.rag
   const selectedRag = getRag(lens)
   const tone = RAG_TONE[selectedRag]
+  const [showAddFinding, setShowAddFinding] = useState(false)
+  const [showAddRec, setShowAddRec] = useState(false)
+  const [localFindings, setLocalFindings] = useState<Record<string, Finding[]>>({})
+  const [localRecs, setLocalRecs] = useState<Record<string, Rec[]>>({})
+  const [promoted, setPromoted] = useState<Set<string>>(new Set())
+  const findings = [...lens.findings, ...(localFindings[lens.id] || [])]
+  const recs = [...lens.recs, ...(localRecs[lens.id] || [])]
 
   return (
     <div style={{ display: "flex", height: "calc(100vh - 120px)", margin: "-24px -24px 0" }}>
@@ -232,8 +239,22 @@ export default function AuditLensPage() {
         {/* Findings table */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
           <div className="ih-eyebrow">Findings {"·"} {lens.findings.length} {"·"} total {fmtGBP(lens.waste)} / yr</div>
-          <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => setToast({message: "Add finding form coming soon", tone: "info"})}><Icon name="plus" size={11} /> Add finding</button>
+          <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => setShowAddFinding(s => !s)}><Icon name="plus" size={11} /> Add finding</button>
         </div>
+        {showAddFinding && (
+          <div style={{ marginBottom: 10 }}>
+            <InlineFormRow
+              fields={[
+                { key: "t", label: "Finding", type: "text", placeholder: "Describe the finding" },
+                { key: "impact", label: "Impact", type: "select", options: [{ label: "High", value: "HIGH" }, { label: "Medium", value: "MEDIUM" }, { label: "Low", value: "LOW" }] },
+                { key: "ev", label: "Evidence", type: "text", placeholder: "Source" },
+                { key: "waste", label: "Waste (£)", type: "number", placeholder: "0" },
+              ]}
+              onSave={(vals) => { setLocalFindings(prev => ({ ...prev, [lens.id]: [...(prev[lens.id] || []), { t: vals.t, impact: (vals.impact || "MEDIUM") as Impact, ev: vals.ev, waste: Number(vals.waste) || 0 }] })); setShowAddFinding(false) }}
+              onCancel={() => setShowAddFinding(false)}
+            />
+          </div>
+        )}
         <div className="ih-card" style={{ marginBottom: 22, overflow: "hidden" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
             <thead>
@@ -244,7 +265,7 @@ export default function AuditLensPage() {
               </tr>
             </thead>
             <tbody>
-              {lens.findings.map((f, i) => (
+              {findings.map((f, i) => (
                 <tr key={i} style={{ borderBottom: "1px solid var(--ih-line)" }}>
                   <td style={{ padding: "10px 12px", fontFamily: "var(--ih-font-mono)", color: "var(--ih-ink-40)" }}>{i + 1}</td>
                   <td style={{ padding: "10px 12px" }}>{f.t}</td>
@@ -264,10 +285,25 @@ export default function AuditLensPage() {
         {/* Recommendations */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
           <div className="ih-eyebrow">Recommendations {"·"} {lens.recs.length}</div>
-          <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => setToast({message: "Add recommendation form coming soon", tone: "info"})}><Icon name="plus" size={11} /> Add rec</button>
+          <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => setShowAddRec(s => !s)}><Icon name="plus" size={11} /> Add rec</button>
         </div>
+        {showAddRec && (
+          <div style={{ marginBottom: 10 }}>
+            <InlineFormRow
+              fields={[
+                { key: "t", label: "Action", type: "text", placeholder: "Recommendation" },
+                { key: "effort", label: "Effort", type: "text", placeholder: "S/M/L + duration" },
+                { key: "cost", label: "Cost (£)", type: "number", placeholder: "0" },
+              ]}
+              onSave={(vals) => { setLocalRecs(prev => ({ ...prev, [lens.id]: [...(prev[lens.id] || []), { t: vals.t, effort: vals.effort, cost: Number(vals.cost) || 0 }] })); setShowAddRec(false) }}
+              onCancel={() => setShowAddRec(false)}
+            />
+          </div>
+        )}
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {lens.recs.map((r, i) => (
+          {recs.map((r, i) => {
+            const promoKey = `${lens.id}-${i}`
+            return (
             <div key={i} className="ih-card" style={{ padding: 14, display: "flex", alignItems: "center", gap: 12 }}>
               <div style={{
                 width: 28, height: 28, borderRadius: "var(--ih-r-md)",
@@ -279,9 +315,13 @@ export default function AuditLensPage() {
                 <div style={{ fontSize: 13, fontWeight: 500 }}>{r.t}</div>
                 <div className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-50)", marginTop: 3, letterSpacing: "0.06em" }}>EFFORT {r.effort} {"·"} INVEST {fmtGBP(r.cost)}</div>
               </div>
-              <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => setToast({message: "Promoted to milestone", tone: "ok"})}><Icon name="arrowRight" size={11} /> Promote to milestone</button>
+              {promoted.has(promoKey) ? (
+                <span className="ih-pill ih-pill-ok" style={{ fontSize: 9 }}><Icon name="check" size={9} /> Milestone</span>
+              ) : (
+                <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => { setPromoted(prev => new Set(prev).add(promoKey)); setToast({ message: "Finding promoted to implementation roadmap", tone: "ok" }) }}><Icon name="arrowRight" size={11} /> Promote to milestone</button>
+              )}
             </div>
-          ))}
+          )})}
         </div>
       </section>
       {toast && <NotificationToast message={toast.message} tone={toast.tone as any} onDismiss={() => setToast(null)} />}
