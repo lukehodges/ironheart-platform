@@ -1,5 +1,7 @@
 "use client"
 
+import { useState } from "react"
+import { NotificationToast } from "@/components/shared"
 import { Icon } from "@/components/shell"
 
 /* -- Data ----------------------------------------------------------------- */
@@ -28,6 +30,8 @@ const SEV_TONE: Record<string, { c: string; bold?: boolean }> = {
 
 /* -- Page ----------------------------------------------------------------- */
 export default function AuditSystemLogPage() {
+  const [toast, setToast] = useState<{message: string; tone?: string} | null>(null)
+  const [filters, setFilters] = useState(["Severity ≥ INFO", "Last 24h", "All actors", "All entities"])
   return (
     <div style={{ padding: "20px 28px" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 16 }}>
@@ -60,7 +64,7 @@ export default function AuditSystemLogPage() {
         <span className="ih-pill" style={{ fontSize: 10 }}>Last 24h {"×"}</span>
         <span className="ih-pill" style={{ fontSize: 10 }}>All actors {"×"}</span>
         <span className="ih-pill" style={{ fontSize: 10 }}>All entities {"×"}</span>
-        <button className="ih-btn ih-btn-quiet ih-btn-sm" style={{ height: 22 }}><Icon name="plus" size={10} /> Add</button>
+        <button className="ih-btn ih-btn-quiet ih-btn-sm" style={{ height: 22 }} onClick={() => setToast({message: "Add filter dialog coming soon", tone: "info"})}><Icon name="plus" size={10} /> Add</button>
         <div style={{ flex: 1 }} />
         <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 10.5, color: "var(--ih-ink-50)" }}>
           <Icon name="sparkles" size={10} style={{ color: "var(--ih-accent)" }} />
@@ -101,6 +105,7 @@ export default function AuditSystemLogPage() {
           </tbody>
         </table>
       </div>
+      {toast && <NotificationToast message={toast.message} tone={toast.tone as any} onDismiss={() => setToast(null)} />}
     </div>
   )
 }

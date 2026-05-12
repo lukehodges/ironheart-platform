@@ -1,6 +1,8 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
+import { NotificationToast } from "@/components/shared"
 import { Icon } from "@/components/shell"
 
 const SEQUENCES = [
@@ -46,7 +48,9 @@ function channelIcon(ch: "mail" | "users" | "phone" | "chat") {
 }
 
 export default function OutreachPage() {
+  const router = useRouter()
   const [doneSet, setDoneSet] = useState<Set<number>>(new Set())
+  const [toast, setToast] = useState<{message: string; tone?: string} | null>(null)
 
   const markDone = (idx: number) => {
     setDoneSet((prev) => new Set(prev).add(idx))
@@ -67,8 +71,8 @@ export default function OutreachPage() {
           </h1>
         </div>
         <div style={{ display: "flex", gap: 6 }}>
-          <button className="ih-btn ih-btn-ghost ih-btn-sm"><Icon name="chart" size={12} /> Analytics</button>
-          <button className="ih-btn ih-btn-primary ih-btn-sm"><Icon name="plus" size={12} /> New sequence</button>
+          <button className="ih-btn ih-btn-ghost ih-btn-sm" onClick={() => router.push("/admin/analytics")}><Icon name="chart" size={12} /> Analytics</button>
+          <button className="ih-btn ih-btn-primary ih-btn-sm" onClick={() => setToast({message: "New sequence wizard coming soon", tone: "info"})}><Icon name="plus" size={12} /> New sequence</button>
         </div>
       </div>
 
@@ -121,7 +125,7 @@ export default function OutreachPage() {
               <span className="ih-eyebrow">Active</span>
               <h3 style={{ margin: "2px 0 0", fontSize: 15, fontWeight: 600 }}>Sequences</h3>
             </div>
-            <button className="ih-btn ih-btn-quiet ih-btn-sm">View all &rarr;</button>
+            <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => setToast({message: "All sequences view coming soon", tone: "info"})}>View all &rarr;</button>
           </div>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
             <thead>
@@ -145,7 +149,7 @@ export default function OutreachPage() {
                     </span>
                   </td>
                   <td style={{ padding: "10px 14px" }}>
-                    <button className="ih-btn ih-btn-quiet ih-btn-sm" style={{ height: 22, fontSize: 10 }}>
+                    <button className="ih-btn ih-btn-quiet ih-btn-sm" style={{ height: 22, fontSize: 10 }} onClick={() => setToast({message: seq.status === "active" ? "Sequence paused" : "Sequence resumed", tone: seq.status === "active" ? "warn" : "ok"})}>
                       {seq.status === "active" ? <><Icon name="pause" size={9} /> Pause</> : <><Icon name="play" size={9} /> Resume</>}
                     </button>
                   </td>
@@ -202,7 +206,7 @@ export default function OutreachPage() {
             <span className="ih-eyebrow">Incoming</span>
             <h3 style={{ margin: "2px 0 0", fontSize: 15, fontWeight: 600 }}>Recent replies</h3>
           </div>
-          <button className="ih-btn ih-btn-quiet ih-btn-sm">Open full inbox &rarr;</button>
+          <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => setToast({message: "Full inbox view coming soon", tone: "info"})}>Open full inbox &rarr;</button>
         </div>
         <div>
           {REPLIES.map((r, i) => (
@@ -242,7 +246,7 @@ export default function OutreachPage() {
             <span className="ih-eyebrow">Library</span>
             <h3 style={{ margin: "2px 0 0", fontSize: 15, fontWeight: 600 }}>Templates</h3>
           </div>
-          <button className="ih-btn ih-btn-ghost ih-btn-sm"><Icon name="plus" size={11} /> New template</button>
+          <button className="ih-btn ih-btn-ghost ih-btn-sm" onClick={() => setToast({message: "New template editor coming soon", tone: "info"})}><Icon name="plus" size={11} /> New template</button>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
           {TEMPLATES.map((t, i) => (
@@ -257,6 +261,7 @@ export default function OutreachPage() {
           ))}
         </div>
       </div>
+      {toast && <NotificationToast message={toast.message} tone={toast.tone as any} onDismiss={() => setToast(null)} />}
     </div>
   )
 }

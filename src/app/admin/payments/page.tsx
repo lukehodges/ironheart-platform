@@ -1,7 +1,9 @@
 "use client"
 
+import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { NotificationToast } from "@/components/shared"
 import { Icon } from "@/components/shell"
 
 /* ── Data ────────────────────────────────────────────────────────────────── */
@@ -41,6 +43,8 @@ const TH: React.CSSProperties = { textAlign: "left", padding: "10px 12px", fontW
 
 export default function PaymentsPage() {
   const router = useRouter()
+  const [toast, setToast] = useState<{message: string; tone?: string} | null>(null)
+  const [page, setPage] = useState(1)
   return (
     <div style={{ padding: "24px 28px 48px", maxWidth: 1400, margin: "0 auto" }}>
       {/* Header */}
@@ -52,7 +56,7 @@ export default function PaymentsPage() {
           </h1>
         </div>
         <div style={{ display: "flex", gap: 6 }}>
-          <button className="ih-btn ih-btn-ghost ih-btn-sm"><Icon name="download" size={12}/> Export</button>
+          <button className="ih-btn ih-btn-ghost ih-btn-sm" onClick={() => setToast({message: "Export started — check your downloads", tone: "ok"})}><Icon name="download" size={12}/> Export</button>
           <Link href="/admin/payments/new" className="ih-btn ih-btn-primary ih-btn-sm" style={{ textDecoration: "none" }}><Icon name="plus" size={12}/> New invoice</Link>
         </div>
       </div>
@@ -90,8 +94,8 @@ export default function PaymentsPage() {
               <h3 style={{ margin: "2px 0 0", fontSize: 15, fontWeight: 600 }}>Ledger</h3>
             </div>
             <div style={{ display: "flex", gap: 6 }}>
-              <button className="ih-btn ih-btn-quiet ih-btn-sm"><Icon name="filter" size={11}/> Filter</button>
-              <button className="ih-btn ih-btn-quiet ih-btn-sm"><Icon name="search" size={11}/></button>
+              <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => setToast({message: "Filter options coming soon", tone: "info"})}><Icon name="filter" size={11}/> Filter</button>
+              <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => setToast({message: "Search coming soon", tone: "info"})}><Icon name="search" size={11}/></button>
             </div>
           </div>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
@@ -133,8 +137,8 @@ export default function PaymentsPage() {
           <div style={{ padding: "10px 18px", borderTop: "1px solid var(--ih-line)", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11, color: "var(--ih-ink-50)" }}>
             <span>8 invoices</span>
             <div style={{ display: "flex", gap: 4 }}>
-              <button className="ih-btn ih-btn-quiet ih-btn-icon" style={{ height: 22, width: 22 }}><Icon name="chevronLeft" size={11}/></button>
-              <button className="ih-btn ih-btn-quiet ih-btn-icon" style={{ height: 22, width: 22 }}><Icon name="chevronRight" size={11}/></button>
+              <button className="ih-btn ih-btn-quiet ih-btn-icon" style={{ height: 22, width: 22 }} onClick={() => setPage(Math.max(1, page - 1))}><Icon name="chevronLeft" size={11}/></button>
+              <button className="ih-btn ih-btn-quiet ih-btn-icon" style={{ height: 22, width: 22 }} onClick={() => setPage(page + 1)}><Icon name="chevronRight" size={11}/></button>
             </div>
           </div>
         </div>
@@ -159,8 +163,8 @@ export default function PaymentsPage() {
                 </div>
                 <div style={{ fontSize: 11, color: "var(--ih-ink-50)", marginBottom: 10 }}>{item.lastChase}</div>
                 <div style={{ display: "flex", gap: 6 }}>
-                  <button className="ih-btn ih-btn-accent ih-btn-sm"><Icon name="mail" size={11}/> Chase</button>
-                  <button className="ih-btn ih-btn-ghost ih-btn-sm"><Icon name="phone" size={11}/> Call</button>
+                  <button className="ih-btn ih-btn-accent ih-btn-sm" onClick={() => setToast({message: "Chase email sent", tone: "ok"})}><Icon name="mail" size={11}/> Chase</button>
+                  <button className="ih-btn ih-btn-ghost ih-btn-sm" onClick={() => setToast({message: "Opening dialer...", tone: "info"})}><Icon name="phone" size={11}/> Call</button>
                 </div>
               </div>
             ))}
@@ -184,6 +188,7 @@ export default function PaymentsPage() {
           </div>
         </div>
       </div>
+      {toast && <NotificationToast message={toast.message} tone={toast.tone as any} onDismiss={() => setToast(null)} />}
     </div>
   )
 }

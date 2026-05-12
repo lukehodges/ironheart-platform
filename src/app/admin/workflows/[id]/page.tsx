@@ -1,6 +1,8 @@
 "use client"
 
+import { useState } from "react"
 import Link from "next/link"
+import { NotificationToast, ConfirmDialog } from "@/components/shared"
 import { Icon } from "@/components/shell"
 
 /* ── Demo Data ─────────────────────────────────────────────────────────── */
@@ -46,6 +48,9 @@ const RECENT_RUNS: readonly [string, "ok" | "fail", string, string][] = [
 /* ── Page ──────────────────────────────────────────────────────────────── */
 
 export default function WorkflowEditorPage() {
+  const [toast, setToast] = useState<{message: string; tone?: string} | null>(null)
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [confirmAction, setConfirmAction] = useState<{title: string; desc: string; label: string; action: () => void}>({title:"",desc:"",label:"",action:()=>{}})
   return (
     <div style={{ margin: "-24px -24px 0", height: "calc(100vh - 64px)", display: "flex", flexDirection: "column" }}>
       {/* ── Top bar ─────────────────────────────────────────────── */}
@@ -60,12 +65,12 @@ export default function WorkflowEditorPage() {
           <span className="ih-pill ih-pill-ok" style={{ marginLeft: 6 }}><span className="ih-dot ih-dot-ok"/> Active &middot; v3</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <button className="ih-btn ih-btn-quiet ih-btn-sm"><Icon name="play" size={11}/> Test run</button>
+          <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => setToast({message: "Test run started...", tone: "info"})}><Icon name="play" size={11}/> Test run</button>
           <Link href="/admin/workflows/wf-204/executions" className="ih-btn ih-btn-ghost ih-btn-sm" style={{ textDecoration: "none" }}><Icon name="clock" size={11}/> History</Link>
-          <button className="ih-btn ih-btn-quiet ih-btn-sm"><Icon name="folder" size={11}/> Clone</button>
-          <button className="ih-btn ih-btn-quiet ih-btn-sm" style={{ color: "var(--ih-danger)" }}><Icon name="x" size={11}/> Delete</button>
+          <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => setToast({message: "Workflow cloned", tone: "ok"})}><Icon name="folder" size={11}/> Clone</button>
+          <button className="ih-btn ih-btn-quiet ih-btn-sm" style={{ color: "var(--ih-danger)" }} onClick={() => { setConfirmAction({title:"Delete workflow?",desc:"This will permanently delete this workflow and all its execution history.",label:"Delete",action:() => { setConfirmOpen(false); setToast({message:"Workflow deleted",tone:"warn"}) }}); setConfirmOpen(true) }}><Icon name="x" size={11}/> Delete</button>
           <div style={{ width: 1, height: 20, background: "var(--ih-line)", margin: "0 4px" }}/>
-          <button className="ih-btn ih-btn-primary ih-btn-sm"><Icon name="check" size={11}/> Save &amp; publish</button>
+          <button className="ih-btn ih-btn-primary ih-btn-sm" onClick={() => setToast({message: "Workflow saved and published", tone: "ok"})}><Icon name="check" size={11}/> Save &amp; publish</button>
         </div>
       </div>
 
@@ -91,7 +96,7 @@ export default function WorkflowEditorPage() {
                 ["sparkles", "AI step"],
                 ["mail", "Notify"],
               ] as const).map(([i, l]) => (
-                <button key={l} className="ih-btn ih-btn-quiet ih-btn-sm" style={{ height: 26 }}><Icon name={i} size={11}/> {l}</button>
+                <button key={l} className="ih-btn ih-btn-quiet ih-btn-sm" style={{ height: 26 }} onClick={() => setToast({message: `Adding ${l} node...`, tone: "info"})}><Icon name={i} size={11}/> {l}</button>
               ))}
             </div>
             <div className="ih-card" style={{ display: "flex", padding: 4, gap: 2 }}>
@@ -198,7 +203,7 @@ export default function WorkflowEditorPage() {
                 <div className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-50)", marginBottom: 4 }}>client.name</div>
                 <input className="ih-input" defaultValue="Northwind Co."/>
               </div>
-              <button className="ih-btn ih-btn-primary ih-btn-sm" style={{ marginTop: 6 }}><Icon name="play" size={11}/> Run from here</button>
+              <button className="ih-btn ih-btn-primary ih-btn-sm" style={{ marginTop: 6 }} onClick={() => setToast({message: "Running from this node...", tone: "info"})}><Icon name="play" size={11}/> Run from here</button>
             </div>
           </div>
 
@@ -231,10 +236,12 @@ export default function WorkflowEditorPage() {
                 <span className="ih-mono" style={{ fontSize: 10.5 }}>{v}</span>
               </div>
             ))}
-            <button className="ih-btn ih-btn-quiet ih-btn-sm" style={{ marginTop: 10, color: "var(--ih-danger)", width: "100%" }}><Icon name="x" size={11}/> Delete node</button>
+            <button className="ih-btn ih-btn-quiet ih-btn-sm" style={{ marginTop: 10, color: "var(--ih-danger)", width: "100%" }} onClick={() => { setConfirmAction({title:"Delete node?",desc:"This will remove this node from the workflow.",label:"Delete",action:() => { setConfirmOpen(false); setToast({message:"Node deleted",tone:"warn"}) }}); setConfirmOpen(true) }}><Icon name="x" size={11}/> Delete node</button>
           </div>
         </div>
       </div>
+      {toast && <NotificationToast message={toast.message} tone={toast.tone as any} onDismiss={() => setToast(null)} />}
+      <ConfirmDialog open={confirmOpen} title={confirmAction.title} description={confirmAction.desc} confirmLabel={confirmAction.label} onConfirm={confirmAction.action} onCancel={() => setConfirmOpen(false)} />
     </div>
   )
 }

@@ -1,6 +1,8 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
+import { NotificationToast } from "@/components/shared"
 import { Icon } from "@/components/shell"
 
 /* ------------------------------------------------------------------ */
@@ -33,7 +35,7 @@ function OverviewTab() {
     <>
       {/* Connection map */}
       <div style={{ marginBottom: 24 }}>
-        <SectionHead eyebrow="Connection map" title="Everything tied to this client" action={<button className="ih-btn ih-btn-quiet ih-btn-sm">Expand {"→"}</button>} />
+        <SectionHead eyebrow="Connection map" title="Everything tied to this client" action={<button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => alert("Expanding connection map...")}>Expand {"→"}</button>} />
         <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 10 }}>
           {[
             { l: "Engagement", v: "Q2 retainer · sprint 4", icon: "handshake" as const, count: "1 active", tone: "accent" },
@@ -64,7 +66,7 @@ function OverviewTab() {
             <h3 style={{ margin: "4px 0 0", fontSize: 18, fontFamily: "var(--ih-font-serif)", letterSpacing: "-0.01em" }}>Q2 retainer {"·"} sprint 4 of 6</h3>
           </div>
           <div style={{ display: "flex", gap: 6 }}>
-            <button className="ih-btn ih-btn-ghost ih-btn-sm">Open workspace <Icon name="arrowUpRight" size={11} /></button>
+            <button className="ih-btn ih-btn-ghost ih-btn-sm" onClick={() => { window.location.href = "/admin/clients/c-northwind/overview" }}>Open workspace <Icon name="arrowUpRight" size={11} /></button>
           </div>
         </div>
         <div style={{ padding: 20 }}>
@@ -120,7 +122,7 @@ function OverviewTab() {
         <div className="ih-card">
           <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--ih-line)", display: "flex", justifyContent: "space-between" }}>
             <div><span className="ih-eyebrow">Upcoming bookings</span></div>
-            <button className="ih-btn ih-btn-quiet ih-btn-sm">All 14 {"→"}</button>
+            <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => alert("See Bookings tab")}>All 14 {"→"}</button>
           </div>
           {([
             ["Tue 13", "11:30", "Sprint review", "30m · Zoom", "info"],
@@ -143,7 +145,7 @@ function OverviewTab() {
         <div className="ih-card">
           <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--ih-line)", display: "flex", justifyContent: "space-between" }}>
             <div><span className="ih-eyebrow">Recent invoices</span></div>
-            <button className="ih-btn ih-btn-quiet ih-btn-sm">All 8 {"→"}</button>
+            <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => alert("See Invoices tab")}>All 8 {"→"}</button>
           </div>
           {([
             ["/inv_2041", "Q2 · M2 retainer", "£14,200", "Apr 28", "warn", "sent"],
@@ -168,7 +170,7 @@ function OverviewTab() {
       <div className="ih-card">
         <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--ih-line)", display: "flex", justifyContent: "space-between" }}>
           <div><span className="ih-eyebrow">Workflows attached {"·"} this client</span></div>
-          <button className="ih-btn ih-btn-quiet ih-btn-sm">Attach more {"→"}</button>
+          <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => alert("Attach workflow dialog coming soon")}>Attach more {"→"}</button>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 0 }}>
           {([
@@ -237,7 +239,7 @@ function EngagementsTab() {
       <SectionHead
         eyebrow="engagements"
         title="All engagements for Northwind Co."
-        action={<Btn accent sm><Icon name="plus" size={11} /> New engagement</Btn>}
+        action={<Btn accent sm onClick={() => alert("New engagement wizard coming soon")}><Icon name="plus" size={11} /> New engagement</Btn>}
       />
       <div style={{ display: "grid", gap: 12 }}>
         {engagements.map((eng) => (
@@ -302,7 +304,7 @@ function BookingsTab() {
       <SectionHead
         eyebrow="bookings"
         title="Sessions for Northwind Co."
-        action={<Btn accent sm><Icon name="plus" size={11} /> Book new session</Btn>}
+        action={<Btn accent sm onClick={() => { window.location.href = "/admin/bookings/new" }}><Icon name="plus" size={11} /> Book new session</Btn>}
       />
       <div style={{ display: "flex", gap: 4, marginBottom: 16 }}>
         {(["upcoming", "past"] as const).map((f) => (
@@ -360,7 +362,7 @@ function DealsTab() {
       <SectionHead
         eyebrow="pipeline"
         title="Deals for Northwind Co."
-        action={<Btn accent sm><Icon name="plus" size={11} /> New deal</Btn>}
+        action={<Btn accent sm onClick={() => { window.location.href = "/admin/pipeline/new" }}><Icon name="plus" size={11} /> New deal</Btn>}
       />
       <div className="ih-card" style={{ padding: 0 }}>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 110px 90px 70px 1fr", gap: 12, padding: "10px 16px", borderBottom: "1px solid var(--ih-line)" }}>
@@ -445,7 +447,7 @@ function WorkflowsTab() {
       <SectionHead
         eyebrow="workflows"
         title="Workflows attached to Northwind Co."
-        action={<Btn accent sm><Icon name="plus" size={11} /> Attach workflow</Btn>}
+        action={<Btn accent sm onClick={() => alert("Attach workflow dialog coming soon")}><Icon name="plus" size={11} /> Attach workflow</Btn>}
       />
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
         {workflows.map((wf) => (
@@ -514,8 +516,8 @@ function DocumentsTab() {
         title="Files for Northwind Co."
         action={
           <div style={{ display: "flex", gap: 6 }}>
-            <Btn sm ghost><Icon name="folder" size={11} /> Open Drive folder</Btn>
-            <Btn sm accent><Icon name="plus" size={11} /> Upload</Btn>
+            <Btn sm ghost onClick={() => alert("Opening Google Drive folder...")}><Icon name="folder" size={11} /> Open Drive folder</Btn>
+            <Btn sm accent onClick={() => alert("Upload dialog coming soon")}><Icon name="plus" size={11} /> Upload</Btn>
           </div>
         }
       />
@@ -662,7 +664,7 @@ function TeamTab() {
       <SectionHead
         eyebrow="team"
         title="People on Northwind Co."
-        action={<Btn accent sm><Icon name="plus" size={11} /> Add contact</Btn>}
+        action={<Btn accent sm onClick={() => alert("Add contact dialog coming soon")}><Icon name="plus" size={11} /> Add contact</Btn>}
       />
 
       {/* Client team */}
@@ -733,7 +735,9 @@ function TeamTab() {
 /* ------------------------------------------------------------------ */
 
 export default function ClientHubPage() {
+  const router = useRouter()
   const [activeTab, setActiveTab] = useState(0)
+  const [toast, setToast] = useState<{message: string; tone?: string} | null>(null)
   const tabs = ["Overview", "Engagements · 1", "Bookings · 14", "Deals · 2", "Invoices · 8", "Workflows · 3", "Documents", "Activity", "Team"]
 
   const tabContent = [
@@ -809,7 +813,7 @@ export default function ClientHubPage() {
             <div className="ih-card" style={{ marginBottom: 12, background: "var(--ih-surface)" }}>
               <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--ih-line)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <span className="ih-eyebrow">Contacts {"·"} 4</span>
-                <button className="ih-btn ih-btn-quiet ih-btn-sm" style={{ height: 22, padding: "0 6px" }}><Icon name="plus" size={11} /></button>
+                <button className="ih-btn ih-btn-quiet ih-btn-sm" style={{ height: 22, padding: "0 6px" }} onClick={() => alert("Add contact dialog coming soon")}><Icon name="plus" size={11} /></button>
               </div>
               <div>
                 {([
@@ -840,8 +844,8 @@ export default function ClientHubPage() {
                 Sprint 4 is <strong style={{ color: "#fff" }}>78% complete</strong> and 6h over forecast. Mira&apos;s last touch was a NPS 9 &mdash; good renewal window. Outstanding invoice is 14 days old; I drafted a friendly chase ready to send.
               </p>
               <div style={{ display: "flex", gap: 6, marginTop: 12 }}>
-                <button className="ih-btn ih-btn-sm" style={{ background: "rgba(255,255,255,0.15)", color: "#fff" }}>Send chase</button>
-                <button className="ih-btn ih-btn-sm" style={{ background: "transparent", color: "rgba(255,255,255,0.7)", borderColor: "rgba(255,255,255,0.2)" }}>Draft renewal</button>
+                <button className="ih-btn ih-btn-sm" style={{ background: "rgba(255,255,255,0.15)", color: "#fff" }} onClick={() => setToast({message: "Chase email sent to Mira", tone: "ok"})}>Send chase</button>
+                <button className="ih-btn ih-btn-sm" style={{ background: "transparent", color: "rgba(255,255,255,0.7)", borderColor: "rgba(255,255,255,0.2)" }} onClick={() => setToast({message: "AI is drafting renewal proposal...", tone: "info"})}>Draft renewal</button>
               </div>
             </div>
 
@@ -886,6 +890,7 @@ export default function ClientHubPage() {
           </div>
         )}
       </div>
+      {toast && <NotificationToast message={toast.message} tone={toast.tone as any} onDismiss={() => setToast(null)} />}
     </div>
   )
 }

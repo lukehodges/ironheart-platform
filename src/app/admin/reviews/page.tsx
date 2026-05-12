@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { NotificationToast, ConfirmDialog } from "@/components/shared"
 import { Icon } from "@/components/shell"
 
 const FILTERS = ["All", "Published", "Pending Review", "Flagged", "Responded"] as const
@@ -56,6 +57,9 @@ function sentimentColor(s: "Positive" | "Neutral" | "Negative") {
 
 export default function ReviewsPage() {
   const [activeFilter, setActiveFilter] = useState<string>("All")
+  const [toast, setToast] = useState<{message: string; tone?: string} | null>(null)
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [confirmAction, setConfirmAction] = useState<{title: string; desc: string; label: string; action: () => void}>({title:"",desc:"",label:"",action:()=>{}})
 
   const filtered = REVIEWS.filter((r) => {
     if (activeFilter === "All") return true
@@ -77,8 +81,8 @@ export default function ReviewsPage() {
           </h1>
         </div>
         <div style={{ display: "flex", gap: 6 }}>
-          <button className="ih-btn ih-btn-ghost ih-btn-sm"><Icon name="download" size={12} /> Export</button>
-          <button className="ih-btn ih-btn-primary ih-btn-sm"><Icon name="mail" size={12} /> Request reviews</button>
+          <button className="ih-btn ih-btn-ghost ih-btn-sm" onClick={() => setToast({message: "Export started — check your downloads", tone: "ok"})}><Icon name="download" size={12} /> Export</button>
+          <button className="ih-btn ih-btn-primary ih-btn-sm" onClick={() => setToast({message: "Review requests sent to all recent clients", tone: "ok"})}><Icon name="mail" size={12} /> Request reviews</button>
         </div>
       </div>
 
@@ -167,17 +171,17 @@ export default function ReviewsPage() {
                   )}
                   <div style={{ flex: 1 }} />
                   {r.status !== "Published" && (
-                    <button className="ih-btn ih-btn-primary ih-btn-sm" style={{ height: 24, fontSize: 10.5 }}>
+                    <button className="ih-btn ih-btn-primary ih-btn-sm" style={{ height: 24, fontSize: 10.5 }} onClick={() => setToast({message: "Review published", tone: "ok"})}>
                       <Icon name="check" size={10} /> Publish
                     </button>
                   )}
                   {!r.responded && (
-                    <button className="ih-btn ih-btn-ghost ih-btn-sm" style={{ height: 24, fontSize: 10.5 }}>
+                    <button className="ih-btn ih-btn-ghost ih-btn-sm" style={{ height: 24, fontSize: 10.5 }} onClick={() => setToast({message: "Response editor coming soon", tone: "info"})}>
                       <Icon name="chat" size={10} /> Respond
                     </button>
                   )}
                   {r.status !== "Flagged" && (
-                    <button className="ih-btn ih-btn-quiet ih-btn-sm" style={{ height: 24, fontSize: 10.5 }}>
+                    <button className="ih-btn ih-btn-quiet ih-btn-sm" style={{ height: 24, fontSize: 10.5 }} onClick={() => setToast({message: "Review flagged for attention", tone: "warn"})}>
                       <Icon name="flag" size={10} /> Flag
                     </button>
                   )}
@@ -195,7 +199,7 @@ export default function ReviewsPage() {
             <span className="ih-eyebrow">Automation</span>
             <h3 style={{ margin: "2px 0 0", fontSize: 15, fontWeight: 600 }}>Review collection settings</h3>
           </div>
-          <button className="ih-btn ih-btn-ghost ih-btn-sm"><Icon name="sliders" size={12} /> Configure</button>
+          <button className="ih-btn ih-btn-ghost ih-btn-sm" onClick={() => setToast({message: "Review settings dialog coming soon", tone: "info"})}><Icon name="sliders" size={12} /> Configure</button>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14 }}>
           <div style={{ padding: 14, background: "var(--ih-surface-2)", borderRadius: 10 }}>
@@ -221,6 +225,8 @@ export default function ReviewsPage() {
           </div>
         </div>
       </div>
+      {toast && <NotificationToast message={toast.message} tone={toast.tone as any} onDismiss={() => setToast(null)} />}
+      <ConfirmDialog open={confirmOpen} title={confirmAction.title} description={confirmAction.desc} confirmLabel={confirmAction.label} onConfirm={confirmAction.action} onCancel={() => setConfirmOpen(false)} />
     </div>
   )
 }

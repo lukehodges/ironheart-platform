@@ -121,6 +121,7 @@ export function ShellTopbar({
           className="ih-btn ih-btn-quiet ih-btn-icon"
           title="Inbox"
           style={{ position: "relative" }}
+          onClick={handleSearchClick}
         >
           <Icon name="inbox" size={15} />
           <span
@@ -135,7 +136,7 @@ export function ShellTopbar({
             }}
           />
         </button>
-        <button className="ih-btn ih-btn-quiet ih-btn-icon" title="Notifications">
+        <button className="ih-btn ih-btn-quiet ih-btn-icon" title="Notifications" onClick={handleSearchClick}>
           <Icon name="bell" size={15} />
         </button>
         <div

@@ -1,10 +1,17 @@
 "use client"
 
+import { useState } from "react"
+import { useRouter } from "next/navigation"
+import { NotificationToast, ConfirmDialog } from "@/components/shared"
 import { Icon } from "@/components/shell"
 
 /* ── Client Portal ───────────────────────────────────────────────────────── */
 
 export default function PortalPage() {
+  const router = useRouter()
+  const [toast, setToast] = useState<{message: string; tone?: string} | null>(null)
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [confirmAction, setConfirmAction] = useState<{title: string; desc: string; label: string; action: () => void}>({title:"",desc:"",label:"",action:()=>{}})
   return (
     <div style={{ padding: "32px 40px 48px", maxWidth: 1200, margin: "0 auto" }}>
       {/* Welcome greeting */}
@@ -49,7 +56,7 @@ export default function PortalPage() {
                 <div className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-40)", marginTop: 2 }}>{sub}</div>
               </div>
               <span className="ih-mono" style={{ fontSize: 11, color: "var(--ih-ink-50)" }}>{when}</span>
-              <button className="ih-btn ih-btn-ghost ih-btn-sm">{tone === "accent" ? "Review \u2192" : "Open"}</button>
+              <button className="ih-btn ih-btn-ghost ih-btn-sm" onClick={() => router.push("/dashboard/deliverables")}>{tone === "accent" ? "Review \u2192" : "Open"}</button>
             </div>
           ))}
         </div>
@@ -81,14 +88,16 @@ export default function PortalPage() {
                 </div>
                 <div className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-40)" }}>{sub}</div>
                 <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
-                  <button className="ih-btn ih-btn-accent ih-btn-sm">Approve</button>
-                  <button className="ih-btn ih-btn-quiet ih-btn-sm">Comment</button>
+                  <button className="ih-btn ih-btn-accent ih-btn-sm" onClick={() => { setConfirmAction({title:"Approve this item?",desc:"This will mark the item as approved.",label:"Approve",action:() => { setConfirmOpen(false); setToast({message:"Approved successfully",tone:"ok"}) }}); setConfirmOpen(true) }}>Approve</button>
+                  <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => setToast({message: "Comment dialog coming soon", tone: "info"})}>Comment</button>
                 </div>
               </div>
             ))}
           </div>
         </div>
       </div>
+      {toast && <NotificationToast message={toast.message} tone={toast.tone as any} onDismiss={() => setToast(null)} />}
+      <ConfirmDialog open={confirmOpen} title={confirmAction.title} description={confirmAction.desc} confirmLabel={confirmAction.label} onConfirm={confirmAction.action} onCancel={() => setConfirmOpen(false)} />
     </div>
   )
 }

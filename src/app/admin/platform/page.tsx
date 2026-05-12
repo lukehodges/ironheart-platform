@@ -1,6 +1,8 @@
 "use client"
 
 import { useState, useMemo } from "react"
+import { useRouter } from "next/navigation"
+import { NotificationToast } from "@/components/shared"
 import { Icon } from "@/components/shell"
 
 const TENANT_TABS = ["All 47", "Trialing 6", "At risk 4", "Paying 37"]
@@ -19,7 +21,9 @@ const TENANTS = [
 /* ── Platform Admin ──────────────────────────────────────────────────────── */
 
 export default function PlatformPage() {
+  const router = useRouter()
   const [tenantTab, setTenantTab] = useState(0)
+  const [toast, setToast] = useState<{message: string; tone?: string} | null>(null)
 
   const filteredTenants = useMemo(() => {
     switch (tenantTab) {
@@ -39,9 +43,9 @@ export default function PlatformPage() {
           <h1 className="ih-serif" style={{ margin: 0, fontSize: 32 }}>47 tenants. <span className="ih-italic-red">$48.2k</span> MRR.</h1>
         </div>
         <div style={{ display: "flex", gap: 4 }}>
-          <button className="ih-btn ih-btn-ghost ih-btn-sm">All plans</button>
-          <button className="ih-btn ih-btn-ghost ih-btn-sm">All regions</button>
-          <button className="ih-btn ih-btn-ghost ih-btn-sm">Health: any</button>
+          <button className="ih-btn ih-btn-ghost ih-btn-sm" onClick={() => setToast({message: "Plan filter coming soon", tone: "info"})}>All plans</button>
+          <button className="ih-btn ih-btn-ghost ih-btn-sm" onClick={() => setToast({message: "Region filter coming soon", tone: "info"})}>All regions</button>
+          <button className="ih-btn ih-btn-ghost ih-btn-sm" onClick={() => setToast({message: "Health filter coming soon", tone: "info"})}>Health: any</button>
         </div>
       </div>
 
@@ -73,8 +77,8 @@ export default function PlatformPage() {
             ))}
           </div>
           <div style={{ display: "flex", gap: 6 }}>
-            <button className="ih-btn ih-btn-quiet ih-btn-sm"><Icon name="filter" size={11}/> Filters</button>
-            <button className="ih-btn ih-btn-quiet ih-btn-sm"><Icon name="sliders" size={11}/> Columns</button>
+            <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => setToast({message: "Advanced filters coming soon", tone: "info"})}><Icon name="filter" size={11}/> Filters</button>
+            <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => setToast({message: "Column configuration coming soon", tone: "info"})}><Icon name="sliders" size={11}/> Columns</button>
           </div>
         </div>
 
@@ -170,12 +174,13 @@ export default function PlatformPage() {
                   <div style={{ fontSize: 12, fontWeight: 500 }}>{n}</div>
                   <div className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-40)" }}>{sub}</div>
                 </div>
-                <button className="ih-btn ih-btn-quiet ih-btn-sm">Open →</button>
+                <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => setToast({message: "Opening tenant detail...", tone: "info"})}>Open →</button>
               </div>
             ))}
           </div>
         </div>
       </div>
+      {toast && <NotificationToast message={toast.message} tone={toast.tone as any} onDismiss={() => setToast(null)} />}
     </div>
   )
 }

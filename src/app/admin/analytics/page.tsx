@@ -1,5 +1,8 @@
 "use client"
 
+import { useState } from "react"
+import { useRouter } from "next/navigation"
+import { NotificationToast } from "@/components/shared"
 import { Icon } from "@/components/shell"
 
 /* ── Data ────────────────────────────────────────────────────────────────── */
@@ -44,6 +47,8 @@ const TH: React.CSSProperties = { textAlign: "left", padding: "10px 12px", fontW
 /* ── Page ─────────────────────────────────────────────────────────────────── */
 
 export default function AnalyticsPage() {
+  const router = useRouter()
+  const [toast, setToast] = useState<{message: string; tone?: string} | null>(null)
   const maxRev = Math.max(...REVENUE_MONTHS.map(m => m.paid + m.outstanding))
 
   return (
@@ -57,8 +62,8 @@ export default function AnalyticsPage() {
           </h1>
         </div>
         <div style={{ display: "flex", gap: 6 }}>
-          <button className="ih-btn ih-btn-ghost ih-btn-sm"><Icon name="calendar" size={12}/> May 2026</button>
-          <button className="ih-btn ih-btn-ghost ih-btn-sm"><Icon name="download" size={12}/> Export</button>
+          <button className="ih-btn ih-btn-ghost ih-btn-sm" onClick={() => setToast({message: "Date picker coming soon", tone: "info"})}><Icon name="calendar" size={12}/> May 2026</button>
+          <button className="ih-btn ih-btn-ghost ih-btn-sm" onClick={() => setToast({message: "Export started — check your downloads", tone: "ok"})}><Icon name="download" size={12}/> Export</button>
         </div>
       </div>
 
@@ -177,7 +182,7 @@ export default function AnalyticsPage() {
             <span className="ih-eyebrow">Leaderboard</span>
             <h3 style={{ margin: "2px 0 0", fontSize: 15, fontWeight: 600 }}>Top 5 clients by revenue</h3>
           </div>
-          <button className="ih-btn ih-btn-quiet ih-btn-sm">View all &rarr;</button>
+          <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => router.push("/admin/customers")}>View all &rarr;</button>
         </div>
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
           <thead>
@@ -223,6 +228,7 @@ export default function AnalyticsPage() {
           </tbody>
         </table>
       </div>
+      {toast && <NotificationToast message={toast.message} tone={toast.tone as any} onDismiss={() => setToast(null)} />}
     </div>
   )
 }

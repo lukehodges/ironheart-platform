@@ -1,6 +1,8 @@
 "use client"
 
+import { useState } from "react"
 import Link from "next/link"
+import { NotificationToast } from "@/components/shared"
 import { Icon, type IconName } from "@/components/shell"
 
 /* ── Data ───────────────────────────────────────────────────────────────── */
@@ -39,6 +41,7 @@ const STAGE_TONES: Tone[] = ["muted", "info", "warn", "ok"]
 /* ── Page ───────────────────────────────────────────────────────────────── */
 
 export default function PipelinePage() {
+  const [toast, setToast] = useState<{message: string; tone?: string} | null>(null)
   return (
     <div style={{ margin: "-24px -24px 0" }}>
       {/* Header */}
@@ -54,9 +57,9 @@ export default function PipelinePage() {
             <span className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ok)" }}>+12%</span>
           </div>
           <div style={{ display: "flex", gap: 4 }}>
-            <button className="ih-btn ih-btn-ghost ih-btn-sm"><Icon name="filter" size={12}/> All sources</button>
-            <button className="ih-btn ih-btn-ghost ih-btn-sm">Assigned to me</button>
-            <button className="ih-btn ih-btn-ghost ih-btn-sm">Group by</button>
+            <button className="ih-btn ih-btn-ghost ih-btn-sm" onClick={() => setToast({message: "Filter by source coming soon", tone: "info"})}><Icon name="filter" size={12}/> All sources</button>
+            <button className="ih-btn ih-btn-ghost ih-btn-sm" onClick={() => setToast({message: "Showing deals assigned to you", tone: "ok"})}>Assigned to me</button>
+            <button className="ih-btn ih-btn-ghost ih-btn-sm" onClick={() => setToast({message: "Group by options coming soon", tone: "info"})}>Group by</button>
           </div>
         </div>
       </div>
@@ -71,7 +74,7 @@ export default function PipelinePage() {
                 <strong style={{ fontSize: 12.5 }}>{s.name}</strong>
                 <span className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-40)" }}>· {s.count}</span>
               </span>
-              <button className="ih-btn ih-btn-quiet" style={{ width: 20, height: 20, padding: 0 }}><Icon name="plus" size={11}/></button>
+              <button className="ih-btn ih-btn-quiet" style={{ width: 20, height: 20, padding: 0 }} onClick={() => setToast({message: "Add deal dialog coming soon", tone: "info"})}><Icon name="plus" size={11}/></button>
             </div>
             <div className="ih-serif" style={{ fontSize: 22, lineHeight: 1 }}>{s.value}</div>
           </div>
@@ -120,6 +123,7 @@ export default function PipelinePage() {
           </div>
         ))}
       </div>
+      {toast && <NotificationToast message={toast.message} tone={toast.tone as any} onDismiss={() => setToast(null)} />}
     </div>
   )
 }

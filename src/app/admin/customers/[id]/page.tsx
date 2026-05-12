@@ -2,6 +2,8 @@
 
 import { useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { NotificationToast, ConfirmDialog } from "@/components/shared"
 import { Icon } from "@/components/shell"
 
 /* ------------------------------------------------------------------ */
@@ -154,7 +156,7 @@ function BookingsTab() {
   ]
   return (
     <div>
-      <SectionHead eyebrow="bookings" title="All bookings for Mira Sato" action={<Btn sm accent><Icon name="plus" size={11} /> Book session</Btn>} />
+      <SectionHead eyebrow="bookings" title="All bookings for Mira Sato" action={<Btn sm accent onClick={() => { window.location.href = "/admin/bookings/new" }}><Icon name="plus" size={11} /> Book session</Btn>} />
       <div className="ih-card" style={{ padding: 0 }}>
         <div style={{ display: "grid", gridTemplateColumns: "100px 60px 1fr 60px 80px", gap: 12, padding: "10px 16px", borderBottom: "1px solid var(--ih-line)" }}>
           {["Date", "Time", "Title", "Dur.", "Type"].map(h => (
@@ -251,7 +253,7 @@ function NotesTab() {
           {(["GENERAL", "PREFERENCE", "FOLLOWUP"] as const).map(t => (
             <Btn key={t} sm ghost={noteType !== t} accent={noteType === t} onClick={() => setNoteType(t)} style={noteType === t ? {} : undefined}>{t}</Btn>
           ))}
-          <Btn sm accent><Icon name="plus" size={11} /> Save note</Btn>
+          <Btn sm accent onClick={() => alert("Note saved")}><Icon name="plus" size={11} /> Save note</Btn>
         </div>
       </div>
 
@@ -276,7 +278,11 @@ function NotesTab() {
 /* ------------------------------------------------------------------ */
 
 export default function CustomerDetailPage() {
+  const router = useRouter()
   const [activeTab, setActiveTab] = useState(0)
+  const [toast, setToast] = useState<{message: string; tone?: string} | null>(null)
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [confirmAction, setConfirmAction] = useState<{title: string; desc: string; label: string; action: () => void}>({title:"",desc:"",label:"",action:()=>{}})
   const tabs = ["Overview", "Engagements", "Bookings", "Invoices", "Forms", "Notes"]
 
   const customer = {
@@ -336,10 +342,10 @@ export default function CustomerDetailPage() {
         </div>
         {/* Actions */}
         <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
-          <Btn sm ghost><Icon name="user" size={11} /> Edit</Btn>
-          <Btn sm ghost>Add Note</Btn>
-          <Btn sm ghost>Merge</Btn>
-          <Btn sm ghost style={{ color: "var(--ih-warn)" }}>Anonymise</Btn>
+          <Btn sm ghost onClick={() => setToast({message: "Edit mode coming soon", tone: "info"})}><Icon name="user" size={11} /> Edit</Btn>
+          <Btn sm ghost onClick={() => setActiveTab(5)}>Add Note</Btn>
+          <Btn sm ghost onClick={() => { setConfirmAction({title:"Merge customer?",desc:"This will merge this customer record into another. This action cannot be undone.",label:"Merge",action:() => { setConfirmOpen(false); setToast({message:"Customer merge initiated",tone:"ok"}) }}); setConfirmOpen(true) }}>Merge</Btn>
+          <Btn sm ghost style={{ color: "var(--ih-warn)" }} onClick={() => { setConfirmAction({title:"Anonymise customer?",desc:"This will permanently remove all personal data for this customer. This action cannot be undone.",label:"Anonymise",action:() => { setConfirmOpen(false); setToast({message:"Customer data anonymised",tone:"warn"}) }}); setConfirmOpen(true) }}>Anonymise</Btn>
         </div>
       </div>
 
@@ -408,7 +414,7 @@ export default function CustomerDetailPage() {
             <div className="ih-card" style={{ background: "var(--ih-surface)" }}>
               <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--ih-line)", display: "flex", justifyContent: "space-between" }}>
                 <span className="ih-eyebrow">Tags</span>
-                <button className="ih-btn ih-btn-quiet ih-btn-sm" style={{ height: 22, padding: "0 6px" }}><Icon name="plus" size={11} /></button>
+                <button className="ih-btn ih-btn-quiet ih-btn-sm" style={{ height: 22, padding: "0 6px" }} onClick={() => setToast({message: "Add tag coming soon", tone: "info"})}><Icon name="plus" size={11} /></button>
               </div>
               <div style={{ padding: "12px 14px", display: "flex", gap: 6, flexWrap: "wrap" }}>
                 {["Founder", "Primary contact", "High NPS", "Northwind"].map(t => (
@@ -419,6 +425,8 @@ export default function CustomerDetailPage() {
           </div>
         )}
       </div>
+      {toast && <NotificationToast message={toast.message} tone={toast.tone as any} onDismiss={() => setToast(null)} />}
+      <ConfirmDialog open={confirmOpen} title={confirmAction.title} description={confirmAction.desc} confirmLabel={confirmAction.label} onConfirm={confirmAction.action} onCancel={() => setConfirmOpen(false)} />
     </div>
   )
 }

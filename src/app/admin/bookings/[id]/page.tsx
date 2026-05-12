@@ -1,6 +1,8 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
+import { NotificationToast, ConfirmDialog } from "@/components/shared"
 import Link from "next/link"
 import { Icon } from "@/components/shell"
 
@@ -30,6 +32,10 @@ function Btn({ children, accent, ghost, sm, onClick, style }: { children: React.
 /* ------------------------------------------------------------------ */
 
 export default function BookingDetailPage() {
+  const router = useRouter()
+  const [toast, setToast] = useState<{message: string; tone?: string} | null>(null)
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [confirmAction, setConfirmAction] = useState<{title: string; desc: string; label: string; action: () => void}>({title:"",desc:"",label:"",action:()=>{}})
   const [notes, setNotes] = useState("Mira mentioned wanting to demo the new Stripe integration to the wider team. Prepare 3-slide deck covering sync reliability metrics.")
 
   /* Demo data */
@@ -74,9 +80,9 @@ export default function BookingDetailPage() {
         </div>
         {/* Actions */}
         <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
-          <Btn sm ghost>Reschedule</Btn>
-          <Btn sm ghost>Cancel</Btn>
-          <Btn sm accent>Mark Complete</Btn>
+          <Btn sm ghost onClick={() => setToast({message: "Opening reschedule picker...", tone: "info"})}>Reschedule</Btn>
+          <Btn sm ghost onClick={() => { setConfirmAction({title:"Cancel booking?",desc:"This will notify all attendees.",label:"Cancel booking",action:() => { setConfirmOpen(false); setToast({message:"Booking cancelled",tone:"warn"}) }}); setConfirmOpen(true) }}>Cancel</Btn>
+          <Btn sm accent onClick={() => { setConfirmAction({title:"Mark complete?",desc:"This will mark the booking as completed.",label:"Mark Complete",action:() => { setConfirmOpen(false); setToast({message:"Booking marked complete",tone:"ok"}) }}); setConfirmOpen(true) }}>Mark Complete</Btn>
         </div>
       </div>
 
@@ -109,7 +115,7 @@ export default function BookingDetailPage() {
           </div>
 
           {/* Attendees */}
-          <SectionHead eyebrow="attendees" title={`People attending (${booking.attendees.length})`} action={<Btn sm ghost><Icon name="plus" size={11} /> Add</Btn>} />
+          <SectionHead eyebrow="attendees" title={`People attending (${booking.attendees.length})`} action={<Btn sm ghost onClick={() => setToast({message: "Add attendee dialog coming soon", tone: "info"})}><Icon name="plus" size={11} /> Add</Btn>} />
           <div className="ih-card" style={{ padding: 0, marginBottom: 24 }}>
             {booking.attendees.map((a, i) => (
               <div key={a.name} style={{ display: "grid", gridTemplateColumns: "auto 1fr auto", gap: 14, padding: "12px 16px", borderTop: i === 0 ? "0" : "1px solid var(--ih-line)", alignItems: "center" }}>
@@ -195,8 +201,8 @@ export default function BookingDetailPage() {
               I drafted a <strong style={{ color: "#fff" }}>discovery script</strong> based on last sprint&apos;s retro notes. Mira flagged scope creep on Portal v2 &mdash; suggest addressing budget impact early. Sprint 4 is 78% done; Stripe sync shipped clean.
             </p>
             <div style={{ display: "flex", gap: 6, marginTop: 12 }}>
-              <button className="ih-btn ih-btn-sm" style={{ background: "rgba(255,255,255,0.15)", color: "#fff" }}>View script</button>
-              <button className="ih-btn ih-btn-sm" style={{ background: "transparent", color: "rgba(255,255,255,0.7)", borderColor: "rgba(255,255,255,0.2)" }}>Talking points</button>
+              <button className="ih-btn ih-btn-sm" style={{ background: "rgba(255,255,255,0.15)", color: "#fff" }} onClick={() => setToast({message: "Opening discovery script...", tone: "info"})}>View script</button>
+              <button className="ih-btn ih-btn-sm" style={{ background: "transparent", color: "rgba(255,255,255,0.7)", borderColor: "rgba(255,255,255,0.2)" }} onClick={() => setToast({message: "AI is generating talking points...", tone: "info"})}>Talking points</button>
             </div>
           </div>
 
@@ -218,6 +224,8 @@ export default function BookingDetailPage() {
           </div>
         </div>
       </div>
+      {toast && <NotificationToast message={toast.message} tone={toast.tone as any} onDismiss={() => setToast(null)} />}
+      <ConfirmDialog open={confirmOpen} title={confirmAction.title} description={confirmAction.desc} confirmLabel={confirmAction.label} onConfirm={confirmAction.action} onCancel={() => setConfirmOpen(false)} />
     </div>
   )
 }

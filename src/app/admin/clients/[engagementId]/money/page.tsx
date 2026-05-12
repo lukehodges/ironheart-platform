@@ -1,5 +1,8 @@
 "use client"
 
+import { useState } from "react"
+import { useRouter } from "next/navigation"
+import { NotificationToast } from "@/components/shared"
 import { Icon } from "@/components/shell"
 
 /* -- Data ----------------------------------------------------------------- */
@@ -20,6 +23,8 @@ const INVOICES = [
 
 /* -- Page ----------------------------------------------------------------- */
 export default function MoneyPage() {
+  const router = useRouter()
+  const [toast, setToast] = useState<{message: string; tone?: string} | null>(null)
   return (
     <div style={{ padding: "20px 28px" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 18 }}>
@@ -50,8 +55,8 @@ export default function MoneyPage() {
             <div style={{ fontSize: 14, fontWeight: 500 }}>Map workflows, audit, deliver 3-mo roadmap</div>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
-            <button className="ih-btn ih-btn-quiet ih-btn-sm"><Icon name="eye" size={11} /> View</button>
-            <button className="ih-btn ih-btn-quiet ih-btn-sm"><Icon name="plus" size={11} /> Revise</button>
+            <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => router.push("/admin/clients/c-northwind/proposals/prop-v2")}><Icon name="eye" size={11} /> View</button>
+            <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => setToast({message: "Creating proposal revision...", tone: "info"})}><Icon name="plus" size={11} /> Revise</button>
           </div>
         </div>
         {/* Payment schedule horizontal */}
@@ -112,7 +117,7 @@ export default function MoneyPage() {
       <div className="ih-card" style={{ overflow: "hidden" }}>
         <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--ih-line)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div className="ih-eyebrow">Invoices {"·"} 3</div>
-          <button className="ih-btn ih-btn-quiet ih-btn-sm"><Icon name="download" size={11} /> Export CSV</button>
+          <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => setToast({message: "Export started — check your downloads", tone: "ok"})}><Icon name="download" size={11} /> Export CSV</button>
         </div>
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
           <thead>
@@ -135,13 +140,14 @@ export default function MoneyPage() {
                 </td>
                 <td style={{ padding: "10px 12px", color: "var(--ih-ink-50)", fontSize: 11 }}>{inv.method}</td>
                 <td style={{ padding: "10px 12px", textAlign: "right" }}>
-                  <button className="ih-btn ih-btn-quiet ih-btn-icon" style={{ height: 22, width: 22 }}><Icon name="moreH" size={11} /></button>
+                  <button className="ih-btn ih-btn-quiet ih-btn-icon" style={{ height: 22, width: 22 }} onClick={() => setToast({message: "Invoice actions menu coming soon", tone: "info"})}><Icon name="moreH" size={11} /></button>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+      {toast && <NotificationToast message={toast.message} tone={toast.tone as any} onDismiss={() => setToast(null)} />}
     </div>
   )
 }

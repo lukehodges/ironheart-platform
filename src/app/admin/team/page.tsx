@@ -1,6 +1,8 @@
 "use client"
 
+import { useState } from "react"
 import Link from "next/link"
+import { NotificationToast } from "@/components/shared"
 import { Icon } from "@/components/shell"
 
 const TEAM = [
@@ -36,6 +38,7 @@ function availabilityLabel(status: "available" | "busy" | "away") {
 }
 
 export default function TeamPage() {
+  const [toast, setToast] = useState<{message: string; tone?: string} | null>(null)
   const totalEngagements = TEAM.reduce((s, m) => s + m.engagements, 0)
   const totalHours = TEAM.reduce((s, m) => s + m.hours, 0)
   const totalMaxHours = TEAM.reduce((s, m) => s + m.maxHours, 0)
@@ -52,7 +55,7 @@ export default function TeamPage() {
           </h1>
         </div>
         <div style={{ display: "flex", gap: 6 }}>
-          <button className="ih-btn ih-btn-primary ih-btn-sm"><Icon name="plus" size={12} /> Add team member</button>
+          <button className="ih-btn ih-btn-primary ih-btn-sm" onClick={() => setToast({message: "Add team member form coming soon", tone: "info"})}><Icon name="plus" size={12} /> Add team member</button>
         </div>
       </div>
 
@@ -157,6 +160,7 @@ export default function TeamPage() {
           ))}
         </div>
       </div>
+      {toast && <NotificationToast message={toast.message} tone={toast.tone as any} onDismiss={() => setToast(null)} />}
     </div>
   )
 }

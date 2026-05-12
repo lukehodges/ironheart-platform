@@ -82,7 +82,7 @@ function TeamTab() {
           <span className="ih-eyebrow">Team members</span>
           <h3 style={{ margin: "2px 0 0", fontSize: 15, fontWeight: 600 }}>3 people</h3>
         </div>
-        <button className="ih-btn ih-btn-primary ih-btn-sm"><Icon name="plus" size={12}/> Invite</button>
+        <button className="ih-btn ih-btn-primary ih-btn-sm" onClick={() => alert("Invite sent")}><Icon name="plus" size={12}/> Invite</button>
       </div>
       {TEAM.map((m, i) => (
         <div key={m.email} style={{ padding: "12px 18px", borderTop: i === 0 ? "0" : "1px solid var(--ih-line)", display: "flex", alignItems: "center", gap: 12 }}>
@@ -92,7 +92,7 @@ function TeamTab() {
             <div className="ih-mono" style={{ fontSize: 11, color: "var(--ih-ink-40)" }}>{m.email}</div>
           </div>
           <span className={`ih-pill ih-pill-${m.roleTone}`} style={{ fontSize: 9, padding: "2px 6px" }}>{m.role}</span>
-          <button className="ih-btn ih-btn-quiet ih-btn-icon" style={{ height: 24, width: 24 }}><Icon name="moreH" size={12}/></button>
+          <button className="ih-btn ih-btn-quiet ih-btn-icon" style={{ height: 24, width: 24 }} onClick={() => alert("Member actions menu coming soon")}><Icon name="moreH" size={12}/></button>
         </div>
       ))}
     </div>
@@ -120,7 +120,7 @@ function IntegrationsTab() {
             )}
           </div>
           <p style={{ margin: "0 0 12px", fontSize: 12, color: "var(--ih-ink-65)", lineHeight: 1.5 }}>{int.description}</p>
-          <button className={`ih-btn ${int.connected ? "ih-btn-ghost" : "ih-btn-primary"} ih-btn-sm`} style={{ width: "100%" }}>
+          <button className={`ih-btn ${int.connected ? "ih-btn-ghost" : "ih-btn-primary"} ih-btn-sm`} style={{ width: "100%" }} onClick={() => alert(int.connected ? "Opening configuration..." : "Connecting integration...")}>
             {int.connected ? "Configure" : "Connect"}
           </button>
         </div>
@@ -183,7 +183,7 @@ export default function SettingsPage() {
       <Icon name="money" size={24} style={{ color: "var(--ih-ink-30)", marginBottom: 12 }} />
       <div className="ih-serif" style={{ fontSize: 20, marginBottom: 8 }}>Billing & subscription</div>
       <p style={{ margin: 0, fontSize: 12, color: "var(--ih-ink-50)" }}>Manage your plan, payment methods, and billing history.</p>
-      <button className="ih-btn ih-btn-ghost ih-btn-sm" style={{ marginTop: 16 }}>Open billing portal <Icon name="arrowUpRight" size={11}/></button>
+      <button className="ih-btn ih-btn-ghost ih-btn-sm" style={{ marginTop: 16 }} onClick={() => alert("Opening Stripe billing portal...")}>Open billing portal <Icon name="arrowUpRight" size={11}/></button>
     </div>
   ), ModulesTab]
 

@@ -1,5 +1,7 @@
 "use client"
 
+import { useState } from "react"
+import { NotificationToast, ConfirmDialog } from "@/components/shared"
 import { Icon } from "@/components/shell"
 
 /* ── Demo data ──────────────────────────────────────────────────────────── */
@@ -31,6 +33,9 @@ const HISTORY = [
 /* ── Page ───────────────────────────────────────────────────────────────── */
 
 export default function ApprovalsPage() {
+  const [toast, setToast] = useState<{message: string; tone?: string} | null>(null)
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [confirmAction, setConfirmAction] = useState<{title: string; desc: string; label: string; action: () => void}>({title:"",desc:"",label:"",action:()=>{}})
   return (
     <div style={{ padding: "40px 40px 64px", maxWidth: 900, margin: "0 auto" }}>
       {/* Header */}
@@ -62,8 +67,8 @@ export default function ApprovalsPage() {
               )}
             </div>
             <div style={{ display: "flex", gap: 8, marginTop: 18 }}>
-              <button className="ih-btn ih-btn-accent ih-btn-sm">Approve</button>
-              <button className="ih-btn ih-btn-ghost ih-btn-sm">Comment</button>
+              <button className="ih-btn ih-btn-accent ih-btn-sm" onClick={() => { setConfirmAction({title:"Approve this item?",desc:"This will mark the item as approved and notify the studio.",label:"Approve",action:() => { setConfirmOpen(false); setToast({message:"Item approved",tone:"ok"}) }}); setConfirmOpen(true) }}>Approve</button>
+              <button className="ih-btn ih-btn-ghost ih-btn-sm" onClick={() => setToast({message: "Comment dialog coming soon", tone: "info"})}>Comment</button>
             </div>
           </div>
         ))}
@@ -93,6 +98,8 @@ export default function ApprovalsPage() {
           ))}
         </div>
       </div>
+      {toast && <NotificationToast message={toast.message} tone={toast.tone as any} onDismiss={() => setToast(null)} />}
+      <ConfirmDialog open={confirmOpen} title={confirmAction.title} description={confirmAction.desc} confirmLabel={confirmAction.label} onConfirm={confirmAction.action} onCancel={() => setConfirmOpen(false)} />
     </div>
   )
 }

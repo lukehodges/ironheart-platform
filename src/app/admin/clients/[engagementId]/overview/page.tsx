@@ -1,5 +1,8 @@
 "use client"
 
+import { useState } from "react"
+import { useRouter } from "next/navigation"
+import { NotificationToast } from "@/components/shared"
 import { Icon, type IconName } from "@/components/shell"
 
 /* -- Data ----------------------------------------------------------------- */
@@ -49,6 +52,8 @@ function RagBadge({ score, size = "md" }: { score: RagScore; size?: "sm" | "md" 
 
 /* -- Page ----------------------------------------------------------------- */
 export default function EngagementOverviewPage() {
+  const router = useRouter()
+  const [toast, setToast] = useState<{message: string; tone?: string} | null>(null)
   return (
     <div style={{ padding: "20px 28px" }}>
       {/* Top header */}
@@ -78,7 +83,7 @@ export default function EngagementOverviewPage() {
             <div className="ih-eyebrow" style={{ marginBottom: 6 }}>Recoverable / yr</div>
             <div className="ih-serif" style={{ fontSize: 38, lineHeight: 0.95, color: "var(--ih-accent)" }}>{fmtGBP(TOTAL_WASTE)}</div>
             <div style={{ fontSize: 11, color: "var(--ih-ink-50)", marginTop: 6 }}>{TOTAL_FINDINGS} findings {"·"} 5 lenses</div>
-            <button className="ih-btn ih-btn-ghost ih-btn-sm" style={{ marginTop: 14, width: "100%", justifyContent: "space-between" }}>
+            <button className="ih-btn ih-btn-ghost ih-btn-sm" style={{ marginTop: 14, width: "100%", justifyContent: "space-between" }} onClick={() => router.push("/admin/clients/c-northwind/audit")}>
               Open audit workspace <Icon name="arrowRight" size={11} />
             </button>
           </div>
@@ -136,8 +141,8 @@ export default function EngagementOverviewPage() {
             One lens still needs a justification before the report can publish &mdash; <strong>Technology</strong>.
           </span>
           <div style={{ flex: 1 }} />
-          <button className="ih-btn ih-btn-quiet ih-btn-sm">Fix justification {"→"}</button>
-          <button className="ih-btn ih-btn-accent ih-btn-sm">Generate report</button>
+          <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => router.push("/admin/clients/c-northwind/audit/lens")}>Fix justification {"→"}</button>
+          <button className="ih-btn ih-btn-accent ih-btn-sm" onClick={() => setToast({message: "AI is generating report...", tone: "info"})}>Generate report</button>
         </div>
       </div>
 
@@ -159,6 +164,7 @@ export default function EngagementOverviewPage() {
           <div className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-50)", marginTop: 4 }}>Audit Summary {"·"} sent 4h ago</div>
         </div>
       </div>
+      {toast && <NotificationToast message={toast.message} tone={toast.tone as any} onDismiss={() => setToast(null)} />}
     </div>
   )
 }

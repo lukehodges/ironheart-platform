@@ -2,6 +2,8 @@
 
 import { useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
+import { NotificationToast } from "@/components/shared"
 import { Icon } from "@/components/shell"
 
 /* ------------------------------------------------------------------ */
@@ -69,7 +71,9 @@ function StagePipelineStrip({ current }: { current: string }) {
 /* ------------------------------------------------------------------ */
 
 export default function PipelineDealDetailPage() {
+  const router = useRouter()
   const [showLostDialog, setShowLostDialog] = useState(false)
+  const [toast, setToast] = useState<{message: string; tone?: string} | null>(null)
 
   const deal = {
     name: "Olsen Brands",
@@ -123,10 +127,10 @@ export default function PipelineDealDetailPage() {
         </div>
         {/* Actions */}
         <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
-          <Btn sm ghost>Create proposal</Btn>
-          <Btn sm ghost>Convert to engagement</Btn>
+          <Btn sm ghost onClick={() => setToast({message: "AI is drafting proposal...", tone: "info"})}>Create proposal</Btn>
+          <Btn sm ghost onClick={() => setToast({message: "Converting deal to engagement...", tone: "ok"})}>Convert to engagement</Btn>
           <Btn sm ghost onClick={() => setShowLostDialog(true)} style={{ color: "var(--ih-warn)" }}>Mark lost</Btn>
-          <Btn sm accent>Move to Proposal <Icon name="arrowRight" size={11} /></Btn>
+          <Btn sm accent onClick={() => setToast({message: "Deal moved to Proposal stage", tone: "ok"})}>Move to Proposal <Icon name="arrowRight" size={11} /></Btn>
         </div>
       </div>
 
@@ -277,14 +281,15 @@ export default function PipelineDealDetailPage() {
               Strong fit. Tomas confirmed <strong style={{ color: "#fff" }}>budget authority</strong> and wants to start Q2. Their ops team (4 people) mirrors Northwind&apos;s structure &mdash; your retainer playbook applies. Referral from Mira adds trust. Recommend moving to Proposal after sending the draft.
             </p>
             <div style={{ display: "flex", gap: 6, marginTop: 12 }}>
-              <button className="ih-btn ih-btn-sm" style={{ background: "rgba(255,255,255,0.15)", color: "#fff" }}>Draft proposal</button>
-              <button className="ih-btn ih-btn-sm" style={{ background: "transparent", color: "rgba(255,255,255,0.7)", borderColor: "rgba(255,255,255,0.2)" }}>Win strategy</button>
+              <button className="ih-btn ih-btn-sm" style={{ background: "rgba(255,255,255,0.15)", color: "#fff" }} onClick={() => setToast({message: "AI is drafting proposal...", tone: "info"})}>Draft proposal</button>
+              <button className="ih-btn ih-btn-sm" style={{ background: "transparent", color: "rgba(255,255,255,0.7)", borderColor: "rgba(255,255,255,0.2)" }} onClick={() => setToast({message: "AI is analyzing win strategy...", tone: "info"})}>Win strategy</button>
             </div>
           </div>
         </div>
       </div>
 
       {/* Lost dialog (simplified) */}
+      {toast && <NotificationToast message={toast.message} tone={toast.tone as any} onDismiss={() => setToast(null)} />}
       {showLostDialog && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}>
           <div className="ih-card" style={{ width: 420, padding: 24 }}>
@@ -307,7 +312,7 @@ export default function PipelineDealDetailPage() {
             </div>
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
               <Btn sm ghost onClick={() => setShowLostDialog(false)}>Cancel</Btn>
-              <Btn sm style={{ background: "var(--ih-warn)", color: "#fff", border: "none" }}>Mark as lost</Btn>
+              <Btn sm style={{ background: "var(--ih-warn)", color: "#fff", border: "none" }} onClick={() => { setShowLostDialog(false); setToast({message: "Deal marked as lost", tone: "warn"}) }}>Mark as lost</Btn>
             </div>
           </div>
         </div>

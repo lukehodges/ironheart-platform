@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { NotificationToast } from "@/components/shared"
 import { Icon, type IconName } from "@/components/shell"
 
 /* -- Data ----------------------------------------------------------------- */
@@ -131,6 +132,7 @@ function ImpactBadge({ impact }: { impact: Impact }) {
 /* -- Page ----------------------------------------------------------------- */
 export default function AuditLensPage() {
   const [activeLensId, setActiveLensId] = useState("OPERATIONS")
+  const [toast, setToast] = useState<{message: string; tone?: string} | null>(null)
   const [ragOverrides, setRagOverrides] = useState<Record<string, RagScore>>({})
 
   const lens = LENSES.find(l => l.id === activeLensId)!
@@ -230,7 +232,7 @@ export default function AuditLensPage() {
         {/* Findings table */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
           <div className="ih-eyebrow">Findings {"·"} {lens.findings.length} {"·"} total {fmtGBP(lens.waste)} / yr</div>
-          <button className="ih-btn ih-btn-quiet ih-btn-sm"><Icon name="plus" size={11} /> Add finding</button>
+          <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => setToast({message: "Add finding form coming soon", tone: "info"})}><Icon name="plus" size={11} /> Add finding</button>
         </div>
         <div className="ih-card" style={{ marginBottom: 22, overflow: "hidden" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
@@ -262,7 +264,7 @@ export default function AuditLensPage() {
         {/* Recommendations */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
           <div className="ih-eyebrow">Recommendations {"·"} {lens.recs.length}</div>
-          <button className="ih-btn ih-btn-quiet ih-btn-sm"><Icon name="plus" size={11} /> Add rec</button>
+          <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => setToast({message: "Add recommendation form coming soon", tone: "info"})}><Icon name="plus" size={11} /> Add rec</button>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {lens.recs.map((r, i) => (
@@ -277,11 +279,12 @@ export default function AuditLensPage() {
                 <div style={{ fontSize: 13, fontWeight: 500 }}>{r.t}</div>
                 <div className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-50)", marginTop: 3, letterSpacing: "0.06em" }}>EFFORT {r.effort} {"·"} INVEST {fmtGBP(r.cost)}</div>
               </div>
-              <button className="ih-btn ih-btn-quiet ih-btn-sm"><Icon name="arrowRight" size={11} /> Promote to milestone</button>
+              <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => setToast({message: "Promoted to milestone", tone: "ok"})}><Icon name="arrowRight" size={11} /> Promote to milestone</button>
             </div>
           ))}
         </div>
       </section>
+      {toast && <NotificationToast message={toast.message} tone={toast.tone as any} onDismiss={() => setToast(null)} />}
     </div>
   )
 }

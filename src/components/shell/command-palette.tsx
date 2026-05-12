@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
+import { useRouter } from "next/navigation"
 import { Icon, type IconName } from "./icon"
 
 /* ── Demo data ──────────────────────────────────────────────── */
@@ -46,6 +47,7 @@ interface CommandPaletteProps {
 }
 
 export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
+  const router = useRouter()
   const [query, setQuery] = useState("north")
   const inputRef = useRef<HTMLInputElement>(null)
   const [activeIndex, setActiveIndex] = useState(0)
@@ -93,6 +95,10 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
       if (e.key === "ArrowDown") {
         e.preventDefault()
         setActiveIndex((prev) => (prev + 1) % allCount)
+      } else if (e.key === "Enter") {
+        e.preventDefault()
+        onOpenChange(false)
+        router.push("/admin/clients/c-northwind")
       } else if (e.key === "ArrowUp") {
         e.preventDefault()
         setActiveIndex((prev) => (prev - 1 + allCount) % allCount)
@@ -191,6 +197,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                   alignItems: "center",
                   cursor: "pointer",
                 }}
+                onClick={() => { onOpenChange(false); router.push("/admin/clients/c-northwind") }}
               >
                 <Icon name={topMatch.icon} size={16} style={{ color: "var(--ih-accent)" }} />
                 <div>
@@ -226,6 +233,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                       borderLeft: activeIndex === idx ? "2px solid var(--ih-accent)" : "2px solid transparent",
                       cursor: "pointer",
                     }}
+                    onClick={() => { onOpenChange(false); router.push("/admin/clients/c-northwind") }}
                   >
                     <Icon name={r.icon} size={14} style={{ color: "var(--ih-ink-50)" }} />
                     <span
@@ -272,6 +280,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                       borderLeft: activeIndex === idx ? "2px solid var(--ih-accent)" : "2px solid transparent",
                       cursor: "pointer",
                     }}
+                    onClick={() => { onOpenChange(false); router.push("/admin/clients/c-northwind") }}
                   >
                     <Icon
                       name={r.icon}

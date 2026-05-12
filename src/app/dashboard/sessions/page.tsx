@@ -1,5 +1,8 @@
 "use client"
 
+import { useState } from "react"
+import { useRouter } from "next/navigation"
+import { NotificationToast } from "@/components/shared"
 import { Icon } from "@/components/shell"
 
 /* ── Demo data ──────────────────────────────────────────────────────────── */
@@ -44,6 +47,8 @@ const PAST = [
 /* ── Page ───────────────────────────────────────────────────────────────── */
 
 export default function SessionsPage() {
+  const router = useRouter()
+  const [toast, setToast] = useState<{message: string; tone?: string} | null>(null)
   return (
     <div style={{ padding: "40px 40px 64px", maxWidth: 900, margin: "0 auto" }}>
       {/* Header */}
@@ -54,7 +59,7 @@ export default function SessionsPage() {
             {UPCOMING.length} upcoming &middot; {PAST.length} past
           </p>
         </div>
-        <button className="ih-btn ih-btn-accent ih-btn-sm" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <button className="ih-btn ih-btn-accent ih-btn-sm" style={{ display: "flex", alignItems: "center", gap: 6 }} onClick={() => setToast({message: "Booking form coming soon", tone: "info"})}>
           <Icon name="plus" size={12} />
           Book a new session
         </button>
@@ -101,7 +106,8 @@ export default function SessionsPage() {
                 </div>
 
                 <a
-                  href={s.joinUrl}
+                  href={s.joinUrl === "#" ? undefined : s.joinUrl}
+                  onClick={(e) => { if (s.joinUrl === "#") { e.preventDefault(); setToast({message: "Meeting link not available yet", tone: "warn"}) } }}
                   className="ih-btn ih-btn-accent ih-btn-sm"
                   style={{ display: "flex", alignItems: "center", gap: 5, textDecoration: "none" }}
                 >
@@ -135,12 +141,13 @@ export default function SessionsPage() {
                 <span className="ih-mono" style={{ fontSize: 11, color: "var(--ih-ink-40)" }}>{s.date}</span>
               </div>
               {s.hasNotes && (
-                <button className="ih-btn ih-btn-ghost ih-btn-sm">View notes</button>
+                <button className="ih-btn ih-btn-ghost ih-btn-sm" onClick={() => setToast({message: "Session notes viewer coming soon", tone: "info"})}>View notes</button>
               )}
             </div>
           ))}
         </div>
       </div>
+      {toast && <NotificationToast message={toast.message} tone={toast.tone as any} onDismiss={() => setToast(null)} />}
     </div>
   )
 }

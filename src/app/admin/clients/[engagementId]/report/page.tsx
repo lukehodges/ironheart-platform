@@ -1,5 +1,7 @@
 "use client"
 
+import { useState } from "react"
+import { NotificationToast } from "@/components/shared"
 import { Icon } from "@/components/shell"
 
 /* ── Data ───────────────────────────────────────────────────────────────── */
@@ -86,6 +88,7 @@ const LENS_RAG_MAP: Record<string, RagScore> = Object.fromEntries(LENS_ROWS.map(
 /* ── Page ───────────────────────────────────────────────────────────────── */
 
 export default function AuditReportPage() {
+  const [toast, setToast] = useState<{message: string; tone?: string} | null>(null)
   return (
     <div style={{ maxWidth: 1180, margin: "0 auto" }}>
       {/* Status strip */}
@@ -235,8 +238,9 @@ export default function AuditReportPage() {
             Creates a new 6-month engagement on a £4,200/mo retainer. Each of the 13 recommendations becomes a milestone with its build cost and effort pre-filled. Invoice schedule auto-built.
           </div>
         </div>
-        <button className="ih-btn ih-btn-accent ih-btn-sm">Promote to retainer →</button>
+        <button className="ih-btn ih-btn-accent ih-btn-sm" onClick={() => setToast({message: "Creating retainer engagement from roadmap...", tone: "ok"})}>Promote to retainer →</button>
       </div>
+      {toast && <NotificationToast message={toast.message} tone={toast.tone as any} onDismiss={() => setToast(null)} />}
     </div>
   )
 }

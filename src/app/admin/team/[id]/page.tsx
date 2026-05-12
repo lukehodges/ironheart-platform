@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
+import { NotificationToast } from "@/components/shared"
 import { Icon } from "@/components/shell"
 
 const MEMBER = {
@@ -52,6 +53,7 @@ function levelColor(level: string) {
 
 export default function TeamMemberDetailPage() {
   const [tab, setTab] = useState<Tab>("Overview")
+  const [toast, setToast] = useState<{message: string; tone?: string} | null>(null)
   const m = MEMBER
   const maxHrs = 40
 
@@ -78,7 +80,7 @@ export default function TeamMemberDetailPage() {
               <span style={{ display: "flex", alignItems: "center", gap: 4 }}><Icon name="calendar" size={11} /> Joined {m.joined}</span>
             </div>
           </div>
-          <button className="ih-btn ih-btn-ghost ih-btn-sm"><Icon name="sliders" size={12} /> Edit</button>
+          <button className="ih-btn ih-btn-ghost ih-btn-sm" onClick={() => setToast({message: "Edit profile coming soon", tone: "info"})}><Icon name="sliders" size={12} /> Edit</button>
         </div>
       </div>
 
@@ -254,6 +256,7 @@ export default function TeamMemberDetailPage() {
           </div>
         </div>
       )}
+      {toast && <NotificationToast message={toast.message} tone={toast.tone as any} onDismiss={() => setToast(null)} />}
     </div>
   )
 }

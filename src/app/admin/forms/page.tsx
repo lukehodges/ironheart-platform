@@ -1,7 +1,9 @@
 "use client"
 
+import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { NotificationToast } from "@/components/shared"
 import { Icon } from "@/components/shell"
 
 /* ── Data ────────────────────────────────────────────────────────────────── */
@@ -44,6 +46,7 @@ const TH: React.CSSProperties = { textAlign: "left", padding: "10px 12px", fontW
 
 export default function FormsPage() {
   const router = useRouter()
+  const [toast, setToast] = useState<{message: string; tone?: string} | null>(null)
   return (
     <div style={{ padding: "24px 28px 48px", maxWidth: 1400, margin: "0 auto" }}>
       {/* Header */}
@@ -55,8 +58,8 @@ export default function FormsPage() {
           </h1>
         </div>
         <div style={{ display: "flex", gap: 6 }}>
-          <button className="ih-btn ih-btn-ghost ih-btn-sm"><Icon name="download" size={12}/> Export</button>
-          <button className="ih-btn ih-btn-primary ih-btn-sm"><Icon name="plus" size={12}/> New template</button>
+          <button className="ih-btn ih-btn-ghost ih-btn-sm" onClick={() => setToast({message: "Export started — check your downloads", tone: "ok"})}><Icon name="download" size={12}/> Export</button>
+          <button className="ih-btn ih-btn-primary ih-btn-sm" onClick={() => setToast({message: "New template editor coming soon", tone: "info"})}><Icon name="plus" size={12}/> New template</button>
         </div>
       </div>
 
@@ -89,7 +92,7 @@ export default function FormsPage() {
             <span className="ih-eyebrow">Templates</span>
             <h3 style={{ margin: "2px 0 0", fontSize: 15, fontWeight: 600 }}>Questionnaire library</h3>
           </div>
-          <button className="ih-btn ih-btn-quiet ih-btn-sm"><Icon name="filter" size={11}/> Filter</button>
+          <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => setToast({message: "Filter options coming soon", tone: "info"})}><Icon name="filter" size={11}/> Filter</button>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
           {TEMPLATES.map((t) => (
@@ -121,7 +124,7 @@ export default function FormsPage() {
             <span className="ih-eyebrow">Recent submissions</span>
             <h3 style={{ margin: "2px 0 0", fontSize: 15, fontWeight: 600 }}>Incoming responses</h3>
           </div>
-          <button className="ih-btn ih-btn-quiet ih-btn-sm">View all 142 &rarr;</button>
+          <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => setToast({message: "All submissions view coming soon", tone: "info"})}>View all 142 &rarr;</button>
         </div>
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
           <thead>
@@ -157,6 +160,7 @@ export default function FormsPage() {
           </tbody>
         </table>
       </div>
+      {toast && <NotificationToast message={toast.message} tone={toast.tone as any} onDismiss={() => setToast(null)} />}
     </div>
   )
 }

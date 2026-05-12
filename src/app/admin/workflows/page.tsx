@@ -1,10 +1,13 @@
 "use client"
 
+import { useState } from "react"
+import { NotificationToast } from "@/components/shared"
 import { Icon } from "@/components/shell"
 
 /* ── Workflow Canvas ─────────────────────────────────────────────────────── */
 
 export default function WorkflowsPage() {
+  const [toast, setToast] = useState<{message: string; tone?: string} | null>(null)
   return (
     <div style={{ margin: "-24px -24px 0", height: "calc(100vh - 64px)" }}>
       {/* Header bar with status + actions — handled inline since no Frame */}
@@ -16,9 +19,9 @@ export default function WorkflowsPage() {
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <span className="ih-pill ih-pill-ok" style={{ marginRight: 4 }}><span className="ih-dot ih-dot-ok"/> Active</span>
-          <button className="ih-btn ih-btn-quiet ih-btn-sm"><Icon name="play" size={11}/> Test run</button>
-          <button className="ih-btn ih-btn-ghost ih-btn-sm">History</button>
-          <button className="ih-btn ih-btn-primary ih-btn-sm">Publish v3</button>
+          <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => setToast({message: "Test run started...", tone: "info"})}><Icon name="play" size={11}/> Test run</button>
+          <button className="ih-btn ih-btn-ghost ih-btn-sm" onClick={() => setToast({message: "Execution history coming soon", tone: "info"})}>History</button>
+          <button className="ih-btn ih-btn-primary ih-btn-sm" onClick={() => setToast({message: "Workflow published as v3", tone: "ok"})}>Publish v3</button>
         </div>
       </div>
 
@@ -43,7 +46,7 @@ export default function WorkflowsPage() {
                 ["sparkles", "AI step"],
                 ["mail", "Notify"],
               ] as const).map(([i, l]) => (
-                <button key={l} className="ih-btn ih-btn-quiet ih-btn-sm" style={{ height: 26 }}><Icon name={i} size={11}/> {l}</button>
+                <button key={l} className="ih-btn ih-btn-quiet ih-btn-sm" style={{ height: 26 }} onClick={() => setToast({message: `Adding ${l} node...`, tone: "info"})}><Icon name={i} size={11}/> {l}</button>
               ))}
             </div>
             <div className="ih-card" style={{ display: "flex", padding: 4, gap: 2 }}>
@@ -163,6 +166,7 @@ export default function WorkflowsPage() {
           </div>
         </div>
       </div>
+      {toast && <NotificationToast message={toast.message} tone={toast.tone as any} onDismiss={() => setToast(null)} />}
     </div>
   )
 }

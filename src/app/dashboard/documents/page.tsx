@@ -1,5 +1,7 @@
 "use client"
 
+import { useState } from "react"
+import { NotificationToast } from "@/components/shared"
 import { Icon } from "@/components/shell"
 import type { IconName } from "@/components/shell/icon"
 
@@ -51,6 +53,7 @@ const CATEGORIES: DocCategory[] = [
 /* ── Page ───────────────────────────────────────────────────────────────── */
 
 export default function DocumentsPage() {
+  const [toast, setToast] = useState<{message: string; tone?: string} | null>(null)
   const totalFiles = CATEGORIES.reduce((n, c) => n + c.files.length, 0)
 
   return (
@@ -111,7 +114,7 @@ export default function DocumentsPage() {
                     </div>
                   </div>
                 </div>
-                <button className="ih-btn ih-btn-ghost ih-btn-sm" style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                <button className="ih-btn ih-btn-ghost ih-btn-sm" style={{ display: "flex", alignItems: "center", gap: 5 }} onClick={() => setToast({message: "Download started — check your downloads", tone: "ok"})}>
                   <Icon name="download" size={11} />
                   Download
                 </button>
@@ -126,6 +129,7 @@ export default function DocumentsPage() {
         <Icon name="shield" size={13} />
         <span style={{ fontSize: 12 }}>All files are stored securely in your project folder</span>
       </div>
+      {toast && <NotificationToast message={toast.message} tone={toast.tone as any} onDismiss={() => setToast(null)} />}
     </div>
   )
 }

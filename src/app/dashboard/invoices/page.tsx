@@ -1,5 +1,7 @@
 "use client"
 
+import { useState } from "react"
+import { NotificationToast } from "@/components/shared"
 import { Icon } from "@/components/shell"
 
 /* ── Demo data ──────────────────────────────────────────────────────────── */
@@ -40,6 +42,7 @@ const STATUS_CONFIG = {
 /* ── Page ───────────────────────────────────────────────────────────────── */
 
 export default function InvoicesPage() {
+  const [toast, setToast] = useState<{message: string; tone?: string} | null>(null)
   const total = "\u00a324,500"
   const paid = "\u00a312,250"
   const due = "\u00a36,125"
@@ -84,7 +87,7 @@ export default function InvoicesPage() {
                 <div style={{ textAlign: "right", marginLeft: 24, flexShrink: 0 }}>
                   <div className="ih-serif" style={{ fontSize: 28, lineHeight: 1, fontWeight: 500 }}>{inv.amount}</div>
                   {inv.status === "sent" && (
-                    <button className="ih-btn ih-btn-accent ih-btn-sm" style={{ marginTop: 12 }}>
+                    <button className="ih-btn ih-btn-accent ih-btn-sm" style={{ marginTop: 12 }} onClick={() => setToast({message: "Redirecting to Stripe checkout...", tone: "info"})}>
                       Pay now
                     </button>
                   )}
@@ -100,6 +103,7 @@ export default function InvoicesPage() {
         <Icon name="shield" size={13} />
         <span style={{ fontSize: 12 }}>Payments processed securely via Stripe</span>
       </div>
+      {toast && <NotificationToast message={toast.message} tone={toast.tone as any} onDismiss={() => setToast(null)} />}
     </div>
   )
 }

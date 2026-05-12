@@ -1,6 +1,8 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
+import { NotificationToast } from "@/components/shared"
 import { Icon } from "@/components/shell"
 
 /* ── Data ────────────────────────────────────────────────────────────────── */
@@ -53,6 +55,7 @@ function StatusDot({ s }: { s: string }) {
 }
 
 function WorkView() {
+  const [toast, setToast] = useState<{message: string; tone?: string} | null>(null)
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set(["m3"]))
   const [workView, setWorkView] = useState<"gantt" | "board" | "list">("gantt")
   const toggle = (id: string) => setExpandedIds(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
@@ -71,7 +74,7 @@ function WorkView() {
               <button key={v} onClick={() => setWorkView(v)} className={`ih-btn ${workView === v ? "ih-btn-sm" : "ih-btn-quiet ih-btn-sm"}`} style={{ height: 22, background: workView === v ? "var(--ih-surface-2)" : "transparent", border: 0, textTransform: "capitalize" }}>{v === "gantt" ? "Gantt" : v === "board" ? "Board" : "List"}</button>
             ))}
           </div>
-          <button className="ih-btn ih-btn-quiet ih-btn-sm"><Icon name="filter" size={11} /> Hide done</button>
+          <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => setToast({message: "Hidden completed milestones", tone: "ok"})}><Icon name="filter" size={11} /> Hide done</button>
         </div>
       </div>
 
@@ -133,9 +136,9 @@ function WorkView() {
                   </div>
                   <div style={{ flex: 1, padding: "7px 12px", display: "flex", alignItems: "center", gap: 10 }}>
                     <StatusDot s={it.s} />
-                    {it.s === "PENDING_APPROVAL" && <button className="ih-btn ih-btn-quiet ih-btn-sm" style={{ height: 20, marginLeft: "auto" }}>Nudge client {"→"}</button>}
-                    {it.s === "DELIVERED" && <button className="ih-btn ih-btn-quiet ih-btn-sm" style={{ height: 20, marginLeft: "auto" }}>Request approval {"→"}</button>}
-                    {it.s === "PENDING" && <button className="ih-btn ih-btn-quiet ih-btn-sm" style={{ height: 20, marginLeft: "auto" }}>Upload {"→"}</button>}
+                    {it.s === "PENDING_APPROVAL" && <button className="ih-btn ih-btn-quiet ih-btn-sm" style={{ height: 20, marginLeft: "auto" }} onClick={() => setToast({message: "Nudge sent to client", tone: "ok"})}>Nudge client {"→"}</button>}
+                    {it.s === "DELIVERED" && <button className="ih-btn ih-btn-quiet ih-btn-sm" style={{ height: 20, marginLeft: "auto" }} onClick={() => setToast({message: "Approval request sent", tone: "ok"})}>Request approval {"→"}</button>}
+                    {it.s === "PENDING" && <button className="ih-btn ih-btn-quiet ih-btn-sm" style={{ height: 20, marginLeft: "auto" }} onClick={() => setToast({message: "Upload dialog coming soon", tone: "info"})}>Upload {"→"}</button>}
                   </div>
                 </div>
               ))}
@@ -160,7 +163,7 @@ function WorkView() {
               </label>
             ))}
           </div>
-          <button className="ih-btn ih-btn-accent ih-btn-sm" style={{ marginTop: 10 }}>
+          <button className="ih-btn ih-btn-accent ih-btn-sm" style={{ marginTop: 10 }} onClick={() => setToast({message: "Approval request sent for both deliverables", tone: "ok"})}>
             <Icon name="check" size={11} /> Request approval for both
           </button>
         </div>
@@ -179,11 +182,13 @@ function WorkView() {
           ))}
         </div>
       </div>
+      {toast && <NotificationToast message={toast.message} tone={toast.tone as any} onDismiss={() => setToast(null)} />}
     </div>
   )
 }
 
 function MoneyView() {
+  const [toast, setToast] = useState<{message: string; tone?: string} | null>(null)
   return (
     <div style={{ padding: "20px 28px" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 18 }}>
@@ -214,8 +219,8 @@ function MoneyView() {
             <div style={{ fontSize: 14, fontWeight: 500 }}>Map workflows, audit, deliver 3-mo roadmap</div>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
-            <button className="ih-btn ih-btn-quiet ih-btn-sm"><Icon name="eye" size={11} /> View</button>
-            <button className="ih-btn ih-btn-quiet ih-btn-sm"><Icon name="plus" size={11} /> Revise</button>
+            <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => setToast({message: "Opening proposal...", tone: "info"})}><Icon name="eye" size={11} /> View</button>
+            <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => setToast({message: "Creating proposal revision...", tone: "info"})}><Icon name="plus" size={11} /> Revise</button>
           </div>
         </div>
         <div style={{ display: "flex", gap: 0, alignItems: "stretch", marginTop: 14, border: "1px solid var(--ih-line)", borderRadius: "var(--ih-r-md)", overflow: "hidden", background: "var(--ih-surface-2)" }}>
@@ -275,7 +280,7 @@ function MoneyView() {
       <div className="ih-card" style={{ overflow: "hidden" }}>
         <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--ih-line)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div className="ih-eyebrow">Invoices {"·"} 3</div>
-          <button className="ih-btn ih-btn-quiet ih-btn-sm"><Icon name="download" size={11} /> Export CSV</button>
+          <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => setToast({message: "Export started — check your downloads", tone: "ok"})}><Icon name="download" size={11} /> Export CSV</button>
         </div>
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
           <thead>
@@ -298,13 +303,14 @@ function MoneyView() {
                 </td>
                 <td style={{ padding: "10px 12px", color: "var(--ih-ink-50)", fontSize: 11 }}>{inv.method}</td>
                 <td style={{ padding: "10px 12px", textAlign: "right" }}>
-                  <button className="ih-btn ih-btn-quiet ih-btn-icon" style={{ height: 22, width: 22 }}><Icon name="moreH" size={11} /></button>
+                  <button className="ih-btn ih-btn-quiet ih-btn-icon" style={{ height: 22, width: 22 }} onClick={() => setToast({message: "Invoice actions menu coming soon", tone: "info"})}><Icon name="moreH" size={11} /></button>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+      {toast && <NotificationToast message={toast.message} tone={toast.tone as any} onDismiss={() => setToast(null)} />}
     </div>
   )
 }
@@ -322,6 +328,7 @@ export default function WorkMoneyPage() {
         ))}
       </div>
       {activeTab === "work" ? <WorkView /> : <MoneyView />}
+
     </div>
   )
 }

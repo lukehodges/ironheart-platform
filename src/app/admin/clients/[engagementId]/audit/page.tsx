@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useMemo } from "react"
+import { NotificationToast } from "@/components/shared"
 import { Icon, type IconName } from "@/components/shell"
 
 /* ── Data ───────────────────────────────────────────────────────────────── */
@@ -255,7 +256,7 @@ function LensDetail({ lens, selectedRag, onRagChange }: { lens: Lens; selectedRa
       {/* Findings table */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
         <div className="ih-eyebrow">Findings · {lens.findings.length} · total {fmtGBP(lens.waste)} / yr</div>
-        <button className="ih-btn ih-btn-quiet ih-btn-sm"><Icon name="plus" size={11} /> Add finding</button>
+        <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => alert("Add finding form coming soon")}><Icon name="plus" size={11} /> Add finding</button>
       </div>
       <div className="ih-card" style={{ marginBottom: 22, overflow: "hidden" }}>
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
@@ -287,7 +288,7 @@ function LensDetail({ lens, selectedRag, onRagChange }: { lens: Lens; selectedRa
       {/* Recommendations */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
         <div className="ih-eyebrow">Recommendations · {lens.recs.length}</div>
-        <button className="ih-btn ih-btn-quiet ih-btn-sm"><Icon name="plus" size={11} /> Add rec</button>
+        <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => alert("Add recommendation form coming soon")}><Icon name="plus" size={11} /> Add rec</button>
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {lens.recs.map((r, i) => (
@@ -302,7 +303,7 @@ function LensDetail({ lens, selectedRag, onRagChange }: { lens: Lens; selectedRa
               <div style={{ fontSize: 13, fontWeight: 500 }}>{r.t}</div>
               <div className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-50)", marginTop: 3, letterSpacing: "0.06em" }}>EFFORT {r.effort} · INVEST {fmtGBP(r.cost)}</div>
             </div>
-            <button className="ih-btn ih-btn-quiet ih-btn-sm"><Icon name="arrowRight" size={11} /> Promote to milestone</button>
+            <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => alert("Promoted to milestone")}><Icon name="arrowRight" size={11} /> Promote to milestone</button>
           </div>
         ))}
       </div>
@@ -314,6 +315,7 @@ function LensDetail({ lens, selectedRag, onRagChange }: { lens: Lens; selectedRa
 
 export default function AuditWorkspacePage() {
   const [activeLens, setActiveLens] = useState<string | null>(null)
+  const [toast, setToast] = useState<{message: string; tone?: string} | null>(null)
   const [ragOverrides, setRagOverrides] = useState<Record<string, RagScore>>({})
   const selectedLens = LENSES.find(l => l.id === activeLens)
 
@@ -420,7 +422,7 @@ export default function AuditWorkspacePage() {
             </span>
           ))}
         </div>
-        <button className="ih-btn ih-btn-quiet ih-btn-sm">Fix 1 issue →</button>
+        <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => setActiveLens("TECHNOLOGY")}>Fix 1 issue →</button>
       </div>
 
       {/* Lens grid */}
@@ -451,7 +453,7 @@ export default function AuditWorkspacePage() {
         <div className="ih-card" style={{ padding: 16 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
             <div className="ih-eyebrow">Call notes · 4</div>
-            <button className="ih-btn ih-btn-quiet ih-btn-sm"><Icon name="plus" size={11} /> Add</button>
+            <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => alert("Add call note form coming soon")}><Icon name="plus" size={11} /> Add</button>
           </div>
           {[
             { who: "Sarah Chen",   role: "Head of Ops",  date: "Mar 26", min: 62, tag: "OPERATIONS" },
@@ -470,6 +472,7 @@ export default function AuditWorkspacePage() {
           ))}
         </div>
       </div>
+      {toast && <NotificationToast message={toast.message} tone={toast.tone as any} onDismiss={() => setToast(null)} />}
     </div>
   )
 }
