@@ -1,10 +1,8 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { useState } from "react"
 import { NotificationToast } from "@/components/shared"
 import { Icon, type IconName } from "./icon"
-import { NotificationToast } from "@/components/shared"
 
 /* ── Types ──────────────────────────────────────────────────── */
 
@@ -29,7 +27,6 @@ const COPILOT_DEMO_RESPONSES = [
 /* ── Component ──────────────────────────────────────────────── */
 
 export function AICopilot({ open, onOpenChange }: AICopilotProps) {
-  const [toast, setToast] = useState<{message: string; tone?: string} | null>(null)
   const [messages, setMessages] = useState<CopilotMessage[]>([
     { id: 1, role: "user", content: "Summarise where we are with Northwind and what I should do today." },
   ])

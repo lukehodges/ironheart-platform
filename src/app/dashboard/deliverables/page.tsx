@@ -3,7 +3,6 @@
 import { useState } from "react"
 import { NotificationToast } from "@/components/shared"
 import { Icon } from "@/components/shell"
-import { NotificationToast } from "@/components/shared"
 
 /* ── Demo data ──────────────────────────────────────────────────────────── */
 
@@ -61,7 +60,6 @@ const STATUS_CONFIG = {
 
 export default function DeliverablesPage() {
   const [reviewComment, setReviewComment] = useState("")
-  const [toast, setToast] = useState<{message: string; tone?: string} | null>(null)
   const [toast, setToast] = useState<{ message: string; tone?: string } | null>(null)
   const [deliverables, setDeliverables] = useState(DELIVERABLES)
   const liveCount = deliverables.filter(d => d.status === "live").length
@@ -150,7 +148,6 @@ export default function DeliverablesPage() {
       </div>
 
       {toast && <NotificationToast message={toast.message} tone={toast.tone as "ok"} onDismiss={() => setToast(null)} />}
-      {toast && <NotificationToast message={toast.message} tone={toast.tone as any} onDismiss={() => setToast(null)} />}
     </div>
   )
 }
