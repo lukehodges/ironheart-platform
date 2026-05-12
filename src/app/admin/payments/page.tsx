@@ -70,7 +70,7 @@ export default function PaymentsPage() {
           { l: "Overdue", v: "\u00a36.4k", d: "3 invoices", h: "chase required", icon: "flag" as const, tone: "var(--ih-danger)" },
           { l: "Avg days to pay", v: "14d", d: "\u22122d", h: "improving", icon: "bolt" as const, tone: "var(--ih-ink)" },
         ].map((s) => (
-          <div key={s.l} className="ih-card" style={{ padding: "14px 14px", cursor: "pointer" }}>
+          <div key={s.l} className="ih-card" style={{ padding: "14px 14px" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
               <span className="ih-eyebrow">{s.l}</span>
               <Icon name={s.icon} size={12} style={{ color: "var(--ih-ink-30)" }} />

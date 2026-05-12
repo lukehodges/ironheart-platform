@@ -176,20 +176,23 @@ export default function BookingDetailPage() {
           </Link>
 
           {/* Related engagement */}
-          <div className="ih-card" style={{ marginBottom: 12, background: "var(--ih-surface)", cursor: "pointer" }}>
-            <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--ih-line)" }}>
-              <span className="ih-eyebrow">Linked engagement</span>
-            </div>
-            <div style={{ padding: "12px 14px" }}>
-              <div style={{ fontSize: 13, fontWeight: 500 }}>Q2 Retainer {"·"} Sprint 4</div>
-              <div className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-50)", marginTop: 4 }}>/eng_0481 {"·"} AUDITING</div>
-              <div style={{ display: "flex", gap: 4, marginTop: 10 }}>
-                {[1, 2, 3, 4, 5, 6].map(n => (
-                  <div key={n} style={{ flex: 1, height: 3, borderRadius: 2, background: n < 4 ? "var(--ih-ok)" : n === 4 ? "var(--ih-accent)" : "var(--ih-line)" }} />
-                ))}
+          <Link href="/admin/clients/c-northwind" style={{ textDecoration: "none", color: "inherit" }}>
+            <div className="ih-card" style={{ marginBottom: 12, background: "var(--ih-surface)", cursor: "pointer" }}>
+              <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--ih-line)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span className="ih-eyebrow">Linked engagement</span>
+                <Icon name="arrowUpRight" size={10} style={{ color: "var(--ih-ink-30)" }} />
+              </div>
+              <div style={{ padding: "12px 14px" }}>
+                <div style={{ fontSize: 13, fontWeight: 500 }}>Q2 Retainer {"·"} Sprint 4</div>
+                <div className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-50)", marginTop: 4 }}>/eng_0481 {"·"} AUDITING</div>
+                <div style={{ display: "flex", gap: 4, marginTop: 10 }}>
+                  {[1, 2, 3, 4, 5, 6].map(n => (
+                    <div key={n} style={{ flex: 1, height: 3, borderRadius: 2, background: n < 4 ? "var(--ih-ok)" : n === 4 ? "var(--ih-accent)" : "var(--ih-line)" }} />
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
+          </Link>
 
           {/* AI prep card */}
           <div className="ih-card ih-card-pad" style={{ marginBottom: 12, background: "var(--ih-ink)", color: "#fff", padding: 16, borderColor: "transparent" }}>
@@ -207,21 +210,24 @@ export default function BookingDetailPage() {
           </div>
 
           {/* Related invoice */}
-          <div className="ih-card" style={{ background: "var(--ih-surface)", cursor: "pointer" }}>
-            <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--ih-line)" }}>
-              <span className="ih-eyebrow">Linked invoice</span>
-            </div>
-            <div style={{ padding: "12px 14px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 500 }}>NW-002 {"·"} Audit findings</div>
-                <div className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-50)", marginTop: 4 }}>Due 18 Apr {"·"} 14 days overdue</div>
+          <Link href="/admin/payments/inv-1" style={{ textDecoration: "none", color: "inherit" }}>
+            <div className="ih-card" style={{ background: "var(--ih-surface)", cursor: "pointer" }}>
+              <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--ih-line)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span className="ih-eyebrow">Linked invoice</span>
+                <Icon name="arrowUpRight" size={10} style={{ color: "var(--ih-ink-30)" }} />
               </div>
-              <div>
-                <span className="ih-pill ih-pill-warn" style={{ fontSize: 9 }}>SENT</span>
-                <div className="ih-serif" style={{ fontSize: 18, marginTop: 4, textAlign: "right" }}>{"\u00A3"}6,125</div>
+              <div style={{ padding: "12px 14px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 500 }}>NW-002 {"·"} Audit findings</div>
+                  <div className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-50)", marginTop: 4 }}>Due 18 Apr {"·"} 14 days overdue</div>
+                </div>
+                <div>
+                  <span className="ih-pill ih-pill-warn" style={{ fontSize: 9 }}>SENT</span>
+                  <div className="ih-serif" style={{ fontSize: 18, marginTop: 4, textAlign: "right" }}>{"\u00A3"}6,125</div>
+                </div>
               </div>
             </div>
-          </div>
+          </Link>
         </div>
       </div>
       {toast && <NotificationToast message={toast.message} tone={toast.tone as any} onDismiss={() => setToast(null)} />}

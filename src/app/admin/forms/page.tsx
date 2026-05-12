@@ -71,7 +71,7 @@ export default function FormsPage() {
           { l: "Avg time to complete", v: "12m", d: "\u22121m", h: "improving", icon: "clock" as const },
           { l: "Active templates", v: "6", d: "+1 draft", h: "7 total", icon: "grid" as const },
         ].map((s) => (
-          <div key={s.l} className="ih-card" style={{ padding: "14px 14px", cursor: "pointer" }}>
+          <div key={s.l} className="ih-card" style={{ padding: "14px 14px" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
               <span className="ih-eyebrow">{s.l}</span>
               <Icon name={s.icon} size={12} style={{ color: "var(--ih-ink-30)" }} />

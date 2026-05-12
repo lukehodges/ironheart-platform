@@ -67,7 +67,7 @@ export default function TeamPage() {
           { l: "Hours This Week", v: `${totalHours}/${totalMaxHours}h`, d: "", h: "logged / capacity", icon: "clock" as const },
           { l: "Utilization", v: `${utilization}%`, d: "", h: "team average", icon: "chart" as const },
         ].map((s) => (
-          <div key={s.l} className="ih-card" style={{ padding: "14px 14px", cursor: "pointer" }}>
+          <div key={s.l} className="ih-card" style={{ padding: "14px 14px" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
               <span className="ih-eyebrow">{s.l}</span>
               <Icon name={s.icon} size={12} style={{ color: "var(--ih-ink-30)" }} />

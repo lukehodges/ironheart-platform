@@ -9,6 +9,7 @@ export interface ConnectionCard {
   value: string
   count: string
   href?: string
+  onClick?: () => void
 }
 
 export interface ConnectionMapProps {
@@ -55,8 +56,16 @@ export function ConnectionMap({ cards }: ConnectionMapProps) {
           )
         }
 
+        if (c.onClick) {
+          return (
+            <div key={c.label} className="ih-card" style={{ padding: 12, cursor: "pointer" }} onClick={c.onClick}>
+              {inner}
+            </div>
+          )
+        }
+
         return (
-          <div key={c.label} className="ih-card" style={{ padding: 12, cursor: "pointer" }}>
+          <div key={c.label} className="ih-card" style={{ padding: 12 }}>
             {inner}
           </div>
         )

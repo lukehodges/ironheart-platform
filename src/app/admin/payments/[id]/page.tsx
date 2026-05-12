@@ -142,7 +142,13 @@ export default function InvoiceDetailPage() {
                 </div>
                 <div>
                   <div className="ih-eyebrow" style={{ marginBottom: 4 }}>Stripe link</div>
-                  <div style={{ fontSize: 12, color: "var(--ih-accent)", cursor: "pointer" }}>Open in Stripe <Icon name="arrowUpRight" size={10} /></div>
+                  <button
+                    className="ih-btn ih-btn-quiet ih-btn-sm"
+                    style={{ fontSize: 12, color: "var(--ih-accent)", padding: 0, height: "auto" }}
+                    onClick={() => setToast({ message: "Opening Stripe dashboard...", tone: "info" })}
+                  >
+                    Open in Stripe <Icon name="arrowUpRight" size={10} />
+                  </button>
                 </div>
                 <div>
                   <div className="ih-eyebrow" style={{ marginBottom: 4 }}>Paid date</div>
@@ -211,15 +217,18 @@ export default function InvoiceDetailPage() {
           </Link>
 
           {/* Linked engagement */}
-          <div className="ih-card" style={{ marginBottom: 12, background: "var(--ih-surface)", cursor: "pointer" }}>
-            <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--ih-line)" }}>
-              <span className="ih-eyebrow">Linked engagement</span>
+          <Link href="/admin/clients/c-northwind" style={{ textDecoration: "none", color: "inherit" }}>
+            <div className="ih-card" style={{ marginBottom: 12, background: "var(--ih-surface)", cursor: "pointer" }}>
+              <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--ih-line)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span className="ih-eyebrow">Linked engagement</span>
+                <Icon name="arrowUpRight" size={10} style={{ color: "var(--ih-ink-30)" }} />
+              </div>
+              <div style={{ padding: "12px 14px" }}>
+                <div style={{ fontSize: 13, fontWeight: 500 }}>Q2 Retainer {"·"} Sprint 4</div>
+                <div className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-50)", marginTop: 4 }}>/eng_0481 {"·"} AUDITING</div>
+              </div>
             </div>
-            <div style={{ padding: "12px 14px" }}>
-              <div style={{ fontSize: 13, fontWeight: 500 }}>Q2 Retainer {"·"} Sprint 4</div>
-              <div className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-50)", marginTop: 4 }}>/eng_0481 {"·"} AUDITING</div>
-            </div>
-          </div>
+          </Link>
 
           {/* Payment rule reference */}
           <div className="ih-card" style={{ marginBottom: 12, background: "var(--ih-surface)" }}>

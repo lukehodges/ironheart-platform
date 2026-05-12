@@ -35,6 +35,7 @@ export function DataTable<T>({
   columns,
   rows,
   renderRow,
+  onRowClick,
   emptyState,
   header,
   footer,
@@ -72,7 +73,21 @@ export function DataTable<T>({
               ))}
             </tr>
           </thead>
-          <tbody>
+          <tbody
+            onClick={
+              onRowClick
+                ? (e) => {
+                    const tr = (e.target as HTMLElement).closest("tr")
+                    if (!tr) return
+                    const tbody = tr.parentElement
+                    if (!tbody) return
+                    const idx = Array.from(tbody.children).indexOf(tr)
+                    if (idx >= 0 && idx < rows.length) onRowClick(rows[idx])
+                  }
+                : undefined
+            }
+            style={onRowClick ? { cursor: "pointer" } : undefined}
+          >
             {rows.length === 0 && emptyState ? (
               <tr>
                 <td colSpan={columns.length} style={{ padding: 32, textAlign: "center" }}>

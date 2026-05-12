@@ -70,14 +70,14 @@ export default function AnalyticsPage() {
       {/* 6 headline stats */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 10, marginBottom: 28 }}>
         {[
-          { l: "Revenue", v: "\u00a348k", d: "+14%", h: "MoM", icon: "money" as const },
-          { l: "Active clients", v: "12", d: "+2", h: "this quarter", icon: "users" as const },
-          { l: "Pipeline value", v: "\u00a3184k", d: "+\u00a322k", h: "weighted", icon: "pipeline" as const },
-          { l: "Avg engagement", v: "4.2mo", d: "+0.3", h: "vs last year", icon: "clock" as const },
-          { l: "Hours delivered", v: "192h", d: "+38h", h: "this month", icon: "bolt" as const },
-          { l: "NPS score", v: "72", d: "+4", h: "last 90d", icon: "star" as const },
+          { l: "Revenue", v: "\u00a348k", d: "+14%", h: "MoM", icon: "money" as const, href: "/admin/payments" },
+          { l: "Active clients", v: "12", d: "+2", h: "this quarter", icon: "users" as const, href: "/admin/clients" },
+          { l: "Pipeline value", v: "\u00a3184k", d: "+\u00a322k", h: "weighted", icon: "pipeline" as const, href: "/admin/pipeline" },
+          { l: "Avg engagement", v: "4.2mo", d: "+0.3", h: "vs last year", icon: "clock" as const, href: "/admin/bookings" },
+          { l: "Hours delivered", v: "192h", d: "+38h", h: "this month", icon: "bolt" as const, href: "/admin/team" },
+          { l: "NPS score", v: "72", d: "+4", h: "last 90d", icon: "star" as const, href: "/admin/reviews" },
         ].map((s) => (
-          <div key={s.l} className="ih-card" style={{ padding: "14px 14px", cursor: "pointer" }}>
+          <div key={s.l} className="ih-card" style={{ padding: "14px 14px", cursor: "pointer" }} onClick={() => router.push(s.href)}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
               <span className="ih-eyebrow">{s.l}</span>
               <Icon name={s.icon} size={12} style={{ color: "var(--ih-ink-30)" }} />

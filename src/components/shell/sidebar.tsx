@@ -89,18 +89,18 @@ const TENANT_SECTIONS: NavSectionDef[] = [
 const PORTAL_SECTIONS: NavSectionDef[] = [
   {
     items: [
-      { id: "dashboard", label: "Overview", icon: "dashboard", href: "/portal" },
-      { id: "deliverables", label: "Deliverables", icon: "file", href: "/portal/deliverables", badge: "4" },
-      { id: "approvals", label: "Approvals", icon: "check", href: "/portal/approvals", badge: "2" },
-      { id: "invoices", label: "Invoices", icon: "invoice", href: "/portal/invoices" },
-      { id: "calendar", label: "Sessions", icon: "calendar", href: "/portal/sessions" },
+      { id: "dashboard", label: "Overview", icon: "dashboard", href: "/dashboard" },
+      { id: "deliverables", label: "Deliverables", icon: "file", href: "/dashboard/deliverables", badge: "4" },
+      { id: "approvals", label: "Approvals", icon: "check", href: "/dashboard/approvals", badge: "2" },
+      { id: "invoices", label: "Invoices", icon: "invoice", href: "/dashboard/invoices" },
+      { id: "calendar", label: "Sessions", icon: "calendar", href: "/dashboard/sessions" },
     ],
   },
   {
     title: "Engagement",
     items: [
-      { id: "documents", label: "Documents", icon: "folder", href: "/portal/documents" },
-      { id: "messages", label: "Messages", icon: "chat", href: "/portal/messages" },
+      { id: "documents", label: "Documents", icon: "folder", href: "/dashboard/documents" },
+      { id: "messages", label: "Messages", icon: "chat", href: "/dashboard/messages" },
     ],
   },
 ]
@@ -139,7 +139,7 @@ const BRANDS: Record<string, { name: string; sub: string }> = {
 /* ── Helpers ── */
 
 function isActive(href: string, pathname: string): boolean {
-  if (href === "/admin" || href === "/portal" || href === "/platform") {
+  if (href === "/admin" || href === "/dashboard" || href === "/platform") {
     return pathname === href
   }
   return pathname.startsWith(href)
@@ -200,7 +200,7 @@ export function ShellSidebar({
           flexShrink: 0,
         }}
       >
-        <Link href={surface === "platform" ? "/platform" : surface === "portal" ? "/portal" : "/admin"}>
+        <Link href={surface === "platform" ? "/platform" : surface === "portal" ? "/dashboard" : "/admin"}>
           <Logo size={22} />
         </Link>
         {!collapsed && (

@@ -94,7 +94,7 @@ export default function ReviewsPage() {
           { l: "NPS Score", v: "68", d: "+4", h: "net promoter score", icon: "target" as const },
           { l: "Positive Sentiment", v: "89%", d: "+3%", h: "of all reviews", icon: "check" as const },
         ].map((s) => (
-          <div key={s.l} className="ih-card" style={{ padding: "14px 14px", cursor: "pointer" }}>
+          <div key={s.l} className="ih-card" style={{ padding: "14px 14px" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
               <span className="ih-eyebrow">{s.l}</span>
               <Icon name={s.icon} size={12} style={{ color: "var(--ih-ink-30)" }} />

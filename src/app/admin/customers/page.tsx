@@ -75,7 +75,7 @@ export default function CustomersPage() {
           { l: "Avg lifetime value", v: "\u00a328.4k", d: "+8.2%", h: "vs last quarter", icon: "money" as const },
           { l: "Retention rate", v: "92%", d: "+1.4%", h: "12-month rolling", icon: "target" as const },
         ].map((s) => (
-          <div key={s.l} className="ih-card" style={{ padding: "14px 14px", cursor: "pointer" }}>
+          <div key={s.l} className="ih-card" style={{ padding: "14px 14px" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
               <span className="ih-eyebrow">{s.l}</span>
               <Icon name={s.icon} size={12} style={{ color: "var(--ih-ink-30)" }} />
