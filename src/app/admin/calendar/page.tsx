@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { Icon } from "@/components/shell"
 
 /* ── Data ────────────────────────────────────────────────────────────────── */
@@ -64,52 +64,128 @@ export default function CalendarPage() {
 
       {/* Main grid */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 280px", gap: 14 }}>
-        {/* Week grid */}
+        {/* Calendar view */}
         <div className="ih-card" style={{ overflow: "hidden" }}>
-          {/* Day headers */}
-          <div style={{ display: "grid", gridTemplateColumns: "52px repeat(5, 1fr)", borderBottom: "1px solid var(--ih-line)" }}>
-            <div style={{ padding: "10px 8px", borderRight: "1px solid var(--ih-line)" }} />
-            {DAYS.map((d, i) => (
-              <div key={d} style={{ padding: "10px 12px", borderRight: i < 4 ? "1px solid var(--ih-line)" : undefined, textAlign: "center" }}>
-                <div className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-40)", textTransform: "uppercase", letterSpacing: "0.1em" }}>{d.split(" ")[0]}</div>
-                <div className="ih-serif" style={{ fontSize: 22, lineHeight: 1, marginTop: 2, color: i === 0 ? "var(--ih-accent)" : "var(--ih-ink)" }}>{d.split(" ")[1]}</div>
-              </div>
-            ))}
-          </div>
-
-          {/* Time grid */}
-          <div style={{ position: "relative" }}>
-            {HOURS.map((h) => (
-              <div key={h} style={{ display: "grid", gridTemplateColumns: "52px repeat(5, 1fr)", height: 60, borderBottom: "1px solid var(--ih-line)" }}>
-                <div style={{ padding: "4px 8px 0", textAlign: "right", borderRight: "1px solid var(--ih-line)" }}>
-                  <span className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-40)" }}>{h.toString().padStart(2, "0")}:00</span>
+          {view === 0 ? (
+            /* Day view — single column for day 0 (Mon) */
+            <>
+              <div style={{ display: "grid", gridTemplateColumns: "52px 1fr", borderBottom: "1px solid var(--ih-line)" }}>
+                <div style={{ padding: "10px 8px", borderRight: "1px solid var(--ih-line)" }} />
+                <div style={{ padding: "10px 12px", textAlign: "center" }}>
+                  <div className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-40)", textTransform: "uppercase", letterSpacing: "0.1em" }}>{DAYS[0].split(" ")[0]}</div>
+                  <div className="ih-serif" style={{ fontSize: 22, lineHeight: 1, marginTop: 2, color: "var(--ih-accent)" }}>{DAYS[0].split(" ")[1]}</div>
                 </div>
-                {[0, 1, 2, 3, 4].map((d) => (
-                  <div key={d} style={{ borderRight: d < 4 ? "1px solid var(--ih-line)" : undefined, position: "relative" }}>
-                    {EVENTS.filter(e => e.day === d && e.startHour === h).map((e) => {
-                      const colors = TYPE_COLORS[e.type]
-                      return (
-                        <div key={e.title} style={{
-                          position: "absolute", top: 2, left: 3, right: 3,
-                          height: Math.max(e.duration * 60 - 4, 26),
-                          background: colors.bg,
-                          borderLeft: `3px solid ${colors.border}`,
-                          borderRadius: "var(--ih-r-sm)",
-                          padding: "4px 8px",
-                          cursor: "pointer",
-                          zIndex: 1,
-                          overflow: "hidden",
-                        }}>
-                          <div style={{ fontSize: 11, fontWeight: 500, color: colors.text, lineHeight: 1.2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{e.title}</div>
-                          {e.duration >= 0.5 && <div className="ih-mono" style={{ fontSize: 9, color: colors.text, opacity: 0.7, marginTop: 2 }}>{e.subtitle}</div>}
-                        </div>
-                      )
-                    })}
+              </div>
+              <div style={{ position: "relative" }}>
+                {HOURS.map((h) => (
+                  <div key={h} style={{ display: "grid", gridTemplateColumns: "52px 1fr", height: 60, borderBottom: "1px solid var(--ih-line)" }}>
+                    <div style={{ padding: "4px 8px 0", textAlign: "right", borderRight: "1px solid var(--ih-line)" }}>
+                      <span className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-40)" }}>{h.toString().padStart(2, "0")}:00</span>
+                    </div>
+                    <div style={{ position: "relative" }}>
+                      {EVENTS.filter(e => e.day === 0 && e.startHour === h).map((e) => {
+                        const colors = TYPE_COLORS[e.type]
+                        return (
+                          <div key={e.title} style={{
+                            position: "absolute", top: 2, left: 3, right: 3,
+                            height: Math.max(e.duration * 60 - 4, 26),
+                            background: colors.bg,
+                            borderLeft: `3px solid ${colors.border}`,
+                            borderRadius: "var(--ih-r-sm)",
+                            padding: "4px 8px",
+                            cursor: "pointer",
+                            zIndex: 1,
+                            overflow: "hidden",
+                          }}>
+                            <div style={{ fontSize: 11, fontWeight: 500, color: colors.text, lineHeight: 1.2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{e.title}</div>
+                            {e.duration >= 0.5 && <div className="ih-mono" style={{ fontSize: 9, color: colors.text, opacity: 0.7, marginTop: 2 }}>{e.subtitle}</div>}
+                          </div>
+                        )
+                      })}
+                    </div>
                   </div>
                 ))}
               </div>
-            ))}
-          </div>
+            </>
+          ) : view === 2 ? (
+            /* Month view — grid of day cells */
+            <>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", borderBottom: "1px solid var(--ih-line)" }}>
+                {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
+                  <div key={d} style={{ padding: "8px 6px", textAlign: "center" }}>
+                    <div className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-40)", textTransform: "uppercase", letterSpacing: "0.1em" }}>{d}</div>
+                  </div>
+                ))}
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)" }}>
+                {/* April 28-30 (previous month fill) */}
+                {[28, 29, 30].map(d => (
+                  <div key={`prev-${d}`} style={{ minHeight: 72, padding: "4px 6px", borderBottom: "1px solid var(--ih-line)", borderRight: "1px solid var(--ih-line)" }}>
+                    <div className="ih-mono" style={{ fontSize: 11, color: "var(--ih-ink-30)", marginBottom: 2 }}>{d}</div>
+                  </div>
+                ))}
+                {/* May 1-31 */}
+                {Array.from({ length: 31 }, (_, i) => i + 1).map(d => {
+                  const dayIdx = (d + 2) % 7 // May 1 = Thu (index 3 in 0-based Mon grid, but we offset by prev-month fill)
+                  const eventsForDay = d >= 12 && d <= 16 ? EVENTS.filter(e => e.day === d - 12) : []
+                  return (
+                    <div key={d} style={{ minHeight: 72, padding: "4px 6px", borderBottom: "1px solid var(--ih-line)", borderRight: "1px solid var(--ih-line)", background: d >= 12 && d <= 16 ? "var(--ih-surface)" : "transparent" }}>
+                      <div className="ih-mono" style={{ fontSize: 11, color: d === 12 ? "var(--ih-accent)" : "var(--ih-ink)", fontWeight: d === 12 ? 600 : 400, marginBottom: 2 }}>{d}</div>
+                      {eventsForDay.slice(0, 2).map(e => (
+                        <div key={e.title} style={{ fontSize: 9, padding: "1px 3px", marginBottom: 1, borderRadius: 2, background: TYPE_COLORS[e.type].bg, color: TYPE_COLORS[e.type].text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{e.title}</div>
+                      ))}
+                      {eventsForDay.length > 2 && <div className="ih-mono" style={{ fontSize: 8, color: "var(--ih-ink-40)" }}>+{eventsForDay.length - 2} more</div>}
+                    </div>
+                  )
+                })}
+              </div>
+            </>
+          ) : (
+            /* Week view (default) */
+            <>
+              <div style={{ display: "grid", gridTemplateColumns: "52px repeat(5, 1fr)", borderBottom: "1px solid var(--ih-line)" }}>
+                <div style={{ padding: "10px 8px", borderRight: "1px solid var(--ih-line)" }} />
+                {DAYS.map((d, i) => (
+                  <div key={d} style={{ padding: "10px 12px", borderRight: i < 4 ? "1px solid var(--ih-line)" : undefined, textAlign: "center" }}>
+                    <div className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-40)", textTransform: "uppercase", letterSpacing: "0.1em" }}>{d.split(" ")[0]}</div>
+                    <div className="ih-serif" style={{ fontSize: 22, lineHeight: 1, marginTop: 2, color: i === 0 ? "var(--ih-accent)" : "var(--ih-ink)" }}>{d.split(" ")[1]}</div>
+                  </div>
+                ))}
+              </div>
+              <div style={{ position: "relative" }}>
+                {HOURS.map((h) => (
+                  <div key={h} style={{ display: "grid", gridTemplateColumns: "52px repeat(5, 1fr)", height: 60, borderBottom: "1px solid var(--ih-line)" }}>
+                    <div style={{ padding: "4px 8px 0", textAlign: "right", borderRight: "1px solid var(--ih-line)" }}>
+                      <span className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-40)" }}>{h.toString().padStart(2, "0")}:00</span>
+                    </div>
+                    {[0, 1, 2, 3, 4].map((d) => (
+                      <div key={d} style={{ borderRight: d < 4 ? "1px solid var(--ih-line)" : undefined, position: "relative" }}>
+                        {EVENTS.filter(e => e.day === d && e.startHour === h).map((e) => {
+                          const colors = TYPE_COLORS[e.type]
+                          return (
+                            <div key={e.title} style={{
+                              position: "absolute", top: 2, left: 3, right: 3,
+                              height: Math.max(e.duration * 60 - 4, 26),
+                              background: colors.bg,
+                              borderLeft: `3px solid ${colors.border}`,
+                              borderRadius: "var(--ih-r-sm)",
+                              padding: "4px 8px",
+                              cursor: "pointer",
+                              zIndex: 1,
+                              overflow: "hidden",
+                            }}>
+                              <div style={{ fontSize: 11, fontWeight: 500, color: colors.text, lineHeight: 1.2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{e.title}</div>
+                              {e.duration >= 0.5 && <div className="ih-mono" style={{ fontSize: 9, color: colors.text, opacity: 0.7, marginTop: 2 }}>{e.subtitle}</div>}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
         </div>
 
         {/* Right sidebar */}

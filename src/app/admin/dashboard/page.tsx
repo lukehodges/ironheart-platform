@@ -1,11 +1,32 @@
 "use client"
 
+import { useState, useMemo } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Icon } from "@/components/shell"
 
+const ACTIVITY = [
+  { time: "09:42", icon: "money" as const, tone: "ok",      who: "Stripe",     verb: "received payment from", obj: "Acme Studios", amt: "$4,200", trail: "/inv_2039 · paid in full", href: "/admin/payments/inv_2039", source: "Invoices" },
+  { time: "09:28", icon: "bolt" as const,  tone: "info",    who: "Workflow",   verb: "ran",                  obj: "Send onboarding · Olsen", amt: "23 steps", trail: "/wf_204 · 1.4s", href: "/admin/workflows/wf_204", source: "Workflows" },
+  { time: "08:51", icon: "check" as const, tone: "ok",      who: "Mira (you)", verb: "approved",             obj: "Q2 retainer brief · Northwind", amt: "",        trail: "/eng_0481 · note added", href: "/admin/clients/eng_0481", source: "Approvals" },
+  { time: "08:33", icon: "chat" as const,  tone: "muted",   who: "Portal",     verb: "comment from",         obj: "Jamie at Westfield",      amt: "",         trail: "design review · 1 reply pending", href: "/admin/inbox", source: "Bookings" },
+  { time: "07:14", icon: "x" as const,     tone: "danger",  who: "Stripe sync",verb: "failed on",            obj: "rate limit · resume?",    amt: "12 queued", trail: "/wf_887 · auto‑retry off", href: "/admin/workflows/wf_887", source: "Workflows" },
+  { time: "Mon",   icon: "file" as const,  tone: "muted",   who: "Form",       verb: "new submission ·",     obj: "Discovery / leadership",  amt: "",         trail: "/form_intake · routed to pipeline", href: "/admin/forms", source: "Bookings" },
+  { time: "Mon",   icon: "user" as const,  tone: "info",    who: "Pipeline",   verb: "deal moved to",        obj: "Won · Olsen Brands",      amt: "$12k",     trail: "/deal_443 · engagement auto‑created", href: "/admin/pipeline/deal_443", source: "Bookings" },
+]
+
+const ACTIVITY_TABS = ["All", "Bookings", "Workflows", "Invoices", "Approvals"]
+
 export default function DashboardPage() {
   const router = useRouter()
+  const [activityTab, setActivityTab] = useState(0)
+
+  const filteredActivity = useMemo(() => {
+    const tabLabel = ACTIVITY_TABS[activityTab]
+    if (tabLabel === "All") return ACTIVITY
+    return ACTIVITY.filter(r => r.source === tabLabel)
+  }, [activityTab])
+
   return (
     <div style={{ padding: "24px 28px 48px", maxWidth: 1400, margin: "0 auto" }}>
       {/* Hero greeting */}
@@ -84,22 +105,17 @@ export default function DashboardPage() {
               <h3 style={{ margin: "2px 0 0", fontSize: 15, fontWeight: 600 }}>The pulse</h3>
             </div>
             <div style={{ display: "flex", gap: 4 }}>
-              {["All", "Bookings", "Workflows", "Invoices", "Approvals"].map((t, i) => (
-                <button key={t} className={`ih-btn ${i===0?"ih-btn-ghost":"ih-btn-quiet"} ih-btn-sm`} style={{ height: 22, fontSize: 11 }}>{t}</button>
+              {ACTIVITY_TABS.map((t, i) => (
+                <button key={t} onClick={() => setActivityTab(i)} className={`ih-btn ${i===activityTab?"ih-btn-ghost":"ih-btn-quiet"} ih-btn-sm`} style={{ height: 22, fontSize: 11 }}>{t}</button>
               ))}
             </div>
           </div>
           <div>
-            {[
-              { time: "09:42", icon: "money" as const, tone: "ok",      who: "Stripe",     verb: "received payment from", obj: "Acme Studios", amt: "$4,200", trail: "/inv_2039 · paid in full", href: "/admin/payments/inv_2039" },
-              { time: "09:28", icon: "bolt" as const,  tone: "info",    who: "Workflow",   verb: "ran",                  obj: "Send onboarding · Olsen", amt: "23 steps", trail: "/wf_204 · 1.4s", href: "/admin/workflows/wf_204" },
-              { time: "08:51", icon: "check" as const, tone: "ok",      who: "Mira (you)", verb: "approved",             obj: "Q2 retainer brief · Northwind", amt: "",        trail: "/eng_0481 · note added", href: "/admin/clients/eng_0481" },
-              { time: "08:33", icon: "chat" as const,  tone: "muted",   who: "Portal",     verb: "comment from",         obj: "Jamie at Westfield",      amt: "",         trail: "design review · 1 reply pending", href: "/admin/inbox" },
-              { time: "07:14", icon: "x" as const,     tone: "danger",  who: "Stripe sync",verb: "failed on",            obj: "rate limit · resume?",    amt: "12 queued", trail: "/wf_887 · auto‑retry off", href: "/admin/workflows/wf_887" },
-              { time: "Mon",   icon: "file" as const,  tone: "muted",   who: "Form",       verb: "new submission ·",     obj: "Discovery / leadership",  amt: "",         trail: "/form_intake · routed to pipeline", href: "/admin/forms" },
-              { time: "Mon",   icon: "user" as const,  tone: "info",    who: "Pipeline",   verb: "deal moved to",        obj: "Won · Olsen Brands",      amt: "$12k",     trail: "/deal_443 · engagement auto‑created", href: "/admin/pipeline/deal_443" },
-            ].map((row, i) => (
-              <Link key={i} href={row.href} style={{ display: "grid", gridTemplateColumns: "44px 26px 1fr auto", gap: 10, alignItems: "center", padding: "10px 18px", borderBottom: i === 6 ? "0" : "1px solid var(--ih-line)", textDecoration: "none", color: "inherit" }}>
+            {filteredActivity.length === 0 ? (
+              <div style={{ padding: "32px 18px", textAlign: "center", color: "var(--ih-ink-40)", fontSize: 12 }}>No activity in this category.</div>
+            ) : null}
+            {filteredActivity.map((row, i) => (
+              <Link key={i} href={row.href} style={{ display: "grid", gridTemplateColumns: "44px 26px 1fr auto", gap: 10, alignItems: "center", padding: "10px 18px", borderBottom: i === filteredActivity.length - 1 ? "0" : "1px solid var(--ih-line)", textDecoration: "none", color: "inherit" }}>
                 <span className="ih-mono" style={{ fontSize: 10.5, color: "var(--ih-ink-40)" }}>{row.time}</span>
                 <div style={{ width: 22, height: 22, borderRadius: 6, background: row.tone === "accent" ? "var(--ih-accent-soft)" : row.tone === "ok" ? "var(--ih-ok-soft)" : row.tone === "warn" ? "var(--ih-warn-soft)" : row.tone === "info" ? "var(--ih-info-soft)" : row.tone === "danger" ? "var(--ih-danger-soft)" : "var(--ih-surface-2)", display: "flex", alignItems: "center", justifyContent: "center", color: row.tone === "ok" ? "var(--ih-ok)" : row.tone === "warn" ? "var(--ih-warn)" : row.tone === "info" ? "var(--ih-info)" : row.tone === "danger" ? "var(--ih-danger)" : "var(--ih-ink-50)" }}>
                   <Icon name={row.icon} size={11} stroke={2}/>

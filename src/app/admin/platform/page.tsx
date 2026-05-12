@@ -1,10 +1,35 @@
 "use client"
 
+import { useState, useMemo } from "react"
 import { Icon } from "@/components/shell"
+
+const TENANT_TABS = ["All 47", "Trialing 6", "At risk 4", "Paying 37"]
+
+const TENANTS = [
+  ["Acme Studios",     "Pro \u00b7 $99",        18, "$99",  92, "A",  "12m ago",  "8 active",  "ok",   "pro"],
+  ["Northwind Co.",    "Pro \u00b7 $99",        12, "$99",  88, "A\u2212", "1h ago",   "9 active",  "ok",   "pro"],
+  ["Westfield",        "Starter \u00b7 $29",     4, "$29",  64, "B+",  "2h ago",   "5 active",  "muted","starter"],
+  ["Halcyon Group",    "Pro \u00b7 $99",        21, "$99",  41, "C",   "3d ago",   "3 active",  "warn", "pro"],
+  ["Olsen Brands",     "Trial",                  7, "$0",   78, "\u2014", "32m ago",  "4 active",  "info", "trial"],
+  ["Field Notes Co",   "Pro \u00b7 $99",         9, "$99",  55, "B",   "5h ago",   "6 active",  "muted","pro"],
+  ["Cardinal LLC",     "Enterprise \u00b7 $399",48, "$399", 96, "A+",  "8m ago",   "12 active", "ok",   "enterprise"],
+  ["Bramble",          "Starter \u00b7 $29",     3, "$29",  18, "D",   "12d ago",  "2 active",  "danger","starter"],
+] as [string, string, number, string, number, string, string, string, string, string][]
 
 /* ── Platform Admin ──────────────────────────────────────────────────────── */
 
 export default function PlatformPage() {
+  const [tenantTab, setTenantTab] = useState(0)
+
+  const filteredTenants = useMemo(() => {
+    switch (tenantTab) {
+      case 1: return TENANTS.filter(r => r[9] === "trial") // Trialing
+      case 2: return TENANTS.filter(r => r[8] === "warn" || r[8] === "danger") // At risk
+      case 3: return TENANTS.filter(r => r[9] !== "trial") // Paying
+      default: return TENANTS // All
+    }
+  }, [tenantTab])
+
   return (
     <div style={{ margin: "-24px -24px 0" }}>
       {/* Header */}
@@ -43,8 +68,8 @@ export default function PlatformPage() {
         {/* Filter tabs */}
         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 14, alignItems: "center" }}>
           <div style={{ display: "flex", gap: 6 }}>
-            {["All 47", "Trialing 6", "At risk 4", "Paying 37"].map((t, i) => (
-              <button key={t} className={`ih-btn ${i === 0 ? "ih-btn-ghost" : "ih-btn-quiet"} ih-btn-sm`}>{t}</button>
+            {TENANT_TABS.map((t, i) => (
+              <button key={t} onClick={() => setTenantTab(i)} className={`ih-btn ${i === tenantTab ? "ih-btn-ghost" : "ih-btn-quiet"} ih-btn-sm`}>{t}</button>
             ))}
           </div>
           <div style={{ display: "flex", gap: 6 }}>
@@ -64,16 +89,7 @@ export default function PlatformPage() {
               </tr>
             </thead>
             <tbody>
-              {([
-                ["Acme Studios",     "Pro \u00b7 $99",        18, "$99",  92, "A",  "12m ago",  "8 active",  "ok"],
-                ["Northwind Co.",    "Pro \u00b7 $99",        12, "$99",  88, "A\u2212", "1h ago",   "9 active",  "ok"],
-                ["Westfield",        "Starter \u00b7 $29",     4, "$29",  64, "B+",  "2h ago",   "5 active",  "muted"],
-                ["Halcyon Group",    "Pro \u00b7 $99",        21, "$99",  41, "C",   "3d ago",   "3 active",  "warn"],
-                ["Olsen Brands",     "Trial",                  7, "$0",   78, "\u2014", "32m ago",  "4 active",  "info"],
-                ["Field Notes Co",   "Pro \u00b7 $99",         9, "$99",  55, "B",   "5h ago",   "6 active",  "muted"],
-                ["Cardinal LLC",     "Enterprise \u00b7 $399",48, "$399", 96, "A+",  "8m ago",   "12 active", "ok"],
-                ["Bramble",          "Starter \u00b7 $29",     3, "$29",  18, "D",   "12d ago",  "2 active",  "danger"],
-              ] as [string, string, number, string, number, string, string, string, string][]).map((r, i) => (
+              {filteredTenants.map((r, i) => (
                 <tr key={i} style={{ borderTop: "1px solid var(--ih-line)" }}>
                   <td style={{ padding: "11px 14px" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>

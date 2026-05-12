@@ -226,6 +226,7 @@ function FormsTab() {
 
 function NotesTab() {
   const [newNote, setNewNote] = useState("")
+  const [noteType, setNoteType] = useState<"GENERAL" | "PREFERENCE" | "FOLLOWUP">("GENERAL")
   const notes = [
     { type: "PREFERENCE", text: "Prefers async. Don\u2019t book past 16:00 UK. Lara approves all spend > \u00A3500.", by: "luke", when: "4 weeks ago" },
     { type: "FOLLOWUP", text: "Renewal conversation slot: last week of June. Q3 brief drafted in /docs.", by: "luke", when: "6 days ago" },
@@ -247,9 +248,9 @@ function NotesTab() {
           style={{ width: "100%", minHeight: 60, padding: 10, border: "1px solid var(--ih-line)", borderRadius: 8, fontSize: 13, lineHeight: 1.5, color: "var(--ih-ink)", fontFamily: "inherit", resize: "vertical", outline: "none", background: "var(--ih-surface)" }}
         />
         <div style={{ display: "flex", gap: 6, marginTop: 10, justifyContent: "flex-end" }}>
-          <Btn sm ghost>GENERAL</Btn>
-          <Btn sm ghost>PREFERENCE</Btn>
-          <Btn sm ghost>FOLLOWUP</Btn>
+          {(["GENERAL", "PREFERENCE", "FOLLOWUP"] as const).map(t => (
+            <Btn key={t} sm ghost={noteType !== t} accent={noteType === t} onClick={() => setNoteType(t)} style={noteType === t ? {} : undefined}>{t}</Btn>
+          ))}
           <Btn sm accent><Icon name="plus" size={11} /> Save note</Btn>
         </div>
       </div>

@@ -130,29 +130,45 @@ function IntegrationsTab() {
 }
 
 function ModulesTab() {
+  const [enabledModules, setEnabledModules] = useState<Set<string>>(
+    () => new Set(MODULES.filter(m => m.enabled).map(m => m.slug))
+  )
+
+  const toggleModule = (slug: string) => {
+    setEnabledModules(prev => {
+      const next = new Set(prev)
+      if (next.has(slug)) next.delete(slug)
+      else next.add(slug)
+      return next
+    })
+  }
+
   return (
     <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
-      {MODULES.map((mod) => (
-        <div key={mod.slug} className="ih-card" style={{ padding: "14px 18px", display: "flex", alignItems: "center", gap: 14 }}>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 13, fontWeight: 500 }}>{mod.name}</div>
-            <div style={{ fontSize: 11.5, color: "var(--ih-ink-50)", marginTop: 2 }}>{mod.description}</div>
+      {MODULES.map((mod) => {
+        const isEnabled = enabledModules.has(mod.slug)
+        return (
+          <div key={mod.slug} className="ih-card" style={{ padding: "14px 18px", display: "flex", alignItems: "center", gap: 14 }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 13, fontWeight: 500 }}>{mod.name}</div>
+              <div style={{ fontSize: 11.5, color: "var(--ih-ink-50)", marginTop: 2 }}>{mod.description}</div>
+            </div>
+            {/* Toggle */}
+            <div onClick={() => toggleModule(mod.slug)} style={{
+              width: 36, height: 20, borderRadius: 10, cursor: "pointer",
+              background: isEnabled ? "var(--ih-ok)" : "var(--ih-surface-3)",
+              padding: 2, transition: "background 0.2s",
+            }}>
+              <div style={{
+                width: 16, height: 16, borderRadius: 8,
+                background: "#fff", boxShadow: "0 1px 3px rgba(0,0,0,0.15)",
+                transform: isEnabled ? "translateX(16px)" : "translateX(0)",
+                transition: "transform 0.2s",
+              }} />
+            </div>
           </div>
-          {/* Toggle */}
-          <div style={{
-            width: 36, height: 20, borderRadius: 10, cursor: "pointer",
-            background: mod.enabled ? "var(--ih-ok)" : "var(--ih-surface-3)",
-            padding: 2, transition: "background 0.2s",
-          }}>
-            <div style={{
-              width: 16, height: 16, borderRadius: 8,
-              background: "#fff", boxShadow: "0 1px 3px rgba(0,0,0,0.15)",
-              transform: mod.enabled ? "translateX(16px)" : "translateX(0)",
-              transition: "transform 0.2s",
-            }} />
-          </div>
-        </div>
-      ))}
+        )
+      })}
     </div>
   )
 }

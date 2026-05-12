@@ -54,6 +54,7 @@ function StatusDot({ s }: { s: string }) {
 
 function WorkView() {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set(["m3"]))
+  const [workView, setWorkView] = useState<"gantt" | "board" | "list">("gantt")
   const toggle = (id: string) => setExpandedIds(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
 
   return (
@@ -66,14 +67,24 @@ function WorkView() {
         </div>
         <div style={{ display: "flex", gap: 6 }}>
           <div style={{ display: "flex", border: "1px solid var(--ih-line)", borderRadius: "var(--ih-r-md)", padding: 2, gap: 2 }}>
-            <button className="ih-btn ih-btn-sm" style={{ height: 22, background: "var(--ih-surface-2)", border: 0 }}>Gantt</button>
-            <button className="ih-btn ih-btn-quiet ih-btn-sm" style={{ height: 22 }}>Board</button>
-            <button className="ih-btn ih-btn-quiet ih-btn-sm" style={{ height: 22 }}>List</button>
+            {(["gantt", "board", "list"] as const).map(v => (
+              <button key={v} onClick={() => setWorkView(v)} className={`ih-btn ${workView === v ? "ih-btn-sm" : "ih-btn-quiet ih-btn-sm"}`} style={{ height: 22, background: workView === v ? "var(--ih-surface-2)" : "transparent", border: 0, textTransform: "capitalize" }}>{v === "gantt" ? "Gantt" : v === "board" ? "Board" : "List"}</button>
+            ))}
           </div>
           <button className="ih-btn ih-btn-quiet ih-btn-sm"><Icon name="filter" size={11} /> Hide done</button>
         </div>
       </div>
 
+      {workView !== "gantt" ? (
+        <div className="ih-card" style={{ padding: "48px 28px", textAlign: "center" }}>
+          <Icon name={workView === "board" ? "grid" : "list"} size={24} style={{ color: "var(--ih-ink-30)", marginBottom: 12 }} />
+          <div className="ih-serif" style={{ fontSize: 20, marginBottom: 8 }}>{workView === "board" ? "Board" : "List"} view</div>
+          <p style={{ margin: 0, fontSize: 12, color: "var(--ih-ink-50)" }}>
+            {workView === "board" ? "Kanban board view with milestones as columns and deliverables as cards." : "Flat list of all deliverables sorted by status and due date."}
+          </p>
+          <div className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-40)", marginTop: 12 }}>Coming soon</div>
+        </div>
+      ) : (
       <div style={{ border: "1px solid var(--ih-line)", borderRadius: "var(--ih-r-xl)", background: "var(--ih-surface)", overflow: "hidden" }}>
         {/* Gantt header */}
         <div style={{ display: "flex", borderBottom: "1px solid var(--ih-line)", paddingLeft: 320, position: "sticky", top: 0, background: "var(--ih-bg)", zIndex: 2 }}>
@@ -132,6 +143,7 @@ function WorkView() {
           )
         })}
       </div>
+      )}
 
       {/* Bottom panels */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 320px", gap: 16, marginTop: 18 }}>

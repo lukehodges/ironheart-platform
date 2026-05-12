@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import { Icon, type IconName } from "@/components/shell"
 
 /* -- Data ----------------------------------------------------------------- */
@@ -129,8 +130,13 @@ function ImpactBadge({ impact }: { impact: Impact }) {
 
 /* -- Page ----------------------------------------------------------------- */
 export default function AuditLensPage() {
-  const lens = LENSES.find(l => l.id === "OPERATIONS")!
-  const tone = RAG_TONE[lens.rag]
+  const [activeLensId, setActiveLensId] = useState("OPERATIONS")
+  const [ragOverrides, setRagOverrides] = useState<Record<string, RagScore>>({})
+
+  const lens = LENSES.find(l => l.id === activeLensId)!
+  const getRag = (l: Lens): RagScore => ragOverrides[l.id] ?? l.rag
+  const selectedRag = getRag(lens)
+  const tone = RAG_TONE[selectedRag]
 
   return (
     <div style={{ display: "flex", height: "calc(100vh - 120px)", margin: "-24px -24px 0" }}>
@@ -138,10 +144,11 @@ export default function AuditLensPage() {
       <aside style={{ width: 220, borderRight: "1px solid var(--ih-line)", padding: "16px 12px", flexShrink: 0, overflowY: "auto" }}>
         <div className="ih-eyebrow" style={{ marginBottom: 10 }}>Lenses {"·"} AS-0027</div>
         {LENSES.map((l) => {
-          const active = l.id === lens.id
-          const t = RAG_TONE[l.rag]
+          const active = l.id === activeLensId
+          const lRag = getRag(l)
+          const t = RAG_TONE[lRag]
           return (
-            <div key={l.id} style={{
+            <div key={l.id} onClick={() => setActiveLensId(l.id)} style={{
               display: "flex", alignItems: "center", gap: 10,
               padding: "10px 10px", borderRadius: "var(--ih-r-md)", marginBottom: 4,
               background: active ? "var(--ih-accent-soft-2)" : "transparent",
@@ -151,7 +158,7 @@ export default function AuditLensPage() {
               <Icon name={l.icon} size={13} style={{ color: active ? "var(--ih-accent)" : "var(--ih-ink-50)" }} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 12, fontWeight: active ? 600 : 500 }}>{l.name}</div>
-                <div className="ih-mono" style={{ fontSize: 9.5, color: t.color }}>{"●"} {l.rag} {"·"} {fmtGBP(l.waste)}</div>
+                <div className="ih-mono" style={{ fontSize: 9.5, color: t.color }}>{"●"} {lRag} {"·"} {fmtGBP(l.waste)}</div>
               </div>
             </div>
           )
@@ -178,7 +185,7 @@ export default function AuditLensPage() {
               {lens.justification}
             </div>
           </div>
-          <RagBadge score={lens.rag} />
+          <RagBadge score={selectedRag} />
         </div>
 
         {/* RAG editor */}
@@ -187,9 +194,9 @@ export default function AuditLensPage() {
           <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
             {(["RED", "AMBER", "GREEN"] as RagScore[]).map((r) => {
               const t = RAG_TONE[r]
-              const active = r === lens.rag
+              const active = r === selectedRag
               return (
-                <button key={r} style={{
+                <button key={r} onClick={() => setRagOverrides(prev => ({ ...prev, [lens.id]: r }))} style={{
                   flex: 1, padding: "12px 14px", textAlign: "left",
                   border: `1px solid ${active ? t.color : "var(--ih-line)"}`,
                   background: active ? t.bg : "var(--ih-surface)",

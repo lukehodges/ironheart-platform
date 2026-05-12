@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { Icon, type IconName } from "@/components/shell"
 
 /* ── Data ───────────────────────────────────────────────────────────────── */
@@ -192,8 +192,8 @@ function LensCard({ lens }: { lens: Lens }) {
 
 /* ── Lens detail panel ─────────────────────────────────────────────────── */
 
-function LensDetail({ lens }: { lens: Lens }) {
-  const tone = RAG_TONE[lens.rag]
+function LensDetail({ lens, selectedRag, onRagChange }: { lens: Lens; selectedRag: RagScore; onRagChange: (r: RagScore) => void }) {
+  const tone = RAG_TONE[selectedRag]
   return (
     <>
       {/* Header */}
@@ -210,7 +210,7 @@ function LensDetail({ lens }: { lens: Lens }) {
             {lens.justification}
           </div>
         </div>
-        <RagBadge score={lens.rag} />
+        <RagBadge score={selectedRag} />
       </div>
 
       {/* RAG editor */}
@@ -219,9 +219,9 @@ function LensDetail({ lens }: { lens: Lens }) {
         <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
           {(["RED", "AMBER", "GREEN"] as RagScore[]).map((r) => {
             const t = RAG_TONE[r]
-            const active = r === lens.rag
+            const active = r === selectedRag
             return (
-              <button key={r} style={{
+              <button key={r} onClick={() => onRagChange(r)} style={{
                 flex: 1, padding: "12px 14px", textAlign: "left",
                 border: `1px solid ${active ? t.color : "var(--ih-line)"}`,
                 background: active ? t.bg : "var(--ih-surface)",
@@ -314,7 +314,14 @@ function LensDetail({ lens }: { lens: Lens }) {
 
 export default function AuditWorkspacePage() {
   const [activeLens, setActiveLens] = useState<string | null>(null)
+  const [ragOverrides, setRagOverrides] = useState<Record<string, RagScore>>({})
   const selectedLens = LENSES.find(l => l.id === activeLens)
+
+  const handleRagChange = (lensId: string, rag: RagScore) => {
+    setRagOverrides(prev => ({ ...prev, [lensId]: rag }))
+  }
+
+  const getRag = (lens: Lens): RagScore => ragOverrides[lens.id] ?? lens.rag
 
   if (selectedLens) {
     return (
@@ -324,7 +331,8 @@ export default function AuditWorkspacePage() {
           <div className="ih-eyebrow" style={{ marginBottom: 10 }}>Lenses · AS-0027</div>
           {LENSES.map((l) => {
             const active = l.id === selectedLens.id
-            const t = RAG_TONE[l.rag]
+            const lRag = getRag(l)
+            const t = RAG_TONE[lRag]
             return (
               <div key={l.id} onClick={() => setActiveLens(l.id)} style={{
                 display: "flex", alignItems: "center", gap: 10,
@@ -336,7 +344,7 @@ export default function AuditWorkspacePage() {
                 <Icon name={l.icon} size={13} style={{ color: active ? "var(--ih-accent)" : "var(--ih-ink-50)" }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 12, fontWeight: active ? 600 : 500 }}>{l.name}</div>
-                  <div className="ih-mono" style={{ fontSize: 9.5, color: t.color }}>● {l.rag} · {fmtGBP(l.waste)}</div>
+                  <div className="ih-mono" style={{ fontSize: 9.5, color: t.color }}>● {lRag} · {fmtGBP(l.waste)}</div>
                 </div>
               </div>
             )
@@ -344,7 +352,7 @@ export default function AuditWorkspacePage() {
 
           <div className="ih-hr" style={{ margin: "14px 0" }} />
           <div className="ih-eyebrow" style={{ marginBottom: 6 }}>Lens summary</div>
-          <div className="ih-num ih-serif" style={{ fontSize: 20, color: RAG_TONE[selectedLens.rag].color, lineHeight: 1 }}>{fmtGBP(selectedLens.waste)}</div>
+          <div className="ih-num ih-serif" style={{ fontSize: 20, color: RAG_TONE[getRag(selectedLens)].color, lineHeight: 1 }}>{fmtGBP(selectedLens.waste)}</div>
           <div style={{ fontSize: 10.5, color: "var(--ih-ink-50)", marginTop: 4 }}>annual waste · {selectedLens.findings.length} findings</div>
           <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => setActiveLens(null)} style={{ marginTop: 14, width: "100%" }}>
             <Icon name="chevronLeft" size={11} /> Back to overview
@@ -352,7 +360,7 @@ export default function AuditWorkspacePage() {
         </aside>
 
         <section className="scrollbar-thin" style={{ flex: 1, overflowY: "auto", padding: "24px 28px" }}>
-          <LensDetail lens={selectedLens} />
+          <LensDetail lens={selectedLens} selectedRag={getRag(selectedLens)} onRagChange={(r) => handleRagChange(selectedLens.id, r)} />
         </section>
       </div>
     )

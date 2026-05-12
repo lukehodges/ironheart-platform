@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Icon, type IconName } from "@/components/shell"
@@ -76,30 +76,33 @@ const STAGE_META: Record<string, { idx: number; label: string; tone: string }> =
 
 /* ── Sub-components ──────────────────────────────────────────────────────── */
 
-function SegmentRail() {
+function SegmentRail({ activeSegment, onSegmentChange }: { activeSegment: string; onSegmentChange: (id: string) => void }) {
   return (
     <aside style={{ width: 200, borderRight: "1px solid var(--ih-line)", padding: "12px 8px", overflowY: "auto", flexShrink: 0 }} className="scrollbar-thin">
       {SEGMENTS.map((sec, i) => (
         <div key={i} style={{ marginBottom: 12 }}>
           <div className="ih-eyebrow" style={{ padding: "8px 8px 4px", fontSize: 9 }}>{sec.group}</div>
-          {sec.items && sec.items.map((it) => (
-            <div key={it.id} style={{
-              display: "flex", alignItems: "center", gap: 8,
-              padding: "5px 8px", borderRadius: "var(--ih-r-sm)",
-              background: it.active ? "var(--ih-surface)" : "transparent",
-              border: it.active ? "1px solid var(--ih-line)" : "1px solid transparent",
-              fontSize: 12, color: it.active ? "var(--ih-ink)" : "var(--ih-ink-65)", cursor: "pointer",
-              position: "relative",
-            }}>
-              {it.active && <span style={{ position: "absolute", left: -8, top: "50%", transform: "translateY(-50%)", width: 2, height: 14, background: "var(--ih-accent)", borderRadius: 2 }} />}
-              {it.pinned && <Icon name="pin" size={10} style={{ color: "var(--ih-accent)" }} />}
-              {!it.pinned && it.icon && <Icon name={it.icon} size={12} style={{ color: "var(--ih-ink-40)" }} />}
-              {!it.pinned && !it.icon && <span style={{ width: 12 }} />}
-              <span style={{ flex: 1, fontWeight: it.active ? 500 : 400 }}>{it.label}</span>
-              {it.dot && <span className={`ih-dot ih-dot-${it.dot}`} />}
-              <span className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-40)" }}>{it.count}</span>
-            </div>
-          ))}
+          {sec.items && sec.items.map((it) => {
+            const isActive = it.id === activeSegment
+            return (
+              <div key={it.id} onClick={() => onSegmentChange(it.id)} style={{
+                display: "flex", alignItems: "center", gap: 8,
+                padding: "5px 8px", borderRadius: "var(--ih-r-sm)",
+                background: isActive ? "var(--ih-surface)" : "transparent",
+                border: isActive ? "1px solid var(--ih-line)" : "1px solid transparent",
+                fontSize: 12, color: isActive ? "var(--ih-ink)" : "var(--ih-ink-65)", cursor: "pointer",
+                position: "relative",
+              }}>
+                {isActive && <span style={{ position: "absolute", left: -8, top: "50%", transform: "translateY(-50%)", width: 2, height: 14, background: "var(--ih-accent)", borderRadius: 2 }} />}
+                {it.pinned && <Icon name="pin" size={10} style={{ color: "var(--ih-accent)" }} />}
+                {!it.pinned && it.icon && <Icon name={it.icon} size={12} style={{ color: "var(--ih-ink-40)" }} />}
+                {!it.pinned && !it.icon && <span style={{ width: 12 }} />}
+                <span style={{ flex: 1, fontWeight: isActive ? 500 : 400 }}>{it.label}</span>
+                {it.dot && <span className={`ih-dot ih-dot-${it.dot}`} />}
+                <span className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-40)" }}>{it.count}</span>
+              </div>
+            )
+          })}
           {sec.tags && (
             <div style={{ padding: "4px 8px", display: "flex", flexWrap: "wrap", gap: 4 }}>
               {sec.tags.map((t) => (
@@ -319,11 +322,43 @@ const TH_STYLE: React.CSSProperties = { textAlign: "left", padding: "10px 10px",
 
 export default function ClientsListPage() {
   const [selectedId, setSelectedId] = useState<string | null>("c-brigham")
+  const [activeSegment, setActiveSegment] = useState("mine")
+  const [search, setSearch] = useState("")
   const selected = ROWS.find((r) => r.id === selectedId)
+
+  const filteredRows = useMemo(() => {
+    let rows = ROWS
+    // Segment filtering
+    switch (activeSegment) {
+      case "all": break
+      case "mine": break // all rows belong to LH
+      case "audit": rows = rows.filter(r => r.stage === "AUDITING"); break
+      case "awaiting": rows = rows.filter(r => r.status === "PROPOSED" || r.status === "PAUSED"); break
+      case "overdue": rows = rows.filter(r => r.nextTone === "danger"); break
+      case "risk": rows = rows.filter(r => r.risk === true); break
+      case "closing": rows = rows.filter(r => r.stage === "REPORTING" || r.stage === "RETAINER"); break
+      // By stage
+      case "discovery": rows = rows.filter(r => r.stage === "DISCOVERY"); break
+      case "proposal": rows = rows.filter(r => r.stage === "PROPOSAL"); break
+      case "active": rows = rows.filter(r => r.status === "ACTIVE"); break
+      case "retainer": rows = rows.filter(r => r.stage === "RETAINER"); break
+      case "won": rows = rows.filter(r => r.stage === "CLOSED_WON"); break
+      // By type
+      case "project": rows = rows.filter(r => r.type === "PROJECT"); break
+      case "retain": rows = rows.filter(r => r.type === "RETAINER"); break
+      case "hybrid": rows = rows.filter(r => r.type === "HYBRID"); break
+    }
+    // Search filtering
+    if (search.trim()) {
+      const q = search.toLowerCase()
+      rows = rows.filter(r => r.customer.toLowerCase().includes(q) || r.title.toLowerCase().includes(q) || r.contact.toLowerCase().includes(q))
+    }
+    return rows
+  }, [activeSegment, search])
 
   return (
     <div style={{ display: "flex", height: "calc(100vh - 120px)", margin: "-24px -24px" }}>
-      <SegmentRail />
+      <SegmentRail activeSegment={activeSegment} onSegmentChange={setActiveSegment} />
 
       <section style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
         <div style={{ padding: "18px 20px 14px", borderBottom: "1px solid var(--ih-line)" }}>
@@ -364,7 +399,7 @@ export default function ClientsListPage() {
         <div style={{ padding: "10px 20px", display: "flex", gap: 8, alignItems: "center", borderBottom: "1px solid var(--ih-line)" }}>
           <div style={{ position: "relative", flex: 1, maxWidth: 320 }}>
             <Icon name="search" size={13} style={{ position: "absolute", left: 10, top: 8, color: "var(--ih-ink-40)" }} />
-            <input className="ih-input" placeholder="Search clients, engagement titles, tags\u2026" style={{ paddingLeft: 30 }} />
+            <input className="ih-input" placeholder="Search clients, engagement titles, tags\u2026" style={{ paddingLeft: 30 }} value={search} onChange={e => setSearch(e.target.value)} />
           </div>
           <span className="ih-pill" style={{ background: "var(--ih-accent-soft)", color: "var(--ih-accent)", borderColor: "transparent" }}>Stage: any <Icon name="x" size={9} /></span>
           <span className="ih-pill">Owner: me <Icon name="x" size={9} /></span>
@@ -391,13 +426,13 @@ export default function ClientsListPage() {
               </tr>
             </thead>
             <tbody>
-              {ROWS.map((r) => <ClientRow key={r.id} row={r} onClick={() => setSelectedId(r.id)} isSelected={r.id === selectedId} />)}
+              {filteredRows.map((r) => <ClientRow key={r.id} row={r} onClick={() => setSelectedId(r.id)} isSelected={r.id === selectedId} />)}
             </tbody>
           </table>
         </div>
 
         <div style={{ padding: "8px 20px", borderTop: "1px solid var(--ih-line)", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11, color: "var(--ih-ink-50)" }}>
-          <span>9 of 47 engagements</span>
+          <span>{filteredRows.length} of 47 engagements</span>
           <div style={{ display: "flex", gap: 4 }}>
             <button className="ih-btn ih-btn-quiet ih-btn-icon" style={{ height: 22, width: 22 }}><Icon name="chevronLeft" size={11} /></button>
             <button className="ih-btn ih-btn-quiet ih-btn-icon" style={{ height: 22, width: 22 }}><Icon name="chevronRight" size={11} /></button>

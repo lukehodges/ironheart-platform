@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { Icon } from "@/components/shell"
 
 /* ── Data ────────────────────────────────────────────────────────────────── */
@@ -32,6 +32,24 @@ const TH: React.CSSProperties = { textAlign: "left", padding: "10px 12px", fontW
 
 export default function CustomersPage() {
   const [tab, setTab] = useState(0)
+  const [search, setSearch] = useState("")
+
+  const filteredCustomers = useMemo(() => {
+    let list = CUSTOMERS
+    // Tab filtering
+    switch (tab) {
+      case 1: list = list.filter(c => c.health === "ok" && c.engagements > 0); break // Active
+      case 2: list = list.filter(c => c.engagements === 0 || c.health === "muted"); break // Inactive
+      case 3: list = list.filter(c => c.health === "danger" || c.health === "warn"); break // At Risk
+      case 4: list = list.filter(c => c.lastContact.includes("d ago") && parseInt(c.lastContact) <= 30 || c.lastContact.includes("h ago")); break // New (30d) — approximate by recent contact
+    }
+    // Search filtering
+    if (search.trim()) {
+      const q = search.toLowerCase()
+      list = list.filter(c => c.name.toLowerCase().includes(q) || c.company.toLowerCase().includes(q) || c.email.toLowerCase().includes(q))
+    }
+    return list
+  }, [tab, search])
 
   return (
     <div style={{ padding: "24px 28px 48px", maxWidth: 1400, margin: "0 auto" }}>
@@ -82,7 +100,7 @@ export default function CustomersPage() {
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <div style={{ position: "relative" }}>
               <Icon name="search" size={13} style={{ position: "absolute", left: 10, top: 8, color: "var(--ih-ink-40)" }} />
-              <input className="ih-input" placeholder="Search customers\u2026" style={{ paddingLeft: 30, width: 240 }} />
+              <input className="ih-input" placeholder="Search customers\u2026" style={{ paddingLeft: 30, width: 240 }} value={search} onChange={e => setSearch(e.target.value)} />
             </div>
             <button className="ih-btn ih-btn-quiet ih-btn-sm"><Icon name="filter" size={11}/> Filter</button>
           </div>
@@ -104,7 +122,7 @@ export default function CustomersPage() {
             </tr>
           </thead>
           <tbody>
-            {CUSTOMERS.map((c) => (
+            {filteredCustomers.map((c) => (
               <tr key={c.id} style={{ borderTop: "1px solid var(--ih-line)", cursor: "pointer" }}>
                 <td style={{ padding: "10px 12px 10px 16px" }}>
                   <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
@@ -145,7 +163,7 @@ export default function CustomersPage() {
 
         {/* Footer */}
         <div style={{ padding: "10px 16px", borderTop: "1px solid var(--ih-line)", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11, color: "var(--ih-ink-50)" }}>
-          <span>Showing 10 of 47 customers</span>
+          <span>Showing {filteredCustomers.length} of {CUSTOMERS.length} customers</span>
           <div style={{ display: "flex", gap: 4 }}>
             <button className="ih-btn ih-btn-quiet ih-btn-icon" style={{ height: 22, width: 22 }}><Icon name="chevronLeft" size={11}/></button>
             <button className="ih-btn ih-btn-quiet ih-btn-icon" style={{ height: 22, width: 22 }}><Icon name="chevronRight" size={11}/></button>
