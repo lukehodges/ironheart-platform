@@ -4,6 +4,7 @@ import { db } from "@/shared/db";
 import { engagements } from "@/shared/db/schema";
 import { eq } from "drizzle-orm";
 import { provisioningService } from "./provisioning.service";
+import { onboardingService } from "@/modules/onboarding";
 
 const log = logger.child({ module: "consulting.events" });
 
@@ -40,14 +41,23 @@ export const onStageChanged = inngest.createFunction(
         return provisioningService.provisionClientTenant(engagementId);
       });
 
-      // TODO (Phase 0.1.C): chain seedChartFromTier(engagementId) as next step once onboarding module exists
-      // For now, just log so future seedChart trigger can be added without re-touching this file
-      log.info(
-        { engagementId, tenantId: result.tenantId },
-        "Provisioning complete; chart seed deferred to Phase 0.1.C"
-      );
+      const chartResult = await step.run("seed-org-chart", async () => {
+        // provisioning just set engagement.clientTenantId — re-fetch fresh
+        const provisionedEng = await db.query.engagements.findFirst({
+          where: eq(engagements.id, engagementId),
+        });
+        if (!provisionedEng?.clientTenantId) {
+          log.warn({ engagementId }, "Chart seed skipped — clientTenantId not set after provisioning");
+          return { skipped: true, reason: "no_client_tenant_id" };
+        }
+        return await onboardingService.seedChartFromTier({
+          tenantId: provisionedEng.clientTenantId,
+          engagementId,
+          actorName: "Provisioning Bot",
+        });
+      });
 
-      return { provisioned: true, tenantId: result.tenantId };
+      return { provisioned: true, tenantId: result.tenantId, chartResult };
     }
 
     if (toStage === "ONBOARDING") {

@@ -41,6 +41,11 @@ vi.mock("@/shared/db", () => ({
       where: vi.fn().mockReturnThis(),
       limit: vi.fn().mockResolvedValue([]),
     }),
+    query: {
+      engagements: {
+        findFirst: vi.fn(),
+      },
+    },
   },
 }));
 
@@ -55,12 +60,19 @@ vi.mock("../provisioning.service", () => ({
   },
 }));
 
+vi.mock("@/modules/onboarding", () => ({
+  onboardingService: {
+    seedChartFromTier: vi.fn(),
+  },
+}));
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
 import { db } from "@/shared/db";
 import { provisioningService } from "../provisioning.service";
+import { onboardingService } from "@/modules/onboarding";
 
 const ENGAGEMENT_ID = "00000000-0000-0000-0000-000000000010";
 const TENANT_ID = "00000000-0000-0000-0000-000000000001";
@@ -119,7 +131,7 @@ describe("onStageChanged — CONTRACTED provisioning", () => {
   });
 
   it("provisions tenant when toStage=CONTRACTED and no clientTenantId", async () => {
-    // Arrange: engagement exists with no clientTenantId
+    // Arrange: engagement exists with no clientTenantId (check-engagement step)
     vi.mocked(db.select).mockReturnValue({
       from: vi.fn().mockReturnThis(),
       where: vi.fn().mockReturnThis(),
@@ -132,13 +144,30 @@ describe("onStageChanged — CONTRACTED provisioning", () => {
       workosOrgId: "org_abc123",
     });
 
+    // Arrange: after provisioning, re-fetch returns engagement with clientTenantId set
+    vi.mocked(db.query.engagements.findFirst).mockResolvedValue(
+      makeEngagementRow({ clientTenantId: CLIENT_TENANT_ID }) as any
+    );
+
+    const CHART_RESULT = { created: 5, tier: "MICRO", alreadySeeded: false };
+    vi.mocked(onboardingService.seedChartFromTier).mockResolvedValue(CHART_RESULT as any);
+
     // Act
     const result = await invokeHandler(makeEvent("CONTRACTED"));
 
-    // Assert
+    // Assert provisioning ran
     expect(provisioningService.provisionClientTenant).toHaveBeenCalledOnce();
     expect(provisioningService.provisionClientTenant).toHaveBeenCalledWith(ENGAGEMENT_ID);
-    expect(result).toEqual({ provisioned: true, tenantId: CLIENT_TENANT_ID });
+
+    // Assert chart seed ran with correct params
+    expect(onboardingService.seedChartFromTier).toHaveBeenCalledOnce();
+    expect(onboardingService.seedChartFromTier).toHaveBeenCalledWith({
+      tenantId: CLIENT_TENANT_ID,
+      engagementId: ENGAGEMENT_ID,
+      actorName: "Provisioning Bot",
+    });
+
+    expect(result).toEqual({ provisioned: true, tenantId: CLIENT_TENANT_ID, chartResult: CHART_RESULT });
   });
 
   it("skips provisioning when toStage=CONTRACTED but clientTenantId already set", async () => {
