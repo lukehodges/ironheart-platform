@@ -679,6 +679,7 @@ export const formTemplates = pgTable("form_templates", {
 	id: uuid().primaryKey().notNull(),
 	tenantId: uuid().notNull(),
 	name: text().notNull(),
+	slug: text(),
 	description: text(),
 	fields: jsonb().notNull(),
 	attachedServices: uuid().array(),

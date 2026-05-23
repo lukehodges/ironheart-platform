@@ -24,7 +24,9 @@
     "test:api": "tsx --tsconfig tsconfig.json scripts/exercise-trpc.ts",
     "outreach": "tsx --tsconfig tsconfig.json scripts/outreach-gen.ts",
     "outreach:dry": "tsx --tsconfig tsconfig.json scripts/outreach-gen.ts --dry-run",
-    "db:apply-org-chart-schema": "tsx --tsconfig tsconfig.json scripts/apply-org-chart-schema.ts"
+    "db:apply-org-chart-schema": "tsx --tsconfig tsconfig.json scripts/apply-org-chart-schema.ts",
+    "db:apply-form-template-slug": "tsx --tsconfig tsconfig.json scripts/apply-form-template-slug.ts",
+    "db:seed-questionnaires": "tsx --tsconfig tsconfig.json scripts/seed-questionnaire-templates.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.78.0",
