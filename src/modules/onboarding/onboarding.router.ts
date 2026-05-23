@@ -60,8 +60,9 @@ async function assertClientMembership(
 /**
  * Builds a human-readable action + message for a node update log entry.
  * If the only patch field is interviewMode, we call it a mode change.
+ * Exported for unit-testing.
  */
-function describeUpdate(
+export function describeUpdate(
   patch: Record<string, unknown>,
   label: string,
   actor: string
@@ -79,7 +80,8 @@ function describeUpdate(
   }
 }
 
-function actorDisplayName(user: {
+/** Exported for unit-testing. */
+export function actorDisplayName(user: {
   firstName?: string | null
   lastName?: string | null
   email: string
