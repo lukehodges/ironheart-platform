@@ -18,7 +18,7 @@
  * client error.
  */
 
-import { WorkOS, DomainDataState } from "@workos-inc/node";
+import { WorkOS, DomainDataState, NotFoundException } from "@workos-inc/node";
 import { IronheartError } from "@/shared/errors";
 import { logger } from "@/shared/logger";
 
@@ -125,8 +125,14 @@ export async function sendInvitation(params: {
   expiresInDays?: number;
 }): Promise<{ id: string; email: string; expiresAt: string; state: string }> {
   const operation = "sendInvitation";
+  const roleSlug = params.roleSlug ?? "member";
   log.info(
-    { operation, params: { email: params.email, organizationId: params.organizationId } },
+    {
+      operation,
+      organizationId: params.organizationId,
+      emailDomain: params.email.split("@")[1] ?? "unknown",
+      roleSlug: roleSlug,
+    },
     "WorkOS call"
   );
 
@@ -134,7 +140,7 @@ export async function sendInvitation(params: {
     const invitation = await workos.userManagement.sendInvitation({
       email: params.email,
       organizationId: params.organizationId,
-      roleSlug: params.roleSlug ?? "member",
+      roleSlug: roleSlug,
       expiresInDays: params.expiresInDays ?? 7,
     });
 
@@ -251,17 +257,14 @@ export async function getUser(params: {
       lastName: user.lastName,
     };
   } catch (err) {
-    // WorkOS throws on 404 — return null for not-found rather than propagating
-    const message = err instanceof Error ? err.message : String(err);
-    if (
-      err instanceof Error &&
-      "status" in err &&
-      (err as { status?: number }).status === 404
-    ) {
+    // WorkOS throws NotFoundException (status === 404) when user doesn't exist.
+    // Return null for not-found rather than propagating as an error.
+    if (err instanceof NotFoundException) {
       log.info({ operation, params }, "WorkOS user not found, returning null");
       return null;
     }
 
+    const message = err instanceof Error ? err.message : String(err);
     log.error({ operation, error: err }, "WorkOS call failed");
     throw new ExternalServiceError("WorkOS", `${operation} failed: ${message}`, {
       cause: err,

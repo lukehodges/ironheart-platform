@@ -96,6 +96,8 @@ const IRONHEART_TO_TRPC: Record<string, TRPCError["code"]> = {
   BAD_REQUEST: "BAD_REQUEST",
   CAPACITY_EXCEEDED: "CONFLICT",
   SKILL_EXPIRED: "BAD_REQUEST",
+  // 5xx — infrastructure/external service failures
+  EXTERNAL_SERVICE_ERROR: "INTERNAL_SERVER_ERROR",
 };
 
 /**

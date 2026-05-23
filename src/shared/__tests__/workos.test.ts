@@ -46,6 +46,7 @@ vi.mock("@workos-inc/node", async (importOriginal) => {
 // Import module under test AFTER mocks are registered
 // ---------------------------------------------------------------------------
 
+import { NotFoundException } from "@workos-inc/node";
 import {
   createOrganization,
   sendInvitation,
@@ -312,8 +313,11 @@ describe("getUser", () => {
     });
   });
 
-  it("returns null when SDK returns a 404 status", async () => {
-    const notFoundErr = Object.assign(new Error("Not found"), { status: 404 });
+  it("returns null when SDK throws NotFoundException (404)", async () => {
+    const notFoundErr = new NotFoundException({
+      path: "/users/user_missing",
+      requestID: "req_test_001",
+    });
     mockGetUser.mockRejectedValueOnce(notFoundErr);
 
     const result = await getUser({ workosUserId: "user_missing" });
