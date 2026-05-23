@@ -403,6 +403,21 @@ type IronheartEvents = {
       tenantId: string;
     };
   };
+  "engagement/chart-seeded": {
+    data: {
+      engagementId: string;
+      tenantId: string;
+      tier: string;
+      nodeCount: number;
+    };
+  };
+  "engagement/onboarding-plan-approved": {
+    data: {
+      engagementId: string;
+      tenantId: string;
+      plan: unknown;
+    };
+  };
   "tenant/provisioned": {
     data: {
       engagementId: string;
