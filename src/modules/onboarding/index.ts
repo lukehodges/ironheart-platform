@@ -1,3 +1,5 @@
 export * from "./onboarding.types"
 export { onboardingRepository } from "./onboarding.repository"
 export * from "./onboarding.service"
+export * from "./onboarding.router"
+export * from "./onboarding.schemas"
