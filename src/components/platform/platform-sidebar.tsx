@@ -7,23 +7,34 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
+  LayoutDashboard,
+  Inbox,
+  Calendar,
   Building2,
-  BarChart3,
+  GitBranch,
+  CalendarCheck,
+  FileText,
+  Workflow,
+  Send,
+  CreditCard,
+  FileSpreadsheet,
+  Wallet,
   Users,
-  Settings,
-  ChevronLeft,
+  Star,
+  BarChart3,
+  FileBarChart,
+  Sparkles,
   Shield,
   Package,
-  CreditCard,
+  BadgeDollarSign,
   TrendingUp,
-  FileText,
-  GitCompare,
+  Settings,
 } from "lucide-react"
 
 interface NavItem {
   title: string
   href: string
-  icon: any
+  icon: React.ComponentType<{ className?: string }>
 }
 
 interface NavSection {
@@ -33,30 +44,64 @@ interface NavSection {
 
 const NAV_SECTIONS: NavSection[] = [
   {
-    title: "Products",
+    title: "Today",
     items: [
-      { title: "All Products", href: "/platform/products", icon: Package },
-      { title: "Compare", href: "/platform/products/compare", icon: GitCompare },
+      { title: "Today", href: "/platform/today", icon: LayoutDashboard },
+      { title: "Inbox", href: "/platform/inbox", icon: Inbox },
+      { title: "Calendar", href: "/platform/calendar", icon: Calendar },
     ],
   },
   {
-    title: "Customers",
+    title: "Clients",
     items: [
-      { title: "Tenants", href: "/platform/tenants", icon: Building2 },
+      { title: "Clients", href: "/platform/clients", icon: Building2 },
+      { title: "Pipeline", href: "/platform/pipeline", icon: GitBranch },
+      { title: "Bookings", href: "/platform/bookings", icon: CalendarCheck },
     ],
   },
   {
-    title: "Revenue",
+    title: "Work",
     items: [
-      { title: "Subscriptions", href: "/platform/subscriptions", icon: CreditCard },
+      { title: "Forms", href: "/platform/forms", icon: FileText },
+      { title: "Workflows", href: "/platform/workflows", icon: Workflow },
+      { title: "Outreach", href: "/platform/outreach", icon: Send },
+    ],
+  },
+  {
+    title: "Money",
+    items: [
+      { title: "Payments", href: "/platform/payments", icon: CreditCard },
+      { title: "Invoices", href: "/platform/invoices", icon: FileSpreadsheet },
+      { title: "Finance", href: "/platform/finance", icon: Wallet },
+    ],
+  },
+  {
+    title: "Team",
+    items: [
+      { title: "Team", href: "/platform/team", icon: Users },
+      { title: "Reviews", href: "/platform/reviews", icon: Star },
+    ],
+  },
+  {
+    title: "Insights",
+    items: [
+      { title: "Analytics", href: "/platform/analytics", icon: BarChart3 },
+      { title: "Reports", href: "/platform/reports", icon: FileBarChart },
+      { title: "AI Chat", href: "/platform/ai-chat", icon: Sparkles },
+    ],
+  },
+  {
+    title: "Superadmin",
+    items: [
+      { title: "Tenants", href: "/platform/tenants", icon: Shield },
+      { title: "Products", href: "/platform/products", icon: Package },
+      { title: "Subscriptions", href: "/platform/subscriptions", icon: BadgeDollarSign },
       { title: "Revenue", href: "/platform/revenue", icon: TrendingUp },
     ],
   },
   {
-    title: "Operations",
+    title: "Settings",
     items: [
-      { title: "Analytics", href: "/platform/analytics", icon: BarChart3 },
-      { title: "Audit Log", href: "/platform/audit", icon: FileText },
       { title: "Settings", href: "/platform/settings", icon: Settings },
     ],
   },
@@ -78,7 +123,7 @@ export function PlatformSidebar({ user }: PlatformSidebarProps) {
       {/* Logo / Brand */}
       <div className="flex h-16 items-center gap-2 border-b border-zinc-800 px-6">
         <Shield className="h-6 w-6 text-primary" />
-        <span className="text-lg font-semibold">Platform Admin</span>
+        <span className="text-lg font-semibold">Ironheart</span>
       </div>
 
       {/* Navigation */}
@@ -114,19 +159,6 @@ export function PlatformSidebar({ user }: PlatformSidebarProps) {
             </div>
           ))}
         </nav>
-
-        {/* Back to Tenant Admin */}
-        <div className="mt-8 border-t border-zinc-800 pt-4">
-          <Link href="/admin">
-            <Button
-              variant="ghost"
-              className="w-full justify-start gap-3 text-zinc-400 hover:bg-zinc-800 hover:text-white"
-            >
-              <ChevronLeft className="h-4 w-4" />
-              Back to Admin
-            </Button>
-          </Link>
-        </div>
       </ScrollArea>
 
       {/* User Profile */}
