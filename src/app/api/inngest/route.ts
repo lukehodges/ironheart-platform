@@ -17,6 +17,7 @@ import { pipelineFunctions } from "@/modules/pipeline";
 import { outreachFunctions } from "@/modules/outreach";
 import { clientPortalFunctions } from "@/modules/client-portal";
 import { integrationsFunctions } from "@/modules/integrations";
+import { consultingFunctions } from "@/modules/consulting/consulting.events";
 
 /**
  * Inngest serve endpoint.
@@ -64,5 +65,7 @@ export const { GET, POST, PUT } = serve({
     ...clientPortalFunctions,
     // Integration Hub
     ...integrationsFunctions,
+    // Consulting module
+    ...consultingFunctions,
   ],
 });

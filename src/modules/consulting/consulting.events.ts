@@ -1,5 +1,9 @@
 import { inngest } from "@/shared/inngest";
 import { logger } from "@/shared/logger";
+import { db } from "@/shared/db";
+import { engagements } from "@/shared/db/schema";
+import { eq } from "drizzle-orm";
+import { provisioningService } from "./provisioning.service";
 
 const log = logger.child({ module: "consulting.events" });
 
@@ -12,13 +16,38 @@ export const onStageChanged = inngest.createFunction(
     log.info({ engagementId, fromStage, toStage }, "processing stage change");
 
     if (toStage === "CONTRACTED") {
-      await step.run("handle-contracted", () => {
-        log.info({ engagementId }, "engagement contracted — trigger: provision client tenant, create Drive folder, send welcome email");
-        // These will be wired to actual service calls:
-        // 1. provisioningService.provisionClientTenant()
-        // 2. integrationService.createDriveFolder()
-        // 3. notificationService.sendWelcomeEmail()
+      // Defensive check: skip if already provisioned
+      const engagement = await step.run("check-engagement", async () => {
+        const rows = await db
+          .select()
+          .from(engagements)
+          .where(eq(engagements.id, engagementId))
+          .limit(1);
+        return rows[0] ?? null;
       });
+
+      if (!engagement) {
+        log.error({ engagementId }, "Engagement not found for stage transition");
+        return { skipped: true, reason: "not_found" };
+      }
+
+      if (engagement.clientTenantId) {
+        log.info({ engagementId }, "Already provisioned; skipping");
+        return { skipped: true, reason: "already_provisioned" };
+      }
+
+      const result = await step.run("provision-client-tenant", async () => {
+        return provisioningService.provisionClientTenant(engagementId);
+      });
+
+      // TODO (Phase 0.1.C): chain seedChartFromTier(engagementId) as next step once onboarding module exists
+      // For now, just log so future seedChart trigger can be added without re-touching this file
+      log.info(
+        { engagementId, tenantId: result.tenantId },
+        "Provisioning complete; chart seed deferred to Phase 0.1.C"
+      );
+
+      return { provisioned: true, tenantId: result.tenantId };
     }
 
     if (toStage === "ONBOARDING") {
