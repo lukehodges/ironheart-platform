@@ -2,7 +2,7 @@
 
 > **Last updated**: 2026-05-23 (late evening — Phase 0.1 + 0.2 complete)
 > **Branch**: `feature/product-platform`
-> **Pickup point**: **Phase 0.3 starting** — Audit workspace UI (consultant's lens entry, RAG scoring, findings). Backend module exists; UI is missing.
+> **Pickup point**: **Phase 0.4 starting** — Report generator (Claude AI draft → editor → publish). Audit workspace done; reports next.
 
 ## ⚡ Quick pickup if you're a fresh chat
 
@@ -50,7 +50,7 @@ The minimum thing that runs a real audit. ~4 weeks of work split across 5 sub-ph
 |---|---|---|---|
 | **0.1** | Platform shell + tenant bootstrap + collaborative org chart | [`2026-05-23-phase-0.1-MASTER.md`](./2026-05-23-phase-0.1-MASTER.md) | ✅ |
 | **0.2** | Form template seeds + chart→forms wiring + portal audit progress tab | [`2026-05-23-phase-0.2-forms-wiring.md`](./2026-05-23-phase-0.2-forms-wiring.md) | ✅ |
-| **0.3** | Audit workspace UI (call notes capture, RAG entry, findings) | [`2026-05-23-phase-0.3-audit-workspace.md`](./2026-05-23-phase-0.3-audit-workspace.md) | 📋 |
+| **0.3** | Audit workspace UI (call notes capture, RAG entry, findings) | [`2026-05-23-phase-0.3-audit-workspace.md`](./2026-05-23-phase-0.3-audit-workspace.md) | ✅ |
 | **0.4** | Report generator (Claude API draft → editor → publish) | [`2026-05-23-phase-0.4-report-generator.md`](./2026-05-23-phase-0.4-report-generator.md) | 📋 |
 | **0.5** | Client report view + audit walkthrough booking link | [`2026-05-23-phase-0.5-client-report.md`](./2026-05-23-phase-0.5-client-report.md) | 📋 |
 
@@ -106,6 +106,15 @@ The minimum thing that runs a real audit. ~4 weeks of work split across 5 sub-ph
 | 0.2.C — Portal audit progress tab | ✅ | `ec082c9` | `clientGetAuditProgress` procedure + sidebar link |
 
 **Tests in 0.2: 6 new (+ all existing pass).** Total commits in 0.2: 3.
+
+### 0.3 granular status (2026-05-23)
+
+| Task | Status | Commit | Notes |
+|---|---|---|---|
+| 1 — Backend gap-fill | ✅ | `f9bad9c` | 7 new procedures (getOrCreate, upsertCallNoteByEngagement, upsertLensByEngagement, reorderFindings, reorderRecommendations, validateByEngagement, markReadyByEngagement). 14 new tests pass. |
+| 2-4 — Audit workspace UI (combined) | ✅ | `13eb35f` | 3-layer UI: Capture (contacts + notes autosave) + Processing (5 lens tabs w/ RAG + findings + recs) + Report Ready (validation gate). 11 new components. |
+
+**Tests in 0.3: 14 new.** Total commits in 0.3: 2.
 
 ### 0.2 known gaps (defer to 0.3+)
 
