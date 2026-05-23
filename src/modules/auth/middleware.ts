@@ -1,4 +1,4 @@
-import { authkitMiddleware } from "@workos-inc/authkit-nextjs";
+import { authkitMiddleware, authkit } from "@workos-inc/authkit-nextjs";
 import { NextResponse, NextRequest } from "next/server";
 import type { NextFetchEvent } from "next/server";
 import { extractSubdomainFromHostname } from "./tenant";
@@ -7,6 +7,11 @@ import {
   PUBLIC_ROUTE_PREFIXES,
   AUTH_SIGNIN_PATH,
 } from "./auth.config";
+import {
+  extractPotentialTenantSlug,
+  getTenantBySlug,
+  isMemberOfOrg,
+} from "@/lib/auth/tenant-resolver";
 
 // Emergency rollback: set AUTH_PROVIDER=legacy to disable WorkOS enforcement
 // without a code deploy.
@@ -74,6 +79,56 @@ export async function ironheartMiddleware(
   // (meaning "pass through"). Normalise to a NextResponse.
   if (result == null) {
     return NextResponse.next({ request: { headers: requestHeaders } });
+  }
+
+  // If authkitMiddleware issued a redirect (e.g. to sign-in), let it through
+  // immediately — no tenant resolution needed.
+  if (result.status >= 300 && result.status < 400) {
+    return result;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Tenant resolution layer
+  //
+  // Only runs for /[tenantSlug]/* paths — i.e. the first path segment is not a
+  // reserved top-level segment AND matches a tenant slug in the database.
+  // ---------------------------------------------------------------------------
+  const potentialSlug = extractPotentialTenantSlug(pathname);
+  if (potentialSlug) {
+    const tenant = await getTenantBySlug(potentialSlug);
+
+    if (tenant) {
+      // Retrieve the current session without triggering a redirect — authkit
+      // reads the session cookie directly, same as withAuth() in RSCs.
+      const { session } = await authkit(req);
+
+      if (!session.user) {
+        // No session — redirect to sign-in with return URL.
+        const loginUrl = new URL("/sign-in", req.url);
+        loginUrl.searchParams.set("returnPathname", pathname);
+        return NextResponse.redirect(loginUrl);
+      }
+
+      if (!tenant.workosOrgId) {
+        // Tenant has no WorkOS org linked — shouldn't happen post-provisioning,
+        // but guard gracefully.
+        return NextResponse.redirect(
+          new URL("/select-tenant?reason=unprovisioned", req.url)
+        );
+      }
+
+      const member = await isMemberOfOrg(session.user.id, tenant.workosOrgId);
+      if (!member) {
+        return new NextResponse("Forbidden", { status: 403 });
+      }
+
+      // Attach tenant identity headers for downstream RSC / route handlers.
+      const response = NextResponse.next({ request: { headers: requestHeaders } });
+      response.headers.set("x-tenant-id", tenant.id);
+      response.headers.set("x-tenant-slug", tenant.slug);
+      response.headers.set("x-workos-org-id", tenant.workosOrgId);
+      return response;
+    }
   }
 
   return result;
