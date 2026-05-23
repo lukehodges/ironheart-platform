@@ -76,6 +76,7 @@ function makeNode(overrides: Partial<OrgChartNodeRecord> = {}): OrgChartNodeReco
     version: 1,
     lastEditedBy: "CONSULTANT",
     lastEditedAt: new Date("2026-01-01"),
+    formSendId: null,
     createdAt: new Date("2026-01-01"),
     updatedAt: new Date("2026-01-01"),
     ...overrides,

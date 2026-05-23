@@ -51,6 +51,11 @@ export const engagementOrgChart = pgTable(
       .notNull()
       .defaultNow(),
 
+    // Set when a form invitation has been dispatched for this node (0.2.B).
+    // Points to the completed_forms row on the Ironheart tenant.
+    // Nullable — null means no form has been sent yet.
+    formSendId: uuid("formSendId"),
+
     createdAt: timestamp("createdAt", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -62,6 +67,7 @@ export const engagementOrgChart = pgTable(
     byEngagement: index("idx_org_chart_engagement").on(t.engagementId),
     byParent: index("idx_org_chart_parent").on(t.parentId),
     byTenant: index("idx_org_chart_tenant").on(t.tenantId),
+    byFormSend: index("idx_org_chart_form_send").on(t.formSendId),
   })
 );
 

@@ -23,6 +23,8 @@ export interface OrgChartNodeRecord {
   version: number
   lastEditedBy: EditorIdentity
   lastEditedAt: Date
+  /** ID of the completed_forms row created when a form invitation was sent for this node. Null = not yet sent. */
+  formSendId: string | null
   createdAt: Date
   updatedAt: Date
 }
