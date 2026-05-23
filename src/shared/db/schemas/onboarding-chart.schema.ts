@@ -78,7 +78,8 @@ export const engagementOrgChartActivity = pgTable(
     actorType: text("actorType", {
       enum: ["CONSULTANT", "CLIENT", "SYSTEM"],
     }).notNull(),
-    actorId: uuid("actorId"),
+    // text (not uuid) — actor can be a WorkOS user id (`user_01K…` format) or null for SYSTEM actors
+    actorId: text("actorId"),
     actorName: text("actorName").notNull(),
     action: text("action").notNull(),
     fromValue: jsonb("fromValue"),
