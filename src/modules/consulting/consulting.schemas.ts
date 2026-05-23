@@ -19,11 +19,11 @@ export const setAuditWindowSchema = z.object({
   "Audit window start must be before end"
 );
 
+// Note: companyName, ownerEmail, ownerName have been removed — the provisioning
+// service reads all required fields from the DB (customer.notes, customer.email)
+// so callers only need to supply the engagementId.
 export const provisionClientTenantSchema = z.object({
-  engagementId: z.string(),
-  companyName: z.string().min(1),
-  ownerEmail: z.string().email(),
-  ownerName: z.string().min(1),
+  engagementId: z.string().uuid(),
 });
 
 export const addTeamContactSchema = z.object({

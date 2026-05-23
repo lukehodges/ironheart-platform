@@ -223,6 +223,17 @@ export const provisioningService = {
               .where(inArray(modules.slug, CLIENT_MODULE_SET))
           : [];
 
+      // Guard: fail loudly if any expected module slug is missing from the DB.
+      // A missing slug means provisioning would silently enable zero modules —
+      // run `npm run db:seed` to insert the consulting module catalogue entries.
+      const foundSlugs = new Set(moduleRows.map((m) => m.slug));
+      const missingSlugs = CLIENT_MODULE_SET.filter((s) => !foundSlugs.has(s));
+      if (missingSlugs.length > 0) {
+        throw new BadRequestError(
+          `Missing client modules in DB: ${missingSlugs.join(", ")}. Run \`npm run db:seed\` to seed the modules catalogue.`
+        );
+      }
+
       for (const mod of moduleRows) {
         await tx.insert(tenantModules).values({
           id: crypto.randomUUID(),

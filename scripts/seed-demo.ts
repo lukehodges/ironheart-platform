@@ -188,6 +188,11 @@ async function seedModules() {
     { slug: "workflow",       name: "Workflows",         category: "PREMIUM" as const, features: { builder: true, triggers: true, actions: true } },
     { slug: "developer",      name: "Developer Tools",   category: "PREMIUM" as const, features: { webhooks: true, api: true } },
     { slug: "ai",              name: "AI Assistant",      category: "PREMIUM" as const, features: { chat: true, tools: true } },
+    // Consulting / client-portal modules (required by CLIENT_MODULE_SET in provisioning.service.ts)
+    { slug: "client-portal",  name: "Client Portal",     category: "CUSTOM"  as const, features: { portal: true } },
+    { slug: "onboarding",     name: "Onboarding",        category: "CUSTOM"  as const, features: { orgChart: true, auditOnboarding: true } },
+    { slug: "audit-view",     name: "Audit Findings",    category: "CUSTOM"  as const, features: { readOnly: true, lensAnalysis: true } },
+    { slug: "bookings",       name: "Bookings",          category: "CUSTOM"  as const, features: { scheduleSessions: true } },
   ];
 
   const existingSlugs = (

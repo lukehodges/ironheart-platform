@@ -22,6 +22,13 @@
       "when": 1775468384618,
       "tag": "0002_proposal-normalization",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1779560739672,
+      "tag": "0003_workos_org_id",
+      "breakpoints": true
     }
   ]
 }

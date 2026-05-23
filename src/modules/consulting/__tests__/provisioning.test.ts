@@ -364,6 +364,52 @@ describe("provisioningService.provisionClientTenant", () => {
   // Invitation failure resilience
   // -------------------------------------------------------------------------
 
+  it("throws BadRequestError when a CLIENT_MODULE_SET slug is missing from the DB", async () => {
+    // Wire up the transaction so that only 4 of 5 modules are returned (simulates
+    // an un-seeded DB where "bookings" is absent)
+    const engagement = makeEngagement();
+    makeSelectChain([
+      [engagement],        // (1) engagement lookup
+      [makeCustomer()],    // (2) customer lookup
+      [],                  // (3) slug free
+    ]);
+    vi.mocked(workos.createOrganization).mockResolvedValue({
+      id: WORKOS_ORG_ID,
+      name: "Acme Ltd",
+      slug: null,
+    });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    vi.mocked(db.transaction).mockImplementation(async (fn: (tx: any) => Promise<unknown>) => {
+      const tx = {
+        insert: (_table: unknown) => ({
+          values: (_vals: Record<string, unknown>) => ({
+            returning: () => Promise.resolve([makeNewTenant()]),
+          }),
+        }),
+        // Only 4 of 5 slugs — "bookings" is absent
+        select: () => ({
+          from: () => ({
+            where: () => Promise.resolve([
+              { id: "mod-uuid-1", slug: "client-portal" },
+              { id: "mod-uuid-2", slug: "onboarding" },
+              { id: "mod-uuid-3", slug: "audit-view" },
+              { id: "mod-uuid-4", slug: "forms" },
+              // "bookings" intentionally missing
+            ]),
+          }),
+        }),
+        update: () => ({
+          set: () => ({ where: () => Promise.resolve() }),
+        }),
+      };
+      return fn(tx);
+    });
+
+    await expect(
+      provisioningService.provisionClientTenant(ENGAGEMENT_ID)
+    ).rejects.toThrow(BadRequestError);
+  });
+
   it("does NOT roll back tenant when WorkOS invitation fails", async () => {
     setupHappyPath({ invitationFails: true });
 
