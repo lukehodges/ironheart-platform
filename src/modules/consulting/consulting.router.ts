@@ -15,6 +15,7 @@ import {
   createPlaneProjectSchema,
   createDriveFolderSchema,
   getIntegrationStatusSchema,
+  createClientEngagementSchema,
 } from "./consulting.schemas";
 
 const moduleGate = createModuleMiddleware("consulting");
@@ -71,4 +72,8 @@ export const consultingRouter = router({
     .query(async ({ ctx, input }) =>
       integrationService.getIntegrationStatus(ctx.tenantId, input.engagementId)
     ),
+
+  createClientEngagement: platformAdminProcedure
+    .input(createClientEngagementSchema)
+    .mutation(async ({ input }) => consultingService.createClientEngagement(input)),
 });

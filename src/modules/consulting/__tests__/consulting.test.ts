@@ -15,6 +15,20 @@ vi.mock("../consulting.repository", () => ({
   },
 }));
 
+// Mocked to prevent database import side-effects from client-portal.repository
+vi.mock("@/modules/client-portal/client-portal.repository", () => ({
+  clientPortalRepository: {
+    createEngagement: vi.fn(),
+  },
+}));
+
+// Mocked to prevent database import side-effects from customer.repository
+vi.mock("@/modules/customer/customer.repository", () => ({
+  customerRepository: {
+    create: vi.fn(),
+  },
+}));
+
 vi.mock("@/shared/inngest", () => ({
   inngest: { send: vi.fn() },
 }));
