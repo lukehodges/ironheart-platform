@@ -6,7 +6,8 @@ import { db } from "@/shared/db"
 import { engagements } from "@/shared/db/schemas/client-portal.schema"
 import { tenants } from "@/shared/db/schemas/tenant.schema"
 import { engagementOrgChart } from "@/shared/db/schemas/onboarding-chart.schema"
-import { eq } from "drizzle-orm"
+import { completedForms } from "@/shared/db/schemas/shared.schema"
+import { eq, asc } from "drizzle-orm"
 import { isMemberOfOrg } from "@/lib/auth/tenant-resolver"
 import { NotFoundError, ForbiddenError } from "@/shared/errors"
 import {
@@ -472,5 +473,63 @@ export const onboardingRouter = router({
         message: `${actorDisplayName(user)} marked the org chart as ready for consultant review`,
       })
       return { ok: true }
+    }),
+
+  /**
+   * Aggregates chart node form-send status, upcoming sessions (stub), and
+   * recent activity in a single round trip for the audit progress page (0.2.C).
+   */
+  clientGetAuditProgress: protectedProcedure
+    .input(engagementIdSchema)
+    .query(async ({ ctx, input }) => {
+      await assertClientMembership(input.engagementId, ctx.session.user.id)
+
+      // 1. Chart nodes joined with completed_forms status
+      //    formSendId on the node references completed_forms.id
+      const nodeRows = await db
+        .select({
+          nodeId: engagementOrgChart.id,
+          label: engagementOrgChart.label,
+          contactName: engagementOrgChart.contactName,
+          contactEmail: engagementOrgChart.contactEmail,
+          formSendId: engagementOrgChart.formSendId,
+          formStatus: completedForms.status,
+          // completed_forms has no completedAt; use submittedAt as the
+          // completion timestamp (set when the form is submitted/completed).
+          formCompletedAt: completedForms.submittedAt,
+        })
+        .from(engagementOrgChart)
+        .leftJoin(
+          completedForms,
+          eq(completedForms.id, engagementOrgChart.formSendId)
+        )
+        .where(eq(engagementOrgChart.engagementId, input.engagementId))
+        .orderBy(
+          asc(engagementOrgChart.sortOrder),
+          asc(engagementOrgChart.createdAt)
+        )
+
+      // 2. Upcoming sessions — bookings table has scheduledDate (date) +
+      //    scheduledTime (text) but no title or engagement FK in 0.1.
+      //    Returning empty until session-engagement linkage is wired.
+      const upcomingSessions: Array<{ id: string; startsAt: Date; title: string }> = []
+
+      // 3. Recent activity (last 20 entries)
+      const { rows: activity } = await onboardingRepository.getActivity(
+        // tenantId is not strictly needed here (activity is scoped by engagementId),
+        // but the signature requires it — resolve from the engagement row.
+        (await db.query.engagements.findFirst({
+          where: eq(engagements.id, input.engagementId),
+          columns: { clientTenantId: true },
+        }))?.clientTenantId ?? "",
+        input.engagementId,
+        { limit: 20 }
+      )
+
+      return {
+        chartNodes: nodeRows,
+        upcomingSessions,
+        activity,
+      }
     }),
 })

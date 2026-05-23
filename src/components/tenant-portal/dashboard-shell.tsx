@@ -6,6 +6,7 @@ import { useState } from "react"
 import {
   LayoutDashboard,
   ClipboardList,
+  ClipboardCheck,
   FileText,
   Calendar,
   Settings,
@@ -70,6 +71,12 @@ export function TenantDashboardShell({
       href: (slug) => `/${slug}/dashboard/onboarding`,
       icon: ClipboardList,
       show: showOnboarding,
+    },
+    {
+      label: "Audit",
+      href: (slug) => `/${slug}/dashboard/audit`,
+      icon: ClipboardCheck,
+      show: showOnboarding, // same CONTRACTED+ gate as Onboarding
     },
     {
       label: "Documents",
