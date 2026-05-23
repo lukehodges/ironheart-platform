@@ -60,17 +60,20 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 // ── Field wrapper ──────────────────────────────────────────────────────────
 
 function Field({
+  htmlFor,
   label,
   required,
   children,
 }: {
+  /** Associates the label with the matching input via id/htmlFor. */
+  htmlFor?: string
   label: string
   required?: boolean
   children: React.ReactNode
 }) {
   return (
     <div className="space-y-1">
-      <Label className="text-xs">
+      <Label htmlFor={htmlFor} className="text-xs">
         {label}
         {required && <span className="text-destructive ml-0.5">*</span>}
       </Label>
@@ -107,14 +110,8 @@ export default function NewClientPage() {
   const [painPointInput, setPainPointInput] = useState("")
   const [decisionMaker, setDecisionMaker] = useState(false)
 
-  // Tenant
-  const [tenantId, setTenantId] = useState<string>("")
-
   // Form error
   const [formError, setFormError] = useState<string | null>(null)
-
-  // Data
-  const tenantsQuery = api.platform.listTenants.useQuery({ limit: 50 })
 
   const createMutation = api.consulting.createClientEngagement.useMutation({
     onSuccess: (data) => {
@@ -164,10 +161,8 @@ export default function NewClientPage() {
     if (!engagementTitle.trim()) { setFormError("Engagement title is required."); return }
     if (isNaN(teamSize) || teamSize < 1) { setFormError("Team size must be a positive number."); return }
     if (painPoints.length === 0) { setFormError("At least one pain point is required."); return }
-    if (!tenantId) { setFormError("Please select a tenant account."); return }
 
     createMutation.mutate({
-      tenantId,
       companyName: companyName.trim(),
       contactName: contactName.trim(),
       contactEmail: contactEmail.trim(),
@@ -192,40 +187,22 @@ export default function NewClientPage() {
 
       <form onSubmit={handleSubmit} className="space-y-6">
 
-        {/* Tenant account */}
-        <Card className="p-5 space-y-4">
-          <SectionLabel>Tenant Account</SectionLabel>
-          <Field label="Ironheart tenant" required>
-            <Select value={tenantId} onValueChange={setTenantId}>
-              <SelectTrigger className="mt-1">
-                <SelectValue placeholder={tenantsQuery.isLoading ? "Loading…" : "Select tenant"} />
-              </SelectTrigger>
-              <SelectContent>
-                {(tenantsQuery.data?.rows ?? []).map((t) => (
-                  <SelectItem key={t.id} value={t.id}>
-                    {t.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </Field>
-        </Card>
-
         {/* Company */}
         <Card className="p-5 space-y-4">
           <SectionLabel>Company</SectionLabel>
           <div className="grid grid-cols-2 gap-4">
-            <Field label="Company name" required>
+            <Field htmlFor="companyName" label="Company name" required>
               <Input
+                id="companyName"
                 value={companyName}
                 onChange={(e) => setCompanyName(e.target.value)}
                 placeholder="Acme Manufacturing Ltd"
                 className="mt-1"
               />
             </Field>
-            <Field label="Industry" required>
+            <Field htmlFor="industry" label="Industry" required>
               <Select value={industry} onValueChange={setIndustry}>
-                <SelectTrigger className="mt-1">
+                <SelectTrigger id="industry" className="mt-1">
                   <SelectValue placeholder="Select industry" />
                 </SelectTrigger>
                 <SelectContent>
@@ -242,16 +219,18 @@ export default function NewClientPage() {
         <Card className="p-5 space-y-4">
           <SectionLabel>Primary Contact</SectionLabel>
           <div className="grid grid-cols-2 gap-4">
-            <Field label="Full name" required>
+            <Field htmlFor="contactName" label="Full name" required>
               <Input
+                id="contactName"
                 value={contactName}
                 onChange={(e) => setContactName(e.target.value)}
                 placeholder="Jane Smith"
                 className="mt-1"
               />
             </Field>
-            <Field label="Email address" required>
+            <Field htmlFor="contactEmail" label="Email address" required>
               <Input
+                id="contactEmail"
                 type="email"
                 value={contactEmail}
                 onChange={(e) => setContactEmail(e.target.value)}
@@ -259,8 +238,9 @@ export default function NewClientPage() {
                 className="mt-1"
               />
             </Field>
-            <Field label="Phone">
+            <Field htmlFor="contactPhone" label="Phone">
               <Input
+                id="contactPhone"
                 type="tel"
                 value={contactPhone}
                 onChange={(e) => setContactPhone(e.target.value)}
@@ -268,9 +248,9 @@ export default function NewClientPage() {
                 className="mt-1"
               />
             </Field>
-            <Field label="Source" required>
+            <Field htmlFor="source" label="Source" required>
               <Select value={source} onValueChange={setSource}>
-                <SelectTrigger className="mt-1">
+                <SelectTrigger id="source" className="mt-1">
                   <SelectValue placeholder="How did they find us?" />
                 </SelectTrigger>
                 <SelectContent>
@@ -287,17 +267,18 @@ export default function NewClientPage() {
         <Card className="p-5 space-y-4">
           <SectionLabel>Engagement</SectionLabel>
           <div className="grid grid-cols-2 gap-4">
-            <Field label="Engagement title" required>
+            <Field htmlFor="engagementTitle" label="Engagement title" required>
               <Input
+                id="engagementTitle"
                 value={engagementTitle}
                 onChange={(e) => setEngagementTitle(e.target.value)}
                 placeholder="Q2 Operations Audit"
                 className="mt-1"
               />
             </Field>
-            <Field label="Engagement type" required>
+            <Field htmlFor="engagementType" label="Engagement type" required>
               <Select value={engagementType} onValueChange={setEngagementType}>
-                <SelectTrigger className="mt-1">
+                <SelectTrigger id="engagementType" className="mt-1">
                   <SelectValue placeholder="Select type" />
                 </SelectTrigger>
                 <SelectContent>
@@ -316,8 +297,9 @@ export default function NewClientPage() {
         <Card className="p-5 space-y-4">
           <SectionLabel>Qualification</SectionLabel>
           <div className="grid grid-cols-2 gap-4">
-            <Field label="Team size" required>
+            <Field htmlFor="teamSize" label="Team size" required>
               <Input
+                id="teamSize"
                 type="number"
                 min={1}
                 value={teamSizeRaw}
@@ -326,8 +308,9 @@ export default function NewClientPage() {
                 className="mt-1"
               />
             </Field>
-            <Field label="Revenue (approximate)">
+            <Field htmlFor="revenue" label="Revenue (approximate)">
               <Input
+                id="revenue"
                 value={revenue}
                 onChange={(e) => setRevenue(e.target.value)}
                 placeholder="£500k–1m"

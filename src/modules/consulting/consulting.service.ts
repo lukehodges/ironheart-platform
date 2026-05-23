@@ -1,7 +1,12 @@
 import { logger } from "@/shared/logger";
 import { BadRequestError, NotFoundError } from "@/shared/errors";
+import { TRPCError } from "@trpc/server";
 import { inngest } from "@/shared/inngest";
 import type { Context } from "@/shared/trpc";
+import { db } from "@/shared/db";
+import { tenants } from "@/shared/db/schema";
+import { engagements, customers } from "@/shared/db/schema";
+import { eq } from "drizzle-orm";
 import { consultingRepository } from "./consulting.repository";
 import { clientPortalRepository } from "@/modules/client-portal/client-portal.repository";
 import { customerRepository } from "@/modules/customer/customer.repository";
@@ -78,40 +83,97 @@ export const consultingService = {
   },
 
   async createClientEngagement(input: z.infer<typeof createClientEngagementSchema>) {
-    const { tenantId } = input;
+    // Resolve the Ironheart tenant server-side — no tenantId in input.
+    // D-01: Luke is flat in /platform/* with no tenant switching.
+    const ironheartTenantId =
+      process.env.IRONHEART_TENANT_ID ??
+      (
+        await db
+          .select({ id: tenants.id })
+          .from(tenants)
+          .where(eq(tenants.slug, "ironheart"))
+          .limit(1)
+      )[0]?.id;
 
-    // 1. Create the customer record (contact name split to first/last)
-    const customer = await customerRepository.create(tenantId, {
-      name: input.contactName,
-      email: input.contactEmail,
-      phone: input.contactPhone ?? null,
-      referralSource: input.source,
-      notes: input.companyName,
+    if (!ironheartTenantId) {
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message:
+          "Ironheart tenant not provisioned; set IRONHEART_TENANT_ID env var or create tenant with slug 'ironheart'",
+      });
+    }
+
+    const tenantId = ironheartTenantId;
+
+    // Wrap all three writes in a single transaction so that a failure in step 2
+    // or 3 does not leave an orphan customer row.
+    const { engagementId, customerId } = await db.transaction(async (tx) => {
+      // 1. Create the customer record (contact name split to first/last by the repo)
+      // TODO TECH-DEBT: companyName lives in customer.notes because customers table
+      // has no dedicated companyName column. Add migration to create customers.company_name
+      // (nullable text) and update this assignment. Tracked in Phase 0.1.B follow-ups.
+      const nameParts = (input.contactName ?? "").trim().split(/\s+/);
+      const firstName = nameParts[0] ?? input.contactName ?? "";
+      const lastName = nameParts.slice(1).join(" ") || "";
+      const now = new Date();
+
+      const [customerRow] = await tx
+        .insert(customers)
+        .values({
+          id: crypto.randomUUID(),
+          tenantId,
+          firstName,
+          lastName,
+          email: input.contactEmail,
+          phone: input.contactPhone ?? null,
+          referralSource: input.source,
+          notes: input.companyName,
+          tags: [],
+          status: "ACTIVE",
+          marketingOptIn: false,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .returning({ id: customers.id });
+
+      const newCustomerId = customerRow!.id;
+
+      // 2. Create the engagement at DISCOVERY stage
+      const [engagementRow] = await tx
+        .insert(engagements)
+        .values({
+          tenantId,
+          customerId: newCustomerId,
+          type: input.engagementType as "PROJECT" | "RETAINER" | "HYBRID",
+          title: input.engagementTitle,
+          description: null,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .returning({ id: engagements.id });
+
+      const newEngagementId = engagementRow!.id;
+
+      // 3. Store qualification data via discovery notes
+      await tx
+        .update(engagements)
+        .set({
+          discoveryNotes: "",
+          qualificationData: {
+            industry: input.industry,
+            revenue: input.revenue ?? null,
+            teamSize: input.teamSize,
+            painPoints: input.painPoints,
+            decisionMaker: input.decisionMaker,
+          } satisfies QualificationData,
+          updatedAt: new Date(),
+        })
+        .where(eq(engagements.id, newEngagementId));
+
+      return { engagementId: newEngagementId, customerId: newCustomerId };
     });
 
-    // 2. Create the engagement at DISCOVERY stage
-    const engagement = await clientPortalRepository.createEngagement(tenantId, {
-      customerId: customer.id,
-      type: input.engagementType,
-      title: input.engagementTitle,
-      description: null,
-    });
-
-    // 3. Store qualification data via discovery notes
-    await consultingRepository.updateDiscoveryNotes(
-      tenantId,
-      engagement.id,
-      "",
-      {
-        industry: input.industry,
-        revenue: input.revenue ?? null,
-        teamSize: input.teamSize,
-        painPoints: input.painPoints,
-        decisionMaker: input.decisionMaker,
-      } satisfies QualificationData
-    );
-
-    log.info({ tenantId, engagementId: engagement.id, customerId: customer.id }, "client engagement created by platform admin");
-    return { id: engagement.id };
+    log.info({ tenantId, engagementId, customerId }, "client engagement created by platform admin");
+    return { id: engagementId };
   },
 };

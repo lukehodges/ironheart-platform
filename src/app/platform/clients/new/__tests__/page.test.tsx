@@ -9,18 +9,6 @@ const mockPush = vi.fn()
 
 vi.mock("@/lib/trpc/react", () => ({
   api: {
-    platform: {
-      listTenants: {
-        useQuery: vi.fn(() => ({
-          isLoading: false,
-          data: {
-            rows: [
-              { id: "tenant-abc", slug: "ironheart", name: "Ironheart Demo" },
-            ],
-          },
-        })),
-      },
-    },
     consulting: {
       createClientEngagement: {
         useMutation: vi.fn(({ onSuccess, onError }: { onSuccess?: (data: { id: string }) => void; onError?: (err: { message: string }) => void } = {}) => ({
@@ -92,7 +80,8 @@ describe("NewClientPage", () => {
 
   it("renders all section labels", () => {
     render(<NewClientPage />)
-    expect(screen.getByText(/tenant account/i)).toBeInTheDocument()
+    // Tenant Account section has been removed — tenantId is auto-resolved server-side
+    expect(screen.queryByText(/tenant account/i)).not.toBeInTheDocument()
     // Use getAllByText for "Company" since the word may appear in multiple places
     expect(screen.getAllByText(/^company$/i).length).toBeGreaterThan(0)
     expect(screen.getByText(/^primary contact$/i)).toBeInTheDocument()
@@ -186,11 +175,10 @@ describe("NewClientPage", () => {
     expect(checkbox).toBeChecked()
   })
 
-  it("shows tenant options from listTenants query", () => {
+  it("does not render a tenant selector (tenantId is auto-resolved server-side)", () => {
     render(<NewClientPage />)
-    // The SelectContent renders in a portal but the trigger text should reflect loading state
-    // With mocked data (Ironheart Demo tenant), the trigger placeholder is "Select tenant"
-    expect(screen.getByText("Select tenant")).toBeInTheDocument()
+    // Per D-01, Luke is flat in /platform/* — no tenant switching UI
+    expect(screen.queryByText("Select tenant")).not.toBeInTheDocument()
   })
 })
 
@@ -199,7 +187,7 @@ describe("NewClientPage", () => {
 import { createClientEngagementSchema } from "@/modules/consulting/consulting.schemas"
 
 const VALID_INPUT = {
-  tenantId: "550e8400-e29b-41d4-a716-446655440000",
+  // tenantId removed — auto-resolved server-side via IRONHEART_TENANT_ID or slug lookup
   companyName: "Acme Ltd",
   contactName: "Jane Smith",
   contactEmail: "jane@acme.com",
@@ -255,8 +243,13 @@ describe("createClientEngagementSchema", () => {
     expect(result.success).toBe(false)
   })
 
-  it("rejects non-uuid tenantId", () => {
-    const result = createClientEngagementSchema.safeParse({ ...VALID_INPUT, tenantId: "not-a-uuid" })
-    expect(result.success).toBe(false)
+  it("does not accept tenantId field (removed from schema — server-side resolution)", () => {
+    // tenantId is no longer part of the schema; passing it is silently stripped by Zod
+    const result = createClientEngagementSchema.safeParse({ ...VALID_INPUT, tenantId: "550e8400-e29b-41d4-a716-446655440000" })
+    // Schema still succeeds — extra fields are stripped. Ensure tenantId isn't in output.
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect((result.data as Record<string, unknown>).tenantId).toBeUndefined()
+    }
   })
 })

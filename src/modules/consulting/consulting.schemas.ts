@@ -79,8 +79,9 @@ export const getIntegrationStatusSchema = z.object({
 });
 
 export const createClientEngagementSchema = z.object({
-  // Ironheart tenant context (platform admin crosses tenants)
-  tenantId: z.string().uuid(),
+  // Note: tenantId is no longer accepted as input — the service resolves the
+  // Ironheart tenant server-side via IRONHEART_TENANT_ID env var or slug lookup.
+  // D-01: Luke is flat in /platform/* with no tenant switching.
 
   // Company
   companyName: z.string().min(1, "Company name is required"),
