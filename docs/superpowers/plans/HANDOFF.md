@@ -13,7 +13,8 @@ If you're a fresh Claude chat picking up here, this is the fastest path to conte
 **Phase 0.1.A** (platform shell): ✅ done
 **Phase 0.1.B** (tenant bootstrap / WorkOS): ✅ critical-path. Tasks 6.5 + 9 deferred (manual workarounds exist).
 **Phase 0.1.C** (org chart): ✅ COMPLETE — schema, repo, service, router, stage-transition seed, consultant UI, client UI, router tests. 106 new tests passing.
-**Phase 0.2** (form-template seeds + chart→forms wiring): ⏭ next.
+**Phase 0.2** (form-template seeds + chart→forms wiring + portal audit tab): ✅ COMPLETE — 6 templates seeded, Inngest handler creates `completed_forms` PENDING rows, audit progress page lives at `/[slug]/dashboard/audit`. No email dispatch yet.
+**Phase 0.3** (audit workspace UI — lens entry, RAG, findings): ⏭ next.
 
 **Verified live end-to-end** on 2026-05-23 evening:
 

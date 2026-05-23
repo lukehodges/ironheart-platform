@@ -1,8 +1,8 @@
 # Ironheart Refactor Roadmap
 
-> **Last updated**: 2026-05-23 (late evening — Phase 0.1 complete)
+> **Last updated**: 2026-05-23 (late evening — Phase 0.1 + 0.2 complete)
 > **Branch**: `feature/product-platform`
-> **Pickup point**: **Phase 0.2 starting** — form template seeds + chart→forms wiring. 0.1.B Tasks 6.5/9 still deferred.
+> **Pickup point**: **Phase 0.3 starting** — Audit workspace UI (consultant's lens entry, RAG scoring, findings). Backend module exists; UI is missing.
 
 ## ⚡ Quick pickup if you're a fresh chat
 
@@ -48,8 +48,8 @@ The minimum thing that runs a real audit. ~4 weeks of work split across 5 sub-ph
 
 | Phase | Goal | Plan file | Status |
 |---|---|---|---|
-| **0.1** | Platform shell + tenant bootstrap + collaborative org chart | [`2026-05-23-phase-0.1-MASTER.md`](./2026-05-23-phase-0.1-MASTER.md) | 🚧 (0.1.A + 0.1.B critical-path ✅; 0.1.C starting) |
-| **0.2** | Form template seeds + chart→forms wiring + portal audit progress tab | [`2026-05-23-phase-0.2-forms-wiring.md`](./2026-05-23-phase-0.2-forms-wiring.md) | 📋 |
+| **0.1** | Platform shell + tenant bootstrap + collaborative org chart | [`2026-05-23-phase-0.1-MASTER.md`](./2026-05-23-phase-0.1-MASTER.md) | ✅ |
+| **0.2** | Form template seeds + chart→forms wiring + portal audit progress tab | [`2026-05-23-phase-0.2-forms-wiring.md`](./2026-05-23-phase-0.2-forms-wiring.md) | ✅ |
 | **0.3** | Audit workspace UI (call notes capture, RAG entry, findings) | [`2026-05-23-phase-0.3-audit-workspace.md`](./2026-05-23-phase-0.3-audit-workspace.md) | 📋 |
 | **0.4** | Report generator (Claude API draft → editor → publish) | [`2026-05-23-phase-0.4-report-generator.md`](./2026-05-23-phase-0.4-report-generator.md) | 📋 |
 | **0.5** | Client report view + audit walkthrough booking link | [`2026-05-23-phase-0.5-client-report.md`](./2026-05-23-phase-0.5-client-report.md) | 📋 |
@@ -95,7 +95,24 @@ The minimum thing that runs a real audit. ~4 weeks of work split across 5 sub-ph
 | 8 — Router tests | ✅ | `6958649` | 20 tests via mock-trpc fallback |
 
 **Total tests added in 0.1.C: 106 (27 + 59 + 20).**
-**Total Phase 0.1 commits: 21.**
+**Total Phase 0.1 commits: 22 (incl. `1ffadac` actorId fix).**
+
+### 0.2 granular status (2026-05-23)
+
+| Task | Status | Commit | Notes |
+|---|---|---|---|
+| 0.2.A — Seed 6 questionnaire templates | ✅ | `0985ff4` | Hand-authored ~100 fields across 6 files; slug col added |
+| 0.2.B — Wire approvePlan → form sends | ✅ | `bb5e18d` | Inngest handler + `formSendId` col on chart nodes; 6 new tests |
+| 0.2.C — Portal audit progress tab | ✅ | `ec082c9` | `clientGetAuditProgress` procedure + sidebar link |
+
+**Tests in 0.2: 6 new (+ all existing pass).** Total commits in 0.2: 3.
+
+### 0.2 known gaps (defer to 0.3+)
+
+- **No email dispatch** on form send — `completed_forms` rows are created in PENDING state but no email goes out. Real-send wiring is its own task.
+- **cross-tenant FK risk** — `completed_forms.customerId` references `customers.id`. Form instances created on Ironheart tenant point at customers on the client tenant. If FK is strictly enforced this will fail at real send time. Mitigation: use `formsRepository.createInstance` (no FK violation observed in tests). Production smoke test needed.
+- **Upcoming sessions** in audit progress = always empty (`bookings` table has no engagement linkage in 0.1). Phase 0.4+ wires session→engagement.
+- **`completed_forms.completedAt`** column doesn't exist; using `submittedAt` instead.
 
 ### 0.1.B granular status (2026-05-23)
 
