@@ -15,6 +15,7 @@
     "db:seed": "tsx --tsconfig tsconfig.json scripts/seed-demo.ts",
     "db:reset": "tsx --tsconfig tsconfig.json scripts/seed-demo.ts --reset",
     "db:ensure-platform": "drizzle-kit push && tsx --tsconfig tsconfig.json scripts/ensure-platform.ts",
+    "db:bootstrap-platform": "tsx --tsconfig tsconfig.json scripts/bootstrap-platform-tenant.ts",
     "db:flush": "tsx --tsconfig tsconfig.json scripts/db-flush.ts",
     "e2e": "playwright test",
     "e2e:headed": "playwright test --headed",
@@ -22,7 +23,8 @@
     "e2e:setup": "playwright test --project=setup --headed",
     "test:api": "tsx --tsconfig tsconfig.json scripts/exercise-trpc.ts",
     "outreach": "tsx --tsconfig tsconfig.json scripts/outreach-gen.ts",
-    "outreach:dry": "tsx --tsconfig tsconfig.json scripts/outreach-gen.ts --dry-run"
+    "outreach:dry": "tsx --tsconfig tsconfig.json scripts/outreach-gen.ts --dry-run",
+    "db:apply-org-chart-schema": "tsx --tsconfig tsconfig.json scripts/apply-org-chart-schema.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.78.0",
