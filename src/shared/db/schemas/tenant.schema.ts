@@ -35,6 +35,7 @@ export const tenants = pgTable("tenants", {
 	domain: text(),
 	plan: planType().default('STARTER').notNull(),
 	status: tenantStatus().default('ACTIVE').notNull(),
+	workosOrgId: text(),
 	stripeCustomerId: text(),
 	subscriptionId: text(),
 	billingEmail: text(),

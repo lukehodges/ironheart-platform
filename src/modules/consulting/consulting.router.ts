@@ -48,7 +48,7 @@ export const consultingRouter = router({
 
   provisionClientTenant: moduleProcedure
     .input(provisionClientTenantSchema)
-    .mutation(async ({ ctx, input }) => provisioningService.provisionClientTenant(ctx.tenantId, input)),
+    .mutation(async ({ input }) => provisioningService.provisionClientTenant(input.engagementId)),
 
   createPlaneProject: moduleProcedure
     .input(createPlaneProjectSchema)
