@@ -5,7 +5,6 @@ import { engagements } from "@/shared/db/schemas/client-portal.schema"
 import { eq } from "drizzle-orm"
 import { StageStrip } from "@/components/tenant-portal/stage-strip"
 import { ActionCard } from "@/components/tenant-portal/action-card"
-import { ListChecks, Calendar, FileText } from "lucide-react"
 
 export default async function TenantDashboardPage({
   params,
@@ -53,14 +52,14 @@ export default async function TenantDashboardPage({
       {/* Action cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <ActionCard
-          icon={ListChecks}
+          icon="list-checks"
           title="Build your org chart"
           subtitle="Map your team so we know who to interview."
           href={`/${tenantSlug}/dashboard/onboarding`}
           disabled={!onboardingEnabled}
         />
         <ActionCard
-          icon={Calendar}
+          icon="calendar"
           title="Upcoming sessions"
           subtitle="View scheduled calls with your consultant."
           href={`/${tenantSlug}/dashboard/sessions`}
@@ -68,7 +67,7 @@ export default async function TenantDashboardPage({
           badge="Coming soon"
         />
         <ActionCard
-          icon={FileText}
+          icon="file-text"
           title="View documents"
           subtitle="Access your audit deliverables and notes."
           href={`/${tenantSlug}/dashboard/documents`}

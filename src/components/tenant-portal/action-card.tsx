@@ -1,10 +1,30 @@
 "use client"
 
 import Link from "next/link"
-import type { LucideIcon } from "lucide-react"
+import {
+  ListChecks,
+  Calendar,
+  FileText,
+  Settings,
+  Users,
+  type LucideIcon,
+} from "lucide-react"
+
+// Server-Component → Client-Component boundary: function components can't be
+// serialized across the RSC wire. Callers pass a string name, ActionCard
+// resolves to the actual Lucide icon internally.
+const ICON_MAP: Record<string, LucideIcon> = {
+  "list-checks": ListChecks,
+  calendar: Calendar,
+  "file-text": FileText,
+  settings: Settings,
+  users: Users,
+}
+
+export type ActionCardIcon = keyof typeof ICON_MAP
 
 export interface ActionCardProps {
-  icon: LucideIcon
+  icon: ActionCardIcon
   title: string
   subtitle: string
   href: string
@@ -13,13 +33,14 @@ export interface ActionCardProps {
 }
 
 export function ActionCard({
-  icon: Icon,
+  icon,
   title,
   subtitle,
   href,
   disabled = false,
   badge,
 }: ActionCardProps) {
+  const Icon = ICON_MAP[icon] ?? FileText
   const inner = (
     <div
       style={{

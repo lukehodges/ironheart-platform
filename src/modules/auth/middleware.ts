@@ -122,12 +122,34 @@ export async function ironheartMiddleware(
         return new NextResponse("Forbidden", { status: 403 });
       }
 
-      // Attach tenant identity headers for downstream RSC / route handlers.
-      const response = NextResponse.next({ request: { headers: requestHeaders } });
-      response.headers.set("x-tenant-id", tenant.id);
-      response.headers.set("x-tenant-slug", tenant.slug);
-      response.headers.set("x-workos-org-id", tenant.workosOrgId);
-      return response;
+      // Layer tenant headers ONTO authkit's response (preserves x-workos-middleware
+      // request marker + session cookies). Do NOT create a fresh NextResponse —
+      // doing so loses authkit's marker headers and `withAuth()` in pages errors
+      // out with "isn't covered by the AuthKit middleware".
+      //
+      // Forward to downstream request via Next.js's middleware override mechanism:
+      // `x-middleware-override-headers` lists names; per-name values live at
+      // `x-middleware-request-<name>`. Both authkit's existing markers AND our
+      // tenant headers must be preserved in the list.
+      const tenantHeaders: Array<[string, string]> = [
+        ["x-tenant-id", tenant.id],
+        ["x-tenant-slug", tenant.slug],
+        ["x-workos-org-id", tenant.workosOrgId],
+      ];
+
+      const overrideHeader = result.headers.get("x-middleware-override-headers") ?? "";
+      const overrides = new Set(
+        overrideHeader.split(",").map((s) => s.trim()).filter(Boolean),
+      );
+
+      for (const [name, value] of tenantHeaders) {
+        result.headers.set(name, value);
+        overrides.add(name);
+        result.headers.set(`x-middleware-request-${name}`, value);
+      }
+      result.headers.set("x-middleware-override-headers", [...overrides].join(","));
+
+      return result;
     }
   }
 
