@@ -1,8 +1,8 @@
 # Ironheart Refactor Roadmap
 
-> **Last updated**: 2026-05-23 (evening — end-to-end live test passed)
+> **Last updated**: 2026-05-23 (late evening — Phase 0.1 complete)
 > **Branch**: `feature/product-platform`
-> **Pickup point**: Phase 0.1.C — Org chart (schema first). Tasks 6.5, 8, 9 of 0.1.B deferred (non-blocking).
+> **Pickup point**: **Phase 0.2 starting** — form template seeds + chart→forms wiring. 0.1.B Tasks 6.5/9 still deferred.
 
 ## ⚡ Quick pickup if you're a fresh chat
 
@@ -79,7 +79,23 @@ The minimum thing that runs a real audit. ~4 weeks of work split across 5 sub-ph
 |---|---|---|---|
 | 0.1.A — Platform shell | [`phase-0.1-platform-shell.md`](./2026-05-23-phase-0.1-platform-shell.md) | 5 | ✅ (`cea9bf4`) |
 | 0.1.B — Tenant bootstrap (WorkOS) | [`phase-0.1-tenant-bootstrap.md`](./2026-05-23-phase-0.1-tenant-bootstrap.md) | 9 | ✅ critical-path (6.5, 8, 9 deferred) |
-| 0.1.C — Org chart | [`phase-0.1-org-chart.md`](./2026-05-23-phase-0.1-org-chart.md) | 10 | 🚧 starting |
+| 0.1.C — Org chart | [`phase-0.1-org-chart.md`](./2026-05-23-phase-0.1-org-chart.md) | 10 | ✅ ALL 8 sub-tasks complete |
+
+### 0.1.C granular status (2026-05-23)
+
+| Task | Status | Commit | Notes |
+|---|---|---|---|
+| 1 — Schema + DB apply | ✅ | `ed7126b` | 2 tables, hand-rolled `apply-org-chart-schema.ts` (drizzle-kit broken) |
+| 2 — Types + repository | ✅ | `55ddbea` | 27 tests, OptimisticConcurrencyError added |
+| 3 — Service (tier + seed + plan) | ✅ | `b5ae54a` | 59 tests |
+| 4 — tRPC router (16 procedures) | ✅ | `af780da` | Tests deferred to Task 8 |
+| 5 — Wire chart seed into stage transition | ✅ | `cb96e3e` | Chains after provisioning |
+| 6 — Consultant editor UI | ✅ | `902baf7` | 3-col layout, no drag-reparent (deferred) |
+| 7 — Client editor UI | ✅ | `42ff53f` | mode="client" reuse + banner |
+| 8 — Router tests | ✅ | `6958649` | 20 tests via mock-trpc fallback |
+
+**Total tests added in 0.1.C: 106 (27 + 59 + 20).**
+**Total Phase 0.1 commits: 21.**
 
 ### 0.1.B granular status (2026-05-23)
 

@@ -1,6 +1,6 @@
 # Handoff — Last Session State
 
-> **Updated**: 2026-05-23 (evening)
+> **Updated**: 2026-05-23 (late evening — Phase 0.1 complete end-to-end)
 > **Branch**: `feature/product-platform`
 > **Repo**: `/Users/lukehodges/Documents/ironheart-refactor`
 
@@ -11,8 +11,9 @@ If you're a fresh Claude chat picking up here, this is the fastest path to conte
 ## 1. Where we are
 
 **Phase 0.1.A** (platform shell): ✅ done
-**Phase 0.1.B** (tenant bootstrap / WorkOS): ✅ critical-path. Tasks 6.5 + 8 + 9 deferred — not blocking next work.
-**Phase 0.1.C** (org chart): 🚧 starting now (Day 4–9 in the original plan).
+**Phase 0.1.B** (tenant bootstrap / WorkOS): ✅ critical-path. Tasks 6.5 + 9 deferred (manual workarounds exist).
+**Phase 0.1.C** (org chart): ✅ COMPLETE — schema, repo, service, router, stage-transition seed, consultant UI, client UI, router tests. 106 new tests passing.
+**Phase 0.2** (form-template seeds + chart→forms wiring): ⏭ next.
 
 **Verified live end-to-end** on 2026-05-23 evening:
 
