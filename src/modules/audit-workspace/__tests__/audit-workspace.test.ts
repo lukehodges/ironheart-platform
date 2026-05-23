@@ -3,6 +3,19 @@ import { auditWorkspaceService } from "../audit-workspace.service";
 import { auditWorkspaceRepository } from "../audit-workspace.repository";
 import { BadRequestError, NotFoundError } from "@/shared/errors";
 
+vi.mock("@/shared/db", () => ({
+  db: {
+    query: {
+      engagements: {
+        findFirst: vi.fn(),
+      },
+    },
+    update: vi.fn().mockReturnThis(),
+    set: vi.fn().mockReturnThis(),
+    where: vi.fn().mockResolvedValue([]),
+  },
+}));
+
 vi.mock("../audit-workspace.repository", () => ({
   auditWorkspaceRepository: {
     createSession: vi.fn(),

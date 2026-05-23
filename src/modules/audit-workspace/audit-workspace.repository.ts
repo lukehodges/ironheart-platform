@@ -8,7 +8,7 @@ import {
   auditFindings,
   auditRecommendations,
 } from "@/shared/db/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, inArray, sql } from "drizzle-orm";
 import type {
   AuditSessionRecord,
   AuditCallNoteRecord,
@@ -229,5 +229,33 @@ export const auditWorkspaceRepository = {
       .from(auditRecommendations)
       .where(eq(auditRecommendations.lensAnalysisId, lensAnalysisId))
       .orderBy(auditRecommendations.priority) as Promise<AuditRecommendationRecord[]>;
+  },
+
+  // ── Reorder ────────────────────────────────────────────────────────────
+
+  async reorderFindings(lensAnalysisId: string, order: string[]): Promise<void> {
+    if (order.length === 0) return;
+    await db.transaction(async (tx) => {
+      for (let i = 0; i < order.length; i++) {
+        await tx
+          .update(auditFindings)
+          .set({ priority: i })
+          .where(and(eq(auditFindings.id, order[i]), eq(auditFindings.lensAnalysisId, lensAnalysisId)));
+      }
+    });
+    log.info({ lensAnalysisId, count: order.length }, "findings reordered");
+  },
+
+  async reorderRecommendations(lensAnalysisId: string, order: string[]): Promise<void> {
+    if (order.length === 0) return;
+    await db.transaction(async (tx) => {
+      for (let i = 0; i < order.length; i++) {
+        await tx
+          .update(auditRecommendations)
+          .set({ priority: i })
+          .where(and(eq(auditRecommendations.id, order[i]), eq(auditRecommendations.lensAnalysisId, lensAnalysisId)));
+      }
+    });
+    log.info({ lensAnalysisId, count: order.length }, "recommendations reordered");
   },
 };

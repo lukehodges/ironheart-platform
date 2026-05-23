@@ -73,3 +73,43 @@ export const deleteFindingSchema = z.object({
 export const deleteRecommendationSchema = z.object({
   id: z.string(),
 });
+
+// ── Consultant-facing schemas (platformAdminProcedure) ─────────────────────
+
+export const getOrCreateSessionSchema = z.object({
+  engagementId: z.string(),
+});
+
+export const upsertCallNoteByEngagementSchema = z.object({
+  engagementId: z.string(),
+  contactUserId: z.string(),
+  rawNotes: z.string(),
+  callDate: z.date().optional().nullable(),
+  callDuration: z.number().int().positive().optional().nullable(),
+});
+
+export const upsertLensAnalysisByEngagementSchema = z.object({
+  engagementId: z.string(),
+  lens: lensEnum,
+  ragScore: ragEnum.optional().nullable(),
+  ragJustification: z.string().optional().nullable(),
+  currentState: z.string().optional().nullable(),
+});
+
+export const reorderFindingsSchema = z.object({
+  lensAnalysisId: z.string(),
+  order: z.array(z.string()).min(1),
+});
+
+export const reorderRecommendationsSchema = z.object({
+  lensAnalysisId: z.string(),
+  order: z.array(z.string()).min(1),
+});
+
+export const validateSessionByEngagementSchema = z.object({
+  engagementId: z.string(),
+});
+
+export const markReadyByEngagementSchema = z.object({
+  engagementId: z.string(),
+});
