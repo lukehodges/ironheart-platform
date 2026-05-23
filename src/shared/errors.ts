@@ -54,6 +54,18 @@ export class ConflictError extends IronheartError {
   }
 }
 
+/**
+ * Optimistic concurrency check failed — the row was modified by another writer
+ * between read and write. Callers should re-fetch and retry.
+ * Subclass of ConflictError so tRPC maps it to CONFLICT (409).
+ */
+export class OptimisticConcurrencyError extends ConflictError {
+  constructor(resource = "resource") {
+    super(`Concurrent modification on ${resource} — refresh and retry`);
+    this.name = "OptimisticConcurrencyError";
+  }
+}
+
 /** Request input failed validation or is logically invalid (bad request). */
 export class BadRequestError extends IronheartError {
   constructor(message: string) {
