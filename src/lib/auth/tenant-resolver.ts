@@ -42,6 +42,14 @@ export const RESERVED_TOP_LEVEL = new Set([
   "robots.txt",
   "sitemap.xml",
   "manifest.json",
+  // Static asset paths — prevent accidental tenant resolution
+  "assets",
+  "static",
+  "images",
+  "fonts",
+  // Guard against malformed/placeholder URL segments
+  "undefined",
+  "null",
 ]);
 
 const MEMBERSHIP_CACHE_TTL_SEC = 5 * 60; // 5 minutes

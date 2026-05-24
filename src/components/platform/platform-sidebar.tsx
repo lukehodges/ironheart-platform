@@ -29,6 +29,7 @@ import {
   BadgeDollarSign,
   TrendingUp,
   Settings,
+  GraduationCap,
 } from "lucide-react"
 
 interface NavItem {
@@ -79,6 +80,7 @@ const NAV_SECTIONS: NavSection[] = [
     title: "Team",
     items: [
       { title: "Team", href: "/platform/team", icon: Users },
+      { title: "Educators", href: "/platform/educators", icon: GraduationCap },
       { title: "Reviews", href: "/platform/reviews", icon: Star },
     ],
   },
