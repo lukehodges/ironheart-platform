@@ -50,13 +50,24 @@ export function ActionCard({
         padding: 20,
         borderRadius: "var(--ih-r-md, 8px)",
         border: "1px solid var(--ih-line)",
-        background: disabled ? "var(--ih-surface-2, #f9f9f7)" : "var(--ih-bg)",
+        background: disabled ? "var(--ih-surface-2, #f9f9f7)" : "var(--ih-surface)",
         cursor: disabled ? "default" : "pointer",
         height: "100%",
-        transition: "border-color 0.15s ease, box-shadow 0.15s ease",
+        transition: "border-color 0.15s ease, background 0.15s ease",
         position: "relative",
         opacity: disabled ? 0.7 : 1,
         userSelect: "none",
+        boxSizing: "border-box",
+      }}
+      onMouseEnter={disabled ? undefined : (e) => {
+        const el = e.currentTarget as HTMLDivElement
+        el.style.borderColor = "var(--ih-ink-40)"
+        el.style.background = "var(--ih-bg)"
+      }}
+      onMouseLeave={disabled ? undefined : (e) => {
+        const el = e.currentTarget as HTMLDivElement
+        el.style.borderColor = "var(--ih-line)"
+        el.style.background = "var(--ih-surface)"
       }}
       data-testid="action-card"
       data-disabled={disabled || undefined}

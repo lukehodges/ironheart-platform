@@ -35,17 +35,14 @@ export function StageStrip({ currentStage }: StageStripProps) {
 
   return (
     <div
-      className="rounded-lg border bg-card p-4"
-      style={{ borderColor: "var(--ih-line)" }}
+      className="ih-card"
+      style={{ padding: 16 }}
       data-testid="stage-strip"
     >
-      <p
-        className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-3"
-        style={{ letterSpacing: "0.1em", fontSize: 10 }}
-      >
+      <p className="ih-eyebrow" style={{ marginBottom: 12 }}>
         Engagement Progress
       </p>
-      <div className="flex items-center gap-0" style={{ overflowX: "auto" }}>
+      <div style={{ display: "flex", alignItems: "center", overflowX: "auto" }}>
         {STAGES.map((stage, index) => {
           const isPast = currentIndex > index
           const isCurrent = currentIndex === index
@@ -54,8 +51,7 @@ export function StageStrip({ currentStage }: StageStripProps) {
           return (
             <div
               key={stage}
-              className="flex items-center"
-              style={{ flexShrink: 0 }}
+              style={{ display: "flex", alignItems: "center", flexShrink: 0 }}
               data-testid={`stage-item-${stage}`}
             >
               {/* Stage pill */}
@@ -75,12 +71,12 @@ export function StageStrip({ currentStage }: StageStripProps) {
                     height: isCurrent ? 12 : 8,
                     borderRadius: "50%",
                     background: isCurrent
-                      ? "var(--ih-accent, #0ea5e9)"
+                      ? "var(--ih-accent)"
                       : isPast
-                        ? "var(--ih-ink-65, #6b7280)"
-                        : "var(--ih-line, #e5e7eb)",
+                        ? "var(--ih-ok)"
+                        : "var(--ih-line)",
                     border: isCurrent
-                      ? "2px solid var(--ih-accent, #0ea5e9)"
+                      ? "2px solid var(--ih-accent)"
                       : "none",
                     flexShrink: 0,
                     transition: "all 0.15s ease",
@@ -93,16 +89,18 @@ export function StageStrip({ currentStage }: StageStripProps) {
                 />
                 {/* Label */}
                 <span
+                  className={isCurrent ? "ih-mono" : undefined}
                   style={{
                     fontSize: 10,
                     fontWeight: isCurrent ? 600 : 400,
                     color: isCurrent
-                      ? "var(--ih-ink)"
+                      ? "var(--ih-accent)"
                       : isPast
                         ? "var(--ih-ink-65)"
                         : "var(--ih-ink-30)",
                     whiteSpace: "nowrap",
                     textAlign: "center",
+                    letterSpacing: isCurrent ? "0.06em" : 0,
                   }}
                   data-current={isCurrent || undefined}
                   data-past={isPast || undefined}
@@ -118,10 +116,11 @@ export function StageStrip({ currentStage }: StageStripProps) {
                   style={{
                     height: 1,
                     width: 24,
-                    background:
-                      isPast || isCurrent
-                        ? "var(--ih-ink-40, #9ca3af)"
-                        : "var(--ih-line, #e5e7eb)",
+                    background: isPast
+                      ? "var(--ih-ok)"
+                      : isCurrent
+                        ? "var(--ih-accent)"
+                        : "var(--ih-line)",
                     alignSelf: "flex-start",
                     marginTop: isCurrent ? 6 : 4,
                     flexShrink: 0,

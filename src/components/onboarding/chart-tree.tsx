@@ -19,7 +19,7 @@ export function ChartTree({
   onSelectNode,
 }: ChartTreeProps) {
   return (
-    <div className="space-y-1">
+    <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
       {tree.map((node) => (
         <ChartNodeRecursive
           key={node.id}
@@ -61,7 +61,7 @@ function ChartNodeRecursive({
         onSelect={() => onSelectNode(node.id)}
       />
       {node.children.length > 0 && (
-        <div className="space-y-1 mt-1">
+        <div style={{ display: "flex", flexDirection: "column", gap: 2, marginTop: 2 }}>
           {node.children.map((child) => (
             <ChartNodeRecursive
               key={child.id}

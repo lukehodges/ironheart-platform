@@ -30,14 +30,20 @@ export function AuditProgressView({
   })
 
   if (progressQuery.isLoading) {
-    return <div className="p-8">Loading audit progress…</div>
+    return (
+      <div style={{ padding: 32, fontSize: 13, color: "var(--ih-ink-50)" }}>
+        Loading audit progress…
+      </div>
+    )
   }
 
   if (progressQuery.error) {
     return (
-      <div className="p-8">
-        <h1 className="font-serif text-2xl mb-2">Cannot load audit</h1>
-        <p className="text-sm text-muted-foreground">
+      <div style={{ padding: 32, background: "var(--ih-bg)" }}>
+        <h1 className="ih-serif" style={{ fontSize: 26, marginBottom: 8, color: "var(--ih-ink)" }}>
+          Cannot load audit
+        </h1>
+        <p style={{ fontSize: 13, color: "var(--ih-ink-50)" }}>
           {progressQuery.error.message}
         </p>
       </div>
@@ -55,21 +61,21 @@ export function AuditProgressView({
   const pct = totalSends > 0 ? Math.round((completed / totalSends) * 100) : 0
 
   return (
-    <div className="p-8 max-w-5xl space-y-8">
+    <div style={{ padding: 32, maxWidth: 880, display: "flex", flexDirection: "column", gap: 32, background: "var(--ih-bg)" }}>
       {/* Header */}
       <div>
-        <p className="text-xs uppercase tracking-wider text-muted-foreground">
-          Audit progress
-        </p>
-        <h1 className="font-serif text-3xl mt-1">{engagementTitle}</h1>
-        <p className="text-sm text-muted-foreground mt-1">
+        <p className="ih-eyebrow" style={{ marginBottom: 6 }}>Audit progress</p>
+        <h1 className="ih-serif" style={{ fontSize: 32, margin: "0 0 8px", color: "var(--ih-ink)" }}>
+          {engagementTitle}
+        </h1>
+        <p style={{ fontSize: 13, color: "var(--ih-ink-50)", lineHeight: 1.5 }}>
           Track form completion and upcoming sessions. Findings are released
           after your audit report is published.
         </p>
       </div>
 
       {/* Top stats */}
-      <div className="grid grid-cols-3 gap-4">
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
         <StatCard label="Forms sent" value={totalSends.toString()} />
         <StatCard label="Completed" value={`${completed} / ${totalSends}`} />
         <StatCard label="Progress" value={`${pct}%`} />
@@ -77,19 +83,29 @@ export function AuditProgressView({
 
       {/* Forms checklist */}
       <section>
-        <h2 className="font-serif text-xl mb-3">Form checklist</h2>
+        <h2 className="ih-serif" style={{ fontSize: 20, margin: "0 0 12px", color: "var(--ih-ink)" }}>
+          Form checklist
+        </h2>
         {nodesWithSend.length === 0 ? (
-          <p className="text-sm text-muted-foreground italic">
-            No forms sent yet. Your consultant will send invitations once the
-            org chart is approved.{" "}
-            <Link href="./onboarding" className="text-primary underline">
+          <p style={{ fontSize: 13, color: "var(--ih-ink-50)", fontStyle: "italic" }}>
+            No forms sent yet. Your consultant will send invitations once the org chart is approved.{" "}
+            <Link href="./onboarding" style={{ color: "var(--ih-accent)", textDecoration: "underline" }}>
               View org chart →
             </Link>
           </p>
         ) : (
-          <div className="border border-border rounded-md divide-y divide-border">
-            {nodesWithSend.map((node) => (
-              <FormRow key={node.nodeId} node={node} />
+          <div
+            style={{
+              border: "1px solid var(--ih-line)",
+              borderRadius: 8,
+              overflow: "hidden",
+              background: "var(--ih-surface)",
+            }}
+          >
+            {nodesWithSend.map((node, i) => (
+              <div key={node.nodeId} style={{ borderTop: i > 0 ? "1px solid var(--ih-line)" : "none" }}>
+                <FormRow node={node} />
+              </div>
             ))}
           </div>
         )}
@@ -97,19 +113,37 @@ export function AuditProgressView({
 
       {/* Upcoming sessions */}
       <section>
-        <h2 className="font-serif text-xl mb-3">Upcoming sessions</h2>
+        <h2 className="ih-serif" style={{ fontSize: 20, margin: "0 0 12px", color: "var(--ih-ink)" }}>
+          Upcoming sessions
+        </h2>
         {upcoming.length === 0 ? (
-          <p className="text-sm text-muted-foreground italic">
+          <p style={{ fontSize: 13, color: "var(--ih-ink-50)", fontStyle: "italic" }}>
             No upcoming sessions scheduled.
           </p>
         ) : (
-          <div className="border border-border rounded-md divide-y divide-border">
-            {upcoming.map((s) => (
-              <div key={s.id} className="flex items-center gap-3 p-3">
-                <Calendar size={16} className="text-muted-foreground" />
-                <div className="flex-1">
-                  <p className="text-sm font-medium">{s.title}</p>
-                  <p className="text-xs text-muted-foreground">
+          <div
+            style={{
+              border: "1px solid var(--ih-line)",
+              borderRadius: 8,
+              overflow: "hidden",
+              background: "var(--ih-surface)",
+            }}
+          >
+            {upcoming.map((s, i) => (
+              <div
+                key={s.id}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 12,
+                  padding: 12,
+                  borderTop: i > 0 ? "1px solid var(--ih-line)" : "none",
+                }}
+              >
+                <Calendar size={16} style={{ color: "var(--ih-ink-40)", flexShrink: 0 }} />
+                <div style={{ flex: 1 }}>
+                  <p style={{ fontSize: 13, fontWeight: 500, color: "var(--ih-ink)", margin: 0 }}>{s.title}</p>
+                  <p className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-50)", marginTop: 2 }}>
                     {new Date(s.startsAt).toLocaleString()}
                   </p>
                 </div>
@@ -121,30 +155,39 @@ export function AuditProgressView({
 
       {/* Activity feed */}
       <section>
-        <h2 className="font-serif text-xl mb-3">Recent activity</h2>
+        <h2 className="ih-serif" style={{ fontSize: 20, margin: "0 0 12px", color: "var(--ih-ink)" }}>
+          Recent activity
+        </h2>
         {activity.length === 0 ? (
-          <p className="text-sm text-muted-foreground italic">
+          <p style={{ fontSize: 13, color: "var(--ih-ink-50)", fontStyle: "italic" }}>
             No activity yet.
           </p>
         ) : (
-          <div className="space-y-2">
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {activity.slice(0, 10).map((row) => (
-              <div key={row.id} className="text-xs flex items-start gap-2">
+              <div key={row.id} style={{ fontSize: 11, display: "flex", alignItems: "flex-start", gap: 8 }}>
                 <span
-                  className={`inline-block w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0 ${
-                    row.actorType === "CONSULTANT"
-                      ? "bg-blue-500"
-                      : row.actorType === "CLIENT"
-                        ? "bg-amber-500"
-                        : "bg-gray-400"
-                  }`}
+                  style={{
+                    display: "inline-block",
+                    width: 6,
+                    height: 6,
+                    borderRadius: "50%",
+                    marginTop: 3,
+                    flexShrink: 0,
+                    background:
+                      row.actorType === "CONSULTANT"
+                        ? "var(--ih-info)"
+                        : row.actorType === "CLIENT"
+                          ? "var(--ih-warn)"
+                          : "var(--ih-ink-40)",
+                  }}
                 />
-                <div className="flex-1">
-                  <p className="text-foreground/80">
-                    <span className="font-medium">{row.actorName}</span> ·{" "}
+                <div style={{ flex: 1 }}>
+                  <p style={{ color: "var(--ih-ink-65)", margin: 0, lineHeight: 1.4 }}>
+                    <span style={{ fontWeight: 500, color: "var(--ih-ink)" }}>{row.actorName}</span> ·{" "}
                     {row.message}
                   </p>
-                  <p className="text-[10px] text-muted-foreground font-mono">
+                  <p className="ih-mono" style={{ fontSize: 9, color: "var(--ih-ink-40)", marginTop: 2 }}>
                     {new Date(row.createdAt).toLocaleString()}
                   </p>
                 </div>
@@ -155,10 +198,20 @@ export function AuditProgressView({
       </section>
 
       {/* Locked findings strip */}
-      <section className="rounded-md border border-dashed border-border bg-muted/30 p-6 text-center">
-        <FileText size={24} className="mx-auto text-muted-foreground/50 mb-2" />
-        <h3 className="font-serif text-lg">Findings locked</h3>
-        <p className="text-sm text-muted-foreground mt-1">
+      <section
+        style={{
+          borderRadius: 8,
+          border: "1px dashed var(--ih-line)",
+          background: "var(--ih-surface-2)",
+          padding: 24,
+          textAlign: "center",
+        }}
+      >
+        <FileText size={24} style={{ margin: "0 auto 8px", color: "var(--ih-ink-30)" }} />
+        <h3 className="ih-serif" style={{ fontSize: 18, margin: "0 0 6px", color: "var(--ih-ink)" }}>
+          Findings locked
+        </h3>
+        <p style={{ fontSize: 13, color: "var(--ih-ink-50)", margin: 0 }}>
           Your audit report — including RAG scores, findings, and
           recommendations — will appear here once your consultant publishes it.
         </p>
@@ -169,11 +222,9 @@ export function AuditProgressView({
 
 function StatCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="border border-border rounded-md p-4">
-      <p className="text-xs uppercase tracking-wider text-muted-foreground">
-        {label}
-      </p>
-      <p className="font-serif text-3xl mt-1">{value}</p>
+    <div className="ih-card" style={{ padding: 16 }}>
+      <p className="ih-eyebrow" style={{ marginBottom: 6 }}>{label}</p>
+      <p className="ih-serif" style={{ fontSize: 32, margin: 0, color: "var(--ih-ink)" }}>{value}</p>
     </div>
   )
 }
@@ -200,25 +251,25 @@ function FormRow({
         : AlertCircle
   const iconColor =
     display.tone === "ok"
-      ? "text-emerald-600"
+      ? "var(--ih-ok)"
       : display.tone === "warn"
-        ? "text-amber-600"
-        : "text-muted-foreground"
+        ? "var(--ih-warn)"
+        : "var(--ih-ink-40)"
 
   return (
-    <div className="flex items-center gap-3 p-3">
-      <Icon size={16} className={iconColor} />
-      <div className="flex-1">
-        <p className="text-sm font-medium">
+    <div style={{ display: "flex", alignItems: "center", gap: 12, padding: 12 }}>
+      <Icon size={16} style={{ color: iconColor, flexShrink: 0 }} />
+      <div style={{ flex: 1 }}>
+        <p style={{ fontSize: 13, fontWeight: 500, color: "var(--ih-ink)", margin: 0 }}>
           {node.contactName ?? node.label}
         </p>
-        <p className="text-xs text-muted-foreground">
+        <p style={{ fontSize: 11, color: "var(--ih-ink-50)", margin: 0 }}>
           {node.contactEmail ?? "—"}
         </p>
       </div>
-      <span className={`text-xs ${iconColor}`}>{display.label}</span>
+      <span style={{ fontSize: 11, color: iconColor }}>{display.label}</span>
       {node.formCompletedAt && (
-        <span className="text-[10px] text-muted-foreground font-mono">
+        <span className="ih-mono" style={{ fontSize: 9, color: "var(--ih-ink-40)" }}>
           {new Date(node.formCompletedAt).toLocaleDateString()}
         </span>
       )}

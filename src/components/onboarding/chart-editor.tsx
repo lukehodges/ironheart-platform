@@ -41,14 +41,20 @@ export function ChartEditor({
   })
 
   if (chartQuery.isLoading) {
-    return <div className="p-8 text-sm text-muted-foreground">Loading chart…</div>
+    return (
+      <div style={{ padding: 32, fontSize: 13, color: "var(--ih-ink-50)", fontFamily: "var(--ih-font-sans)" }}>
+        Loading chart…
+      </div>
+    )
   }
 
   if (chartQuery.error) {
     return (
-      <div className="p-8">
-        <h1 className="font-serif text-2xl mb-2">Chart unavailable</h1>
-        <p className="text-sm text-muted-foreground">{chartQuery.error.message}</p>
+      <div style={{ padding: 32, background: "var(--ih-bg)" }}>
+        <h1 style={{ fontFamily: "var(--ih-font-serif)", fontSize: 28, marginBottom: 8, color: "var(--ih-ink)" }}>
+          Chart unavailable
+        </h1>
+        <p style={{ fontSize: 13, color: "var(--ih-ink-50)" }}>{chartQuery.error.message}</p>
       </div>
     )
   }
@@ -58,55 +64,92 @@ export function ChartEditor({
   const selectedNode = selectedNodeId ? findNodeInTree(tree, selectedNodeId) : null
 
   return (
-    <div className="flex h-full flex-col">
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "var(--ih-bg)" }}>
       {/* Header */}
-      <div className="border-b border-border px-8 py-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-xs uppercase tracking-wider text-muted-foreground">
-              Platform / Clients / {engagementTitle} / Onboarding
-            </p>
-            <h1 className="font-serif text-2xl mt-1">{companyLabel} — Org chart</h1>
-          </div>
-          <div className="flex gap-2">
-            {isEmpty && mode === "consultant" && (
-              <button
-                onClick={() => seedMutation.mutate({ engagementId })}
-                disabled={!clientTenantProvisioned || seedMutation.isPending}
-                className="rounded-md border border-border bg-background px-4 py-2 text-sm hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {seedMutation.isPending ? "Seeding…" : "Seed from tier"}
-              </button>
-            )}
-            {!isEmpty && mode === "consultant" && (
-              <button
-                onClick={() => setPlanModalOpen(true)}
-                className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90"
-              >
-                Approve plan & preview
-              </button>
-            )}
-          </div>
+      <div
+        style={{
+          borderBottom: "1px solid var(--ih-line)",
+          padding: "16px 32px",
+          background: "var(--ih-surface)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
+        <div>
+          <p
+            className="ih-mono"
+            style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--ih-ink-40)", marginBottom: 4 }}
+          >
+            Platform / Clients / {engagementTitle} / Onboarding
+          </p>
+          <h1
+            className="ih-serif"
+            style={{ fontSize: 24, margin: 0, color: "var(--ih-ink)" }}
+          >
+            {companyLabel} — Org chart
+          </h1>
+        </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          {isEmpty && mode === "consultant" && (
+            <button
+              onClick={() => seedMutation.mutate({ engagementId })}
+              disabled={!clientTenantProvisioned || seedMutation.isPending}
+              style={{
+                borderRadius: 6,
+                border: "1px solid var(--ih-line)",
+                background: "var(--ih-surface)",
+                padding: "7px 16px",
+                fontSize: 13,
+                color: "var(--ih-ink)",
+                cursor: seedMutation.isPending || !clientTenantProvisioned ? "not-allowed" : "pointer",
+                opacity: seedMutation.isPending || !clientTenantProvisioned ? 0.5 : 1,
+              }}
+            >
+              {seedMutation.isPending ? "Seeding…" : "Seed from tier"}
+            </button>
+          )}
+          {!isEmpty && mode === "consultant" && (
+            <button
+              onClick={() => setPlanModalOpen(true)}
+              style={{
+                borderRadius: 6,
+                background: "var(--ih-accent)",
+                border: "none",
+                padding: "7px 16px",
+                fontSize: 13,
+                color: "#fff",
+                cursor: "pointer",
+              }}
+            >
+              Approve plan & preview
+            </button>
+          )}
         </div>
       </div>
 
       {/* Three-column layout */}
-      <div className="flex flex-1 overflow-hidden">
+      <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
         {/* Tree (40%) */}
         <div
-          className="border-r border-border overflow-y-auto p-6 min-w-0"
-          style={{ flexBasis: "40%" }}
+          style={{
+            flexBasis: "40%",
+            borderRight: "1px solid var(--ih-line)",
+            overflowY: "auto",
+            padding: 24,
+            minWidth: 0,
+          }}
         >
           {isEmpty ? (
-            <div className="text-center text-muted-foreground py-12">
-              <p className="text-sm">No chart yet.</p>
+            <div style={{ textAlign: "center", color: "var(--ih-ink-50)", padding: "48px 0" }}>
+              <p style={{ fontSize: 13 }}>No chart yet.</p>
               {mode === "consultant" && !clientTenantProvisioned && (
-                <p className="text-xs mt-2">
+                <p style={{ fontSize: 11, marginTop: 8 }}>
                   Engagement must be at CONTRACTED stage with provisioned tenant before seeding.
                 </p>
               )}
               {mode === "consultant" && clientTenantProvisioned && (
-                <p className="text-xs mt-2">Click "Seed from tier" to generate a starting chart.</p>
+                <p style={{ fontSize: 11, marginTop: 8 }}>Click "Seed from tier" to generate a starting chart.</p>
               )}
             </div>
           ) : (
@@ -122,8 +165,13 @@ export function ChartEditor({
 
         {/* Inspector (40%) */}
         <div
-          className="border-r border-border overflow-y-auto p-6 min-w-0"
-          style={{ flexBasis: "40%" }}
+          style={{
+            flexBasis: "40%",
+            borderRight: "1px solid var(--ih-line)",
+            overflowY: "auto",
+            padding: 24,
+            minWidth: 0,
+          }}
         >
           {selectedNode ? (
             <NodeInspector
@@ -133,12 +181,12 @@ export function ChartEditor({
               onClearSelection={() => setSelectedNodeId(null)}
             />
           ) : (
-            <div className="text-sm text-muted-foreground">Select a node to edit.</div>
+            <div style={{ fontSize: 13, color: "var(--ih-ink-50)" }}>Select a node to edit.</div>
           )}
         </div>
 
         {/* Activity feed (20%) */}
-        <div className="overflow-y-auto p-4" style={{ flexBasis: "20%" }}>
+        <div style={{ flexBasis: "20%", overflowY: "auto", padding: 16 }}>
           <ActivityFeed mode={mode} engagementId={engagementId} />
         </div>
       </div>

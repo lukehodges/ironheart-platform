@@ -13,11 +13,11 @@ const TYPE_ICONS: Record<OrgChartNodeType, LucideIcon> = {
   PERSON: User,
 }
 
-const MODE_BADGE_STYLE: Record<InterviewMode, string> = {
-  ALL: "bg-emerald-100 text-emerald-800 border-emerald-300",
-  SAMPLE: "bg-amber-100 text-amber-800 border-amber-300",
-  OWNER_ONLY: "bg-zinc-100 text-zinc-700 border-zinc-300",
-  SKIP: "bg-red-100 text-red-800 border-red-300 line-through",
+const MODE_BADGE_COLORS: Record<InterviewMode, { bg: string; color: string; border: string; strikethrough?: boolean }> = {
+  ALL:        { bg: "rgba(47,111,92,0.10)", color: "var(--ih-ok)",     border: "rgba(47,111,92,0.3)" },
+  SAMPLE:     { bg: "rgba(184,134,11,0.10)", color: "var(--ih-warn)",  border: "rgba(184,134,11,0.3)" },
+  OWNER_ONLY: { bg: "var(--ih-surface-2)",  color: "var(--ih-ink-65)", border: "var(--ih-line)" },
+  SKIP:       { bg: "rgba(209,58,31,0.08)", color: "var(--ih-danger)", border: "rgba(209,58,31,0.3)", strikethrough: true },
 }
 
 interface ChartNodeProps {
@@ -80,39 +80,79 @@ export function ChartNode({
       ? `Sample(${node.sampleSize ?? 0})`
       : node.interviewMode
 
+  const badge = MODE_BADGE_COLORS[node.interviewMode]
+
   return (
     <div
       onClick={onSelect}
-      className={[
-        "group flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-muted/50 cursor-pointer",
-        isSelected ? "bg-muted ring-1 ring-primary" : "",
-      ].join(" ")}
-      style={{ marginLeft: depth * 20 }}
+      className="group"
+      style={{
+        marginLeft: depth * 20,
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+        borderRadius: 6,
+        padding: "5px 8px",
+        cursor: "pointer",
+        background: isSelected ? "var(--ih-surface)" : "transparent",
+        border: isSelected ? "1px solid var(--ih-accent)" : "1px solid transparent",
+        transition: "background 0.12s ease, border-color 0.12s ease",
+      }}
+      onMouseEnter={(e) => {
+        if (!isSelected) (e.currentTarget as HTMLDivElement).style.background = "var(--ih-surface-2)"
+      }}
+      onMouseLeave={(e) => {
+        if (!isSelected) (e.currentTarget as HTMLDivElement).style.background = "transparent"
+      }}
     >
-      <Icon size={14} className="text-muted-foreground flex-shrink-0" />
+      <Icon size={14} style={{ color: "var(--ih-ink-50)", flexShrink: 0 }} />
 
-      <span className="font-medium text-sm truncate flex-1">{node.label}</span>
+      <span style={{ fontWeight: 500, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, color: "var(--ih-ink)" }}>
+        {node.label}
+      </span>
 
       <span
-        className={[
-          "px-1.5 py-0.5 rounded text-[10px] font-mono uppercase tracking-wide border",
-          MODE_BADGE_STYLE[node.interviewMode],
-        ].join(" ")}
+        style={{
+          padding: "1px 6px",
+          borderRadius: 4,
+          fontSize: 9,
+          fontFamily: "var(--ih-font-mono)",
+          textTransform: "uppercase",
+          letterSpacing: "0.08em",
+          border: `1px solid ${badge.border}`,
+          background: badge.bg,
+          color: badge.color,
+          textDecoration: badge.strikethrough ? "line-through" : "none",
+          flexShrink: 0,
+        }}
       >
         {modeBadgeLabel}
       </span>
 
       {node.headcount != null && (
-        <span className="text-xs font-mono text-muted-foreground">{node.headcount}p</span>
+        <span style={{ fontSize: 11, fontFamily: "var(--ih-font-mono)", color: "var(--ih-ink-50)", flexShrink: 0 }}>
+          {node.headcount}p
+        </span>
       )}
 
-      <div className="opacity-0 group-hover:opacity-100 flex gap-1">
+      <div style={{ display: "flex", gap: 2, opacity: 0, transition: "opacity 0.1s ease" }}
+        className="group-hover:opacity-100"
+      >
         <button
           onClick={(e) => {
             e.stopPropagation()
             handleAddChild()
           }}
-          className="rounded p-1 hover:bg-background"
+          style={{
+            borderRadius: 4,
+            padding: 3,
+            background: "transparent",
+            border: "none",
+            cursor: "pointer",
+            color: "var(--ih-ink-50)",
+            display: "flex",
+            alignItems: "center",
+          }}
           title="Add child"
           disabled={createMutation.isPending}
         >
@@ -123,7 +163,16 @@ export function ChartNode({
             e.stopPropagation()
             handleDelete()
           }}
-          className="rounded p-1 hover:bg-background text-red-600"
+          style={{
+            borderRadius: 4,
+            padding: 3,
+            background: "transparent",
+            border: "none",
+            cursor: "pointer",
+            color: "var(--ih-danger)",
+            display: "flex",
+            alignItems: "center",
+          }}
           title="Delete"
           disabled={deleteMutation.isPending}
         >

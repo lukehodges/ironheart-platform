@@ -120,13 +120,47 @@ export function NodeInspector({
 
   const isConsultant = mode === "consultant"
 
+  const inputStyle: React.CSSProperties = {
+    width: "100%",
+    borderRadius: 6,
+    border: "1px solid var(--ih-line)",
+    padding: "5px 8px",
+    fontSize: 13,
+    background: "var(--ih-surface)",
+    color: "var(--ih-ink)",
+    fontFamily: "var(--ih-font-sans)",
+    outline: "none",
+    boxSizing: "border-box",
+  }
+
+  const disabledInputStyle: React.CSSProperties = {
+    ...inputStyle,
+    opacity: 0.5,
+    cursor: "not-allowed",
+    background: "var(--ih-surface-2)",
+  }
+
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="font-serif text-lg truncate">{node.label}</h2>
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <h2
+          className="ih-serif"
+          style={{ fontSize: 18, margin: 0, color: "var(--ih-ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+        >
+          {node.label}
+        </h2>
         <button
           onClick={onClearSelection}
-          className="text-xs text-muted-foreground hover:text-foreground flex-shrink-0 ml-2"
+          style={{
+            fontSize: 11,
+            color: "var(--ih-ink-50)",
+            background: "transparent",
+            border: "none",
+            cursor: "pointer",
+            flexShrink: 0,
+            marginLeft: 8,
+            padding: "2px 6px",
+          }}
         >
           Close
         </button>
@@ -136,7 +170,7 @@ export function NodeInspector({
         <input
           value={form.label}
           onChange={(e) => setForm({ ...form, label: e.target.value })}
-          className="w-full rounded border border-border px-2 py-1 text-sm bg-background"
+          style={inputStyle}
         />
       </Field>
 
@@ -144,7 +178,7 @@ export function NodeInspector({
         <select
           value={form.type}
           onChange={(e) => setForm({ ...form, type: e.target.value as OrgChartNodeType })}
-          className="w-full rounded border border-border px-2 py-1 text-sm bg-background"
+          style={inputStyle}
         >
           <option value="DEPARTMENT">Department</option>
           <option value="ROLE">Role</option>
@@ -159,7 +193,7 @@ export function NodeInspector({
             min={0}
             value={form.headcount}
             onChange={(e) => setForm({ ...form, headcount: e.target.value })}
-            className="w-full rounded border border-border px-2 py-1 text-sm bg-background"
+            style={inputStyle}
           />
         </Field>
       )}
@@ -170,7 +204,7 @@ export function NodeInspector({
             <input
               value={form.contactName}
               onChange={(e) => setForm({ ...form, contactName: e.target.value })}
-              className="w-full rounded border border-border px-2 py-1 text-sm bg-background"
+              style={inputStyle}
             />
           </Field>
           <Field label="Contact email">
@@ -178,24 +212,27 @@ export function NodeInspector({
               type="email"
               value={form.contactEmail}
               onChange={(e) => setForm({ ...form, contactEmail: e.target.value })}
-              className="w-full rounded border border-border px-2 py-1 text-sm bg-background"
+              style={inputStyle}
             />
           </Field>
           <Field label="Role / title">
             <input
               value={form.contactRole}
               onChange={(e) => setForm({ ...form, contactRole: e.target.value })}
-              className="w-full rounded border border-border px-2 py-1 text-sm bg-background"
+              style={inputStyle}
             />
           </Field>
         </>
       )}
 
-      <div className="border-t border-border pt-4">
-        <p className="text-xs uppercase tracking-wider text-muted-foreground mb-2">
+      <div style={{ borderTop: "1px solid var(--ih-line)", paddingTop: 16 }}>
+        <p
+          className="ih-eyebrow"
+          style={{ marginBottom: 12 }}
+        >
           Interview plan{" "}
           {!isConsultant && (
-            <span className="normal-case font-normal">(consultant-controlled)</span>
+            <span style={{ textTransform: "none", fontWeight: 400, letterSpacing: 0 }}>(consultant-controlled)</span>
           )}
         </p>
 
@@ -204,7 +241,7 @@ export function NodeInspector({
             value={form.interviewMode}
             onChange={(e) => setForm({ ...form, interviewMode: e.target.value as InterviewMode })}
             disabled={!isConsultant}
-            className="w-full rounded border border-border px-2 py-1 text-sm bg-background disabled:opacity-50 disabled:cursor-not-allowed"
+            style={!isConsultant ? disabledInputStyle : inputStyle}
           >
             <option value="ALL">ALL — interview everyone</option>
             <option value="SAMPLE">SAMPLE — interview N picks</option>
@@ -221,7 +258,7 @@ export function NodeInspector({
               value={form.sampleSize}
               onChange={(e) => setForm({ ...form, sampleSize: e.target.value })}
               disabled={!isConsultant}
-              className="w-full rounded border border-border px-2 py-1 text-sm bg-background disabled:opacity-50 disabled:cursor-not-allowed"
+              style={!isConsultant ? disabledInputStyle : inputStyle}
             />
           </Field>
         )}
@@ -232,7 +269,7 @@ export function NodeInspector({
             onChange={(e) => setForm({ ...form, templateSlugOverride: e.target.value })}
             disabled={!isConsultant}
             placeholder={isConsultant ? "Leave blank to auto-detect from role" : ""}
-            className="w-full rounded border border-border px-2 py-1 text-sm bg-background disabled:opacity-50 disabled:cursor-not-allowed"
+            style={!isConsultant ? disabledInputStyle : inputStyle}
           />
         </Field>
       </div>
@@ -240,12 +277,25 @@ export function NodeInspector({
       <button
         onClick={handleSave}
         disabled={updateMutation.isPending}
-        className="w-full rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+        style={{
+          width: "100%",
+          borderRadius: 6,
+          background: "var(--ih-accent)",
+          border: "none",
+          padding: "8px 16px",
+          fontSize: 13,
+          color: "#fff",
+          cursor: updateMutation.isPending ? "not-allowed" : "pointer",
+          opacity: updateMutation.isPending ? 0.6 : 1,
+        }}
       >
         {updateMutation.isPending ? "Saving…" : "Save changes"}
       </button>
 
-      <p className="text-xs text-muted-foreground">
+      <p
+        className="ih-mono"
+        style={{ fontSize: 10, color: "var(--ih-ink-40)" }}
+      >
         Version {node.version} · Last edited by {node.lastEditedBy} ·{" "}
         {new Date(node.lastEditedAt).toLocaleString()}
       </p>
@@ -255,8 +305,13 @@ export function NodeInspector({
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <label className="block mb-3">
-      <span className="text-xs text-muted-foreground mb-1 block">{label}</span>
+    <label style={{ display: "block", marginBottom: 0 }}>
+      <span
+        className="ih-eyebrow"
+        style={{ marginBottom: 4, display: "block" }}
+      >
+        {label}
+      </span>
       {children}
     </label>
   )

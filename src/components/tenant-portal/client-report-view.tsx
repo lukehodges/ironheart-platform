@@ -16,8 +16,8 @@ export function ClientReportView({ engagementId, engagementTitle, companyLabel }
 
   if (reportQuery.isLoading) {
     return (
-      <div className="p-8">
-        <p className="text-sm text-muted-foreground">Loading report…</p>
+      <div style={{ padding: 32, fontSize: 13, color: "var(--ih-ink-50)" }}>
+        Loading report…
       </div>
     )
   }
@@ -25,11 +25,21 @@ export function ClientReportView({ engagementId, engagementTitle, companyLabel }
   // Not published yet (null return) or error
   if (!reportQuery.data) {
     return (
-      <div className="p-8 max-w-2xl">
-        <div className="rounded-md border border-dashed border-border p-12 text-center">
-          <AlertCircle size={32} className="mx-auto text-muted-foreground/50 mb-3" />
-          <h1 className="font-serif text-2xl mb-2">Report not yet available</h1>
-          <p className="text-sm text-muted-foreground">
+      <div style={{ padding: 32, maxWidth: 560 }}>
+        <div
+          style={{
+            borderRadius: 8,
+            border: "1px dashed var(--ih-line)",
+            background: "var(--ih-surface-2)",
+            padding: 48,
+            textAlign: "center",
+          }}
+        >
+          <AlertCircle size={32} style={{ margin: "0 auto 12px", color: "var(--ih-ink-30)" }} />
+          <h1 className="ih-serif" style={{ fontSize: 24, margin: "0 0 8px", color: "var(--ih-ink)" }}>
+            Report not yet available
+          </h1>
+          <p style={{ fontSize: 13, color: "var(--ih-ink-50)", margin: 0 }}>
             Your audit report will appear here once your consultant publishes it. You&apos;ll get
             an email notification too.
           </p>
@@ -52,7 +62,7 @@ export function ClientReportView({ engagementId, engagementTitle, companyLabel }
     : null
 
   return (
-    <div className="p-8 max-w-4xl space-y-10">
+    <div style={{ padding: 32, maxWidth: 800, display: "flex", flexDirection: "column", gap: 40, background: "var(--ih-bg)" }}>
       <ReportHeader
         title={engagementTitle}
         companyLabel={companyLabel}
@@ -87,23 +97,35 @@ function ReportHeader({
   reportId: string
 }) {
   return (
-    <header className="border-b border-border pb-6">
-      <p className="text-xs uppercase tracking-wider text-muted-foreground">Audit report</p>
-      <h1 className="font-serif text-4xl mt-2">{title}</h1>
-      <p className="text-sm text-muted-foreground mt-2">
+    <header style={{ borderBottom: "1px solid var(--ih-line)", paddingBottom: 24 }}>
+      <p className="ih-eyebrow" style={{ marginBottom: 8 }}>Audit report</p>
+      <h1 className="ih-serif" style={{ fontSize: 40, margin: "0 0 10px", color: "var(--ih-ink)", lineHeight: 1 }}>
+        {title}
+      </h1>
+      <p style={{ fontSize: 13, color: "var(--ih-ink-50)", margin: "0 0 16px" }}>
         {companyLabel}
         {publishedDate ? ` · Published ${publishedDate}` : ""}
       </p>
-      <div className="mt-4">
-        <a
-          href={`/api/reports/${reportId}/pdf`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-md border border-border bg-background text-sm hover:bg-muted transition-colors"
-        >
-          <Download size={14} /> Download PDF
-        </a>
-      </div>
+      <a
+        href={`/api/reports/${reportId}/pdf`}
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 6,
+          padding: "6px 14px",
+          borderRadius: 6,
+          border: "1px solid var(--ih-line)",
+          background: "var(--ih-surface)",
+          fontSize: 13,
+          color: "var(--ih-ink)",
+          textDecoration: "none",
+          transition: "border-color 0.15s ease",
+        }}
+      >
+        <Download size={14} /> Download PDF
+      </a>
     </header>
   )
 }
@@ -117,20 +139,26 @@ function ExecutiveSummary({
 }) {
   if (!summary && !totalWaste) return null
   return (
-    <section className="rounded-md border border-border bg-muted/30 p-6">
-      <p className="text-xs uppercase tracking-wider text-muted-foreground mb-3">
-        Executive summary
-      </p>
+    <section
+      className="ih-card"
+      style={{
+        padding: 24,
+        borderLeft: "3px solid var(--ih-accent)",
+      }}
+    >
+      <p className="ih-eyebrow" style={{ marginBottom: 12 }}>Executive summary</p>
       {totalWaste > 0 && (
-        <p className="font-serif text-4xl mb-4">
+        <p className="ih-serif" style={{ fontSize: 40, margin: "0 0 16px", color: "var(--ih-ink)", lineHeight: 1 }}>
           £{(totalWaste / 100).toLocaleString("en-GB")}
-          <span className="text-sm text-muted-foreground ml-2">
+          <span style={{ fontSize: 13, color: "var(--ih-ink-50)", marginLeft: 10, fontFamily: "var(--ih-font-sans)" }}>
             estimated annual waste identified
           </span>
         </p>
       )}
       {summary && (
-        <p className="text-base leading-relaxed whitespace-pre-line">{summary}</p>
+        <p style={{ fontSize: 14, lineHeight: 1.65, whiteSpace: "pre-line", color: "var(--ih-ink-65)", margin: 0 }}>
+          {summary}
+        </p>
       )}
     </section>
   )
@@ -140,10 +168,8 @@ function LensSummaryStrip({ lenses }: { lenses: ReportLensSection[] }) {
   if (lenses.length === 0) return null
   return (
     <section>
-      <p className="text-xs uppercase tracking-wider text-muted-foreground mb-3">
-        Lens summary
-      </p>
-      <div className="grid grid-cols-5 gap-3">
+      <p className="ih-eyebrow" style={{ marginBottom: 12 }}>Lens summary</p>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 10 }}>
         {lenses.map((l, i) => (
           <LensCard key={i} lens={l} />
         ))}
@@ -154,21 +180,32 @@ function LensSummaryStrip({ lenses }: { lenses: ReportLensSection[] }) {
 
 function LensCard({ lens }: { lens: ReportLensSection }) {
   const rag = (lens.ragScore ?? "").toUpperCase()
-  const ragColor =
+  const { bg, border, color } =
     rag === "RED"
-      ? "bg-red-100 text-red-800 border-red-300"
+      ? { bg: "rgba(209,58,31,0.08)", border: "rgba(209,58,31,0.3)", color: "var(--ih-danger)" }
       : rag === "AMBER"
-        ? "bg-amber-100 text-amber-800 border-amber-300"
+        ? { bg: "rgba(184,134,11,0.08)", border: "rgba(184,134,11,0.3)", color: "var(--ih-warn)" }
         : rag === "GREEN"
-          ? "bg-emerald-100 text-emerald-800 border-emerald-300"
-          : "bg-zinc-100 text-zinc-700 border-zinc-300"
+          ? { bg: "rgba(47,111,92,0.08)", border: "rgba(47,111,92,0.3)", color: "var(--ih-ok)" }
+          : { bg: "var(--ih-surface-2)", border: "var(--ih-line)", color: "var(--ih-ink-50)" }
   const findingCount = Array.isArray(lens.findings) ? lens.findings.length : 0
 
   return (
-    <div className={`rounded-md border p-3 ${ragColor}`}>
-      <p className="text-[10px] font-mono uppercase tracking-wide">{lens.lens}</p>
-      <p className="font-serif text-2xl mt-1">{rag || "—"}</p>
-      <p className="text-[10px] mt-1">
+    <div
+      style={{
+        borderRadius: 8,
+        border: `1px solid ${border}`,
+        background: bg,
+        padding: 12,
+      }}
+    >
+      <p className="ih-mono" style={{ fontSize: 9, color: "var(--ih-ink-50)", marginBottom: 4 }}>
+        {lens.lens}
+      </p>
+      <p className="ih-serif" style={{ fontSize: 26, margin: "0 0 4px", color }}>
+        {rag || "—"}
+      </p>
+      <p style={{ fontSize: 10, color: "var(--ih-ink-50)", margin: 0 }}>
         {findingCount} finding{findingCount === 1 ? "" : "s"}
       </p>
     </div>
@@ -179,9 +216,17 @@ function ReportContent({ contentHtml }: { contentHtml: string }) {
   if (!contentHtml) return null
   return (
     <section>
-      <p className="text-xs uppercase tracking-wider text-muted-foreground mb-3">Full report</p>
+      <p className="ih-eyebrow" style={{ marginBottom: 12 }}>Full report</p>
       <div
-        className="prose prose-sm max-w-none border border-border rounded-md p-6 bg-background"
+        className="prose prose-sm max-w-none"
+        style={{
+          border: "1px solid var(--ih-line)",
+          borderRadius: 8,
+          padding: 24,
+          background: "var(--ih-surface)",
+          color: "var(--ih-ink)",
+          lineHeight: 1.65,
+        }}
         dangerouslySetInnerHTML={{ __html: renderMarkdown(contentHtml) }}
       />
     </section>
@@ -239,31 +284,54 @@ function CtaSection({ engagementId }: { engagementId: string }) {
     process.env.NEXT_PUBLIC_WALKTHROUGH_BOOKING_URL ??
     "https://cal.com/lukehodges/audit-walkthrough"
 
+  const ctaCardBase: React.CSSProperties = {
+    borderRadius: 8,
+    border: "1px solid var(--ih-line)",
+    padding: 24,
+    display: "block",
+    textDecoration: "none",
+    transition: "border-color 0.15s ease",
+    background: "var(--ih-surface)",
+  }
+
   return (
-    <section className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8">
+    <section style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
       {/* Walkthrough booking */}
       <a
         href={walkthroughUrl}
         target="_blank"
         rel="noopener noreferrer"
-        className="rounded-md border border-border p-6 hover:border-foreground transition-colors block group"
+        style={ctaCardBase}
+        onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = "var(--ih-accent)" }}
+        onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = "var(--ih-line)" }}
       >
-        <Calendar size={20} className="text-muted-foreground mb-3 group-hover:text-foreground transition-colors" />
-        <p className="font-serif text-lg mb-1">Book a walkthrough call</p>
-        <p className="text-sm text-muted-foreground mb-3">
+        <Calendar size={20} style={{ color: "var(--ih-ink-40)", marginBottom: 12 }} />
+        <p className="ih-serif" style={{ fontSize: 18, margin: "0 0 6px", color: "var(--ih-ink)" }}>
+          Book a walkthrough call
+        </p>
+        <p style={{ fontSize: 13, color: "var(--ih-ink-50)", margin: "0 0 12px", lineHeight: 1.5 }}>
           30 minutes with your consultant to walk through the findings and answer questions.
         </p>
-        <span className="inline-flex items-center gap-1 text-sm font-medium text-primary">
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 13, fontWeight: 500, color: "var(--ih-accent)" }}>
           Book a time <ArrowRight size={14} />
         </span>
       </a>
 
       {/* Implementation proposal request */}
       {requested ? (
-        <div className="rounded-md border border-emerald-300 bg-emerald-50 p-6">
-          <FileText size={20} className="text-emerald-700 mb-3" />
-          <p className="font-serif text-lg mb-1 text-emerald-900">Proposal requested</p>
-          <p className="text-sm text-emerald-800">
+        <div
+          style={{
+            borderRadius: 8,
+            border: "1px solid rgba(47,111,92,0.4)",
+            background: "rgba(47,111,92,0.06)",
+            padding: 24,
+          }}
+        >
+          <FileText size={20} style={{ color: "var(--ih-ok)", marginBottom: 12 }} />
+          <p className="ih-serif" style={{ fontSize: 18, margin: "0 0 6px", color: "var(--ih-ok)" }}>
+            Proposal requested
+          </p>
+          <p style={{ fontSize: 13, color: "var(--ih-ink-65)", margin: 0, lineHeight: 1.5 }}>
             Your consultant has been notified. They&apos;ll send a tailored implementation
             proposal within 2 business days.
           </p>
@@ -272,15 +340,30 @@ function CtaSection({ engagementId }: { engagementId: string }) {
         <button
           onClick={handleRequest}
           disabled={requesting}
-          className="rounded-md border border-border p-6 hover:border-foreground transition-colors text-left disabled:opacity-50 w-full"
+          style={{
+            ...ctaCardBase,
+            textAlign: "left",
+            cursor: requesting ? "not-allowed" : "pointer",
+            opacity: requesting ? 0.6 : 1,
+            width: "100%",
+            border: "1px solid var(--ih-line)",
+          }}
+          onMouseEnter={(e) => {
+            if (!requesting) (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--ih-accent)"
+          }}
+          onMouseLeave={(e) => {
+            (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--ih-line)"
+          }}
         >
-          <FileText size={20} className="text-muted-foreground mb-3" />
-          <p className="font-serif text-lg mb-1">Ready to fix what we found?</p>
-          <p className="text-sm text-muted-foreground mb-3">
+          <FileText size={20} style={{ color: "var(--ih-ink-40)", marginBottom: 12 }} />
+          <p className="ih-serif" style={{ fontSize: 18, margin: "0 0 6px", color: "var(--ih-ink)" }}>
+            Ready to fix what we found?
+          </p>
+          <p style={{ fontSize: 13, color: "var(--ih-ink-50)", margin: "0 0 12px", lineHeight: 1.5 }}>
             Get an implementation proposal tailored to your audit. We&apos;ll prioritise the top
             opportunities.
           </p>
-          <span className="inline-flex items-center gap-1 text-sm font-medium text-primary">
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 13, fontWeight: 500, color: "var(--ih-accent)" }}>
             {requesting ? "Requesting…" : "Request proposal"} <ArrowRight size={14} />
           </span>
         </button>
