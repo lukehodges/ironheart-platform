@@ -67,10 +67,764 @@ async function resolveNodes(sql: postgres.Sql): Promise<NodeMap> {
 }
 
 // ---------------------------------------------------------------------------
-// Step 1: Org chart enrichment
+// Brightline expansion — ~45 nodes across 6 departments
 // ---------------------------------------------------------------------------
+// Deterministic avatar palette (must match scripts/backfill-avatar-colour.ts
+// and src/app/.../onboarding/demo/_components/seed.ts).
+const AVATAR_PALETTE = ["indigo", "amber", "rose", "teal", "emerald", "violet", "sky", "stone"] as const
+function hashStr(s: string): number {
+  return Array.from(s).reduce((a, c) => (a * 31 + c.charCodeAt(0)) | 0, 0)
+}
+function pickAvatarColor(label: string): string {
+  return AVATAR_PALETTE[Math.abs(hashStr(label)) % AVATAR_PALETTE.length]!
+}
+function brightlineEmail(name: string): string {
+  const parts = name.toLowerCase().replace(/[^a-z\s]/g, "").split(/\s+/).filter(Boolean)
+  if (parts.length < 2) return `${parts[0] ?? "contact"}@brightlinelogistics.example.com`
+  return `${parts[0]}.${parts[parts.length - 1]}@brightlinelogistics.example.com`
+}
 
-async function enrichOrgChart(sql: postgres.Sql) {
+// Roster row — fully specified record for one chart node.
+type Kind = "PERSON" | "VACANCY" | "CONTRACTOR" | "ADVISOR" | "EXTERNAL" | "BUNDLE"
+type DbType = "DEPARTMENT" | "ROLE" | "PERSON"
+type Iv = "NONE" | "TARGET" | "INVITED" | "SCHEDULED" | "COMPLETED"
+type Fm = "NONE" | "PENDING" | "SENT" | "IN_PROGRESS" | "COMPLETED"
+type Es = "SOLID" | "DOTTED" | "MATRIX"
+
+interface RosterRow {
+  // logical key for upsert — stable across re-runs
+  key: string
+  // optional preserved existing ID (so FK refs stay intact)
+  preserveId?: string
+  parentKey: string | null
+  label: string
+  type: DbType
+  kind: Kind
+  contactName?: string | null
+  contactRole?: string | null
+  email?: string | null
+  tenureYears?: number | null
+  auditFlags?: string[]
+  interviewStatus?: Iv
+  formStatus?: Fm
+  isFounder?: boolean
+  isFractional?: boolean
+  edgeStyle?: Es
+  headcount?: number | null
+  notes?: string | null
+  sortOrder: number
+}
+
+// Pre-existing node IDs (discovered at runtime, mapped from DB).
+// 4 nodes have FK references via audit_call_notes.contactUserId so MUST
+// be preserved. Others are kept where convenient.
+const EXISTING_IDS = {
+  root: "472c4bdd-4b98-45a1-8a91-6c310b35bafe",
+  ceo: "61ec3691-2245-4140-9bf9-ab7561b1da0a",          // FK ref'd
+  operationsDept: "3cd273e6-d177-41f3-a305-5a40b53940b7",
+  financeDept: "2f7b9bf9-6dbd-4beb-a7b3-74f4f7e8922a",
+  salesDept: "c1ed2e6b-ecc1-453c-b2dc-5ed217d35f6c",
+  otherDept: "3617bb22-7a12-45f3-838e-bc407751bdf5",
+  marcus: "72911c49-9e89-4312-b902-dcdd725d1e36",       // FK ref'd
+  priya: "202f5ae1-4880-4ed2-819a-c8c47d79beea",        // FK ref'd
+  jordan: "1864f848-4bbd-4511-a38e-40c0d8851ef8",       // FK ref'd
+  alex: "e25808da-fdbe-4385-b15a-1fd75f4767c0",
+  sam: "2101675a-9ee0-4877-9dc3-32ecd4548542",
+  strayNewNode: "8b482378-48ef-4c80-a8b7-282ab9b05831",
+}
+
+function brightlineRoster(): RosterRow[] {
+  const rows: RosterRow[] = []
+  let s = 0
+  const n = (r: Omit<RosterRow, "sortOrder">) => rows.push({ ...r, sortOrder: s++ })
+
+  // ── Root ────────────────────────────────────────────────────────────────
+  n({
+    key: "org",
+    preserveId: EXISTING_IDS.root,
+    parentKey: null,
+    label: "Brightline Logistics Ltd",
+    type: "DEPARTMENT",
+    kind: "PERSON",
+    headcount: 58,
+    notes: "Brightline Logistics Ltd — fictional mid-Atlantic SMB logistics consultancy. 58 staff. Discovery audit in progress.",
+  })
+
+  // ── Leadership ──────────────────────────────────────────────────────────
+  n({
+    key: "leadership",
+    parentKey: "org",
+    label: "Leadership",
+    type: "DEPARTMENT",
+    kind: "PERSON",
+    headcount: 4,
+    notes: "C-suite plus fractional CFO. Schedule fractional roles first — narrow availability windows.",
+  })
+  n({
+    key: "ceo",
+    preserveId: EXISTING_IDS.ceo,
+    parentKey: "leadership",
+    label: "Sarah Chen",
+    type: "PERSON",
+    kind: "PERSON",
+    contactName: "Sarah Chen",
+    contactRole: "Founder & CEO",
+    tenureYears: 9,
+    auditFlags: ["FOUNDER", "DECISION_MAKER"],
+    interviewStatus: "SCHEDULED",
+    formStatus: "COMPLETED",
+    isFounder: true,
+    notes: "Founder; signs off engagements. Prefers async updates over Slack. Wants to step out of the daily approval loop — north-star for this audit.",
+  })
+  n({
+    key: "coo",
+    parentKey: "leadership",
+    label: "Daniel Mokoena",
+    type: "PERSON",
+    kind: "PERSON",
+    contactName: "Daniel Mokoena",
+    contactRole: "Chief Operating Officer",
+    tenureYears: 3,
+    auditFlags: ["DECISION_MAKER", "PROCESS_OWNER"],
+    interviewStatus: "INVITED",
+    formStatus: "SENT",
+    notes: "Hired Q2 last year to professionalise ops. Day-to-day client lead. Already drafting an SOP backlog.",
+  })
+  n({
+    key: "cfo",
+    preserveId: EXISTING_IDS.priya,
+    parentKey: "leadership",
+    label: "Priya Patel",
+    type: "PERSON",
+    kind: "CONTRACTOR",
+    contactName: "Priya Patel",
+    contactRole: "Fractional CFO",
+    tenureYears: 1,
+    auditFlags: ["FINANCE_OWNER"],
+    interviewStatus: "INVITED",
+    formStatus: "IN_PROGRESS",
+    isFractional: true,
+    edgeStyle: "DOTTED",
+    notes: "2 days/week, routes via Daniel for scheduling. Owns reconciliation backlog — 9-day lag flagged.",
+  })
+  n({
+    key: "ned-lead",
+    parentKey: "leadership",
+    label: "Helena Drobacz",
+    type: "PERSON",
+    kind: "ADVISOR",
+    contactName: "Helena Drobacz",
+    contactRole: "Non-Exec Director",
+    auditFlags: ["DECISION_MAKER"],
+    interviewStatus: "TARGET",
+    formStatus: "NOT_SENT" as unknown as Fm, // we'll coerce to NONE below
+    edgeStyle: "DOTTED",
+    notes: "Quarterly board cadence. Ex-Maersk ops; happy to talk by phone.",
+  })
+
+  // ── Operations ──────────────────────────────────────────────────────────
+  n({
+    key: "operations",
+    preserveId: EXISTING_IDS.operationsDept,
+    parentKey: "org",
+    label: "Operations",
+    type: "DEPARTMENT",
+    kind: "PERSON",
+    headcount: 12,
+    notes: "Largest functional team. Owns onboarding + dispatch + provisioning. 11-day onboarding cycle is the headline risk.",
+  })
+  n({
+    key: "head-ops",
+    parentKey: "operations",
+    label: "Marcus Webb",
+    type: "PERSON",
+    kind: "PERSON",
+    preserveId: EXISTING_IDS.marcus,
+    contactName: "Marcus Webb",
+    contactRole: "Head of Operations",
+    tenureYears: 5,
+    auditFlags: ["PROCESS_OWNER"],
+    interviewStatus: "COMPLETED",
+    formStatus: "COMPLETED",
+    notes: "Wants SOPs but no protected time. Enthusiastic about workflow automation — strong quick-win candidate.",
+  })
+  n({
+    key: "ops-mgr",
+    parentKey: "head-ops",
+    label: "Rajiv Suresh",
+    type: "PERSON",
+    kind: "PERSON",
+    contactName: "Rajiv Suresh",
+    contactRole: "Operations Manager",
+    tenureYears: 4,
+    auditFlags: ["PROCESS_OWNER"],
+    interviewStatus: "TARGET",
+    formStatus: "SENT",
+    notes: "Owns the dispatch board. Knows where bodies are buried in the spreadsheets.",
+  })
+  n({
+    key: "ops-snr1",
+    parentKey: "ops-mgr",
+    label: "Megan Aldridge",
+    type: "PERSON",
+    kind: "PERSON",
+    contactName: "Megan Aldridge",
+    contactRole: "Senior Operations Coordinator",
+    tenureYears: 3,
+    interviewStatus: "INVITED",
+    formStatus: "OPENED" as unknown as Fm,
+  })
+  n({
+    key: "ops-snr2",
+    parentKey: "ops-mgr",
+    label: "Tomasz Wieczorek",
+    type: "PERSON",
+    kind: "PERSON",
+    contactName: "Tomasz Wieczorek",
+    contactRole: "Senior Operations Coordinator",
+    tenureYears: 2,
+    interviewStatus: "TARGET",
+    notes: "Recently promoted from Associate; still building stakeholder map.",
+  })
+  n({
+    key: "ops-vac",
+    parentKey: "ops-mgr",
+    label: "Senior Operations Coordinator (open)",
+    type: "ROLE",
+    kind: "VACANCY",
+    contactRole: "Senior Operations Coordinator",
+    interviewStatus: "NONE",
+    formStatus: "NONE",
+    notes: "Open requisition — 4 candidates in pipeline. Backfill for Tomasz's old seat.",
+  })
+  n({
+    key: "ops-assoc-1",
+    parentKey: "ops-mgr",
+    label: "Beatrice Adeyemi",
+    type: "PERSON",
+    kind: "PERSON",
+    contactName: "Beatrice Adeyemi",
+    contactRole: "Operations Associate",
+    tenureYears: 2,
+  })
+  n({
+    key: "ops-assoc-2",
+    parentKey: "ops-mgr",
+    label: "Owen Hartwell",
+    type: "PERSON",
+    kind: "PERSON",
+    contactName: "Owen Hartwell",
+    contactRole: "Operations Associate",
+    tenureYears: 1,
+  })
+  n({
+    key: "ops-bundle",
+    parentKey: "ops-mgr",
+    label: "Operations Associate Pool (4)",
+    type: "PERSON",
+    kind: "BUNDLE",
+    contactName: "Operations Associate Pool (4)",
+    contactRole: "Bundled Operations Associates",
+    notes: "4 junior ops staff bundled — interviewing 1 representative as a SAMPLE.",
+  })
+  n({
+    key: "ops-contractor",
+    parentKey: "head-ops",
+    label: "Cal Forrest (Logistics Consultant)",
+    type: "PERSON",
+    kind: "CONTRACTOR",
+    contactName: "Cal Forrest",
+    contactRole: "Logistics Consultant",
+    tenureYears: 1,
+    auditFlags: ["PROCESS_OWNER"],
+    interviewStatus: "TARGET",
+    edgeStyle: "DOTTED",
+    isFractional: false,
+    notes: "Brought in 6 months ago to redesign routing. Contract ends Q3 — knowledge transfer at risk.",
+  })
+
+  // ── Sales & Marketing ───────────────────────────────────────────────────
+  n({
+    key: "sales-mktg",
+    preserveId: EXISTING_IDS.salesDept,
+    parentKey: "org",
+    label: "Sales & Marketing",
+    type: "DEPARTMENT",
+    kind: "PERSON",
+    headcount: 10,
+    notes: "Pipeline lives in a single spreadsheet maintained by Jordan. CRM budget approved 4 months but undeployed.",
+  })
+  n({
+    key: "head-sales",
+    parentKey: "sales-mktg",
+    label: "Jordan Reyes",
+    type: "PERSON",
+    kind: "PERSON",
+    preserveId: EXISTING_IDS.jordan,
+    contactName: "Jordan Reyes",
+    contactRole: "Head of Sales",
+    tenureYears: 6,
+    auditFlags: ["DECISION_MAKER"],
+    interviewStatus: "TARGET",
+    formStatus: "SENT",
+    notes: "Owns full pipeline visibility — single point of failure. Wants HubSpot Starter; champion for CRM adoption.",
+  })
+  n({
+    key: "ae-1",
+    parentKey: "head-sales",
+    label: "Imogen Ferrara",
+    type: "PERSON",
+    kind: "PERSON",
+    contactName: "Imogen Ferrara",
+    contactRole: "Account Executive",
+    tenureYears: 3,
+    interviewStatus: "SCHEDULED",
+    formStatus: "OPENED" as unknown as Fm,
+    notes: "Top performer Q1. Quietly running her own qualification rubric — worth formalising org-wide.",
+  })
+  n({
+    key: "ae-2",
+    parentKey: "head-sales",
+    label: "Tariq Hassan",
+    type: "PERSON",
+    kind: "PERSON",
+    contactName: "Tariq Hassan",
+    contactRole: "Account Executive",
+    tenureYears: 2,
+    interviewStatus: "SCHEDULED",
+  })
+  n({
+    key: "bdr-1",
+    parentKey: "head-sales",
+    label: "Mollie Bramwell",
+    type: "PERSON",
+    kind: "PERSON",
+    contactName: "Mollie Bramwell",
+    contactRole: "Business Development Rep",
+    tenureYears: 1,
+    interviewStatus: "INVITED",
+    formStatus: "IN_PROGRESS",
+  })
+  n({
+    key: "bdr-bundle",
+    parentKey: "head-sales",
+    label: "BDR Pool (3)",
+    type: "PERSON",
+    kind: "BUNDLE",
+    contactName: "BDR Pool (3)",
+    contactRole: "Bundled Business Development Reps",
+    edgeStyle: "MATRIX",
+    notes: "3 BDRs matrixed across Imogen + Tariq. No formal pod ownership — cause of follow-up gaps.",
+  })
+  n({
+    key: "ae-vac",
+    parentKey: "head-sales",
+    label: "Enterprise AE (open)",
+    type: "ROLE",
+    kind: "VACANCY",
+    contactRole: "Enterprise Account Executive",
+    notes: "Open since Q1. Recruiter assigned but no shortlist yet.",
+  })
+  n({
+    key: "mktg-lead",
+    parentKey: "sales-mktg",
+    label: "Frieda Lindqvist",
+    type: "PERSON",
+    kind: "CONTRACTOR",
+    contactName: "Frieda Lindqvist",
+    contactRole: "Marketing Lead (fractional)",
+    tenureYears: 2,
+    isFractional: true,
+    edgeStyle: "DOTTED",
+    interviewStatus: "TARGET",
+    formStatus: "SENT",
+    notes: "3 days/week. Content backlog growing — wants AE input on case studies.",
+  })
+  n({
+    key: "mktg-content",
+    parentKey: "mktg-lead",
+    label: "Theo Nakamura",
+    type: "PERSON",
+    kind: "PERSON",
+    contactName: "Theo Nakamura",
+    contactRole: "Content Specialist",
+    tenureYears: 1,
+    interviewStatus: "TARGET",
+  })
+
+  // ── Tech & Data ─────────────────────────────────────────────────────────
+  n({
+    key: "tech-data",
+    parentKey: "org",
+    label: "Tech & Data",
+    type: "DEPARTMENT",
+    kind: "PERSON",
+    headcount: 8,
+    notes: "No formal DPO; CTO wears all three hats (data + security + DPO). Common audit gap — flag in report.",
+  })
+  n({
+    key: "cto",
+    parentKey: "tech-data",
+    label: "Anya Petrova",
+    type: "PERSON",
+    kind: "PERSON",
+    contactName: "Anya Petrova",
+    contactRole: "Chief Technology Officer",
+    tenureYears: 9,
+    auditFlags: ["DATA_OWNER", "DPO", "SECURITY", "FOUNDER"],
+    interviewStatus: "SCHEDULED",
+    formStatus: "COMPLETED",
+    isFounder: true,
+    notes: "AUDIT-CRITICAL: doubles as DPO without formal appointment. Co-founder. Owns infra strategy single-handed.",
+  })
+  n({
+    key: "tech-lead",
+    parentKey: "cto",
+    label: "Connor Whitley",
+    type: "PERSON",
+    kind: "PERSON",
+    contactName: "Connor Whitley",
+    contactRole: "Tech Lead",
+    tenureYears: 4,
+    auditFlags: ["SECURITY"],
+    interviewStatus: "TARGET",
+    formStatus: "SENT",
+    notes: "De-facto deputy CTO. Bus-factor risk if Anya unavailable.",
+  })
+  n({
+    key: "eng-1",
+    parentKey: "tech-lead",
+    label: "Ravi Subramanian",
+    type: "PERSON",
+    kind: "PERSON",
+    contactName: "Ravi Subramanian",
+    contactRole: "Senior Engineer",
+    tenureYears: 3,
+    interviewStatus: "TARGET",
+  })
+  n({
+    key: "eng-2",
+    parentKey: "tech-lead",
+    label: "Yuki Tanaka",
+    type: "PERSON",
+    kind: "PERSON",
+    contactName: "Yuki Tanaka",
+    contactRole: "Engineer",
+    tenureYears: 2,
+  })
+  n({
+    key: "eng-3",
+    parentKey: "tech-lead",
+    label: "Damir Volkov",
+    type: "PERSON",
+    kind: "PERSON",
+    contactName: "Damir Volkov",
+    contactRole: "Engineer",
+    tenureYears: 1,
+  })
+  n({
+    key: "data-analyst",
+    parentKey: "cto",
+    label: "Hugo Schneider",
+    type: "PERSON",
+    kind: "PERSON",
+    contactName: "Hugo Schneider",
+    contactRole: "Data Analyst",
+    tenureYears: 2,
+    auditFlags: ["DATA_OWNER"],
+    interviewStatus: "TARGET",
+    notes: "Reluctantly owns the warehouse pipeline. Sole owner — bus factor of 1.",
+  })
+  n({
+    key: "eng-vac",
+    parentKey: "tech-lead",
+    label: "Senior Engineer (open)",
+    type: "ROLE",
+    kind: "VACANCY",
+    contactRole: "Senior Engineer",
+    notes: "Open since Q1. Anya screening directly — no recruiter assigned.",
+  })
+  n({
+    key: "cloud-partner",
+    parentKey: "cto",
+    label: "Quartzlake Cloud (Cloud Infra Partner)",
+    type: "PERSON",
+    kind: "EXTERNAL",
+    preserveId: EXISTING_IDS.alex,
+    contactName: "Quartzlake Cloud",
+    contactRole: "Cloud Infra Partner",
+    edgeStyle: "DOTTED",
+    auditFlags: ["SECURITY", "DATA_OWNER"],
+    interviewStatus: "INVITED",
+    formStatus: "PENDING",
+    notes: "External AWS reseller — manages prod infra. No formal data processing agreement on file. Flag in audit.",
+  })
+
+  // ── Finance & Admin ─────────────────────────────────────────────────────
+  n({
+    key: "finance-admin",
+    preserveId: EXISTING_IDS.financeDept,
+    parentKey: "org",
+    label: "Finance & Admin",
+    type: "DEPARTMENT",
+    kind: "PERSON",
+    headcount: 5,
+    notes: "Outsourced bookkeeping. Office manager doubles as HR coordinator — unformalised.",
+  })
+  n({
+    key: "office-mgr",
+    parentKey: "finance-admin",
+    label: "Maya Sridhar",
+    type: "PERSON",
+    kind: "PERSON",
+    contactName: "Maya Sridhar",
+    contactRole: "Office Manager (de-facto HR)",
+    tenureYears: 6,
+    auditFlags: ["PROCESS_OWNER"],
+    interviewStatus: "TARGET",
+    formStatus: "SENT",
+    notes: "Tenure-rich; institutional memory of how every process actually works. Interview early.",
+  })
+  n({
+    key: "finance-asst",
+    parentKey: "finance-admin",
+    label: "Quinn Devlin",
+    type: "PERSON",
+    kind: "PERSON",
+    contactName: "Quinn Devlin",
+    contactRole: "Finance Assistant",
+    tenureYears: 2,
+    interviewStatus: "INVITED",
+  })
+  n({
+    key: "ext-accountancy",
+    parentKey: "finance-admin",
+    label: "Pellatt & Co (Accountancy)",
+    type: "PERSON",
+    kind: "EXTERNAL",
+    preserveId: EXISTING_IDS.sam,
+    contactName: "Pellatt & Co",
+    contactRole: "External Accountancy Firm",
+    edgeStyle: "DOTTED",
+    auditFlags: ["FINANCE_OWNER"],
+    notes: "Owns year-end + payroll. Quarterly cadence — invoiced separately. No SLA on response time.",
+  })
+
+  // ── Board ───────────────────────────────────────────────────────────────
+  n({
+    key: "board",
+    preserveId: EXISTING_IDS.otherDept,
+    parentKey: "org",
+    label: "Board",
+    type: "DEPARTMENT",
+    kind: "PERSON",
+    headcount: 3,
+    notes: "Dotted-line to org. Quarterly cadence; investor seat plus two NEDs.",
+  })
+  n({
+    key: "chair",
+    parentKey: "board",
+    label: "Sir Edward Pellatt",
+    type: "PERSON",
+    kind: "ADVISOR",
+    contactName: "Sir Edward Pellatt",
+    contactRole: "Chair (NED)",
+    auditFlags: ["DECISION_MAKER"],
+    interviewStatus: "TARGET",
+    edgeStyle: "DOTTED",
+    notes: "Ex-DHL ops director. Meets Sarah monthly. Likely sponsor for the engagement.",
+  })
+  n({
+    key: "ned-investor",
+    parentKey: "board",
+    label: "Beatrix Lange",
+    type: "PERSON",
+    kind: "ADVISOR",
+    contactName: "Beatrix Lange",
+    contactRole: "Non-Exec Director (Investor)",
+    edgeStyle: "DOTTED",
+    auditFlags: ["FINANCE_OWNER"],
+  })
+  n({
+    key: "ned-ops",
+    parentKey: "board",
+    label: "Yousef Nasr",
+    type: "PERSON",
+    kind: "ADVISOR",
+    contactName: "Yousef Nasr",
+    contactRole: "Non-Exec Director (Operations)",
+    edgeStyle: "DOTTED",
+  })
+
+  return rows
+}
+
+// Map roster `formStatus: OPENED / NOT_SENT` (demo-only) → DB values.
+// DB only supports NONE / PENDING / SENT / IN_PROGRESS / COMPLETED.
+function coerceFormStatus(s: string | undefined): Fm {
+  if (!s) return "NONE"
+  if (s === "OPENED") return "IN_PROGRESS"
+  if (s === "NOT_SENT") return "NONE"
+  return s as Fm
+}
+
+// Apply the roster to the DB — UPDATE existing rows in place by id (preserving
+// FK refs) and INSERT new ones. Idempotent: re-running upserts to the same
+// final state. Also DELETEs the stray "New node" row if still present.
+async function applyBrightlineRoster(sql: postgres.Sql): Promise<{
+  ownerNodeId: string
+  marcusId: string
+  priyaId: string
+  jordanId: string
+  alexId: string
+  samId: string
+  total: number
+  inserted: number
+  updated: number
+}> {
+  console.log("\n=== Slice 2: Expand Brightline roster ===")
+
+  const roster = brightlineRoster()
+
+  // 1. Delete the stray "New node" if still present (no FK refs).
+  const stray = await sql<{ id: string }[]>`
+    SELECT id FROM engagement_org_chart
+    WHERE id = ${EXISTING_IDS.strayNewNode}
+      AND "engagementId" = ${ENGAGEMENT_ID}
+  `
+  if (stray.length > 0) {
+    await sql`DELETE FROM engagement_org_chart WHERE id = ${EXISTING_IDS.strayNewNode}`
+    log(`Deleted stray 'New node'`)
+  }
+
+  // 2. Resolve key → id (preserving where preserveId is set + matching by label
+  //    on existing departments when label hasn't been renamed yet).
+  const existingRows = await sql<
+    { id: string; label: string; parentId: string | null }[]
+  >`
+    SELECT id, label, "parentId"
+    FROM engagement_org_chart
+    WHERE "engagementId" = ${ENGAGEMENT_ID}
+  `
+  const idByExistingLabel = new Map<string, string>(existingRows.map((r) => [r.label, r.id]))
+
+  const idByKey = new Map<string, string>()
+  for (const row of roster) {
+    if (row.preserveId) {
+      idByKey.set(row.key, row.preserveId)
+    } else if (idByExistingLabel.has(row.label)) {
+      // Match by current label (rare — typically used when re-running on
+      // a partial state from a previous run).
+      idByKey.set(row.key, idByExistingLabel.get(row.label)!)
+    } else {
+      idByKey.set(row.key, uid())
+    }
+  }
+
+  // 3. UPSERT each row.
+  let inserted = 0
+  let updated = 0
+  for (const row of roster) {
+    const id = idByKey.get(row.key)!
+    const parentId = row.parentKey ? idByKey.get(row.parentKey)! : null
+    const formStatus = coerceFormStatus(row.formStatus as unknown as string)
+    const interviewStatus = (row.interviewStatus ?? "NONE") as Iv
+    const auditFlags = row.auditFlags ?? []
+    const avatarColor =
+      row.kind === "BUNDLE" || row.type === "DEPARTMENT"
+        ? null
+        : pickAvatarColor(row.label)
+    const edgeStyle = row.edgeStyle ?? "SOLID"
+    const email =
+      row.email !== undefined
+        ? row.email
+        : (row.kind === "PERSON" || row.kind === "VACANCY" || row.kind === "CONTRACTOR" || row.kind === "ADVISOR")
+        ? brightlineEmail(row.contactName ?? row.label)
+        : null
+
+    const exists = await sql<{ id: string }[]>`
+      SELECT id FROM engagement_org_chart WHERE id = ${id}
+    `
+
+    if (exists.length === 0) {
+      await sql`
+        INSERT INTO engagement_org_chart
+          (id, "tenantId", "engagementId", "parentId", label, type,
+           kind, "contactName", "contactRole", email,
+           "interviewMode", "sortOrder", "lastEditedBy",
+           tenure_years, is_founder, is_fractional, avatar_color,
+           audit_flags, interview_status, form_status, edge_style,
+           headcount, notes,
+           "createdAt", "updatedAt")
+        VALUES
+          (${id}, ${CLIENT_TENANT_ID}, ${ENGAGEMENT_ID}, ${parentId},
+           ${row.label}, ${row.type},
+           ${row.kind}, ${row.contactName ?? null}, ${row.contactRole ?? null}, ${email},
+           'ALL', ${row.sortOrder}, 'CONSULTANT',
+           ${row.tenureYears ?? null}, ${row.isFounder ?? false}, ${row.isFractional ?? false}, ${avatarColor},
+           ${auditFlags as unknown as string[]}::text[], ${interviewStatus}, ${formStatus}, ${edgeStyle},
+           ${row.headcount ?? null}, ${row.notes ?? null},
+           CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      `
+      inserted++
+    } else {
+      await sql`
+        UPDATE engagement_org_chart
+        SET
+          "parentId"        = ${parentId},
+          label             = ${row.label},
+          type              = ${row.type},
+          kind              = ${row.kind},
+          "contactName"     = ${row.contactName ?? null},
+          "contactRole"     = ${row.contactRole ?? null},
+          email             = ${email},
+          "sortOrder"       = ${row.sortOrder},
+          tenure_years      = ${row.tenureYears ?? null},
+          is_founder        = ${row.isFounder ?? false},
+          is_fractional     = ${row.isFractional ?? false},
+          avatar_color      = ${avatarColor},
+          audit_flags       = ${auditFlags as unknown as string[]}::text[],
+          interview_status  = ${interviewStatus},
+          form_status       = ${formStatus},
+          edge_style        = ${edgeStyle},
+          headcount         = ${row.headcount ?? null},
+          notes             = ${row.notes ?? null},
+          "updatedAt"       = CURRENT_TIMESTAMP
+        WHERE id = ${id}
+      `
+      updated++
+    }
+  }
+
+  log(`Upserted ${roster.length} nodes (${inserted} inserted, ${updated} updated)`)
+
+  return {
+    ownerNodeId: EXISTING_IDS.ceo,
+    marcusId: EXISTING_IDS.marcus,
+    priyaId: EXISTING_IDS.priya,
+    jordanId: EXISTING_IDS.jordan,
+    alexId: EXISTING_IDS.alex,
+    samId: EXISTING_IDS.sam,
+    total: roster.length,
+    inserted,
+    updated,
+  }
+}
+
+// Replaces the original Step 1 enrichOrgChart — wraps applyBrightlineRoster so
+// downstream steps (form sim, audit, call notes, report) still get the
+// same nodeIds shape they expect.
+async function enrichOrgChart(_sql: postgres.Sql) {
+  const sql = _sql
+  console.log("\n=== Step 1: Enrich org chart ===")
+  void resolveNodes // retained for legacy callers
+  return applyBrightlineRoster(sql)
+}
+
+// Old legacy Step 1 retained below as `_legacyEnrichOrgChart` for reference
+// (unused — new applyBrightlineRoster supersedes it).
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+async function _legacyEnrichOrgChart(sql: postgres.Sql) {
   console.log("\n=== Step 1: Enrich org chart ===")
   const nodes = await resolveNodes(sql)
 
