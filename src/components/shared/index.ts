@@ -16,3 +16,4 @@ export { InlineFormRow, type InlineFormRowProps, type InlineFormField } from "./
 export { DropdownMenu, type DropdownMenuProps, type DropdownMenuItem } from "./dropdown-menu"
 export { EmailDraftDialog, type EmailDraftDialogProps } from "./email-draft-dialog"
 export { FileUploadZone, type FileUploadZoneProps } from "./file-upload-zone"
+export { Popover, PopoverHeader, PopoverItem, type PopoverProps, type PopoverHeaderProps, type PopoverItemProps } from "./popover"
