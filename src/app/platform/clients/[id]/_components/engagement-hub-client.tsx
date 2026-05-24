@@ -16,6 +16,7 @@ import { useState } from "react"
 import Link from "next/link"
 import { NotificationToast, InlineFormRow, DropdownMenu, EmailDraftDialog, FileUploadZone } from "@/components/shared"
 import { Icon } from "@/components/shell"
+import { OrgChartSection } from "./org-chart-section"
 
 const MOCK_BADGE_STYLE = { color: "var(--ih-accent)", fontStyle: "italic", fontSize: 10, fontFamily: "var(--ih-font-sans)" } as const
 
@@ -67,17 +68,19 @@ function Btn({ children, accent, ghost, sm, onClick, style }: { children: React.
 /*  Tab content components                                             */
 /* ------------------------------------------------------------------ */
 
-function OverviewTab({ setActiveTab, engagement, customer: _customer, clientTenantSlug: _clientTenantSlug, companyLabel: _companyLabel }: {
+function OverviewTab({ setActiveTab, engagement, customer: _customer, clientTenantSlug: _clientTenantSlug, companyLabel }: {
   setActiveTab: (i: number) => void
   engagement: EngagementHubProps["engagement"]
   customer: EngagementHubProps["customer"]
   clientTenantSlug: string | null
   companyLabel: string
 }) {
-  const _engagementId = engagement.id
   const [expanded, setExpanded] = useState(false)
   return (
     <>
+      {/* Org chart — LIVE via api.onboarding.getChart */}
+      <OrgChartSection engagementId={engagement.id} companyLabel={companyLabel} />
+
       {/* Connection map */}
       <div style={{ marginBottom: 24 }}>
         <SectionHead eyebrow="Connection map" title="Everything tied to this client" action={<button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => setExpanded(e => !e)}>{expanded ? "Collapse" : "Expand"} {"→"}</button>} />
