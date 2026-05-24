@@ -1,6 +1,6 @@
 # Handoff — Last Session State
 
-> **Updated**: 2026-05-23 (late evening — Phase 0.1 complete end-to-end)
+> **Updated**: 2026-05-24 — Phases 0.1–0.4 done. Live-data seed populated. 5 post-0.4 bug fixes after manual click-through.
 > **Branch**: `feature/product-platform`
 > **Repo**: `/Users/lukehodges/Documents/ironheart-refactor`
 
@@ -16,7 +16,20 @@ If you're a fresh Claude chat picking up here, this is the fastest path to conte
 **Phase 0.2** (form-template seeds + chart→forms wiring + portal audit tab): ✅ COMPLETE — 6 templates seeded, Inngest handler creates `completed_forms` PENDING rows, audit progress page lives at `/[slug]/dashboard/audit`. No email dispatch yet.
 **Phase 0.3** (audit workspace UI — lens entry, RAG, findings): ✅ COMPLETE — backend gap-filled (7 new procedures), 3-layer UI at `/platform/clients/[id]/audit` with autosave throughout.
 **Phase 0.4** (report generator — Claude API draft → editor → publish PDF): ✅ COMPLETE — Anthropic SDK w/ prompt caching, side-by-side editor at `/platform/clients/[id]/report`, branded PDF via `@react-pdf/renderer` at `/api/reports/[id]/pdf`.
-**Phase 0.5** (client report view + walkthrough booking): ⏭ next. After 0.5, audit-ready baseline complete.
+
+**Live-data seed** (2026-05-24): one engagement `c950c06a-...` populated end-to-end with realistic content — org chart w/ named persons, 4 form completions, 5 lenses (AMBER/RED/AMBER/GREEN/AMBER), 11 findings (£235k waste), 11 recommendations, call notes, DRAFT report. Run `npm run db:seed-test-engagement` to (re-)apply. Visit:
+- `/platform/clients/c950c06a-1b41-4f46-9c89-660845d96bee/onboarding`
+- `/platform/clients/c950c06a-.../audit`
+- `/platform/clients/c950c06a-.../report`
+- `/test/dashboard/audit` (client view)
+
+**Post-0.4 live-debug fixes** (chronological):
+1. `be1f529` — enable consultant modules (`report-generator` etc.) across all tenants. Provisioning only enables client modules; consultant ops were blocked at the module gate.
+2. `d37633b` — report-generator service was reading `ctx.tenantId` (Luke's home tenant, e.g. `demo`) but reports are stored under engagement.tenantId. Switched to resolve from engagement record. `getByEngagement` now returns null (was throwing).
+3. `1aeec83` — `/api/reports/[id]/pdf` auth gate was comparing `dbUser.tenantId === PLATFORM_TENANT_ID` env var (never set). Now uses `users.isPlatformAdmin === true`.
+4. `9ea51aa` — PDF template assumed `contentJson` has `{topFindings, lenses[], implementationRoadmap[]}`. Seed wrote a different shape. Template now guards with `?? []` / `Array.isArray`.
+
+**Phase 0.5** (client report view + walkthrough booking): ⏭ next, OR refactor `ctx.tenantId` story first (see Tech debt §3).
 
 **Verified live end-to-end** on 2026-05-23 evening:
 
@@ -101,6 +114,18 @@ Provisioning stores company name in `customer.notes` field. Hacky but documented
 
 Required for `consulting.createClientEngagement` to know which tenant owns a new engagement (Luke is flat in `/platform/*` so all his customers belong to one logical tenant). Set to `43cf4a66-4252-43e8-933e-9cfb73f12886` in current `.env.local`. Created via `npm run db:bootstrap-platform`.
 
+### j) `ctx.tenantId` is unreliable for platform-admin actions
+
+`tenantProcedure` resolves `ctx.tenantId` from the user's `users.tenantId` column. Luke (platform admin) has `users.tenantId = demo` (whatever the seed put him on). When he visits `/platform/clients/<X>/audit` or `.../report`, the engagement may belong to a DIFFERENT tenant. Every consultant procedure must:
+- Either: derive tenant from input (e.g. `engagementId` → look up `engagement.tenantId`)
+- Or: skip ctx.tenantId and gate on `users.isPlatformAdmin === true` (canonical platform admin check)
+
+Phase 0.4 found this in report-generator (`d37633b`). The same pattern probably affects audit-workspace + onboarding consultant procedures — they "work" today only because the seed data happens to be on the same tenant as Luke for some routes. Proper fix: introduce `platformAdminProcedure` middleware that doesn't set `ctx.tenantId`. Logged as Phase 1.x tech debt.
+
+### k) Module gating cache + provisioning gap
+
+`tenant_modules` enable-list is Redis-cached 5 min. After enabling a new module on a tenant, bust the cache via `scripts/bust-tenant-module-cache.ts` or wait 5 min. Provisioning currently enables CLIENT_MODULE_SET only (`client-portal`, `onboarding`, `audit-view`, `forms`, `bookings`) — consultant-side modules (`report-generator`, `audit-workspace`, `consulting`) must be enabled separately via `scripts/enable-report-modules.ts`. Long-term: split CLIENT vs CONSULTANT module sets in provisioning service, enable both at engagement creation time.
+
 ---
 
 ## 4. Decision registry — read [`phase-0.1-decisions.md`](./2026-05-23-phase-0.1-decisions.md) for the WHY
@@ -146,6 +171,10 @@ Per the `superpowers:subagent-driven-development` skill: dispatch one implemente
 | Script | Purpose |
 |---|---|
 | `apply-workos-org-id.ts` | One-off schema migration (workosOrgId column on tenants) |
+| `apply-org-chart-schema.ts` | Org chart + activity tables migration (0.1.C) |
+| `apply-report-pdf-storage-key.ts` | Add pdfStorageKey/Url columns to audit_reports (0.4) |
+| `apply-form-template-slug.ts` | Slug column + unique index on form_templates (0.2.A) |
+| `apply-chart-node-form-send-id.ts` | formSendId column on engagement_org_chart (0.2.B) |
 | `bootstrap-platform-tenant.ts` | Idempotent: create the `ironheart` platform tenant. Prints UUID. |
 | `check-migrations.ts` | Diff schema vs DB; lists which columns/tables/enums exist |
 | `check-provision-result.ts` | Inspect tenant + modules + org settings for a given test |
@@ -153,6 +182,11 @@ Per the `superpowers:subagent-driven-development` skill: dispatch one implemente
 | `test-provision-direct.ts` | Bypass Inngest — call `provisioningService.provisionClientTenant` directly |
 | `test-trigger-provision.ts` | Update engagement stage + (try to) fire Inngest event |
 | `list-orgs.ts` | Cross-reference WorkOS orgs vs internal tenants |
+| `seed-questionnaire-templates.ts` | Seed 6 form templates on Ironheart tenant (0.2.A) |
+| `seed-test-engagement.ts` | Populate test engagement w/ realistic audit content — chart, forms, lenses, findings, recs, call notes, DRAFT report |
+| `enable-report-modules.ts` | Enable `report-generator` + `audit-workspace` + `consulting` modules on all tenants |
+| `bust-tenant-module-cache.ts` | Clear Redis `tenant:modules:*` keys after enabling modules |
+| `fix-activity-actor-id.ts` | One-off ALTER: actorId uuid → text (WorkOS user ids are text) |
 
 ---
 

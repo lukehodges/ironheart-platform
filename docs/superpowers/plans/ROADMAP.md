@@ -1,8 +1,8 @@
 # Ironheart Refactor Roadmap
 
-> **Last updated**: 2026-05-23 (late evening — Phase 0.1 + 0.2 complete)
+> **Last updated**: 2026-05-24 (Phase 0.1–0.4 complete + live-data seed + 5 post-completion bug fixes)
 > **Branch**: `feature/product-platform`
-> **Pickup point**: **Phase 0.5 starting** — Client report view at /[slug]/dashboard/report + walkthrough booking. After 0.5 the audit-ready baseline (north star) is complete.
+> **Pickup point**: **Phase 0.5 OR `ctx.tenantId` refactor** — see tech debt §3 of post-0.4 section. North-star (audit-ready baseline) is functionally complete; one engagement seeded end-to-end and clickable through 4 pages.
 
 ## ⚡ Quick pickup if you're a fresh chat
 
@@ -131,6 +131,28 @@ The minimum thing that runs a real audit. ~4 weeks of work split across 5 sub-ph
 - **PDF storage** — PDFs render on-demand each GET (~200-500ms cold). 0.5 will add `@vercel/blob` storage when `BLOB_READ_WRITE_TOKEN` is set.
 - **Custom fonts** — Instrument Serif + Inter aren't registered in React-PDF; using Helvetica/Times fallbacks. Font files need to be hosted + registered for brand match.
 - **`PLATFORM_TENANT_ID` env var** — referenced by the PDF route's auth gate. Verify it matches `IRONHEART_TENANT_ID` (or alias them) before first real publish.
+
+### Post-0.4 hardening (live-debug commits, 2026-05-24)
+
+| Commit | Bug | Fix |
+|---|---|---|
+| `be1f529` | "Module 'report-generator' is not enabled for this tenant" | scripts/enable-report-modules.ts — provisions consultant-side modules (`report-generator`, `audit-workspace`, `consulting`) across all active tenants. Long-term fix: split provisioning into CLIENT_MODULES + CONSULTANT_MODULES sets. |
+| Redis cache stale after enable | Module gate cached old map (5min TTL) | scripts/bust-tenant-module-cache.ts — clears `tenant:modules:*` keys. Runs after any tenant_modules write. |
+| `d37633b` | `getByEngagement` 500'd w/ NotFound + queried wrong tenantId | Service resolves tenantId from `engagement.tenantId` (not `ctx.tenantId`). Returns null instead of throw so UI renders empty state. |
+| `1aeec83` | PDF route 403 for platform admin | Gate switched from `tenantId === PLATFORM_TENANT_ID` (env var never set) to `users.isPlatformAdmin === true` (the canonical column). |
+| `9ea51aa` | PDF render crash on sparse `contentJson` | Template now reads `topFindings`, `lenses`, `implementationRoadmap` via `?? []` / `Array.isArray`. Renders empty sections instead of crashing when contentJson shape differs from canonical AI-generated shape. |
+
+### Real-data seed (live demo content)
+
+| Commit | What |
+|---|---|
+| `575cc52` | scripts/seed-test-engagement.ts — idempotent seed populates engagement `c950c06a-...` end-to-end: 11 org-chart nodes w/ named PERSON children, 4 completed forms, 5 lens analyses (RAG distributed), 11 findings + 11 recommendations (£235k waste), 4 realistic call notes, 1 DRAFT report w/ exec summary + markdown content. Run: `npm run db:seed-test-engagement`. |
+
+### Larger tech-debt surfaced by live debugging
+
+1. **`ctx.tenantId` is unreliable for platform admin actions.** All consultant tRPC procedures (currently `tenantProcedure` + module gate) read `ctx.tenantId` set by session resolver — which defaults to whatever single tenant Luke's `users.tenantId` happens to be (currently `demo` from seed). For consultant operations on cross-tenant engagements, every procedure must resolve tenant from the engagement/resource record, not ctx. **Proper fix**: introduce `platformAdminProcedure` middleware that requires `users.isPlatformAdmin === true` and DOESN'T set `ctx.tenantId` — instead handlers derive tenant from input args. Affects: onboarding, audit-workspace, report-generator routers (consultant-side procedures). Track as Phase 1.x.
+2. **Provisioning enables CLIENT_MODULE_SET only.** Need to also auto-enable CONSULTANT_MODULE_SET on Ironheart (or Luke's home) tenant when a new engagement is provisioned, plus bust the Redis cache. Currently manual via the two helper scripts.
+3. **Seed contentJson shape vs canonical AI shape.** PDF template was built assuming `{topFindings, lenses[], implementationRoadmap[]}`. Seed wrote `{executiveSummary, lenses{}, roadmap}`. Either: (a) update seed to write canonical shape, (b) update template to support both. Fix (a) is cleaner.
 
 ### 0.2 known gaps (defer to 0.3+)
 
