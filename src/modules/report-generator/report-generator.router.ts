@@ -8,7 +8,14 @@ import {
   transitionReportStatusSchema,
   triggerGenerateSchema,
   clientGetPublishedReportSchema,
+  clientRequestProposalSchema,
 } from "./report-generator.schemas";
+import { inngest } from "@/shared/inngest";
+import { db } from "@/shared/db";
+import { engagements } from "@/shared/db/schemas/client-portal.schema";
+import { customers } from "@/shared/db/schemas/customer.schema";
+import { eq } from "drizzle-orm";
+import { TRPCError } from "@trpc/server";
 
 const moduleGate = createModuleMiddleware("report-generator");
 const moduleProcedure = tenantProcedure.use(moduleGate);
@@ -51,4 +58,47 @@ export const reportGeneratorRouter = router({
   clientGetPublishedReport: portalProcedure
     .input(clientGetPublishedReportSchema)
     .query(async ({ ctx, input }) => reportGeneratorService.clientGetPublishedReport(ctx as any, input)),
+
+  /**
+   * Client portal: request an implementation proposal for this engagement.
+   * Emits engagement/proposal-requested Inngest event.
+   * Consultant notification handler wires in Task 3.
+   */
+  clientRequestProposal: portalProcedure
+    .input(clientRequestProposalSchema)
+    .mutation(async ({ ctx, input }) => {
+      // Resolve engagement and verify it belongs to the portal customer
+      const engagement = await db.query.engagements.findFirst({
+        where: eq(engagements.id, input.engagementId),
+      });
+      if (!engagement) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Engagement not found" });
+      }
+
+      // Verify the portal customer belongs to this engagement
+      const customer = await db.query.customers.findFirst({
+        where: eq(customers.id, ctx.portalCustomerId),
+      });
+      if (!customer || customer.id !== engagement.customerId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Not authorised for this engagement" });
+      }
+
+      const clientTenantId = engagement.clientTenantId;
+      if (!clientTenantId) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Engagement has no client tenant" });
+      }
+
+      await inngest.send({
+        name: "engagement/proposal-requested",
+        data: {
+          engagementId: input.engagementId,
+          clientTenantId,
+          requestedByCustomerId: ctx.portalCustomerId,
+          requestedByEmail: customer.email ?? null,
+          notes: input.notes ?? null,
+        },
+      });
+
+      return { queued: true };
+    }),
 });

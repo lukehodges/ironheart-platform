@@ -456,6 +456,15 @@ type IronheartEvents = {
       tenantId: string;
     };
   };
+  "engagement/proposal-requested": {
+    data: {
+      engagementId: string;
+      clientTenantId: string;
+      requestedByCustomerId: string;
+      requestedByEmail: string | null;
+      notes: string | null;
+    };
+  };
 };
 
 /**

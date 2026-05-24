@@ -32,3 +32,8 @@ export const triggerGenerateSchema = z.object({
 export const clientGetPublishedReportSchema = z.object({
   engagementId: z.string(),
 });
+
+export const clientRequestProposalSchema = z.object({
+  engagementId: z.string().uuid(),
+  notes: z.string().max(1000).optional(),
+});

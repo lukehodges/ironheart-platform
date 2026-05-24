@@ -24,6 +24,14 @@ const ONBOARDING_STAGES: EngagementStage[] = [
   "REPORTING",
 ]
 
+// Stages where the Report link is visible (REPORTING and beyond)
+const REPORT_STAGES: EngagementStage[] = [
+  "REPORTING",
+  "IMPLEMENTING",
+  "RETAINER",
+  "CLOSED_WON",
+]
+
 interface NavItem {
   label: string
   href: (slug: string) => string
@@ -59,6 +67,9 @@ export function TenantDashboardShell({
   const showOnboarding =
     engagementStage != null && ONBOARDING_STAGES.includes(engagementStage)
 
+  const showReport =
+    engagementStage != null && REPORT_STAGES.includes(engagementStage)
+
   const navItems: NavItem[] = [
     {
       label: "Dashboard",
@@ -77,6 +88,12 @@ export function TenantDashboardShell({
       href: (slug) => `/${slug}/dashboard/audit`,
       icon: ClipboardCheck,
       show: showOnboarding, // same CONTRACTED+ gate as Onboarding
+    },
+    {
+      label: "Report",
+      href: (slug) => `/${slug}/dashboard/report`,
+      icon: FileText,
+      show: showReport,
     },
     {
       label: "Documents",
