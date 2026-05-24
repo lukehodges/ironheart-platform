@@ -20,6 +20,7 @@ import {
   FileSpreadsheet,
   Wallet,
   Users,
+  Users2,
   Star,
   BarChart3,
   FileBarChart,
@@ -58,6 +59,7 @@ const NAV_SECTIONS: NavSection[] = [
       { title: "Clients", href: "/platform/clients", icon: Building2 },
       { title: "Pipeline", href: "/platform/pipeline", icon: GitBranch },
       { title: "Bookings", href: "/platform/bookings", icon: CalendarCheck },
+      { title: "Customers", href: "/platform/customers", icon: Users2 },
     ],
   },
   {
