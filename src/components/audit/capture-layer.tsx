@@ -40,12 +40,35 @@ export function CaptureLayer({ engagementId, session, disabled }: Props) {
   const handleSelect = (id: string) => setSelectedContactId(id)
 
   return (
-    <div className="flex h-full">
+    <div style={{ display: "flex", height: "100%" }}>
       {/* Sidebar */}
-      <div className="w-72 border-r border-border overflow-y-auto p-4">
-        <p className="text-xs uppercase tracking-wider text-muted-foreground mb-2">Contacts</p>
+      <div
+        style={{
+          width: 288,
+          borderRight: "1px solid var(--ih-line)",
+          overflowY: "auto",
+          padding: 16,
+          background: "var(--ih-surface-2)",
+          flexShrink: 0,
+        }}
+        className="scrollbar-thin"
+      >
+        <p
+          className="ih-mono"
+          style={{
+            fontSize: 9,
+            textTransform: "uppercase",
+            letterSpacing: "0.1em",
+            color: "var(--ih-ink-40)",
+            marginBottom: 10,
+          }}
+        >
+          Contacts
+        </p>
         {chartQuery.isLoading ? (
-          <p className="text-xs text-muted-foreground">Loading contacts…</p>
+          <p style={{ fontSize: 12, color: "var(--ih-ink-50)", fontFamily: "var(--ih-font-sans)" }}>
+            Loading contacts…
+          </p>
         ) : (
           <ContactList
             contacts={contacts}
@@ -57,7 +80,7 @@ export function CaptureLayer({ engagementId, session, disabled }: Props) {
       </div>
 
       {/* Notes pane */}
-      <div className="flex-1 overflow-y-auto">
+      <div style={{ flex: 1, overflowY: "auto", background: "var(--ih-bg)" }}>
         {selectedContact && effectiveSelectedId ? (
           <CallNotesPane
             engagementId={engagementId}
@@ -67,7 +90,15 @@ export function CaptureLayer({ engagementId, session, disabled }: Props) {
             disabled={disabled}
           />
         ) : (
-          <div className="p-8 text-sm text-muted-foreground">
+          <div
+            style={{
+              padding: 32,
+              fontSize: 13,
+              color: "var(--ih-ink-50)",
+              fontFamily: "var(--ih-font-sans)",
+              fontStyle: "italic",
+            }}
+          >
             {contacts.length === 0
               ? "No contacts yet — build the org chart first."
               : "Select a contact to take notes."}

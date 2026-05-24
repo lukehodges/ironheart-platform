@@ -13,32 +13,103 @@ interface Props {
 
 export function ContactList({ contacts, callNotes, selectedId, onSelect }: Props) {
   if (contacts.length === 0) {
-    return <div className="text-xs text-muted-foreground italic">No contacts in chart.</div>
+    return (
+      <div
+        style={{
+          fontSize: 12,
+          color: "var(--ih-ink-50)",
+          fontFamily: "var(--ih-font-sans)",
+          fontStyle: "italic",
+        }}
+      >
+        No contacts in chart.
+      </div>
+    )
   }
 
   return (
-    <div className="space-y-1">
+    <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
       {contacts.map((c) => {
         const id = c.contactUserId ?? c.id
         const hasNotes = callNotes.some(
           (n) => n.contactUserId === id && n.rawNotes && n.rawNotes.length > 0,
         )
+        const isSelected = selectedId === id
         return (
           <button
             key={id}
             onClick={() => onSelect(id)}
-            className={`w-full text-left flex items-center gap-2 p-2 rounded text-sm hover:bg-muted/50 transition-colors ${
-              selectedId === id ? "bg-muted ring-1 ring-primary" : ""
-            }`}
+            style={{
+              width: "100%",
+              textAlign: "left",
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              padding: "6px 8px",
+              borderRadius: "var(--ih-r-sm)",
+              background: isSelected ? "var(--ih-surface)" : "transparent",
+              border: isSelected
+                ? "1px solid var(--ih-line)"
+                : "1px solid transparent",
+              cursor: "pointer",
+              position: "relative",
+              fontFamily: "var(--ih-font-sans)",
+              transition: "background 0.12s",
+            }}
           >
-            {hasNotes ? (
-              <CheckCircle2 size={14} className="shrink-0 text-emerald-600" />
-            ) : (
-              <Circle size={14} className="shrink-0 text-muted-foreground" />
+            {isSelected && (
+              <span
+                style={{
+                  position: "absolute",
+                  left: -8,
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  width: 2,
+                  height: 14,
+                  background: "var(--ih-accent)",
+                  borderRadius: 2,
+                }}
+              />
             )}
-            <div className="flex-1 min-w-0">
-              <p className="font-medium truncate">{c.contactName ?? c.label}</p>
-              <p className="text-xs text-muted-foreground truncate">
+            {hasNotes ? (
+              <CheckCircle2
+                size={13}
+                style={{ flexShrink: 0, color: "var(--ih-ok)" }}
+              />
+            ) : (
+              <Circle
+                size={13}
+                style={{ flexShrink: 0, color: "var(--ih-ink-30)" }}
+              />
+            )}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p
+                style={{
+                  fontSize: 12,
+                  fontWeight: isSelected ? 500 : 400,
+                  color: isSelected ? "var(--ih-ink)" : "var(--ih-ink-65)",
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  margin: 0,
+                }}
+              >
+                {c.contactName ?? c.label}
+              </p>
+              <p
+                className="ih-mono"
+                style={{
+                  fontSize: 9.5,
+                  color: "var(--ih-ink-40)",
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  margin: 0,
+                  marginTop: 1,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.06em",
+                }}
+              >
                 {c.contactRole ?? c.contactEmail ?? "—"}
               </p>
             </div>

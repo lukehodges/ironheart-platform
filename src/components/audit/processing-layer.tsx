@@ -23,37 +23,73 @@ interface Props {
   disabled?: boolean
 }
 
+const RAG_COLORS: Record<string, string> = {
+  RED: "var(--ih-danger)",
+  AMBER: "var(--ih-warn)",
+  GREEN: "var(--ih-ok)",
+}
+
 export function ProcessingLayer({ engagementId, session, disabled }: Props) {
   const [activeLens, setActiveLens] = useState<AuditLens>("REVENUE")
 
   const lenses = session.lenses as LensData[]
 
   return (
-    <div className="flex h-full flex-col">
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        height: "100%",
+        background: "var(--ih-bg)",
+      }}
+    >
       {/* Lens tabs */}
-      <div className="border-b border-border px-6 flex gap-1">
+      <div
+        style={{
+          borderBottom: "1px solid var(--ih-line)",
+          padding: "10px 24px 0",
+          background: "var(--ih-surface)",
+          display: "flex",
+          gap: 2,
+        }}
+      >
         {LENS_ORDER.map((lens) => {
           const lensData = lenses.find((l) => l.lens === lens)
+          const isActive = activeLens === lens
           return (
             <button
               key={lens}
               onClick={() => setActiveLens(lens)}
-              className={`px-4 py-2 text-sm border-b-2 -mb-px flex items-center gap-1.5 transition-colors ${
-                activeLens === lens
-                  ? "border-primary text-foreground font-medium"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
-              }`}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "8px 16px",
+                fontSize: 12,
+                fontFamily: "var(--ih-font-sans)",
+                background: "transparent",
+                border: "none",
+                borderBottom: isActive
+                  ? "2px solid var(--ih-accent)"
+                  : "2px solid transparent",
+                color: isActive ? "var(--ih-ink)" : "var(--ih-ink-50)",
+                fontWeight: isActive ? 500 : 400,
+                cursor: "pointer",
+                transition: "color 0.15s",
+                marginBottom: -1,
+              }}
             >
               {lens}
               {lensData?.ragScore && (
                 <span
-                  className={`inline-block w-2 h-2 rounded-full ${
-                    lensData.ragScore === "RED"
-                      ? "bg-red-500"
-                      : lensData.ragScore === "AMBER"
-                        ? "bg-amber-500"
-                        : "bg-emerald-500"
-                  }`}
+                  style={{
+                    display: "inline-block",
+                    width: 7,
+                    height: 7,
+                    borderRadius: 999,
+                    background: RAG_COLORS[lensData.ragScore] ?? "var(--ih-ink-30)",
+                    flexShrink: 0,
+                  }}
                 />
               )}
             </button>
@@ -62,7 +98,7 @@ export function ProcessingLayer({ engagementId, session, disabled }: Props) {
       </div>
 
       {/* Active lens content */}
-      <div className="flex-1 overflow-y-auto p-6">
+      <div style={{ flex: 1, overflowY: "auto", padding: 24 }} className="scrollbar-thin">
         <LensPanel
           engagementId={engagementId}
           lens={activeLens}

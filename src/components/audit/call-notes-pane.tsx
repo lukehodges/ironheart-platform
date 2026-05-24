@@ -51,22 +51,72 @@ export function CallNotesPane({ engagementId, contactId, contact, callNotes, dis
   }
 
   return (
-    <div className="p-6 h-full flex flex-col">
+    <div
+      style={{
+        padding: 24,
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
+        background: "var(--ih-bg)",
+      }}
+    >
       {/* Contact header */}
-      <div className="mb-4">
-        <h2 className="font-serif text-xl">{contact.contactName ?? contact.label}</h2>
-        <p className="text-sm text-muted-foreground">
+      <div style={{ marginBottom: 16, paddingBottom: 14, borderBottom: "1px solid var(--ih-line)" }}>
+        <h2
+          className="ih-serif"
+          style={{ margin: 0, fontSize: 22, color: "var(--ih-ink)" }}
+        >
+          {contact.contactName ?? contact.label}
+        </h2>
+        <p
+          className="ih-mono"
+          style={{
+            margin: 0,
+            marginTop: 4,
+            fontSize: 10,
+            color: "var(--ih-ink-40)",
+            textTransform: "uppercase",
+            letterSpacing: "0.08em",
+          }}
+        >
           {contact.contactRole ?? "—"} · {contact.contactEmail ?? "No email"}
         </p>
       </div>
 
       {/* Form responses placeholder */}
       {contact.formSendId && (
-        <div className="mb-4 rounded-md border border-border bg-muted/30 p-3">
-          <p className="text-xs uppercase tracking-wider text-muted-foreground mb-1">
+        <div
+          style={{
+            marginBottom: 14,
+            borderRadius: "var(--ih-r-md)",
+            border: "1px solid var(--ih-line)",
+            background: "var(--ih-surface-2)",
+            padding: 12,
+          }}
+        >
+          <p
+            className="ih-mono"
+            style={{
+              fontSize: 9,
+              textTransform: "uppercase",
+              letterSpacing: "0.1em",
+              color: "var(--ih-ink-40)",
+              marginBottom: 4,
+              margin: 0,
+            }}
+          >
             Form responses
           </p>
-          <p className="text-sm text-muted-foreground italic">
+          <p
+            style={{
+              fontSize: 12,
+              color: "var(--ih-ink-50)",
+              fontStyle: "italic",
+              fontFamily: "var(--ih-font-sans)",
+              marginTop: 6,
+              margin: 0,
+            }}
+          >
             Form sent — responses surface here once completed (in-workspace summary coming in 0.4+).
           </p>
         </div>
@@ -78,18 +128,59 @@ export function CallNotesPane({ engagementId, contactId, contact, callNotes, dis
         onChange={(e) => handleChange(e.target.value)}
         disabled={disabled}
         placeholder="Call notes — what did they tell you?"
-        className="flex-1 w-full rounded-md border border-border bg-background p-4 text-sm font-mono leading-relaxed resize-none focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
+        style={{
+          flex: 1,
+          width: "100%",
+          borderRadius: "var(--ih-r-md)",
+          border: "1px solid var(--ih-line)",
+          background: "var(--ih-surface)",
+          padding: 16,
+          fontSize: 13,
+          fontFamily: "var(--ih-font-mono)",
+          lineHeight: 1.65,
+          resize: "none",
+          color: "var(--ih-ink)",
+          outline: "none",
+          opacity: disabled ? 0.5 : 1,
+          boxSizing: "border-box",
+        }}
+        onFocus={(e) => {
+          e.currentTarget.style.borderColor = "var(--ih-accent)"
+        }}
+        onBlur={(e) => {
+          e.currentTarget.style.borderColor = "var(--ih-line)"
+        }}
       />
 
       {/* Save status */}
-      <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
-        <span>
+      <div
+        style={{
+          marginTop: 8,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
+        <span
+          className="ih-mono"
+          style={{
+            fontSize: 9.5,
+            color: "var(--ih-ink-40)",
+            textTransform: "uppercase",
+            letterSpacing: "0.08em",
+          }}
+        >
           {upsertMutation.isPending && "Saving…"}
           {!upsertMutation.isPending &&
             savedAt &&
             `Saved ${savedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`}
         </span>
-        <span>{notes.length} chars</span>
+        <span
+          className="ih-mono"
+          style={{ fontSize: 9.5, color: "var(--ih-ink-30)" }}
+        >
+          {notes.length} chars
+        </span>
       </div>
     </div>
   )

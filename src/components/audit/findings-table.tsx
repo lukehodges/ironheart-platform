@@ -7,6 +7,12 @@ import type { AuditFindingRecord, FindingImpact } from "@/modules/audit-workspac
 
 const IMPACT_OPTIONS: FindingImpact[] = ["HIGH", "MEDIUM", "LOW"]
 
+const IMPACT_COLORS: Record<FindingImpact, string> = {
+  HIGH: "var(--ih-danger)",
+  MEDIUM: "var(--ih-warn)",
+  LOW: "var(--ih-ink-40)",
+}
+
 interface Props {
   lensAnalysisId: string
   findings: AuditFindingRecord[]
@@ -34,17 +40,35 @@ export function FindingsTable({ lensAnalysisId, findings, engagementId, disabled
   }
 
   return (
-    <div className="space-y-2">
-      <div className="rounded border border-border divide-y divide-border">
+    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      <div
+        style={{
+          borderRadius: "var(--ih-r-md)",
+          border: "1px solid var(--ih-line)",
+          overflow: "hidden",
+        }}
+      >
         {findings.length === 0 ? (
-          <p className="text-sm text-muted-foreground p-4 italic">No findings yet.</p>
+          <p
+            style={{
+              fontSize: 13,
+              color: "var(--ih-ink-50)",
+              padding: 16,
+              fontStyle: "italic",
+              fontFamily: "var(--ih-font-sans)",
+              margin: 0,
+            }}
+          >
+            No findings yet.
+          </p>
         ) : (
-          findings.map((f) => (
+          findings.map((f, idx) => (
             <FindingRow
               key={f.id}
               finding={f}
               disabled={disabled}
               engagementId={engagementId}
+              isLast={idx === findings.length - 1}
               onDelete={() => {
                 if (confirm("Delete this finding?")) del.mutate({ id: f.id })
               }}
@@ -56,9 +80,21 @@ export function FindingsTable({ lensAnalysisId, findings, engagementId, disabled
         <button
           onClick={handleAdd}
           disabled={create.isPending}
-          className="flex items-center gap-1 text-sm text-primary hover:underline disabled:opacity-50"
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 4,
+            fontSize: 12,
+            color: "var(--ih-accent)",
+            background: "none",
+            border: "none",
+            cursor: create.isPending ? "not-allowed" : "pointer",
+            opacity: create.isPending ? 0.5 : 1,
+            fontFamily: "var(--ih-font-sans)",
+            padding: "2px 0",
+          }}
         >
-          <Plus size={14} /> Add finding
+          <Plus size={13} /> Add finding
         </button>
       )}
     </div>
@@ -69,10 +105,11 @@ interface FindingRowProps {
   finding: AuditFindingRecord
   disabled?: boolean
   engagementId: string
+  isLast: boolean
   onDelete: () => void
 }
 
-function FindingRow({ finding, disabled, engagementId, onDelete }: FindingRowProps) {
+function FindingRow({ finding, disabled, engagementId, isLast, onDelete }: FindingRowProps) {
   const [text, setText] = useState(finding.finding)
   const [impact, setImpact] = useState<FindingImpact>(finding.impact)
   const [evidence, setEvidence] = useState(finding.evidence ?? "")
@@ -108,9 +145,30 @@ function FindingRow({ finding, disabled, engagementId, onDelete }: FindingRowPro
     }, 500)
   }
 
+  const inputStyle: React.CSSProperties = {
+    borderRadius: "var(--ih-r-sm)",
+    border: "1px solid var(--ih-line)",
+    background: "var(--ih-surface-2)",
+    color: "var(--ih-ink)",
+    fontFamily: "var(--ih-font-sans)",
+    padding: "4px 8px",
+    fontSize: 12,
+    outline: "none",
+    opacity: disabled ? 0.5 : 1,
+  }
+
   return (
-    <div className="p-3 space-y-2">
-      <div className="flex items-start gap-2">
+    <div
+      style={{
+        padding: "10px 12px",
+        display: "flex",
+        flexDirection: "column",
+        gap: 6,
+        borderBottom: isLast ? "none" : "1px solid var(--ih-line)",
+        background: "var(--ih-surface)",
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
         <input
           value={text}
           onChange={(e) => {
@@ -118,7 +176,7 @@ function FindingRow({ finding, disabled, engagementId, onDelete }: FindingRowPro
             scheduleSave({ finding: e.target.value })
           }}
           disabled={disabled}
-          className="flex-1 rounded border border-border px-2 py-1 text-sm font-medium disabled:opacity-50 bg-background"
+          style={{ ...inputStyle, flex: 1, fontWeight: 500 }}
         />
         <select
           value={impact}
@@ -128,7 +186,14 @@ function FindingRow({ finding, disabled, engagementId, onDelete }: FindingRowPro
             scheduleSave({ impact: val })
           }}
           disabled={disabled}
-          className="rounded border border-border px-2 py-1 text-xs disabled:opacity-50 bg-background"
+          style={{
+            ...inputStyle,
+            color: IMPACT_COLORS[impact],
+            fontFamily: "var(--ih-font-mono)",
+            fontSize: 10,
+            fontWeight: 600,
+            letterSpacing: "0.08em",
+          }}
         >
           {IMPACT_OPTIONS.map((i) => (
             <option key={i} value={i}>
@@ -139,14 +204,23 @@ function FindingRow({ finding, disabled, engagementId, onDelete }: FindingRowPro
         {!disabled && (
           <button
             onClick={onDelete}
-            className="p-1 rounded hover:bg-muted transition-colors"
+            style={{
+              padding: 4,
+              borderRadius: "var(--ih-r-sm)",
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              color: "var(--ih-danger)",
+              display: "flex",
+              alignItems: "center",
+            }}
             title="Delete finding"
           >
-            <Trash2 size={14} className="text-red-600" />
+            <Trash2 size={13} />
           </button>
         )}
       </div>
-      <div className="flex gap-2">
+      <div style={{ display: "flex", gap: 8 }}>
         <input
           value={evidence}
           onChange={(e) => {
@@ -155,7 +229,7 @@ function FindingRow({ finding, disabled, engagementId, onDelete }: FindingRowPro
           }}
           disabled={disabled}
           placeholder="Evidence"
-          className="flex-1 rounded border border-border px-2 py-1 text-xs disabled:opacity-50 bg-background"
+          style={{ ...inputStyle, flex: 1 }}
         />
         <input
           type="number"
@@ -166,7 +240,7 @@ function FindingRow({ finding, disabled, engagementId, onDelete }: FindingRowPro
           }}
           disabled={disabled}
           placeholder="£ waste/year (pence)"
-          className="w-44 rounded border border-border px-2 py-1 text-xs disabled:opacity-50 bg-background"
+          style={{ ...inputStyle, width: 160 }}
         />
       </div>
     </div>

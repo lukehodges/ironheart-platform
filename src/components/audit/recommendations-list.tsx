@@ -31,17 +31,35 @@ export function RecommendationsList({ lensAnalysisId, recommendations, engagemen
   }
 
   return (
-    <div className="space-y-2">
-      <div className="rounded border border-border divide-y divide-border">
+    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      <div
+        style={{
+          borderRadius: "var(--ih-r-md)",
+          border: "1px solid var(--ih-line)",
+          overflow: "hidden",
+        }}
+      >
         {recommendations.length === 0 ? (
-          <p className="text-sm text-muted-foreground p-4 italic">No recommendations yet.</p>
+          <p
+            style={{
+              fontSize: 13,
+              color: "var(--ih-ink-50)",
+              padding: 16,
+              fontStyle: "italic",
+              fontFamily: "var(--ih-font-sans)",
+              margin: 0,
+            }}
+          >
+            No recommendations yet.
+          </p>
         ) : (
-          recommendations.map((r) => (
+          recommendations.map((r, idx) => (
             <RecommendationRow
               key={r.id}
               recommendation={r}
               disabled={disabled}
               engagementId={engagementId}
+              isLast={idx === recommendations.length - 1}
               onDelete={() => {
                 if (confirm("Delete this recommendation?")) del.mutate({ id: r.id })
               }}
@@ -53,9 +71,21 @@ export function RecommendationsList({ lensAnalysisId, recommendations, engagemen
         <button
           onClick={handleAdd}
           disabled={create.isPending}
-          className="flex items-center gap-1 text-sm text-primary hover:underline disabled:opacity-50"
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 4,
+            fontSize: 12,
+            color: "var(--ih-accent)",
+            background: "none",
+            border: "none",
+            cursor: create.isPending ? "not-allowed" : "pointer",
+            opacity: create.isPending ? 0.5 : 1,
+            fontFamily: "var(--ih-font-sans)",
+            padding: "2px 0",
+          }}
         >
-          <Plus size={14} /> Add recommendation
+          <Plus size={13} /> Add recommendation
         </button>
       )}
     </div>
@@ -66,10 +96,11 @@ interface RecommendationRowProps {
   recommendation: AuditRecommendationRecord
   disabled?: boolean
   engagementId: string
+  isLast: boolean
   onDelete: () => void
 }
 
-function RecommendationRow({ recommendation, disabled, engagementId, onDelete }: RecommendationRowProps) {
+function RecommendationRow({ recommendation, disabled, engagementId, isLast, onDelete }: RecommendationRowProps) {
   const [action, setAction] = useState(recommendation.action)
   const [effort, setEffort] = useState(recommendation.estimatedEffort ?? "")
   const [cost, setCost] = useState(recommendation.estimatedCost?.toString() ?? "")
@@ -101,9 +132,30 @@ function RecommendationRow({ recommendation, disabled, engagementId, onDelete }:
     }, 500)
   }
 
+  const inputStyle: React.CSSProperties = {
+    borderRadius: "var(--ih-r-sm)",
+    border: "1px solid var(--ih-line)",
+    background: "var(--ih-surface-2)",
+    color: "var(--ih-ink)",
+    fontFamily: "var(--ih-font-sans)",
+    padding: "4px 8px",
+    fontSize: 12,
+    outline: "none",
+    opacity: disabled ? 0.5 : 1,
+  }
+
   return (
-    <div className="p-3 space-y-2">
-      <div className="flex items-start gap-2">
+    <div
+      style={{
+        padding: "10px 12px",
+        display: "flex",
+        flexDirection: "column",
+        gap: 6,
+        borderBottom: isLast ? "none" : "1px solid var(--ih-line)",
+        background: "var(--ih-surface)",
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
         <input
           value={action}
           onChange={(e) => {
@@ -111,19 +163,28 @@ function RecommendationRow({ recommendation, disabled, engagementId, onDelete }:
             scheduleSave({ action: e.target.value })
           }}
           disabled={disabled}
-          className="flex-1 rounded border border-border px-2 py-1 text-sm font-medium disabled:opacity-50 bg-background"
+          style={{ ...inputStyle, flex: 1, fontWeight: 500 }}
         />
         {!disabled && (
           <button
             onClick={onDelete}
-            className="p-1 rounded hover:bg-muted transition-colors"
+            style={{
+              padding: 4,
+              borderRadius: "var(--ih-r-sm)",
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              color: "var(--ih-danger)",
+              display: "flex",
+              alignItems: "center",
+            }}
             title="Delete recommendation"
           >
-            <Trash2 size={14} className="text-red-600" />
+            <Trash2 size={13} />
           </button>
         )}
       </div>
-      <div className="flex gap-2">
+      <div style={{ display: "flex", gap: 8 }}>
         <input
           value={effort}
           onChange={(e) => {
@@ -132,7 +193,7 @@ function RecommendationRow({ recommendation, disabled, engagementId, onDelete }:
           }}
           disabled={disabled}
           placeholder="Estimated effort (e.g. 2 weeks)"
-          className="flex-1 rounded border border-border px-2 py-1 text-xs disabled:opacity-50 bg-background"
+          style={{ ...inputStyle, flex: 1 }}
         />
         <input
           type="number"
@@ -143,7 +204,7 @@ function RecommendationRow({ recommendation, disabled, engagementId, onDelete }:
           }}
           disabled={disabled}
           placeholder="£ cost (pence)"
-          className="w-36 rounded border border-border px-2 py-1 text-xs disabled:opacity-50 bg-background"
+          style={{ ...inputStyle, width: 130 }}
         />
       </div>
     </div>

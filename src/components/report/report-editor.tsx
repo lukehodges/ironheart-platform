@@ -93,15 +93,40 @@ export function ReportEditor({ engagementId, engagementTitle, companyLabel, curr
   const isPublishing = transitionMutation.isPending
 
   return (
-    <div className="flex h-full flex-col">
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        height: "100%",
+        background: "var(--ih-bg)",
+      }}
+    >
       {/* Header */}
-      <div className="border-b border-border px-8 py-4">
-        <p className="text-xs uppercase tracking-wider text-muted-foreground">
+      <div
+        style={{
+          borderBottom: "1px solid var(--ih-line)",
+          padding: "16px 32px 14px",
+          background: "var(--ih-surface)",
+        }}
+      >
+        <p
+          className="ih-mono"
+          style={{
+            fontSize: 9,
+            textTransform: "uppercase",
+            letterSpacing: "0.1em",
+            color: "var(--ih-ink-40)",
+            marginBottom: 4,
+          }}
+        >
           Platform / Clients / {engagementTitle} / Report
         </p>
-        <div className="flex items-center justify-between mt-1">
-          <h1 className="font-serif text-2xl">{companyLabel} — Audit report</h1>
-        </div>
+        <h1
+          className="ih-serif"
+          style={{ margin: 0, fontSize: 28, color: "var(--ih-ink)" }}
+        >
+          {companyLabel} — Audit report
+        </h1>
       </div>
 
       <StatusBar
@@ -118,22 +143,64 @@ export function ReportEditor({ engagementId, engagementTitle, companyLabel, curr
 
       {/* Loading state */}
       {reportQuery.isLoading && (
-        <div className="p-8 text-sm text-muted-foreground">Loading report…</div>
+        <div
+          style={{
+            padding: 32,
+            fontSize: 13,
+            color: "var(--ih-ink-50)",
+            fontFamily: "var(--ih-font-sans)",
+          }}
+        >
+          Loading report…
+        </div>
       )}
 
       {/* No report yet */}
       {!reportQuery.isLoading && !report && (
-        <div className="flex-1 flex items-center justify-center p-8">
-          <div className="max-w-md text-center">
-            <h2 className="font-serif text-2xl mb-2">No report yet</h2>
-            <p className="text-sm text-muted-foreground mb-4">
-              Generate an initial draft from the audit data. Claude reads the lens analyses, findings,
-              and call notes to produce a starting point you can edit.
+        <div
+          style={{
+            flex: 1,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 32,
+          }}
+        >
+          <div style={{ maxWidth: 400, textAlign: "center" }}>
+            <h2
+              className="ih-serif"
+              style={{ margin: 0, marginBottom: 10, fontSize: 26, color: "var(--ih-ink)" }}
+            >
+              No report yet
+            </h2>
+            <p
+              style={{
+                fontSize: 13,
+                color: "var(--ih-ink-50)",
+                fontFamily: "var(--ih-font-sans)",
+                marginBottom: 20,
+                lineHeight: 1.6,
+              }}
+            >
+              Generate an initial draft from the audit data. Claude reads the lens analyses,
+              findings, and call notes to produce a starting point you can edit.
             </p>
             <button
               onClick={handleGenerate}
               disabled={triggerMutation.isPending}
-              className="px-6 py-2 rounded-md bg-primary text-primary-foreground text-sm hover:bg-primary/90 disabled:opacity-50"
+              style={{
+                padding: "10px 28px",
+                borderRadius: "var(--ih-r-md)",
+                background: "var(--ih-accent)",
+                color: "white",
+                border: "none",
+                fontSize: 13,
+                fontFamily: "var(--ih-font-sans)",
+                fontWeight: 500,
+                cursor: triggerMutation.isPending ? "not-allowed" : "pointer",
+                opacity: triggerMutation.isPending ? 0.6 : 1,
+                transition: "opacity 0.15s",
+              }}
             >
               {triggerMutation.isPending ? "Starting…" : "Generate draft from audit"}
             </button>
@@ -143,23 +210,63 @@ export function ReportEditor({ engagementId, engagementTitle, companyLabel, curr
 
       {/* Side-by-side editor */}
       {report && (
-        <div className="flex flex-1 overflow-hidden">
+        <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
           {/* Left: audit summary (read-only) */}
-          <div className="w-96 border-r border-border overflow-y-auto p-6">
+          <div
+            style={{
+              width: 380,
+              borderRight: "1px solid var(--ih-line)",
+              overflowY: "auto",
+              padding: 20,
+              background: "var(--ih-surface-2)",
+              flexShrink: 0,
+            }}
+            className="scrollbar-thin"
+          >
             <AuditSummaryPane session={session} />
           </div>
 
           {/* Right: editor */}
-          <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          <div
+            style={{
+              flex: 1,
+              overflowY: "auto",
+              padding: 24,
+              display: "flex",
+              flexDirection: "column",
+              gap: 20,
+            }}
+            className="scrollbar-thin"
+          >
             {report.status === "GENERATING" && (
-              <div className="rounded-md border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+              <div
+                style={{
+                  borderRadius: "var(--ih-r-md)",
+                  border: "1px solid rgba(184,134,11,0.3)",
+                  background: "rgba(184,134,11,0.07)",
+                  padding: 14,
+                  fontSize: 13,
+                  color: "var(--ih-warn)",
+                  fontFamily: "var(--ih-font-sans)",
+                }}
+              >
                 Claude is drafting your report… this usually takes 20–60 seconds. The page will
                 refresh automatically when ready.
               </div>
             )}
 
             <div>
-              <label className="text-xs uppercase tracking-wider text-muted-foreground mb-2 block">
+              <label
+                className="ih-mono"
+                style={{
+                  fontSize: 9,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.1em",
+                  color: "var(--ih-ink-40)",
+                  display: "block",
+                  marginBottom: 8,
+                }}
+              >
                 Executive summary
               </label>
               <textarea
@@ -168,12 +275,37 @@ export function ReportEditor({ engagementId, engagementTitle, companyLabel, curr
                 disabled={isLocked}
                 rows={5}
                 placeholder="Brief client-facing summary (3–4 sentences)…"
-                className="w-full rounded border border-border p-3 text-sm disabled:opacity-50 focus:outline-none focus:ring-1 focus:ring-ring"
+                style={{
+                  width: "100%",
+                  borderRadius: "var(--ih-r-md)",
+                  border: "1px solid var(--ih-line)",
+                  background: "var(--ih-surface)",
+                  padding: "10px 12px",
+                  fontSize: 13,
+                  fontFamily: "var(--ih-font-sans)",
+                  color: "var(--ih-ink)",
+                  resize: "vertical",
+                  opacity: isLocked ? 0.5 : 1,
+                  outline: "none",
+                  boxSizing: "border-box",
+                }}
+                onFocus={(e) => { e.currentTarget.style.borderColor = "var(--ih-accent)" }}
+                onBlur={(e) => { e.currentTarget.style.borderColor = "var(--ih-line)" }}
               />
             </div>
 
             <div>
-              <label className="text-xs uppercase tracking-wider text-muted-foreground mb-2 block">
+              <label
+                className="ih-mono"
+                style={{
+                  fontSize: 9,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.1em",
+                  color: "var(--ih-ink-40)",
+                  display: "block",
+                  marginBottom: 8,
+                }}
+              >
                 Report content (Markdown)
               </label>
               <MarkdownEditor value={draft} onChange={handleDraftChange} disabled={isLocked} />

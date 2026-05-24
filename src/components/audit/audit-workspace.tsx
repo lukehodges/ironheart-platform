@@ -26,64 +26,151 @@ export function AuditWorkspace({
   const sessionQuery = api.auditWorkspace.getOrCreate.useQuery({ engagementId })
 
   if (sessionQuery.isLoading) {
-    return <div className="p-8 text-sm text-muted-foreground">Loading audit workspace…</div>
+    return (
+      <div
+        style={{
+          padding: 32,
+          fontSize: 13,
+          color: "var(--ih-ink-50)",
+          fontFamily: "var(--ih-font-sans)",
+        }}
+      >
+        Loading audit workspace…
+      </div>
+    )
   }
 
   if (sessionQuery.error) {
     return (
-      <div className="p-8">
-        <h1 className="font-serif text-2xl mb-2">Cannot load audit</h1>
-        <p className="text-sm text-muted-foreground">{sessionQuery.error.message}</p>
+      <div style={{ padding: 32, background: "var(--ih-bg)" }}>
+        <h1
+          style={{
+            fontFamily: "var(--ih-font-serif)",
+            fontSize: 28,
+            marginBottom: 8,
+            color: "var(--ih-ink)",
+          }}
+        >
+          Cannot load audit
+        </h1>
+        <p style={{ fontSize: 13, color: "var(--ih-ink-50)" }}>
+          {sessionQuery.error.message}
+        </p>
       </div>
     )
   }
 
   const session = sessionQuery.data
-  if (!session) return <div className="p-8 text-sm text-muted-foreground">No session.</div>
+  if (!session) {
+    return (
+      <div style={{ padding: 32, fontSize: 13, color: "var(--ih-ink-50)" }}>
+        No session.
+      </div>
+    )
+  }
 
-  const isLocked = (["PROCESSING", "READY_FOR_REPORT", "COMPLETE"] as AuditSessionStatus[]).includes(
-    session.status,
-  )
+  const isLocked = (
+    ["PROCESSING", "READY_FOR_REPORT", "COMPLETE"] as AuditSessionStatus[]
+  ).includes(session.status)
 
   return (
-    <div className="flex h-full flex-col">
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        height: "100%",
+        background: "var(--ih-bg)",
+      }}
+    >
       {/* Header */}
-      <div className="border-b border-border px-8 py-4">
-        <p className="text-xs uppercase tracking-wider text-muted-foreground">
+      <div
+        style={{
+          borderBottom: "1px solid var(--ih-line)",
+          padding: "16px 32px 0",
+          background: "var(--ih-surface)",
+        }}
+      >
+        {/* Eyebrow breadcrumb */}
+        <p
+          className="ih-mono"
+          style={{
+            fontSize: 9,
+            textTransform: "uppercase",
+            letterSpacing: "0.1em",
+            color: "var(--ih-ink-40)",
+            marginBottom: 4,
+          }}
+        >
           Platform / Clients / {engagementTitle} / Audit
         </p>
-        <div className="flex items-center justify-between mt-1">
-          <h1 className="font-serif text-2xl">{companyLabel} — Audit workspace</h1>
-          <div className="flex items-center gap-3">
+
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginBottom: 12,
+          }}
+        >
+          <h1
+            className="ih-serif"
+            style={{ margin: 0, fontSize: 28, color: "var(--ih-ink)" }}
+          >
+            {companyLabel} — Audit workspace
+          </h1>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <StatusBadge status={session.status} />
             {isLocked && (
-              <span className="text-xs text-amber-700">Read-only</span>
+              <span
+                className="ih-mono"
+                style={{
+                  fontSize: 9,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.08em",
+                  color: "var(--ih-warn)",
+                }}
+              >
+                Read-only
+              </span>
             )}
           </div>
         </div>
 
         {/* Tab strip */}
-        <div className="flex gap-1 mt-4 border-b border-border -mb-4">
-          {(["capture", "processing", "report"] as Layer[]).map((layer) => (
-            <button
-              key={layer}
-              onClick={() => setActiveLayer(layer)}
-              className={`px-4 py-2 text-sm border-b-2 -mb-px transition-colors ${
-                activeLayer === layer
-                  ? "border-primary text-foreground font-medium"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {layer === "capture" && "1. Capture"}
-              {layer === "processing" && "2. Processing"}
-              {layer === "report" && "3. Report Ready"}
-            </button>
-          ))}
+        <div style={{ display: "flex", gap: 2, marginBottom: -1 }}>
+          {(["capture", "processing", "report"] as Layer[]).map((layer) => {
+            const isActive = activeLayer === layer
+            return (
+              <button
+                key={layer}
+                onClick={() => setActiveLayer(layer)}
+                style={{
+                  padding: "8px 18px",
+                  fontSize: 12,
+                  fontFamily: "var(--ih-font-sans)",
+                  background: "transparent",
+                  border: "none",
+                  borderBottom: isActive
+                    ? "2px solid var(--ih-accent)"
+                    : "2px solid transparent",
+                  color: isActive ? "var(--ih-ink)" : "var(--ih-ink-50)",
+                  fontWeight: isActive ? 500 : 400,
+                  cursor: "pointer",
+                  transition: "color 0.15s",
+                  marginBottom: -1,
+                }}
+              >
+                {layer === "capture" && "1. Capture"}
+                {layer === "processing" && "2. Processing"}
+                {layer === "report" && "3. Report Ready"}
+              </button>
+            )
+          })}
         </div>
       </div>
 
       {/* Layer content */}
-      <div className="flex-1 overflow-hidden">
+      <div style={{ flex: 1, overflow: "hidden" }}>
         {activeLayer === "capture" && (
           <CaptureLayer
             engagementId={engagementId}
@@ -107,15 +194,43 @@ export function AuditWorkspace({
 }
 
 function StatusBadge({ status }: { status: AuditSessionStatus }) {
-  const colors: Record<AuditSessionStatus, string> = {
-    IN_PROGRESS: "bg-blue-100 text-blue-800 border-blue-300",
-    PROCESSING: "bg-amber-100 text-amber-800 border-amber-300",
-    READY_FOR_REPORT: "bg-emerald-100 text-emerald-800 border-emerald-300",
-    COMPLETE: "bg-zinc-100 text-zinc-800 border-zinc-300",
+  const tones: Record<AuditSessionStatus, { bg: string; color: string; border: string }> = {
+    IN_PROGRESS: {
+      bg: "rgba(42,93,191,0.08)",
+      color: "var(--ih-info)",
+      border: "rgba(42,93,191,0.25)",
+    },
+    PROCESSING: {
+      bg: "rgba(184,134,11,0.08)",
+      color: "var(--ih-warn)",
+      border: "rgba(184,134,11,0.25)",
+    },
+    READY_FOR_REPORT: {
+      bg: "rgba(47,111,92,0.08)",
+      color: "var(--ih-ok)",
+      border: "rgba(47,111,92,0.25)",
+    },
+    COMPLETE: {
+      bg: "rgba(14,16,19,0.05)",
+      color: "var(--ih-ink-65)",
+      border: "rgba(14,16,19,0.15)",
+    },
   }
+  const t = tones[status]
   return (
     <span
-      className={`px-2 py-0.5 rounded text-[10px] font-mono uppercase tracking-wide border ${colors[status]}`}
+      className="ih-mono"
+      style={{
+        padding: "2px 8px",
+        borderRadius: "var(--ih-r-pill)",
+        fontSize: 9,
+        fontWeight: 600,
+        letterSpacing: "0.1em",
+        textTransform: "uppercase",
+        background: t.bg,
+        color: t.color,
+        border: `1px solid ${t.border}`,
+      }}
     >
       {status.replace(/_/g, " ")}
     </span>

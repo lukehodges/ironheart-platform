@@ -6,9 +6,26 @@ interface AuditSummaryPaneProps {
   session: AuditSessionWithLenses | null | undefined
 }
 
+const RAG_DOT: Record<string, string> = {
+  RED: "var(--ih-danger)",
+  AMBER: "var(--ih-warn)",
+  GREEN: "var(--ih-ok)",
+}
+
 export function AuditSummaryPane({ session }: AuditSummaryPaneProps) {
   if (!session) {
-    return <p className="text-sm text-muted-foreground">No audit data.</p>
+    return (
+      <p
+        style={{
+          fontSize: 13,
+          color: "var(--ih-ink-50)",
+          fontStyle: "italic",
+          fontFamily: "var(--ih-font-sans)",
+        }}
+      >
+        No audit data.
+      </p>
+    )
   }
 
   const totalFindings = session.lenses.reduce((n, l) => n + (l.findings?.length ?? 0), 0)
@@ -18,45 +35,185 @@ export function AuditSummaryPane({ session }: AuditSummaryPaneProps) {
     .reduce((sum, f) => sum + (f.estimatedAnnualWaste ?? 0), 0)
 
   return (
-    <div className="space-y-4">
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      {/* Section header */}
       <div>
-        <p className="text-xs uppercase tracking-wider text-muted-foreground">Audit summary</p>
-        <p className="font-serif text-lg mt-1">Source data</p>
+        <p
+          className="ih-mono"
+          style={{
+            fontSize: 9,
+            textTransform: "uppercase",
+            letterSpacing: "0.1em",
+            color: "var(--ih-ink-40)",
+            marginBottom: 4,
+          }}
+        >
+          Audit summary
+        </p>
+        <p
+          className="ih-serif"
+          style={{ fontSize: 18, color: "var(--ih-ink)", margin: 0 }}
+        >
+          Source data
+        </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-2 text-xs">
-        <div className="rounded border border-border p-2">
-          <p className="text-muted-foreground">Findings</p>
-          <p className="font-mono text-lg">{totalFindings}</p>
+      {/* Stat cards grid */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+        <div
+          className="ih-card"
+          style={{ padding: "10px 12px" }}
+        >
+          <p
+            className="ih-mono"
+            style={{
+              fontSize: 8.5,
+              textTransform: "uppercase",
+              letterSpacing: "0.1em",
+              color: "var(--ih-ink-40)",
+              margin: 0,
+              marginBottom: 4,
+            }}
+          >
+            Findings
+          </p>
+          <p
+            className="ih-serif"
+            style={{ fontSize: 26, lineHeight: 1, color: "var(--ih-ink)", margin: 0 }}
+          >
+            {totalFindings}
+          </p>
         </div>
-        <div className="rounded border border-border p-2">
-          <p className="text-muted-foreground">Recommendations</p>
-          <p className="font-mono text-lg">{totalRecs}</p>
+        <div
+          className="ih-card"
+          style={{ padding: "10px 12px" }}
+        >
+          <p
+            className="ih-mono"
+            style={{
+              fontSize: 8.5,
+              textTransform: "uppercase",
+              letterSpacing: "0.1em",
+              color: "var(--ih-ink-40)",
+              margin: 0,
+              marginBottom: 4,
+            }}
+          >
+            Recs
+          </p>
+          <p
+            className="ih-serif"
+            style={{ fontSize: 26, lineHeight: 1, color: "var(--ih-ink)", margin: 0 }}
+          >
+            {totalRecs}
+          </p>
         </div>
-        <div className="rounded border border-border p-2 col-span-2">
-          <p className="text-muted-foreground">Total estimated annual waste</p>
-          <p className="font-mono text-lg">£{(totalWaste / 100).toFixed(2)}</p>
+        <div
+          className="ih-card"
+          style={{ padding: "10px 12px", gridColumn: "span 2" }}
+        >
+          <p
+            className="ih-mono"
+            style={{
+              fontSize: 8.5,
+              textTransform: "uppercase",
+              letterSpacing: "0.1em",
+              color: "var(--ih-ink-40)",
+              margin: 0,
+              marginBottom: 4,
+            }}
+          >
+            Est. annual waste
+          </p>
+          <p
+            className="ih-serif"
+            style={{
+              fontSize: 26,
+              lineHeight: 1,
+              color: totalWaste > 0 ? "var(--ih-danger)" : "var(--ih-ink)",
+              margin: 0,
+            }}
+          >
+            £{(totalWaste / 100).toFixed(2)}
+          </p>
         </div>
       </div>
 
-      <div className="space-y-3">
+      {/* Per-lens breakdown */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        <p
+          className="ih-mono"
+          style={{
+            fontSize: 9,
+            textTransform: "uppercase",
+            letterSpacing: "0.1em",
+            color: "var(--ih-ink-40)",
+            marginBottom: 2,
+          }}
+        >
+          By lens
+        </p>
         {session.lenses.map((lens) => (
-          <div key={lens.id} className="rounded border border-border p-3 text-xs space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="font-medium">{lens.lens}</span>
+          <div
+            key={lens.id}
+            className="ih-card"
+            style={{ padding: "8px 12px" }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: 4,
+              }}
+            >
+              <span
+                className="ih-mono"
+                style={{
+                  fontSize: 10,
+                  fontWeight: 600,
+                  letterSpacing: "0.08em",
+                  textTransform: "uppercase",
+                  color: "var(--ih-ink)",
+                }}
+              >
+                {lens.lens}
+              </span>
               {lens.ragScore && (
                 <span
-                  className={`inline-block w-3 h-3 rounded-full ${
-                    lens.ragScore === "RED"
-                      ? "bg-red-500"
-                      : lens.ragScore === "AMBER"
-                        ? "bg-amber-500"
-                        : "bg-emerald-500"
-                  }`}
-                />
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 5,
+                    fontFamily: "var(--ih-font-mono)",
+                    fontSize: 9,
+                    fontWeight: 600,
+                    letterSpacing: "0.08em",
+                    textTransform: "uppercase",
+                    color: RAG_DOT[lens.ragScore] ?? "var(--ih-ink-40)",
+                  }}
+                >
+                  <span
+                    style={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: 999,
+                      background: RAG_DOT[lens.ragScore] ?? "var(--ih-ink-30)",
+                      flexShrink: 0,
+                    }}
+                  />
+                  {lens.ragScore}
+                </span>
               )}
             </div>
-            <p className="text-muted-foreground">
+            <p
+              style={{
+                margin: 0,
+                fontSize: 11,
+                color: "var(--ih-ink-50)",
+                fontFamily: "var(--ih-font-sans)",
+              }}
+            >
               {lens.findings?.length ?? 0} findings · {lens.recommendations?.length ?? 0} recs
             </p>
           </div>
