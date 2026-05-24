@@ -26,7 +26,8 @@
     "outreach:dry": "tsx --tsconfig tsconfig.json scripts/outreach-gen.ts --dry-run",
     "db:apply-org-chart-schema": "tsx --tsconfig tsconfig.json scripts/apply-org-chart-schema.ts",
     "db:apply-form-template-slug": "tsx --tsconfig tsconfig.json scripts/apply-form-template-slug.ts",
-    "db:seed-questionnaires": "tsx --tsconfig tsconfig.json scripts/seed-questionnaire-templates.ts"
+    "db:seed-questionnaires": "tsx --tsconfig tsconfig.json scripts/seed-questionnaire-templates.ts",
+    "db:seed-test-engagement": "tsx --tsconfig tsconfig.json scripts/seed-test-engagement.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.78.0",
