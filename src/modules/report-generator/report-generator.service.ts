@@ -1,9 +1,12 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { renderToBuffer } from "@react-pdf/renderer";
 import React from "react";
+import { eq } from "drizzle-orm";
 import { logger } from "@/shared/logger";
 import { NotFoundError, BadRequestError } from "@/shared/errors";
 import { inngest } from "@/shared/inngest";
+import { db } from "@/shared/db";
+import { engagements } from "@/shared/db/schemas/client-portal.schema";
 import type { Context } from "@/shared/trpc";
 import { reportGeneratorRepository } from "./report-generator.repository";
 import { auditWorkspaceService } from "@/modules/audit-workspace/audit-workspace.service";
@@ -331,10 +334,17 @@ export const reportGeneratorService = {
   async getReportByEngagement(
     ctx: Context,
     input: z.infer<typeof getReportByEngagementSchema>
-  ): Promise<AuditReportRecord> {
-    const report = await reportGeneratorRepository.findByEngagement(ctx.tenantId, input.engagementId);
-    if (!report) throw new NotFoundError("AuditReport for engagement", input.engagementId);
-    return report;
+  ): Promise<AuditReportRecord | null> {
+    // Reports are owned by the engagement's tenant (set at insert), not the
+    // caller's ctx.tenantId — platform admin's ctx.tenantId may be a different
+    // tenant than the report's. Resolve via engagement, then look up.
+    const eng = await db.query.engagements.findFirst({
+      where: eq(engagements.id, input.engagementId),
+      columns: { tenantId: true },
+    });
+    if (!eng) return null;
+    const report = await reportGeneratorRepository.findByEngagement(eng.tenantId, input.engagementId);
+    return report ?? null; // UI uses null to render the empty state
   },
 
   async updateContent(
@@ -363,11 +373,18 @@ export const reportGeneratorService = {
     ctx: Context,
     input: z.infer<typeof triggerGenerateSchema>
   ): Promise<{ queued: true; engagementId: string }> {
+    // Resolve tenantId from engagement, not ctx — platform admin's ctx.tenantId
+    // may be a different tenant than the engagement's home tenant.
+    const eng = await db.query.engagements.findFirst({
+      where: eq(engagements.id, input.engagementId),
+      columns: { tenantId: true },
+    });
+    if (!eng) throw new NotFoundError("Engagement", input.engagementId);
     await inngest.send({
       name: "report/generate",
       data: {
         engagementId: input.engagementId,
-        tenantId: ctx.tenantId,
+        tenantId: eng.tenantId,
         generatedBy: "ai",
       },
     });
