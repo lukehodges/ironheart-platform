@@ -94,14 +94,14 @@ function seedTemplateForTier(tier: AuditTier, companyLabel: string, teamSize: nu
   if (tier === "MICRO") {
     root.children = [
       { label: "Owner / Founder", type: "PERSON", interviewMode: "ALL" },
-      { label: "Other team", type: "ROLE", interviewMode: "OWNER_ONLY" },
+      { label: "Other team", type: "DEPARTMENT", interviewMode: "OWNER_ONLY" },
     ]
   } else if (tier === "SMALL") {
     root.children = [
       { label: "Owner / Founder", type: "PERSON", interviewMode: "ALL" },
-      { label: "Operations", type: "ROLE", interviewMode: "ALL" },
-      { label: "Finance", type: "ROLE", interviewMode: "ALL" },
-      { label: "Sales / Marketing", type: "ROLE", interviewMode: "ALL" },
+      { label: "Operations", type: "DEPARTMENT", interviewMode: "ALL" },
+      { label: "Finance", type: "DEPARTMENT", interviewMode: "ALL" },
+      { label: "Sales / Marketing", type: "DEPARTMENT", interviewMode: "ALL" },
       { label: "Other staff", type: "DEPARTMENT", interviewMode: "SAMPLE", sampleSize: 2 },
     ]
   } else if (tier === "MID") {
