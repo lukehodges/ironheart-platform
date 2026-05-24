@@ -442,6 +442,20 @@ type IronheartEvents = {
   "engagement/chart-client-ready": {
     data: { engagementId: string; tenantId: string };
   };
+  "report/generate": {
+    data: {
+      engagementId: string;
+      tenantId: string;
+      generatedBy: "ai" | "manual";
+    };
+  };
+  "report/published": {
+    data: {
+      reportId: string;
+      engagementId: string;
+      tenantId: string;
+    };
+  };
 };
 
 /**

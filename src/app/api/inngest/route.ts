@@ -19,6 +19,7 @@ import { clientPortalFunctions } from "@/modules/client-portal";
 import { integrationsFunctions } from "@/modules/integrations";
 import { consultingFunctions } from "@/modules/consulting/consulting.events";
 import { onboardingFunctions } from "@/modules/onboarding";
+import { reportGeneratorFunctions } from "@/modules/report-generator";
 
 /**
  * Inngest serve endpoint.
@@ -70,5 +71,7 @@ export const { GET, POST, PUT } = serve({
     ...consultingFunctions,
     // Onboarding module
     ...onboardingFunctions,
+    // Report Generator module
+    ...reportGeneratorFunctions,
   ],
 });

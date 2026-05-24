@@ -33,6 +33,8 @@ export interface ReportLensSection {
   ragScore: string;
   ragJustification: string;
   currentState: string;
+  /** AI-generated narrative paragraph for this lens. Empty string before generation. */
+  narrative?: string;
   findings: ReportFinding[];
   recommendations: ReportRecommendation[];
 }

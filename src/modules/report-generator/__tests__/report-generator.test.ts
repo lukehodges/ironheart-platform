@@ -18,13 +18,27 @@ vi.mock("../report-generator.repository", () => ({
 vi.mock("@/modules/audit-workspace/audit-workspace.service", () => ({
   auditWorkspaceService: {
     validateReadiness: vi.fn(),
+    validateByEngagement: vi.fn(),
     getFullSession: vi.fn(),
+    getOrCreateSession: vi.fn(),
   },
 }));
 
 vi.mock("@/shared/inngest", () => ({
   inngest: { send: vi.fn() },
 }));
+
+// Mock Anthropic SDK — must be hoisted before any service import resolves
+const mockAnthropicCreate = vi.fn();
+vi.mock("@anthropic-ai/sdk", () => {
+  // The service does `new Anthropic(...)`, so the default export must be a class/constructor
+  function MockAnthropic(_opts: unknown) {
+    return {
+      messages: { create: mockAnthropicCreate },
+    };
+  }
+  return { default: MockAnthropic };
+});
 
 const TENANT_ID = "00000000-0000-0000-0000-000000000001";
 const ENGAGEMENT_ID = "00000000-0000-0000-0000-000000000010";
@@ -245,5 +259,184 @@ describe("reportGeneratorService.updateContent", () => {
     });
 
     expect(reportGeneratorRepository.updateContent).toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// generateDraft — AI-powered async generation
+// ---------------------------------------------------------------------------
+
+function makeClaudeResponse(text: string) {
+  return {
+    id: "msg_test",
+    type: "message",
+    role: "assistant",
+    content: [{ type: "text", text }],
+    model: "claude-opus-4-7",
+    stop_reason: "end_turn",
+    usage: {
+      input_tokens: 100,
+      output_tokens: 200,
+      cache_creation_input_tokens: 80,
+      cache_read_input_tokens: 0,
+    },
+  };
+}
+
+const CLAUDE_MARKDOWN = `## Executive Summary
+This business relies heavily on manual processes and lacks key systems. Revenue is at risk. Immediate action is needed.
+
+## Lens Narratives
+### REVENUE
+No CRM means leads are lost constantly. Implementing one is the single highest-ROI action.
+
+### OPERATIONS
+Manual invoicing wastes nearly an hour a day. Automation would recoup that instantly.
+
+### FINANCE
+Without cash flow visibility the owner is flying blind. A simple dashboard changes everything.
+
+### TECHNOLOGY
+Disconnected tools create re-entry errors. Integration would save hours each week.
+
+### TEAM
+The team is capable but over-reliant on the owner. Process documentation is the unlock.
+`;
+
+describe("reportGeneratorService.generateDraft", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("rejects when audit session is not ready", async () => {
+    vi.mocked(auditWorkspaceService.validateByEngagement).mockResolvedValue({
+      isReady: false,
+      missingLenses: ["TEAM"],
+      lensesWithoutRag: [],
+      lensesWithoutFindings: [],
+    });
+
+    await expect(
+      reportGeneratorService.generateDraft({
+        engagementId: ENGAGEMENT_ID,
+        tenantId: TENANT_ID,
+        generatedBy: "ai",
+      })
+    ).rejects.toThrow(BadRequestError);
+
+    expect(reportGeneratorRepository.create).not.toHaveBeenCalled();
+  });
+
+  it("creates GENERATING row, calls Claude, transitions to DRAFT", async () => {
+    vi.mocked(auditWorkspaceService.validateByEngagement).mockResolvedValue({
+      isReady: true, missingLenses: [], lensesWithoutRag: [], lensesWithoutFindings: [],
+    });
+    vi.mocked(auditWorkspaceService.getOrCreateSession).mockResolvedValue(makeFullSession() as any);
+    vi.mocked(reportGeneratorRepository.create).mockResolvedValue(makeReport("GENERATING") as any);
+    vi.mocked(reportGeneratorRepository.updateContent).mockResolvedValue(makeReport("GENERATING") as any);
+    vi.mocked(reportGeneratorRepository.updateStatus).mockResolvedValue(makeReport("DRAFT") as any);
+    mockAnthropicCreate.mockResolvedValue(makeClaudeResponse(CLAUDE_MARKDOWN));
+
+    const result = await reportGeneratorService.generateDraft({
+      engagementId: ENGAGEMENT_ID,
+      tenantId: TENANT_ID,
+      generatedBy: "ai",
+    });
+
+    // Row created with GENERATING
+    expect(reportGeneratorRepository.create).toHaveBeenCalledWith(
+      expect.objectContaining({ status: "GENERATING", tenantId: TENANT_ID, engagementId: ENGAGEMENT_ID })
+    );
+
+    // Claude was called
+    expect(mockAnthropicCreate).toHaveBeenCalledTimes(1);
+    const claudeCall = mockAnthropicCreate.mock.calls[0][0];
+    expect(claudeCall.model).toBe("claude-opus-4-7");
+    expect(claudeCall.system[0].cache_control).toEqual({ type: "ephemeral" });
+
+    // Content updated then status flipped to DRAFT
+    expect(reportGeneratorRepository.updateContent).toHaveBeenCalled();
+    expect(reportGeneratorRepository.updateStatus).toHaveBeenCalledWith(REPORT_ID, "DRAFT");
+
+    // Final status
+    expect(result.status).toBe("DRAFT");
+  });
+
+  it("includes audit data (lenses + findings) in Claude message", async () => {
+    vi.mocked(auditWorkspaceService.validateByEngagement).mockResolvedValue({
+      isReady: true, missingLenses: [], lensesWithoutRag: [], lensesWithoutFindings: [],
+    });
+    vi.mocked(auditWorkspaceService.getOrCreateSession).mockResolvedValue(makeFullSession() as any);
+    vi.mocked(reportGeneratorRepository.create).mockResolvedValue(makeReport("GENERATING") as any);
+    vi.mocked(reportGeneratorRepository.updateContent).mockResolvedValue(makeReport("GENERATING") as any);
+    vi.mocked(reportGeneratorRepository.updateStatus).mockResolvedValue(makeReport("DRAFT") as any);
+    mockAnthropicCreate.mockResolvedValue(makeClaudeResponse(CLAUDE_MARKDOWN));
+
+    await reportGeneratorService.generateDraft({
+      engagementId: ENGAGEMENT_ID, tenantId: TENANT_ID, generatedBy: "ai",
+    });
+
+    const claudeCall = mockAnthropicCreate.mock.calls[0][0];
+    const userMessage = claudeCall.messages[0].content as string;
+    expect(userMessage).toContain("REVENUE");
+    expect(userMessage).toContain("No CRM");
+    expect(userMessage).toContain("Manual invoicing");
+  });
+
+  it("parses executive summary from Claude response into contentJson", async () => {
+    vi.mocked(auditWorkspaceService.validateByEngagement).mockResolvedValue({
+      isReady: true, missingLenses: [], lensesWithoutRag: [], lensesWithoutFindings: [],
+    });
+    vi.mocked(auditWorkspaceService.getOrCreateSession).mockResolvedValue(makeFullSession() as any);
+    vi.mocked(reportGeneratorRepository.create).mockResolvedValue(makeReport("GENERATING") as any);
+    vi.mocked(reportGeneratorRepository.updateContent).mockResolvedValue(makeReport("GENERATING") as any);
+    vi.mocked(reportGeneratorRepository.updateStatus).mockResolvedValue(makeReport("DRAFT") as any);
+    mockAnthropicCreate.mockResolvedValue(makeClaudeResponse(CLAUDE_MARKDOWN));
+
+    await reportGeneratorService.generateDraft({
+      engagementId: ENGAGEMENT_ID, tenantId: TENANT_ID, generatedBy: "ai",
+    });
+
+    const updateCall = vi.mocked(reportGeneratorRepository.updateContent).mock.calls[0];
+    expect(updateCall[1].executiveSummary).toContain("manual processes");
+    const json = updateCall[1].contentJson as any;
+    expect(json.executiveSummary).toContain("manual processes");
+  });
+
+  it("falls back to DRAFT on Claude API error", async () => {
+    vi.mocked(auditWorkspaceService.validateByEngagement).mockResolvedValue({
+      isReady: true, missingLenses: [], lensesWithoutRag: [], lensesWithoutFindings: [],
+    });
+    vi.mocked(auditWorkspaceService.getOrCreateSession).mockResolvedValue(makeFullSession() as any);
+    vi.mocked(reportGeneratorRepository.create).mockResolvedValue(makeReport("GENERATING") as any);
+    vi.mocked(reportGeneratorRepository.updateStatus).mockResolvedValue(makeReport("DRAFT") as any);
+    mockAnthropicCreate.mockRejectedValue(new Error("API timeout"));
+
+    await expect(
+      reportGeneratorService.generateDraft({
+        engagementId: ENGAGEMENT_ID, tenantId: TENANT_ID, generatedBy: "ai",
+      })
+    ).rejects.toThrow("API timeout");
+
+    // Must flip back to DRAFT on failure
+    expect(reportGeneratorRepository.updateStatus).toHaveBeenCalledWith(REPORT_ID, "DRAFT");
+  });
+
+  it("uses model claude-opus-4-7 (not any other model)", async () => {
+    vi.mocked(auditWorkspaceService.validateByEngagement).mockResolvedValue({
+      isReady: true, missingLenses: [], lensesWithoutRag: [], lensesWithoutFindings: [],
+    });
+    vi.mocked(auditWorkspaceService.getOrCreateSession).mockResolvedValue(makeFullSession() as any);
+    vi.mocked(reportGeneratorRepository.create).mockResolvedValue(makeReport("GENERATING") as any);
+    vi.mocked(reportGeneratorRepository.updateContent).mockResolvedValue(makeReport("GENERATING") as any);
+    vi.mocked(reportGeneratorRepository.updateStatus).mockResolvedValue(makeReport("DRAFT") as any);
+    mockAnthropicCreate.mockResolvedValue(makeClaudeResponse(CLAUDE_MARKDOWN));
+
+    await reportGeneratorService.generateDraft({
+      engagementId: ENGAGEMENT_ID, tenantId: TENANT_ID, generatedBy: "ai",
+    });
+
+    const claudeCall = mockAnthropicCreate.mock.calls[0][0];
+    expect(claudeCall.model).toBe("claude-opus-4-7");
   });
 });

@@ -24,3 +24,11 @@ export const transitionReportStatusSchema = z.object({
   reportId: z.string(),
   targetStatus: z.enum(["DRAFT", "IN_REVIEW", "PUBLISHED"]),
 });
+
+export const triggerGenerateSchema = z.object({
+  engagementId: z.string(),
+});
+
+export const clientGetPublishedReportSchema = z.object({
+  engagementId: z.string(),
+});
