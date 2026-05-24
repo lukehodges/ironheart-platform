@@ -1,6 +1,6 @@
 # Handoff — Last Session State
 
-> **Updated**: 2026-05-24 — Phases 0.1–0.4 done. Live-data seed populated. 5 post-0.4 bug fixes after manual click-through.
+> **Updated**: 2026-05-24 — **Phase 0.x audit-ready baseline COMPLETE.** All 5 sub-phases (0.1 → 0.5) shipped. Live-data seed populated.
 > **Branch**: `feature/product-platform`
 > **Repo**: `/Users/lukehodges/Documents/ironheart-refactor`
 
@@ -29,7 +29,11 @@ If you're a fresh Claude chat picking up here, this is the fastest path to conte
 3. `1aeec83` — `/api/reports/[id]/pdf` auth gate was comparing `dbUser.tenantId === PLATFORM_TENANT_ID` env var (never set). Now uses `users.isPlatformAdmin === true`.
 4. `9ea51aa` — PDF template assumed `contentJson` has `{topFindings, lenses[], implementationRoadmap[]}`. Seed wrote a different shape. Template now guards with `?? []` / `Array.isArray`.
 
-**Phase 0.5** (client report view + walkthrough booking): ⏭ next, OR refactor `ctx.tenantId` story first (see Tech debt §3).
+**Phase 0.5** (client report view + walkthrough booking + email notifications): ✅ COMPLETE — `/[slug]/dashboard/report` displays PUBLISHED reports w/ exec summary, RAG strip, full markdown, walkthrough + proposal-request CTAs. Inngest handlers send branded React Email notifications on publish + on proposal request. Sidebar gains Report link at REPORTING+ stage.
+
+**🎉 Phase 0.x (audit-ready baseline) COMPLETE** — north-star achieved. Luke can run an end-to-end audit on real client software: client logs in via WorkOS → fills questionnaires → consultant runs audit → AI-drafted report → client receives email → reads report on portal → books walkthrough or requests proposal.
+
+**Next call**: tech debt sweep (esp. ctx.tenantId refactor — §j) OR Phase 1.x scale features (multi-stakeholder team management, billing surface, implementation tracking, retainer support).
 
 **Verified live end-to-end** on 2026-05-23 evening:
 

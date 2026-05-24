@@ -1,8 +1,8 @@
 # Ironheart Refactor Roadmap
 
-> **Last updated**: 2026-05-24 (Phase 0.1–0.4 complete + live-data seed + 5 post-completion bug fixes)
+> **Last updated**: 2026-05-24 — **🎉 Phase 0.x (audit-ready baseline) COMPLETE.** 0.1–0.5 all shipped. North-star achieved.
 > **Branch**: `feature/product-platform`
-> **Pickup point**: **Phase 0.5 OR `ctx.tenantId` refactor** — see tech debt §3 of post-0.4 section. North-star (audit-ready baseline) is functionally complete; one engagement seeded end-to-end and clickable through 4 pages.
+> **Pickup point**: Tech debt sweep (ctx.tenantId refactor — Tech debt §1) OR Phase 1.x scale features (multi-stakeholder, billing, implementation tracking, retainer support).
 
 ## ⚡ Quick pickup if you're a fresh chat
 
@@ -52,7 +52,7 @@ The minimum thing that runs a real audit. ~4 weeks of work split across 5 sub-ph
 | **0.2** | Form template seeds + chart→forms wiring + portal audit progress tab | [`2026-05-23-phase-0.2-forms-wiring.md`](./2026-05-23-phase-0.2-forms-wiring.md) | ✅ |
 | **0.3** | Audit workspace UI (call notes capture, RAG entry, findings) | [`2026-05-23-phase-0.3-audit-workspace.md`](./2026-05-23-phase-0.3-audit-workspace.md) | ✅ |
 | **0.4** | Report generator (Claude API draft → editor → publish + PDF) | [`2026-05-23-phase-0.4-report-generator.md`](./2026-05-23-phase-0.4-report-generator.md) | ✅ |
-| **0.5** | Client report view + audit walkthrough booking link | [`2026-05-23-phase-0.5-client-report.md`](./2026-05-23-phase-0.5-client-report.md) | 📋 |
+| **0.5** | Client report view + walkthrough booking + email notifications | [`2026-05-23-phase-0.5-client-report.md`](./2026-05-23-phase-0.5-client-report.md) | ✅ |
 
 ### Why this order
 
@@ -147,6 +147,15 @@ The minimum thing that runs a real audit. ~4 weeks of work split across 5 sub-ph
 | Commit | What |
 |---|---|
 | `575cc52` | scripts/seed-test-engagement.ts — idempotent seed populates engagement `c950c06a-...` end-to-end: 11 org-chart nodes w/ named PERSON children, 4 completed forms, 5 lens analyses (RAG distributed), 11 findings + 11 recommendations (£235k waste), 4 realistic call notes, 1 DRAFT report w/ exec summary + markdown content. Run: `npm run db:seed-test-engagement`. |
+
+### 0.5 granular status (2026-05-24)
+
+| Task | Status | Commit | Notes |
+|---|---|---|---|
+| 1+2 — Client report view + CTAs | ✅ | `6ed4a9d` | `/[tenantSlug]/dashboard/report` server page + `ClientReportView` client component. Header w/ download PDF + published date. Executive summary callout w/ £ waste. 5-lens RAG strip. Full markdown content. Walkthrough booking + Request proposal CTAs. `clientRequestProposal` tRPC procedure added. Report nav link in sidebar visible when stage ∈ {REPORTING, IMPLEMENTING, RETAINER, CLOSED_WON}. |
+| 3 — Email notifications | ✅ | `29b8e59` | Inngest handlers `handleReportPublished` (notifies primary contact) + `handleProposalRequested` (notifies Luke). 2 React Email templates w/ Ironheart palette. Uses existing notification module pattern. |
+
+**Total commits in 0.5: 2.**
 
 ### Larger tech-debt surfaced by live debugging
 
