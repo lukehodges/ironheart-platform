@@ -1,6 +1,6 @@
 "use client"
 
-import { Sparkles, Send, RotateCw } from "lucide-react"
+import { Sparkles, Send, RotateCw, Download } from "lucide-react"
 import type { AuditReportRecord } from "@/modules/report-generator/report-generator.types"
 
 const STATUS_DISPLAY: Record<string, { label: string; className: string }> = {
@@ -79,6 +79,19 @@ export function StatusBar({
           <RotateCw size={12} />
           {isGenerating ? "Generating…" : "Regenerate"}
         </button>
+
+        {/* Show Download PDF for any status that has renderable content */}
+        {report.status !== "GENERATING" && (
+          <a
+            href={`/api/reports/${report.id}/pdf`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1 px-3 py-1.5 text-xs rounded border border-border hover:bg-muted"
+            title="Download branded PDF"
+          >
+            <Download size={12} /> Download PDF
+          </a>
+        )}
 
         {canPublish && (
           <button

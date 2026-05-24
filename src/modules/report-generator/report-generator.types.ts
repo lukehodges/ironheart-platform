@@ -11,6 +11,8 @@ export interface AuditReportRecord {
   executiveSummary: string;
   totalEstimatedWaste: number;
   driveFileId: string | null;
+  pdfStorageKey: string | null;
+  pdfStorageUrl: string | null;
   publishedAt: Date | null;
   generatedBy: string;
   createdAt: Date;

@@ -34,6 +34,8 @@ export const auditReports = pgTable(
     executiveSummary: text().default("").notNull(),
     totalEstimatedWaste: integer().default(0).notNull(),
     driveFileId: text(),
+    pdfStorageKey: text(),
+    pdfStorageUrl: text(),
     publishedAt: timestamp({ precision: 3, mode: "date" }),
     generatedBy: text().default("manual").notNull(),
     createdAt: timestamp({ precision: 3, mode: "date" })

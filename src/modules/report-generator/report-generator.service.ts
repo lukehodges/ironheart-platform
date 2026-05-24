@@ -1,4 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { renderToBuffer } from "@react-pdf/renderer";
+import React from "react";
 import { logger } from "@/shared/logger";
 import { NotFoundError, BadRequestError } from "@/shared/errors";
 import { inngest } from "@/shared/inngest";
@@ -14,6 +16,7 @@ import type {
   ReportRecommendation,
   ReportRoadmapPhase,
 } from "./report-generator.types";
+import { ReportPdfDocument } from "./report-pdf-template";
 import type { z } from "zod";
 import type {
   generateReportSchema,
@@ -591,6 +594,14 @@ export const reportGeneratorService = {
     );
 
     if (input.targetStatus === "PUBLISHED") {
+      // Auto-export PDF on publish so the client URL is ready before portal (0.5) surfaces it.
+      // Fire-and-forget with a logged error on failure — PDF render failing should not block publish.
+      reportGeneratorService
+        .exportPdf(updated, report.contentJson?.clientName ?? "", report.contentJson?.title ?? "Operational Audit Report")
+        .catch((err) => {
+          log.error({ reportId: input.reportId, err }, "PDF export on publish failed — non-blocking");
+        });
+
       await inngest.send({
         name: "report-generator/report-published",
         data: {
@@ -603,5 +614,64 @@ export const reportGeneratorService = {
     }
 
     return updated;
+  },
+
+  /**
+   * Render a PDF buffer from a report record.
+   *
+   * Pure function — does not touch the database. Returns the raw bytes so
+   * they can be streamed (API route) or uploaded (exportPdf).
+   *
+   * Storage note (0.4): No blob storage is configured. PDFs are rendered
+   * on-demand at GET /api/reports/[reportId]/pdf. When @vercel/blob is
+   * available, exportPdf below will persist the bytes and store the URL.
+   */
+  async renderPdf(
+    report: AuditReportRecord,
+    customerName: string,
+    engagementTitle: string,
+  ): Promise<Buffer> {
+    const content = report.contentJson as ReportContentJson;
+
+    const element = React.createElement(ReportPdfDocument, {
+      content,
+      customerName,
+      engagementTitle,
+      publishedDate: report.publishedAt?.toISOString(),
+    }) as Parameters<typeof renderToBuffer>[0];
+
+    const buffer = await renderToBuffer(element);
+    return Buffer.from(buffer);
+  },
+
+  /**
+   * Render + optionally persist PDF, then update the report row.
+   *
+   * In 0.4, without blob storage, we render on-demand and store a
+   * /api/... path as the "url" so the portal can link to it in 0.5.
+   *
+   * When BLOB_READ_WRITE_TOKEN is present (future), swap in @vercel/blob
+   * upload here and store the returned URL + key on the row.
+   */
+  async exportPdf(
+    report: AuditReportRecord,
+    customerName: string,
+    engagementTitle: string,
+  ): Promise<{ url: string; storageKey: string }> {
+    // Render the PDF (validates it renders without error)
+    await reportGeneratorService.renderPdf(report, customerName, engagementTitle);
+
+    // On-demand path (no blob storage configured in 0.4)
+    const storageKey = `reports/${report.id}/audit-report.pdf`;
+    const url = `/api/reports/${report.id}/pdf`;
+
+    // Persist key + url on the row so portal can surface a download link in 0.5
+    await reportGeneratorRepository.setPdfStorage(report.id, {
+      pdfStorageKey: storageKey,
+      pdfStorageUrl: url,
+    });
+
+    log.info({ reportId: report.id, storageKey }, "PDF export recorded on report row");
+    return { url, storageKey };
   },
 };

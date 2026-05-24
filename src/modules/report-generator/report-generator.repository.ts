@@ -94,4 +94,17 @@ export const reportGeneratorRepository = {
     if (rows.length === 0) throw new NotFoundError("AuditReport", reportId);
     return rows[0] as unknown as AuditReportRecord;
   },
+
+  async setPdfStorage(
+    reportId: string,
+    data: { pdfStorageKey: string; pdfStorageUrl: string }
+  ): Promise<AuditReportRecord> {
+    const rows = await db
+      .update(auditReports)
+      .set({ ...data, updatedAt: new Date() } as any)
+      .where(eq(auditReports.id, reportId))
+      .returning();
+    if (rows.length === 0) throw new NotFoundError("AuditReport", reportId);
+    return rows[0] as unknown as AuditReportRecord;
+  },
 };
