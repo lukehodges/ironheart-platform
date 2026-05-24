@@ -4,7 +4,7 @@ import { customers } from "@/shared/db/schemas/customer.schema"
 import { tenants } from "@/shared/db/schemas/tenant.schema"
 import { eq } from "drizzle-orm"
 import { notFound } from "next/navigation"
-import { ChartEditor } from "@/components/onboarding/chart-editor"
+import { OnboardingShell } from "./_components/onboarding-shell"
 
 export default async function ConsultantOnboardingPage({
   params,
@@ -27,18 +27,20 @@ export default async function ConsultantOnboardingPage({
       })
     : null
 
-  // Build company label from customer name fields
-  const companyLabel = customer
-    ? `${customer.firstName} ${customer.lastName}`.trim()
-    : "Unnamed company"
+  // Prefer the company-name stashed in customer.notes (provisioning pattern);
+  // fall back to "FirstName LastName" or the tenant name.
+  const nameFromCustomer = customer ? `${customer.firstName ?? ""} ${customer.lastName ?? ""}`.trim() : ""
+  const companyLabel =
+    (customer?.notes && customer.notes.trim()) ||
+    nameFromCustomer ||
+    clientTenant?.name ||
+    "Unnamed company"
 
   return (
-    <ChartEditor
-      mode="consultant"
+    <OnboardingShell
       engagementId={id}
       engagementTitle={eng.title}
       companyLabel={companyLabel}
-      clientTenantSlug={clientTenant?.slug ?? null}
       clientTenantProvisioned={!!eng.clientTenantId}
     />
   )
