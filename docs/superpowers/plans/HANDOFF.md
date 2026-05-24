@@ -15,7 +15,8 @@ If you're a fresh Claude chat picking up here, this is the fastest path to conte
 **Phase 0.1.C** (org chart): ✅ COMPLETE — schema, repo, service, router, stage-transition seed, consultant UI, client UI, router tests. 106 new tests passing.
 **Phase 0.2** (form-template seeds + chart→forms wiring + portal audit tab): ✅ COMPLETE — 6 templates seeded, Inngest handler creates `completed_forms` PENDING rows, audit progress page lives at `/[slug]/dashboard/audit`. No email dispatch yet.
 **Phase 0.3** (audit workspace UI — lens entry, RAG, findings): ✅ COMPLETE — backend gap-filled (7 new procedures), 3-layer UI at `/platform/clients/[id]/audit` with autosave throughout.
-**Phase 0.4** (report generator — Claude API draft → editor → publish PDF): ⏭ next.
+**Phase 0.4** (report generator — Claude API draft → editor → publish PDF): ✅ COMPLETE — Anthropic SDK w/ prompt caching, side-by-side editor at `/platform/clients/[id]/report`, branded PDF via `@react-pdf/renderer` at `/api/reports/[id]/pdf`.
+**Phase 0.5** (client report view + walkthrough booking): ⏭ next. After 0.5, audit-ready baseline complete.
 
 **Verified live end-to-end** on 2026-05-23 evening:
 

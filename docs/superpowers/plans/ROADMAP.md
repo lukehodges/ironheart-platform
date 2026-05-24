@@ -2,7 +2,7 @@
 
 > **Last updated**: 2026-05-23 (late evening — Phase 0.1 + 0.2 complete)
 > **Branch**: `feature/product-platform`
-> **Pickup point**: **Phase 0.4 starting** — Report generator (Claude AI draft → editor → publish). Audit workspace done; reports next.
+> **Pickup point**: **Phase 0.5 starting** — Client report view at /[slug]/dashboard/report + walkthrough booking. After 0.5 the audit-ready baseline (north star) is complete.
 
 ## ⚡ Quick pickup if you're a fresh chat
 
@@ -51,7 +51,7 @@ The minimum thing that runs a real audit. ~4 weeks of work split across 5 sub-ph
 | **0.1** | Platform shell + tenant bootstrap + collaborative org chart | [`2026-05-23-phase-0.1-MASTER.md`](./2026-05-23-phase-0.1-MASTER.md) | ✅ |
 | **0.2** | Form template seeds + chart→forms wiring + portal audit progress tab | [`2026-05-23-phase-0.2-forms-wiring.md`](./2026-05-23-phase-0.2-forms-wiring.md) | ✅ |
 | **0.3** | Audit workspace UI (call notes capture, RAG entry, findings) | [`2026-05-23-phase-0.3-audit-workspace.md`](./2026-05-23-phase-0.3-audit-workspace.md) | ✅ |
-| **0.4** | Report generator (Claude API draft → editor → publish) | [`2026-05-23-phase-0.4-report-generator.md`](./2026-05-23-phase-0.4-report-generator.md) | 📋 |
+| **0.4** | Report generator (Claude API draft → editor → publish + PDF) | [`2026-05-23-phase-0.4-report-generator.md`](./2026-05-23-phase-0.4-report-generator.md) | ✅ |
 | **0.5** | Client report view + audit walkthrough booking link | [`2026-05-23-phase-0.5-client-report.md`](./2026-05-23-phase-0.5-client-report.md) | 📋 |
 
 ### Why this order
@@ -115,6 +115,22 @@ The minimum thing that runs a real audit. ~4 weeks of work split across 5 sub-ph
 | 2-4 — Audit workspace UI (combined) | ✅ | `13eb35f` | 3-layer UI: Capture (contacts + notes autosave) + Processing (5 lens tabs w/ RAG + findings + recs) + Report Ready (validation gate). 11 new components. |
 
 **Tests in 0.3: 14 new.** Total commits in 0.3: 2.
+
+### 0.4 granular status (2026-05-24)
+
+| Task | Status | Commit | Notes |
+|---|---|---|---|
+| 1 — Backend + Claude draft service | ✅ | `9bf793a` | Anthropic SDK + prompt caching on system prompt, `claude-opus-4-7` model. Inngest async generation. 16 new tests. |
+| 2 — Report editor UI | ✅ | `e95cb92` | `/platform/clients/[id]/report` side-by-side: audit summary + markdown editor w/ preview toggle. Status bar w/ Regenerate + Publish CTAs. |
+| 3 — PDF export + storage | ✅ (concerns) | `1f6e331` | `@react-pdf/renderer` branded template (cover + exec summary + 5 lens cards + roadmap). `/api/reports/[reportId]/pdf` route. On-demand render (no blob storage yet — deferred). Auto-export on publish. |
+
+**Tests in 0.4: 16 new.** Total commits in 0.4: 3.
+
+### 0.4 known gaps (defer to 0.5+)
+
+- **PDF storage** — PDFs render on-demand each GET (~200-500ms cold). 0.5 will add `@vercel/blob` storage when `BLOB_READ_WRITE_TOKEN` is set.
+- **Custom fonts** — Instrument Serif + Inter aren't registered in React-PDF; using Helvetica/Times fallbacks. Font files need to be hosted + registered for brand match.
+- **`PLATFORM_TENANT_ID` env var** — referenced by the PDF route's auth gate. Verify it matches `IRONHEART_TENANT_ID` (or alias them) before first real publish.
 
 ### 0.2 known gaps (defer to 0.3+)
 
