@@ -4,6 +4,43 @@ export type AuditTier = "MICRO" | "SMALL" | "MID" | "LARGE"
 export type ChartActorType = "CONSULTANT" | "CLIENT" | "SYSTEM"
 export type EditorIdentity = "CONSULTANT" | "CLIENT"
 
+// ── Chart depth (Phase 1.0) ───────────────────────────────────────────────────
+// Mirrors the demo at /platform/clients/[id]/onboarding/demo/_components/types.ts,
+// trimmed to the production-relevant subset. Allowed values are enforced by
+// CHECK constraints in the DB (see scripts/apply-chart-depth.ts).
+export type NodeKind =
+  | "PERSON"
+  | "VACANCY"
+  | "CONTRACTOR"
+  | "ADVISOR"
+  | "EXTERNAL"
+  | "BUNDLE"
+
+export type AuditFlag =
+  | "DECISION_MAKER"
+  | "FINANCE_OWNER"
+  | "DATA_OWNER"
+  | "DPO"
+  | "SECURITY"
+  | "PROCESS_OWNER"
+  | "FOUNDER"
+
+export type NodeInterviewStatus =
+  | "NONE"
+  | "TARGET"
+  | "INVITED"
+  | "SCHEDULED"
+  | "COMPLETED"
+
+export type NodeFormStatus =
+  | "NONE"
+  | "PENDING"
+  | "SENT"
+  | "IN_PROGRESS"
+  | "COMPLETED"
+
+export type EdgeStyle = "SOLID" | "DOTTED" | "MATRIX"
+
 export interface OrgChartNodeRecord {
   id: string
   tenantId: string
@@ -25,6 +62,18 @@ export interface OrgChartNodeRecord {
   lastEditedAt: Date
   /** ID of the completed_forms row created when a form invitation was sent for this node. Null = not yet sent. */
   formSendId: string | null
+  // ── Chart depth (Phase 1.0) ─────────────────────────────────────────────────
+  kind: NodeKind
+  auditFlags: AuditFlag[]
+  interviewStatus: NodeInterviewStatus
+  formStatus: NodeFormStatus
+  tenureYears: number | null
+  email: string | null
+  isFounder: boolean
+  isFractional: boolean
+  avatarColor: string | null
+  /** Style of the INCOMING edge from this node's parent. */
+  edgeStyle: EdgeStyle
   createdAt: Date
   updatedAt: Date
 }
@@ -63,6 +112,17 @@ export interface CreateNodeInput {
   templateSlugOverride?: string | null
   sortOrder?: number
   editedBy: EditorIdentity
+  // Chart depth (Phase 1.0) — all optional with sane defaults at repo layer.
+  kind?: NodeKind
+  auditFlags?: AuditFlag[]
+  interviewStatus?: NodeInterviewStatus
+  formStatus?: NodeFormStatus
+  tenureYears?: number | null
+  email?: string | null
+  isFounder?: boolean
+  isFractional?: boolean
+  avatarColor?: string | null
+  edgeStyle?: EdgeStyle
 }
 
 export interface UpdateNodePatch {
@@ -77,6 +137,17 @@ export interface UpdateNodePatch {
   sampleSize?: number | null
   templateSlugOverride?: string | null
   sortOrder?: number
+  // Chart depth (Phase 1.0)
+  kind?: NodeKind
+  auditFlags?: AuditFlag[]
+  interviewStatus?: NodeInterviewStatus
+  formStatus?: NodeFormStatus
+  tenureYears?: number | null
+  email?: string | null
+  isFounder?: boolean
+  isFractional?: boolean
+  avatarColor?: string | null
+  edgeStyle?: EdgeStyle
 }
 
 export interface UpdateNodeInput {

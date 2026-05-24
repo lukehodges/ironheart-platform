@@ -12,6 +12,9 @@ import type {
   ReparentNodeInput,
   LogActivityInput,
   ListActivityInput,
+  AuditFlag,
+  NodeInterviewStatus,
+  NodeFormStatus,
 } from "./onboarding.types";
 
 const log = logger.child({ module: "onboarding.repository" });
@@ -145,6 +148,17 @@ export const onboardingRepository = {
         version: 1,
         lastEditedBy: input.editedBy,
         lastEditedAt: now,
+        // Chart depth (Phase 1.0) — defaults mirror the DB defaults.
+        kind: input.kind ?? "PERSON",
+        auditFlags: input.auditFlags ?? [],
+        interviewStatus: input.interviewStatus ?? "NONE",
+        formStatus: input.formStatus ?? "NONE",
+        tenureYears: input.tenureYears ?? null,
+        email: input.email ?? null,
+        isFounder: input.isFounder ?? false,
+        isFractional: input.isFractional ?? false,
+        avatarColor: input.avatarColor ?? null,
+        edgeStyle: input.edgeStyle ?? "SOLID",
         createdAt: now,
         updatedAt: now,
       })
@@ -179,6 +193,17 @@ export const onboardingRepository = {
       version: 1,
       lastEditedBy: input.editedBy,
       lastEditedAt: now,
+      // Chart depth (Phase 1.0) — defaults mirror the DB defaults.
+      kind: input.kind ?? ("PERSON" as const),
+      auditFlags: input.auditFlags ?? [],
+      interviewStatus: input.interviewStatus ?? ("NONE" as const),
+      formStatus: input.formStatus ?? ("NONE" as const),
+      tenureYears: input.tenureYears ?? null,
+      email: input.email ?? null,
+      isFounder: input.isFounder ?? false,
+      isFractional: input.isFractional ?? false,
+      avatarColor: input.avatarColor ?? null,
+      edgeStyle: input.edgeStyle ?? ("SOLID" as const),
       createdAt: now,
       updatedAt: now,
     }));
@@ -351,6 +376,93 @@ export const onboardingRepository = {
     }
 
     log.info({ nodeId: id, newParentId }, "org chart node reparented");
+    return updated as OrgChartNodeRecord;
+  },
+
+  /**
+   * Replaces the full auditFlags array for a node. Caller passes the desired
+   * final array — append/remove pattern is up to the caller. Bumps version +
+   * touches lastEditedBy/lastEditedAt so optimistic-concurrency siblings see
+   * the change. Scoped by tenantId.
+   */
+  async updateNodeAuditFlags(params: {
+    id: string;
+    tenantId: string;
+    flags: AuditFlag[];
+    editedBy: "CONSULTANT" | "CLIENT";
+  }): Promise<OrgChartNodeRecord> {
+    const now = new Date();
+    const [updated] = await db
+      .update(engagementOrgChart)
+      .set({
+        auditFlags: params.flags,
+        version: sql`${engagementOrgChart.version} + 1`,
+        lastEditedBy: params.editedBy,
+        lastEditedAt: now,
+        updatedAt: now,
+      })
+      .where(
+        and(
+          eq(engagementOrgChart.id, params.id),
+          eq(engagementOrgChart.tenantId, params.tenantId)
+        )
+      )
+      .returning();
+    if (!updated) throw new NotFoundError("OrgChartNode", params.id);
+    return updated as OrgChartNodeRecord;
+  },
+
+  async updateNodeInterviewStatus(params: {
+    id: string;
+    tenantId: string;
+    status: NodeInterviewStatus;
+    editedBy: "CONSULTANT" | "CLIENT";
+  }): Promise<OrgChartNodeRecord> {
+    const now = new Date();
+    const [updated] = await db
+      .update(engagementOrgChart)
+      .set({
+        interviewStatus: params.status,
+        version: sql`${engagementOrgChart.version} + 1`,
+        lastEditedBy: params.editedBy,
+        lastEditedAt: now,
+        updatedAt: now,
+      })
+      .where(
+        and(
+          eq(engagementOrgChart.id, params.id),
+          eq(engagementOrgChart.tenantId, params.tenantId)
+        )
+      )
+      .returning();
+    if (!updated) throw new NotFoundError("OrgChartNode", params.id);
+    return updated as OrgChartNodeRecord;
+  },
+
+  async updateNodeFormStatus(params: {
+    id: string;
+    tenantId: string;
+    status: NodeFormStatus;
+    editedBy: "CONSULTANT" | "CLIENT";
+  }): Promise<OrgChartNodeRecord> {
+    const now = new Date();
+    const [updated] = await db
+      .update(engagementOrgChart)
+      .set({
+        formStatus: params.status,
+        version: sql`${engagementOrgChart.version} + 1`,
+        lastEditedBy: params.editedBy,
+        lastEditedAt: now,
+        updatedAt: now,
+      })
+      .where(
+        and(
+          eq(engagementOrgChart.id, params.id),
+          eq(engagementOrgChart.tenantId, params.tenantId)
+        )
+      )
+      .returning();
+    if (!updated) throw new NotFoundError("OrgChartNode", params.id);
     return updated as OrgChartNodeRecord;
   },
 

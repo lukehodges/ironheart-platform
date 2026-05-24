@@ -7,6 +7,54 @@ import { z } from "zod"
 export const nodeTypeEnum = z.enum(["DEPARTMENT", "ROLE", "PERSON"])
 export const interviewModeEnum = z.enum(["ALL", "SAMPLE", "OWNER_ONLY", "SKIP"])
 
+// ── Chart depth (Phase 1.0) ──────────────────────────────────────────────────
+export const nodeKindEnum = z.enum([
+  "PERSON",
+  "VACANCY",
+  "CONTRACTOR",
+  "ADVISOR",
+  "EXTERNAL",
+  "BUNDLE",
+])
+export const auditFlagEnum = z.enum([
+  "DECISION_MAKER",
+  "FINANCE_OWNER",
+  "DATA_OWNER",
+  "DPO",
+  "SECURITY",
+  "PROCESS_OWNER",
+  "FOUNDER",
+])
+export const nodeInterviewStatusEnum = z.enum([
+  "NONE",
+  "TARGET",
+  "INVITED",
+  "SCHEDULED",
+  "COMPLETED",
+])
+export const nodeFormStatusEnum = z.enum([
+  "NONE",
+  "PENDING",
+  "SENT",
+  "IN_PROGRESS",
+  "COMPLETED",
+])
+export const edgeStyleEnum = z.enum(["SOLID", "DOTTED", "MATRIX"])
+
+// Optional fields layered onto create/update for the new depth columns.
+const chartDepthFields = {
+  kind: nodeKindEnum.optional(),
+  auditFlags: z.array(auditFlagEnum).optional(),
+  interviewStatus: nodeInterviewStatusEnum.optional(),
+  formStatus: nodeFormStatusEnum.optional(),
+  tenureYears: z.number().int().nonnegative().nullable().optional(),
+  email: z.string().email().nullable().optional(),
+  isFounder: z.boolean().optional(),
+  isFractional: z.boolean().optional(),
+  avatarColor: z.string().max(64).nullable().optional(),
+  edgeStyle: edgeStyleEnum.optional(),
+}
+
 // ---------------------------------------------------------------------------
 // Shared field definitions
 // ---------------------------------------------------------------------------
@@ -33,6 +81,7 @@ export const createNodeSchema = z.object({
   sampleSize: z.number().int().positive().nullable().optional(),
   templateSlugOverride: z.string().max(200).nullable().optional(),
   sortOrder: z.number().int().optional(),
+  ...chartDepthFields,
 })
 
 export const updateNodeSchema = z.object({
@@ -47,6 +96,7 @@ export const updateNodeSchema = z.object({
     sampleSize: z.number().int().positive().nullable().optional(),
     templateSlugOverride: z.string().max(200).nullable().optional(),
     sortOrder: z.number().int().optional(),
+    ...chartDepthFields,
   }),
 })
 
