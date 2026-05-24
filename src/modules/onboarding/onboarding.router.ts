@@ -18,6 +18,13 @@ import {
   deleteNodeSchema,
   reparentNodeSchema,
   clientUpdateNodeSchema,
+  setNodeKindSchema,
+  setAuditFlagsSchema,
+  setInterviewStatusSchema,
+  setFormStatusSchema,
+  setEdgeStyleSchema,
+  updateNodeMetaSchema,
+  clientUpdateNodeMetaSchema,
 } from "./onboarding.schemas"
 
 // ---------------------------------------------------------------------------
@@ -35,6 +42,22 @@ async function resolveChartTenantId(engagementId: string): Promise<string> {
     throw new NotFoundError("Engagement.clientTenantId", engagementId)
   }
   return eng.clientTenantId
+}
+
+/**
+ * Resolves both the node row and its engagement's tenantId in one go.
+ * Used by the Phase 1.0 depth-mutation procs that key off nodeId.
+ */
+async function resolveNodeAndTenant(nodeId: string): Promise<{
+  node: { id: string; engagementId: string; label: string }
+  tenantId: string
+}> {
+  const nodeRow = await db.query.engagementOrgChart.findFirst({
+    where: eq(engagementOrgChart.id, nodeId),
+  })
+  if (!nodeRow) throw new NotFoundError("OrgChartNode", nodeId)
+  const tenantId = await resolveChartTenantId(nodeRow.engagementId)
+  return { node: nodeRow, tenantId }
 }
 
 /**
@@ -286,6 +309,184 @@ export const onboardingRouter = router({
     }),
 
   // ---------------------------------------------------------------------------
+  // Chart depth procs (Phase 1.0) — consultant-only unless mirrored below.
+  // ---------------------------------------------------------------------------
+
+  setNodeKind: platformAdminProcedure
+    .input(setNodeKindSchema)
+    .mutation(async ({ ctx, input }) => {
+      const user = ctx.session.user
+      const { node, tenantId } = await resolveNodeAndTenant(input.nodeId)
+      const updated = await onboardingRepository.updateNode({
+        id: node.id,
+        tenantId,
+        // updateNode wants expectedVersion; depth procs don't take a version
+        // (they're idempotent, last-write-wins). Read current version inline.
+        expectedVersion: (
+          await db.query.engagementOrgChart.findFirst({
+            where: eq(engagementOrgChart.id, node.id),
+            columns: { version: true },
+          })
+        )!.version,
+        patch: { kind: input.kind },
+        editedBy: "CONSULTANT",
+      })
+      await onboardingRepository.logActivity({
+        engagementId: node.engagementId,
+        nodeId: node.id,
+        actorType: "CONSULTANT",
+        actorId: user.id,
+        actorName: actorDisplayName(user),
+        action: "node.kind.set",
+        fromValue: null,
+        toValue: { kind: input.kind },
+        message: `${actorDisplayName(user)} set kind of '${node.label}' to ${input.kind}`,
+      })
+      return updated
+    }),
+
+  setAuditFlags: platformAdminProcedure
+    .input(setAuditFlagsSchema)
+    .mutation(async ({ ctx, input }) => {
+      const user = ctx.session.user
+      const { node, tenantId } = await resolveNodeAndTenant(input.nodeId)
+      const updated = await onboardingRepository.updateNodeAuditFlags({
+        id: node.id,
+        tenantId,
+        flags: input.flags,
+        editedBy: "CONSULTANT",
+      })
+      await onboardingRepository.logActivity({
+        engagementId: node.engagementId,
+        nodeId: node.id,
+        actorType: "CONSULTANT",
+        actorId: user.id,
+        actorName: actorDisplayName(user),
+        action: "node.auditFlags.set",
+        fromValue: null,
+        toValue: { flags: input.flags },
+        message: `${actorDisplayName(user)} set audit flags on '${node.label}' (${input.flags.length} flag${input.flags.length === 1 ? "" : "s"})`,
+      })
+      return updated
+    }),
+
+  setInterviewStatus: platformAdminProcedure
+    .input(setInterviewStatusSchema)
+    .mutation(async ({ ctx, input }) => {
+      const user = ctx.session.user
+      const { node, tenantId } = await resolveNodeAndTenant(input.nodeId)
+      const updated = await onboardingRepository.updateNodeInterviewStatus({
+        id: node.id,
+        tenantId,
+        status: input.status,
+        editedBy: "CONSULTANT",
+      })
+      await onboardingRepository.logActivity({
+        engagementId: node.engagementId,
+        nodeId: node.id,
+        actorType: "CONSULTANT",
+        actorId: user.id,
+        actorName: actorDisplayName(user),
+        action: "node.interviewStatus.set",
+        fromValue: null,
+        toValue: { status: input.status },
+        message: `${actorDisplayName(user)} set interview status of '${node.label}' to ${input.status}`,
+      })
+      return updated
+    }),
+
+  setFormStatus: platformAdminProcedure
+    .input(setFormStatusSchema)
+    .mutation(async ({ ctx, input }) => {
+      const user = ctx.session.user
+      const { node, tenantId } = await resolveNodeAndTenant(input.nodeId)
+      const updated = await onboardingRepository.updateNodeFormStatus({
+        id: node.id,
+        tenantId,
+        status: input.status,
+        editedBy: "CONSULTANT",
+      })
+      await onboardingRepository.logActivity({
+        engagementId: node.engagementId,
+        nodeId: node.id,
+        actorType: "CONSULTANT",
+        actorId: user.id,
+        actorName: actorDisplayName(user),
+        action: "node.formStatus.set",
+        fromValue: null,
+        toValue: { status: input.status },
+        message: `${actorDisplayName(user)} set form status of '${node.label}' to ${input.status}`,
+      })
+      return updated
+    }),
+
+  setEdgeStyle: platformAdminProcedure
+    .input(setEdgeStyleSchema)
+    .mutation(async ({ ctx, input }) => {
+      const user = ctx.session.user
+      const { node, tenantId } = await resolveNodeAndTenant(input.nodeId)
+      const fresh = await db.query.engagementOrgChart.findFirst({
+        where: eq(engagementOrgChart.id, node.id),
+        columns: { version: true },
+      })
+      const updated = await onboardingRepository.updateNode({
+        id: node.id,
+        tenantId,
+        expectedVersion: fresh!.version,
+        patch: { edgeStyle: input.style },
+        editedBy: "CONSULTANT",
+      })
+      await onboardingRepository.logActivity({
+        engagementId: node.engagementId,
+        nodeId: node.id,
+        actorType: "CONSULTANT",
+        actorId: user.id,
+        actorName: actorDisplayName(user),
+        action: "node.edgeStyle.set",
+        fromValue: null,
+        toValue: { style: input.style },
+        message: `${actorDisplayName(user)} set edge style of '${node.label}' to ${input.style}`,
+      })
+      return updated
+    }),
+
+  updateNodeMeta: platformAdminProcedure
+    .input(updateNodeMetaSchema)
+    .mutation(async ({ ctx, input }) => {
+      const user = ctx.session.user
+      const { node, tenantId } = await resolveNodeAndTenant(input.nodeId)
+      const fresh = await db.query.engagementOrgChart.findFirst({
+        where: eq(engagementOrgChart.id, node.id),
+        columns: { version: true },
+      })
+      const patch: Record<string, unknown> = {}
+      if (input.email !== undefined) patch.email = input.email
+      if (input.tenureYears !== undefined) patch.tenureYears = input.tenureYears
+      if (input.isFounder !== undefined) patch.isFounder = input.isFounder
+      if (input.isFractional !== undefined) patch.isFractional = input.isFractional
+      if (input.avatarColor !== undefined) patch.avatarColor = input.avatarColor
+      const updated = await onboardingRepository.updateNode({
+        id: node.id,
+        tenantId,
+        expectedVersion: fresh!.version,
+        patch,
+        editedBy: "CONSULTANT",
+      })
+      await onboardingRepository.logActivity({
+        engagementId: node.engagementId,
+        nodeId: node.id,
+        actorType: "CONSULTANT",
+        actorId: user.id,
+        actorName: actorDisplayName(user),
+        action: "node.meta.updated",
+        fromValue: null,
+        toValue: patch,
+        message: `${actorDisplayName(user)} updated meta on '${node.label}' (${Object.keys(patch).join(", ") || "no fields"})`,
+      })
+      return updated
+    }),
+
+  // ---------------------------------------------------------------------------
   // Client procedures (protectedProcedure + WorkOS org membership check)
   // ---------------------------------------------------------------------------
 
@@ -531,5 +732,73 @@ export const onboardingRouter = router({
         upcomingSessions,
         activity,
       }
+    }),
+
+  // ---------------------------------------------------------------------------
+  // Client-side chart depth mirrors (Phase 1.0).
+  // Only interview status + limited meta (email + tenure) are self-editable.
+  // Audit flags + form status + node kind + edge style stay consultant-only.
+  // ---------------------------------------------------------------------------
+
+  clientSetInterviewStatus: protectedProcedure
+    .input(setInterviewStatusSchema)
+    .mutation(async ({ ctx, input }) => {
+      const user = ctx.session.user
+      const nodeRow = await db.query.engagementOrgChart.findFirst({
+        where: eq(engagementOrgChart.id, input.nodeId),
+      })
+      if (!nodeRow) throw new NotFoundError("OrgChartNode", input.nodeId)
+      const { tenantId } = await assertClientMembership(nodeRow.engagementId, user.id)
+      const updated = await onboardingRepository.updateNodeInterviewStatus({
+        id: nodeRow.id,
+        tenantId,
+        status: input.status,
+        editedBy: "CLIENT",
+      })
+      await onboardingRepository.logActivity({
+        engagementId: nodeRow.engagementId,
+        nodeId: nodeRow.id,
+        actorType: "CLIENT",
+        actorId: user.id,
+        actorName: actorDisplayName(user),
+        action: "node.interviewStatus.set",
+        fromValue: null,
+        toValue: { status: input.status },
+        message: `${actorDisplayName(user)} set interview status of '${nodeRow.label}' to ${input.status}`,
+      })
+      return updated
+    }),
+
+  clientUpdateNodeMeta: protectedProcedure
+    .input(clientUpdateNodeMetaSchema)
+    .mutation(async ({ ctx, input }) => {
+      const user = ctx.session.user
+      const nodeRow = await db.query.engagementOrgChart.findFirst({
+        where: eq(engagementOrgChart.id, input.nodeId),
+      })
+      if (!nodeRow) throw new NotFoundError("OrgChartNode", input.nodeId)
+      const { tenantId } = await assertClientMembership(nodeRow.engagementId, user.id)
+      const patch: Record<string, unknown> = {}
+      if (input.email !== undefined) patch.email = input.email
+      if (input.tenureYears !== undefined) patch.tenureYears = input.tenureYears
+      const updated = await onboardingRepository.updateNode({
+        id: nodeRow.id,
+        tenantId,
+        expectedVersion: nodeRow.version,
+        patch,
+        editedBy: "CLIENT",
+      })
+      await onboardingRepository.logActivity({
+        engagementId: nodeRow.engagementId,
+        nodeId: nodeRow.id,
+        actorType: "CLIENT",
+        actorId: user.id,
+        actorName: actorDisplayName(user),
+        action: "node.meta.updated",
+        fromValue: null,
+        toValue: patch,
+        message: `${actorDisplayName(user)} updated their details on '${nodeRow.label}' (${Object.keys(patch).join(", ") || "no fields"})`,
+      })
+      return updated
     }),
 })

@@ -161,3 +161,47 @@ export const getActivitySchema = z.object({
 export const engagementIdSchema = z.object({
   engagementId: z.string().uuid(),
 })
+
+// ── Chart depth procedures (Phase 1.0) ───────────────────────────────────────
+
+export const setNodeKindSchema = z.object({
+  nodeId: z.string().uuid(),
+  kind: nodeKindEnum,
+})
+
+export const setAuditFlagsSchema = z.object({
+  nodeId: z.string().uuid(),
+  // Caller passes the full final array (replace semantics).
+  flags: z.array(auditFlagEnum),
+})
+
+export const setInterviewStatusSchema = z.object({
+  nodeId: z.string().uuid(),
+  status: nodeInterviewStatusEnum,
+})
+
+export const setFormStatusSchema = z.object({
+  nodeId: z.string().uuid(),
+  status: nodeFormStatusEnum,
+})
+
+export const setEdgeStyleSchema = z.object({
+  nodeId: z.string().uuid(),
+  style: edgeStyleEnum,
+})
+
+export const updateNodeMetaSchema = z.object({
+  nodeId: z.string().uuid(),
+  email: z.string().email().nullable().optional(),
+  tenureYears: z.number().int().nonnegative().nullable().optional(),
+  isFounder: z.boolean().optional(),
+  isFractional: z.boolean().optional(),
+  avatarColor: z.string().max(64).nullable().optional(),
+})
+
+// Client-side limited meta editor — only contact + tenure are self-editable.
+export const clientUpdateNodeMetaSchema = z.object({
+  nodeId: z.string().uuid(),
+  email: z.string().email().nullable().optional(),
+  tenureYears: z.number().int().nonnegative().nullable().optional(),
+})
