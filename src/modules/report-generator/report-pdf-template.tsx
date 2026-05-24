@@ -542,10 +542,10 @@ export function ReportPdfDocument({
           {content.executiveSummary || "Executive summary not yet available."}
         </Text>
 
-        {content.topFindings.length > 0 && (
+        {(content.topFindings ?? []).length > 0 && (
           <View style={{ marginTop: 16 }}>
             <Text style={styles.h3}>Top Findings</Text>
-            {content.topFindings.map((f, i) => (
+            {(content.topFindings ?? []).map((f, i) => (
               <View key={i} style={styles.findingRow}>
                 <Text style={styles.findingBullet}>▸</Text>
                 <View style={{ flex: 1 }}>
@@ -576,7 +576,7 @@ export function ReportPdfDocument({
           or Red (critical issue requiring immediate action).
         </Text>
 
-        {content.lenses.map((lens, i) => (
+        {(Array.isArray(content.lenses) ? content.lenses : []).map((lens, i) => (
           <LensCard key={i} lens={lens} />
         ))}
 
@@ -597,8 +597,8 @@ export function ReportPdfDocument({
           Changes may require additional budget or capability.
         </Text>
 
-        {content.implementationRoadmap.length > 0 ? (
-          content.implementationRoadmap.map((phase, i) => (
+        {(content.implementationRoadmap ?? []).length > 0 ? (
+          (content.implementationRoadmap ?? []).map((phase, i) => (
             <RoadmapPhase key={i} phase={phase} />
           ))
         ) : (
