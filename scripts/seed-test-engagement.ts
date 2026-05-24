@@ -169,6 +169,147 @@ async function enrichOrgChart(sql: postgres.Sql) {
     sortOrder: 14,
   })
 
+  // 1d. Enrich chart-depth fields on the 6 PERSON rows so every overlay
+  // has visible variety. Idempotent — UPDATE by id, safe to re-run.
+  // Narrative: Brightline Logistics Ltd — a fictional mid-Atlantic SMB
+  // logistics business in the middle of a discovery audit. The team is
+  // Sarah (founder/CEO), Marcus (ops lead), Priya (fractional finance),
+  // Jordan (NED/sales advisor — dotted line), Alex (external CS partner),
+  // and a Junior AE bundle (Sam → relabelled).
+  type Enrichment = {
+    id: string
+    label?: string
+    contactName?: string
+    contactRole?: string
+    kind: "PERSON" | "VACANCY" | "CONTRACTOR" | "ADVISOR" | "EXTERNAL" | "BUNDLE"
+    auditFlags: string[]
+    interviewStatus: "NONE" | "TARGET" | "INVITED" | "SCHEDULED" | "COMPLETED"
+    formStatus: "NONE" | "PENDING" | "SENT" | "IN_PROGRESS" | "COMPLETED"
+    tenureYears: number | null
+    email: string | null
+    isFounder: boolean
+    isFractional: boolean
+    avatarColor: string | null
+    edgeStyle: "SOLID" | "DOTTED" | "MATRIX"
+  }
+
+  const enrichments: Enrichment[] = [
+    {
+      id: ownerNode.id,
+      contactName: "Sarah Chen",
+      contactRole: "Founder & CEO",
+      kind: "PERSON",
+      auditFlags: ["FOUNDER", "DECISION_MAKER", "DATA_OWNER"],
+      interviewStatus: "SCHEDULED",
+      formStatus: "COMPLETED",
+      tenureYears: 8,
+      email: "sarah.chen@brightline-logistics.example.com",
+      isFounder: true,
+      isFractional: false,
+      avatarColor: "indigo",
+      edgeStyle: "SOLID",
+    },
+    {
+      id: marcusId,
+      contactName: "Marcus Webb",
+      contactRole: "Operations Lead",
+      kind: "PERSON",
+      auditFlags: ["PROCESS_OWNER", "DPO"],
+      interviewStatus: "COMPLETED",
+      formStatus: "COMPLETED",
+      tenureYears: 4,
+      email: "marcus.webb@brightline-logistics.example.com",
+      isFounder: false,
+      isFractional: false,
+      avatarColor: "teal",
+      edgeStyle: "SOLID",
+    },
+    {
+      id: priyaId,
+      contactName: "Priya Patel",
+      contactRole: "Fractional Finance Manager",
+      kind: "CONTRACTOR",
+      auditFlags: ["FINANCE_OWNER"],
+      interviewStatus: "INVITED",
+      formStatus: "IN_PROGRESS",
+      tenureYears: 1,
+      email: "priya.patel@brightline-logistics.example.com",
+      isFounder: false,
+      isFractional: true,
+      avatarColor: "amber",
+      edgeStyle: "DOTTED",
+    },
+    {
+      id: jordanId,
+      contactName: "Jordan Reyes",
+      contactRole: "Non-Exec Sales Advisor",
+      kind: "ADVISOR",
+      auditFlags: ["DECISION_MAKER"],
+      interviewStatus: "TARGET",
+      formStatus: "SENT",
+      tenureYears: null,
+      email: "jordan.reyes@brightline-logistics.example.com",
+      isFounder: false,
+      isFractional: true,
+      avatarColor: "violet",
+      edgeStyle: "DOTTED",
+    },
+    {
+      id: alexId,
+      contactName: "Alex Kim",
+      contactRole: "External Customer Success Partner",
+      kind: "EXTERNAL",
+      auditFlags: ["SECURITY"],
+      interviewStatus: "INVITED",
+      formStatus: "PENDING",
+      tenureYears: 1,
+      email: null,
+      isFounder: false,
+      isFractional: false,
+      avatarColor: "rose",
+      edgeStyle: "SOLID",
+    },
+    {
+      id: samId,
+      label: "Junior AE Team (4)",
+      contactName: "Junior AE Team (4)",
+      contactRole: "Bundled Account Executives",
+      kind: "BUNDLE",
+      auditFlags: [],
+      interviewStatus: "NONE",
+      formStatus: "NONE",
+      tenureYears: null,
+      email: null,
+      isFounder: false,
+      isFractional: false,
+      avatarColor: null,
+      edgeStyle: "MATRIX",
+    },
+  ]
+
+  for (const e of enrichments) {
+    await sql`
+      UPDATE engagement_org_chart
+      SET
+        label             = COALESCE(${e.label ?? null}, label),
+        "contactName"     = COALESCE(${e.contactName ?? null}, "contactName"),
+        "contactRole"     = COALESCE(${e.contactRole ?? null}, "contactRole"),
+        kind              = ${e.kind},
+        audit_flags       = ${e.auditFlags as unknown as string[]}::text[],
+        interview_status  = ${e.interviewStatus},
+        form_status       = ${e.formStatus},
+        tenure_years      = ${e.tenureYears},
+        email             = ${e.email},
+        is_founder        = ${e.isFounder},
+        is_fractional     = ${e.isFractional},
+        avatar_color      = ${e.avatarColor},
+        edge_style        = ${e.edgeStyle},
+        "updatedAt"       = CURRENT_TIMESTAMP
+      WHERE id = ${e.id}
+    `
+    log(`Enriched ${e.contactName ?? e.label ?? e.id} → kind=${e.kind} flags=[${e.auditFlags.join(",")}] iv=${e.interviewStatus} fm=${e.formStatus}`)
+  }
+
   return { ownerNodeId: ownerNode.id, marcusId, priyaId, jordanId, alexId, samId }
 }
 
