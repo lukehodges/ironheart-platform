@@ -17,6 +17,7 @@ import type {
   setAuditWindowSchema,
   updateDiscoveryNotesSchema,
   listEngagementsByStageSchema,
+  listForPlatformSchema,
   createClientEngagementSchema,
 } from "./consulting.schemas";
 
@@ -80,6 +81,39 @@ export const consultingService = {
 
   async listAllEngagements(input: z.infer<typeof listEngagementsByStageSchema>) {
     return consultingRepository.listAllAcrossTenants(input.stage, input.limit);
+  },
+
+  /** Platform-facing list: engagements on the Ironheart tenant with customer data,
+   *  stage filter, and full-text search on title / customer name / company name. */
+  async listForPlatform(input: z.infer<typeof listForPlatformSchema>) {
+    const ironheartTenantId =
+      process.env.IRONHEART_TENANT_ID ??
+      (
+        await db
+          .select({ id: tenants.id })
+          .from(tenants)
+          .where(eq(tenants.slug, "ironheart"))
+          .limit(1)
+      )[0]?.id;
+
+    if (!ironheartTenantId) {
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Ironheart tenant not provisioned; set IRONHEART_TENANT_ID env var or create tenant with slug 'ironheart'",
+      });
+    }
+
+    const [list, stageCounts] = await Promise.all([
+      consultingRepository.listForPlatform({
+        tenantId: ironheartTenantId,
+        stage: input.stage,
+        search: input.search,
+        limit: input.limit,
+      }),
+      consultingRepository.countByStage(ironheartTenantId),
+    ]);
+
+    return { ...list, stageCounts };
   },
 
   async createClientEngagement(input: z.infer<typeof createClientEngagementSchema>) {

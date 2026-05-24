@@ -63,6 +63,16 @@ export const listEngagementsByStageSchema = z.object({
   cursor: z.string().optional(),
 });
 
+export const listForPlatformSchema = z.object({
+  stage: z.enum([
+    "DISCOVERY", "PROPOSAL", "CONTRACTED", "ONBOARDING",
+    "AUDITING", "REPORTING", "IMPLEMENTING", "RETAINER",
+    "CLOSED_WON", "CLOSED_LOST",
+  ]).optional(),
+  search: z.string().max(200).optional(),
+  limit: z.number().min(1).max(100).default(50),
+});
+
 export const createPlaneProjectSchema = z.object({
   engagementId: z.string(),
   auditSessionId: z.string(),

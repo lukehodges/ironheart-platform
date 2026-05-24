@@ -1,8 +1,8 @@
 import { db } from "@/shared/db";
 import { logger } from "@/shared/logger";
 import { NotFoundError } from "@/shared/errors";
-import { engagements } from "@/shared/db/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { engagements, customers } from "@/shared/db/schema";
+import { eq, and, desc, or, ilike } from "drizzle-orm";
 import type { EngagementStage, QualificationData } from "./consulting.types";
 
 const log = logger.child({ module: "consulting.repository" });
@@ -105,5 +105,65 @@ export const consultingRepository = {
     const hasMore = rows.length > limit;
     if (hasMore) rows.pop();
     return { rows, hasMore };
+  },
+
+  /** Platform list — engagements on Ironheart's own tenant, with customer join.
+   *  Used by /platform/clients to render the consultants-side clients list. */
+  async listForPlatform(opts: {
+    tenantId: string;
+    stage?: EngagementStage;
+    search?: string;
+    limit?: number;
+  }) {
+    const { tenantId, stage, search, limit = 50 } = opts;
+
+    const conditions = [eq(engagements.tenantId, tenantId)];
+    if (stage) conditions.push(eq(engagements.stage, stage));
+    if (search && search.trim()) {
+      const q = `%${search.trim()}%`;
+      conditions.push(
+        or(
+          ilike(engagements.title, q),
+          ilike(customers.firstName, q),
+          ilike(customers.lastName, q),
+          ilike(customers.notes, q), // notes holds companyName per tech-debt comment
+        )!
+      );
+    }
+
+    const rows = await db
+      .select({
+        engagement: engagements,
+        customer: {
+          id: customers.id,
+          firstName: customers.firstName,
+          lastName: customers.lastName,
+          email: customers.email,
+          phone: customers.phone,
+          notes: customers.notes,
+        },
+      })
+      .from(engagements)
+      .innerJoin(customers, eq(engagements.customerId, customers.id))
+      .where(and(...conditions))
+      .orderBy(desc(engagements.updatedAt))
+      .limit(limit + 1);
+
+    const hasMore = rows.length > limit;
+    if (hasMore) rows.pop();
+    return { rows, hasMore };
+  },
+
+  /** Count engagements per stage for segment rail badges. */
+  async countByStage(tenantId: string) {
+    const rows = await db
+      .select({ stage: engagements.stage })
+      .from(engagements)
+      .where(eq(engagements.tenantId, tenantId));
+    const counts: Record<string, number> = {};
+    for (const r of rows) {
+      if (r.stage) counts[r.stage] = (counts[r.stage] ?? 0) + 1;
+    }
+    return counts;
   },
 };

@@ -10,6 +10,7 @@ import {
   setAuditWindowSchema,
   updateDiscoveryNotesSchema,
   listEngagementsByStageSchema,
+  listForPlatformSchema,
   addTeamContactSchema,
   provisionClientTenantSchema,
   createPlaneProjectSchema,
@@ -41,6 +42,10 @@ export const consultingRouter = router({
   listAll: platformAdminProcedure
     .input(listEngagementsByStageSchema)
     .query(async ({ input }) => consultingService.listAllEngagements(input)),
+
+  listForPlatform: platformAdminProcedure
+    .input(listForPlatformSchema)
+    .query(async ({ input }) => consultingService.listForPlatform(input)),
 
   suggestAssignments: moduleProcedure
     .input(addTeamContactSchema)

@@ -1,11 +1,10 @@
-import { PlaceholderPage } from "@/components/platform/placeholder-page"
+import { Suspense } from "react"
+import { ClientsListView } from "@/components/platform-clients/clients-list-view"
 
-export default function ClientsPage() {
+export default function PlatformClientsPage() {
   return (
-    <PlaceholderPage
-      section="Platform / Clients"
-      title="Clients"
-      subtitle="All client engagements across stages."
-    />
+    <Suspense fallback={<div className="p-8" style={{ color: "var(--ih-ink-50)", fontSize: 13 }}>Loading…</div>}>
+      <ClientsListView />
+    </Suspense>
   )
 }
