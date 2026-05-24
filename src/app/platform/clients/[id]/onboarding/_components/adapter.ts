@@ -56,7 +56,10 @@ const INTERVIEW_DEMO_TO_BACKEND: Partial<Record<DemoInterviewStatus, NodeIntervi
 
 const FORM_BACKEND_TO_DEMO: Record<NodeFormStatus, DemoFormStatus> = {
   NONE: "NOT_SENT",
-  PENDING: "NOT_SENT",
+  // PENDING is a queued send (not yet dispatched). Surface as OPENED so the
+  // FORM_STATUS overlay paints amber/warn rather than collapsing into the
+  // grey NOT_SENT bucket — matches the spec colour key.
+  PENDING: "OPENED",
   SENT: "SENT",
   IN_PROGRESS: "IN_PROGRESS",
   COMPLETED: "COMPLETED",
