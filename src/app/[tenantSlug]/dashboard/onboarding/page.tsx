@@ -4,7 +4,7 @@ import { tenants } from "@/shared/db/schemas/tenant.schema"
 import { customers } from "@/shared/db/schemas/customer.schema"
 import { eq } from "drizzle-orm"
 import { notFound } from "next/navigation"
-import { ClientOnboardingShell } from "@/components/onboarding/client-onboarding-shell"
+import { PortalShell } from "./_components/portal-shell"
 
 export default async function ClientOnboardingPage({ params }: { params: Promise<{ tenantSlug: string }> }) {
   const { tenantSlug } = await params
@@ -12,16 +12,15 @@ export default async function ClientOnboardingPage({ params }: { params: Promise
   const tenant = await db.query.tenants.findFirst({ where: eq(tenants.slug, tenantSlug) })
   if (!tenant) notFound()
 
-  // Find the engagement linked to this tenant (1:1 in 0.1)
   const engagement = await db.query.engagements.findFirst({
     where: eq(engagements.clientTenantId, tenant.id),
   })
   if (!engagement) {
     return (
-      <div className="p-8 max-w-2xl">
-        <h1 className="font-serif text-2xl mb-2">No engagement found</h1>
-        <p className="text-sm text-muted-foreground">
-          Your consultant hasn't set up an engagement yet. Check back later or contact your consultant.
+      <div style={{ padding: 32, maxWidth: 640 }}>
+        <h1 className="ih-serif" style={{ fontSize: 24, color: "var(--ih-ink)", margin: 0 }}>No engagement found</h1>
+        <p style={{ fontSize: 13, color: "var(--ih-ink-50)", marginTop: 8 }}>
+          Your consultant hasn&apos;t set up an engagement yet. Check back later or contact your consultant.
         </p>
       </div>
     )
@@ -34,11 +33,12 @@ export default async function ClientOnboardingPage({ params }: { params: Promise
   const companyLabel = (customer?.notes ?? nameFromCustomer) || tenant.name
 
   return (
-    <ClientOnboardingShell
+    <PortalShell
       engagementId={engagement.id}
       engagementTitle={engagement.title}
       companyLabel={companyLabel}
       tenantSlug={tenantSlug}
+      stage={engagement.stage}
     />
   )
 }
