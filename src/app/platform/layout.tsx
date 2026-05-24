@@ -3,22 +3,19 @@ import { withAuth } from "@workos-inc/authkit-nextjs"
 import { db } from "@/shared/db"
 import { users } from "@/shared/db/schemas/auth.schema"
 import { eq } from "drizzle-orm"
-import { PlatformSidebar } from "@/components/platform/platform-sidebar"
-import { PlatformTopbar } from "@/components/platform/platform-topbar"
+import { PlatformShellClient } from "./platform-shell-client"
 
 export default async function PlatformLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  // Require auth
   const { user: workosUser } = await withAuth({ ensureSignedIn: true })
 
   if (!workosUser) {
     redirect("/sign-in")
   }
 
-  // Load user from DB and check isPlatformAdmin flag
   let isPlatformAdmin = false
 
   try {
@@ -34,13 +31,11 @@ export default async function PlatformLayout({
     const dbUser = result[0]
 
     if (!dbUser || !dbUser.isPlatformAdmin) {
-      // Not a platform admin - redirect to tenant admin
       redirect("/admin")
     }
 
     isPlatformAdmin = true
   } catch {
-    // DB error - deny access
     redirect("/admin")
   }
 
@@ -48,21 +43,22 @@ export default async function PlatformLayout({
     ? `${workosUser.firstName} ${workosUser.lastName ?? ""}`.trim()
     : workosUser.email
 
-  const userForDisplay = {
+  const initials = workosUser.firstName
+    ? `${workosUser.firstName[0]}${workosUser.lastName?.[0] ?? ""}`.toUpperCase()
+    : (workosUser.email?.[0] ?? "U").toUpperCase()
+
+  const userForShell = {
     name: displayName,
     email: workosUser.email,
-    imageUrl: workosUser.profilePictureUrl ?? null,
+    initials,
+    role: isPlatformAdmin ? "platform admin" : "member",
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
-      <PlatformSidebar user={userForDisplay} />
-      <div className="flex flex-1 flex-col min-w-0 overflow-hidden">
-        <PlatformTopbar user={userForDisplay} />
-        <main className="flex-1 overflow-y-auto" id="platform-content">
-          {children}
-        </main>
-      </div>
+    <div className="h-screen overflow-hidden">
+      <PlatformShellClient user={userForShell}>
+        {children}
+      </PlatformShellClient>
     </div>
   )
 }

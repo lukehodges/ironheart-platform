@@ -2,9 +2,8 @@
 
 import { useState } from "react"
 import { api } from "@/lib/trpc/react"
-import { ChartTree } from "./chart-tree"
+import { ChartGraph } from "./chart-graph"
 import { NodeInspector } from "./node-inspector"
-import { ActivityFeed } from "./activity-feed"
 import { PlanPreviewModal } from "./plan-preview-modal"
 import type { OrgChartTree } from "@/modules/onboarding/onboarding.types"
 
@@ -64,7 +63,7 @@ export function ChartEditor({
   const selectedNode = selectedNodeId ? findNodeInTree(tree, selectedNodeId) : null
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "var(--ih-bg)" }}>
+    <div style={{ display: "flex", flexDirection: "column", height: "calc(100vh - 140px)", minHeight: 560, background: "var(--ih-bg)" }}>
       {/* Header */}
       <div
         style={{
@@ -128,67 +127,59 @@ export function ChartEditor({
         </div>
       </div>
 
-      {/* Three-column layout */}
-      <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
-        {/* Tree (40%) */}
-        <div
-          style={{
-            flexBasis: "40%",
-            borderRight: "1px solid var(--ih-line)",
-            overflowY: "auto",
-            padding: 24,
-            minWidth: 0,
-          }}
-        >
-          {isEmpty ? (
-            <div style={{ textAlign: "center", color: "var(--ih-ink-50)", padding: "48px 0" }}>
-              <p style={{ fontSize: 13 }}>No chart yet.</p>
-              {mode === "consultant" && !clientTenantProvisioned && (
-                <p style={{ fontSize: 11, marginTop: 8 }}>
-                  Engagement must be at CONTRACTED stage with provisioned tenant before seeding.
-                </p>
-              )}
-              {mode === "consultant" && clientTenantProvisioned && (
-                <p style={{ fontSize: 11, marginTop: 8 }}>Click "Seed from tier" to generate a starting chart.</p>
-              )}
-            </div>
-          ) : (
-            <ChartTree
-              tree={tree}
-              mode={mode}
-              engagementId={engagementId}
-              selectedNodeId={selectedNodeId}
-              onSelectNode={setSelectedNodeId}
-            />
-          )}
-        </div>
+      {/* Full-bleed graph with slide-in inspector drawer */}
+      <div style={{ position: "relative", flex: 1, overflow: "hidden" }}>
+        {isEmpty ? (
+          <div style={{ textAlign: "center", color: "var(--ih-ink-50)", padding: "48px 24px" }}>
+            <p style={{ fontSize: 13 }}>No chart yet.</p>
+            {mode === "consultant" && !clientTenantProvisioned && (
+              <p style={{ fontSize: 11, marginTop: 8 }}>
+                Engagement must be at CONTRACTED stage with provisioned tenant before seeding.
+              </p>
+            )}
+            {mode === "consultant" && clientTenantProvisioned && (
+              <p style={{ fontSize: 11, marginTop: 8 }}>Click "Seed from tier" to generate a starting chart.</p>
+            )}
+          </div>
+        ) : (
+          <ChartGraph
+            tree={tree}
+            engagementId={engagementId}
+            mode={mode}
+            selectedNodeId={selectedNodeId}
+            onSelectNode={setSelectedNodeId}
+            editable={mode === "consultant"}
+          />
+        )}
 
-        {/* Inspector (40%) */}
-        <div
+        {/* Inspector — slides in from right when a node is selected */}
+        <aside
+          aria-hidden={!selectedNode}
           style={{
-            flexBasis: "40%",
-            borderRight: "1px solid var(--ih-line)",
+            position: "absolute",
+            top: 0,
+            right: 0,
+            bottom: 0,
+            width: 380,
+            maxWidth: "90%",
+            background: "var(--ih-surface)",
+            borderLeft: "1px solid var(--ih-line)",
+            boxShadow: selectedNode ? "-12px 0 32px -16px rgba(0,0,0,0.18)" : "none",
+            transform: selectedNode ? "translateX(0)" : "translateX(100%)",
+            transition: "transform 0.22s ease, box-shadow 0.22s ease",
             overflowY: "auto",
-            padding: 24,
-            minWidth: 0,
+            zIndex: 5,
           }}
         >
-          {selectedNode ? (
+          {selectedNode && (
             <NodeInspector
               node={selectedNode}
               mode={mode}
               engagementId={engagementId}
               onClearSelection={() => setSelectedNodeId(null)}
             />
-          ) : (
-            <div style={{ fontSize: 13, color: "var(--ih-ink-50)" }}>Select a node to edit.</div>
           )}
-        </div>
-
-        {/* Activity feed (20%) */}
-        <div style={{ flexBasis: "20%", overflowY: "auto", padding: 16 }}>
-          <ActivityFeed mode={mode} engagementId={engagementId} />
-        </div>
+        </aside>
       </div>
 
       {planModalOpen && (

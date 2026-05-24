@@ -322,12 +322,96 @@
     pointer-events: none;
     z-index: 0;
   }
+
+  /* Dice / roll area */
+  .dice-area {
+    max-width: 1400px;
+    margin: 0 auto 30px;
+    padding: 0 40px;
+    text-align: center;
+    position: relative;
+    z-index: 1;
+  }
+  .roll-btn {
+    font-family: 'Caveat', cursive;
+    font-size: 1.5rem;
+    font-weight: 700;
+    background: #f5f0e8;
+    border: 2px dashed #7a5c47;
+    color: #5c4033;
+    padding: 12px 36px;
+    cursor: pointer;
+    border-radius: 30px;
+    transform: rotate(-1deg);
+    transition: transform 0.2s ease, background 0.2s;
+    letter-spacing: 0.5px;
+  }
+  .roll-btn:hover {
+    background: #fff8eb;
+    transform: rotate(0deg) scale(1.05);
+  }
+  .roll-btn:active {
+    transform: rotate(1deg) scale(0.97);
+  }
+  .roll-output {
+    margin-top: 26px;
+    min-height: 0;
+  }
+  .roll-output:empty { display: none; }
+  .roll-card {
+    background: rgba(255,248,235,0.75);
+    border: 1.5px dashed #c8b8a4;
+    border-radius: 14px;
+    padding: 22px 28px;
+    display: inline-block;
+    max-width: 90%;
+    transform: rotate(-0.4deg);
+    animation: pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  @keyframes pop {
+    0% { transform: rotate(-0.4deg) scale(0.92); opacity: 0; }
+    100% { transform: rotate(-0.4deg) scale(1); opacity: 1; }
+  }
+  .roll-card .example-row { justify-content: center; margin-bottom: 4px; }
+  .rolled-sentence {
+    font-family: 'Caveat', cursive;
+    font-weight: 700;
+    font-size: 1.85rem;
+    color: #4a3f35;
+    margin-top: 16px;
+    line-height: 1.25;
+  }
+  .rolled-en {
+    font-family: 'Caveat', cursive;
+    font-size: 1.05rem;
+    color: #8a7e70;
+    font-style: italic;
+    margin-top: 6px;
+  }
+  .speak-btn {
+    margin-top: 10px;
+    background: transparent;
+    border: 1.5px solid #c8b8a4;
+    color: #7a5c47;
+    font-family: 'Caveat', cursive;
+    font-size: 1.15rem;
+    padding: 4px 16px;
+    border-radius: 18px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .speak-btn:hover { background: rgba(200,184,164,0.2); }
 </style>
 </head>
 <body>
 
 <h1 class="page-title"><span>Frammenti da Costruire</span></h1>
 <p class="subtitle">~ snap pieces together to build sentences ~</p>
+
+<div class="dice-area">
+  <button id="rollBtn" class="roll-btn">&#x1F3B2; Tira i frammenti</button>
+  <div id="rollOutput" class="roll-output"></div>
+</div>
 
 <div class="canvas">
   <div class="grid">
@@ -350,6 +434,23 @@
         <div class="frag"><span class="it">Non posso<span class="ellipsis">...</span></span><span class="en">I can't...</span></div>
         <div class="frag"><span class="it">So che<span class="ellipsis">...</span></span><span class="en">I know that...</span></div>
         <div class="frag"><span class="it">Preferisco<span class="ellipsis">...</span></span><span class="en">I prefer...</span></div>
+        <div class="frag"><span class="it">Il punto &egrave; che<span class="ellipsis">...</span></span><span class="en">The point is...</span></div>
+        <div class="frag"><span class="it">Quello che voglio dire &egrave;<span class="ellipsis">...</span></span><span class="en">What I want to say is...</span></div>
+        <div class="frag"><span class="it">Non &egrave; che<span class="ellipsis">...</span></span><span class="en">It's not that...</span></div>
+        <div class="frag"><span class="it">Sono<span class="ellipsis">...</span></span><span class="en">I am...</span></div>
+        <div class="frag"><span class="it">Ho<span class="ellipsis">...</span></span><span class="en">I have...</span></div>
+        <div class="frag"><span class="it">Faccio<span class="ellipsis">...</span></span><span class="en">I do / make...</span></div>
+        <div class="frag"><span class="it">Vado<span class="ellipsis">...</span></span><span class="en">I go...</span></div>
+        <div class="frag"><span class="it">Vengo<span class="ellipsis">...</span></span><span class="en">I come...</span></div>
+        <div class="frag"><span class="it">Spero che<span class="ellipsis">...</span></span><span class="en">I hope that...</span></div>
+        <div class="frag"><span class="it">Ho paura che<span class="ellipsis">...</span></span><span class="en">I'm afraid that...</span></div>
+        <div class="frag"><span class="it">Mi piacerebbe<span class="ellipsis">...</span></span><span class="en">I'd like to...</span></div>
+        <div class="frag"><span class="it">Non ho voglia di<span class="ellipsis">...</span></span><span class="en">I don't feel like...</span></div>
+        <div class="frag"><span class="it">Sto per<span class="ellipsis">...</span></span><span class="en">I'm about to...</span></div>
+        <div class="frag"><span class="it">&Egrave; meglio se<span class="ellipsis">...</span></span><span class="en">Better if...</span></div>
+        <div class="frag"><span class="it">Bisogna<span class="ellipsis">...</span></span><span class="en">One needs to...</span></div>
+        <div class="frag"><span class="it">Mi serve<span class="ellipsis">...</span></span><span class="en">I need (it)...</span></div>
+        <div class="frag"><span class="it">Mi viene da<span class="ellipsis">...</span></span><span class="en">I feel like...</span></div>
       </div>
     </div>
 
@@ -369,6 +470,23 @@
         <div class="frag"><span class="it"><span class="ellipsis">...</span>dire qualcosa</span><span class="en">...to say something</span></div>
         <div class="frag"><span class="it"><span class="ellipsis">...</span>capire questo</span><span class="en">...to understand this</span></div>
         <div class="frag"><span class="it"><span class="ellipsis">...</span>tornare a casa</span><span class="en">...to go back home</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>bere qualcosa</span><span class="en">...to drink something</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>uscire stasera</span><span class="en">...to go out tonight</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>restare un po'</span><span class="en">...to stay a bit</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>partire domani</span><span class="en">...to leave tomorrow</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>chiamare qualcuno</span><span class="en">...to call someone</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>scrivere a<span class="ellipsis">...</span></span><span class="en">...to write to...</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>aspettare un attimo</span><span class="en">...to wait a moment</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>dormire</span><span class="en">...to sleep</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>studiare l'italiano</span><span class="en">...to study Italian</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>imparare a<span class="ellipsis">...</span></span><span class="en">...to learn to...</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>provare a<span class="ellipsis">...</span></span><span class="en">...to try to...</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>finire questo</span><span class="en">...to finish this</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>iniziare<span class="ellipsis">...</span></span><span class="en">...to start...</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>pagare il conto</span><span class="en">...to pay the bill</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>prenotare un tavolo</span><span class="en">...to book a table</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>cucinare qualcosa</span><span class="en">...to cook something</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>ascoltare</span><span class="en">...to listen</span></div>
       </div>
     </div>
 
@@ -387,6 +505,21 @@
         <div class="frag"><span class="it"><span class="ellipsis">...</span>prima di<span class="ellipsis">...</span></span><span class="en">...before...</span></div>
         <div class="frag"><span class="it"><span class="ellipsis">...</span>dopo<span class="ellipsis">...</span></span><span class="en">...after...</span></div>
         <div class="frag"><span class="it"><span class="ellipsis">...</span>senza<span class="ellipsis">...</span></span><span class="en">...without...</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>cio&egrave;<span class="ellipsis">...</span></span><span class="en">...I mean...</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>allora<span class="ellipsis">...</span></span><span class="en">...so / well...</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>quindi<span class="ellipsis">...</span></span><span class="en">...therefore / so...</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>mentre<span class="ellipsis">...</span></span><span class="en">...while...</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>finch&eacute;<span class="ellipsis">...</span></span><span class="en">...until...</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>siccome<span class="ellipsis">...</span></span><span class="en">...since (because)...</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>oppure<span class="ellipsis">...</span></span><span class="en">...or else...</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>altrimenti<span class="ellipsis">...</span></span><span class="en">...otherwise...</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>soprattutto<span class="ellipsis">...</span></span><span class="en">...above all...</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>comunque<span class="ellipsis">...</span></span><span class="en">...anyway...</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>invece<span class="ellipsis">...</span></span><span class="en">...instead...</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>inoltre<span class="ellipsis">...</span></span><span class="en">...moreover...</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>forse<span class="ellipsis">...</span></span><span class="en">...perhaps...</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>almeno<span class="ellipsis">...</span></span><span class="en">...at least...</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>davvero<span class="ellipsis">...</span></span><span class="en">...really...</span></div>
       </div>
     </div>
 
@@ -406,6 +539,24 @@
         <div class="frag"><span class="it"><span class="ellipsis">...</span>in citt&agrave;</span><span class="en">...in the city</span></div>
         <div class="frag"><span class="it"><span class="ellipsis">...</span>stamattina</span><span class="en">...this morning</span></div>
         <div class="frag"><span class="it"><span class="ellipsis">...</span>ogni giorno</span><span class="en">...every day</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>ieri</span><span class="en">...yesterday</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>dopodomani</span><span class="en">...day after tomorrow</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>presto</span><span class="en">...early / soon</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>tardi</span><span class="en">...late</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>subito</span><span class="en">...right away</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>mai</span><span class="en">...never</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>sempre</span><span class="en">...always</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>spesso</span><span class="en">...often</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>a volte</span><span class="en">...sometimes</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>di solito</span><span class="en">...usually</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>al bar</span><span class="en">...at the bar</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>in piazza</span><span class="en">...in the square</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>in giro</span><span class="en">...out and about</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>al mercato</span><span class="en">...at the market</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>in spiaggia</span><span class="en">...at the beach</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>in montagna</span><span class="en">...in the mountains</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>fuori</span><span class="en">...outside</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>dentro</span><span class="en">...inside</span></div>
       </div>
     </div>
 
@@ -423,6 +574,25 @@
         <div class="frag"><span class="it">C'&egrave;<span class="ellipsis">...?</span></span><span class="en">Is there...?</span></div>
         <div class="frag"><span class="it">&Egrave; possibile<span class="ellipsis">...?</span></span><span class="en">Is it possible...?</span></div>
         <div class="frag"><span class="it">Mi pu&ograve; aiutare con<span class="ellipsis">...?</span></span><span class="en">Can you help me with...?</span></div>
+        <div class="frag"><span class="it">In che senso?</span><span class="en">In what sense?</span></div>
+        <div class="frag"><span class="it">E tu?</span><span class="en">And you?</span></div>
+        <div class="frag"><span class="it">Mi sono spiegato?</span><span class="en">Did I make sense?</span></div>
+        <div class="frag"><span class="it">Quindi vuoi dire che<span class="ellipsis">...?</span></span><span class="en">So you mean...?</span></div>
+        <div class="frag"><span class="it">Come stai?</span><span class="en">How are you?</span></div>
+        <div class="frag"><span class="it">Come va?</span><span class="en">How's it going?</span></div>
+        <div class="frag"><span class="it">Cosa fai?</span><span class="en">What are you doing?</span></div>
+        <div class="frag"><span class="it">A che ora<span class="ellipsis">...?</span></span><span class="en">At what time...?</span></div>
+        <div class="frag"><span class="it">Quanto tempo<span class="ellipsis">...?</span></span><span class="en">How long...?</span></div>
+        <div class="frag"><span class="it">Mi puoi dire<span class="ellipsis">...?</span></span><span class="en">Can you tell me...?</span></div>
+        <div class="frag"><span class="it">Posso chiederti<span class="ellipsis">...?</span></span><span class="en">Can I ask you...?</span></div>
+        <div class="frag"><span class="it">Sei sicuro?</span><span class="en">Are you sure?</span></div>
+        <div class="frag"><span class="it">Sul serio?</span><span class="en">Seriously?</span></div>
+        <div class="frag"><span class="it">Come mai?</span><span class="en">How come?</span></div>
+        <div class="frag"><span class="it">Hai mai<span class="ellipsis">...?</span></span><span class="en">Have you ever...?</span></div>
+        <div class="frag"><span class="it">Che ne pensi?</span><span class="en">What do you think of it?</span></div>
+        <div class="frag"><span class="it">Tu cosa faresti?</span><span class="en">What would you do?</span></div>
+        <div class="frag"><span class="it">Mi spieghi<span class="ellipsis">...?</span></span><span class="en">Explain to me...?</span></div>
+        <div class="frag"><span class="it">Da quanto<span class="ellipsis">...?</span></span><span class="en">Since when...?</span></div>
       </div>
     </div>
 
@@ -442,6 +612,29 @@
         <div class="frag"><span class="it">Hai ragione</span><span class="en">You're right</span></div>
         <div class="frag"><span class="it">Non lo so</span><span class="en">I don't know</span></div>
         <div class="frag"><span class="it">Mi sembra<span class="ellipsis">...</span></span><span class="en">It seems to me...</span></div>
+        <div class="frag"><span class="it">Davvero</span><span class="en">Really</span></div>
+        <div class="frag"><span class="it">Ecco</span><span class="en">There / Right / So</span></div>
+        <div class="frag"><span class="it">Capisco</span><span class="en">I understand</span></div>
+        <div class="frag"><span class="it">Esatto</span><span class="en">Exactly</span></div>
+        <div class="frag"><span class="it">Boh</span><span class="en">Dunno (shrug)</span></div>
+        <div class="frag"><span class="it">Magari s&igrave;</span><span class="en">Maybe yes</span></div>
+        <div class="frag"><span class="it">Cazzo</span><span class="en">Fuck (vulgar but everyday)</span></div>
+        <div class="frag"><span class="it">Per me<span class="ellipsis">...</span></span><span class="en">For me...</span></div>
+        <div class="frag"><span class="it">A me sembra<span class="ellipsis">...</span></span><span class="en">To me it seems...</span></div>
+        <div class="frag"><span class="it">In effetti</span><span class="en">In fact</span></div>
+        <div class="frag"><span class="it">A dire il vero<span class="ellipsis">...</span></span><span class="en">To tell the truth...</span></div>
+        <div class="frag"><span class="it">Penso di s&igrave;</span><span class="en">I think so</span></div>
+        <div class="frag"><span class="it">Credo di no</span><span class="en">I don't think so</span></div>
+        <div class="frag"><span class="it">Volentieri</span><span class="en">Gladly</span></div>
+        <div class="frag"><span class="it">Assolutamente</span><span class="en">Absolutely</span></div>
+        <div class="frag"><span class="it">Per niente</span><span class="en">Not at all</span></div>
+        <div class="frag"><span class="it">Dai!</span><span class="en">Come on!</span></div>
+        <div class="frag"><span class="it">Beh<span class="ellipsis">...</span></span><span class="en">Well...</span></div>
+        <div class="frag"><span class="it">Mannaggia</span><span class="en">Damn</span></div>
+        <div class="frag"><span class="it">Macch&eacute;</span><span class="en">No way / nope</span></div>
+        <div class="frag"><span class="it">Tranquillo</span><span class="en">Don't worry / it's cool</span></div>
+        <div class="frag"><span class="it">Figurati</span><span class="en">Don't mention it / no worries</span></div>
+        <div class="frag"><span class="it">Vediamo<span class="ellipsis">...</span></span><span class="en">Let's see...</span></div>
       </div>
     </div>
 
@@ -459,6 +652,22 @@
         <div class="frag"><span class="it"><span class="ellipsis">...</span>non funziona</span><span class="en">...doesn't work</span></div>
         <div class="frag"><span class="it"><span class="ellipsis">...</span>mi piace molto</span><span class="en">...I like it a lot</span></div>
         <div class="frag"><span class="it"><span class="ellipsis">...</span>&egrave; la stessa cosa</span><span class="en">...it's the same thing</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>dipende da te</span><span class="en">...depends on you</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>mi fa bene</span><span class="en">...does me good</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>non basta</span><span class="en">...isn't enough</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>mi manca</span><span class="en">...I miss it</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>mi serve</span><span class="en">...I need it</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>non c'&egrave; pi&ugrave;</span><span class="en">...there's no more</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>va bene cos&igrave;</span><span class="en">...that's fine like this</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>sembra strano</span><span class="en">...seems strange</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>&egrave; bellissimo</span><span class="en">...is beautiful</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>vale la pena</span><span class="en">...is worth it</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>non ha senso</span><span class="en">...doesn't make sense</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>ha senso</span><span class="en">...makes sense</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>sono d'accordo</span><span class="en">...I agree</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>non scherzo</span><span class="en">...I'm not kidding</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>mi piacerebbe</span><span class="en">...I'd like that</span></div>
+        <div class="frag"><span class="it"><span class="ellipsis">...</span>fa schifo</span><span class="en">...is awful / sucks</span></div>
       </div>
     </div>
 
@@ -525,6 +734,89 @@
       <span class="result">&rarr; Vorrei dire qualcosa ma non so se &egrave; possibile</span>
     </div>
 
+    <div class="example-row">
+      <span class="piece piece--starter">Il punto &egrave; che</span>
+      <span class="plus">+</span>
+      <span class="piece piece--ending">non funziona</span>
+      <span class="plus">+</span>
+      <span class="piece piece--time">adesso</span>
+      <span class="plus">+</span>
+      <span class="piece piece--bridge">per&ograve;</span>
+      <span class="plus">+</span>
+      <span class="piece piece--ending">&egrave; possibile</span>
+      <span class="result">&rarr; Il punto &egrave; che non funziona adesso, per&ograve; &egrave; possibile</span>
+    </div>
+
+    <div class="example-row">
+      <span class="piece piece--question">Quindi vuoi dire che</span>
+      <span class="plus">+</span>
+      <span class="piece piece--ending">non &egrave; la stessa cosa</span>
+      <span class="plus">+</span>
+      <span class="piece piece--time">in Italia</span>
+      <span class="result">&rarr; Quindi vuoi dire che non &egrave; la stessa cosa in Italia?</span>
+    </div>
+
+    <div class="example-row">
+      <span class="piece piece--starter">Non &egrave; che</span>
+      <span class="plus">+</span>
+      <span class="piece piece--starter">non posso</span>
+      <span class="plus">+</span>
+      <span class="piece piece--bridge">cio&egrave;</span>
+      <span class="plus">+</span>
+      <span class="piece piece--starter">non voglio</span>
+      <span class="result">&rarr; Non &egrave; che non posso, cio&egrave; non voglio</span>
+    </div>
+
+    <div class="example-row">
+      <span class="piece piece--starter">Mi piacerebbe</span>
+      <span class="plus">+</span>
+      <span class="piece piece--action">prendere un caff&egrave;</span>
+      <span class="plus">+</span>
+      <span class="piece piece--time">al bar</span>
+      <span class="plus">+</span>
+      <span class="piece piece--bridge">prima di</span>
+      <span class="plus">+</span>
+      <span class="piece piece--action">tornare a casa</span>
+      <span class="result">&rarr; Mi piacerebbe prendere un caff&egrave; al bar prima di tornare a casa</span>
+    </div>
+
+    <div class="example-row">
+      <span class="piece piece--starter">Sto per</span>
+      <span class="plus">+</span>
+      <span class="piece piece--action">partire domani</span>
+      <span class="plus">+</span>
+      <span class="piece piece--bridge">per&ograve;</span>
+      <span class="plus">+</span>
+      <span class="piece piece--ending">non basta</span>
+      <span class="plus">+</span>
+      <span class="piece piece--time">il tempo</span>
+      <span class="result">&rarr; Sto per partire domani, per&ograve; non basta il tempo</span>
+    </div>
+
+    <div class="example-row">
+      <span class="piece piece--starter">Bisogna</span>
+      <span class="plus">+</span>
+      <span class="piece piece--action">imparare a</span>
+      <span class="plus">+</span>
+      <span class="piece piece--action">aspettare un attimo</span>
+      <span class="plus">+</span>
+      <span class="piece piece--bridge">prima di</span>
+      <span class="plus">+</span>
+      <span class="piece piece--action">dire qualcosa</span>
+      <span class="result">&rarr; Bisogna imparare ad aspettare un attimo prima di dire qualcosa</span>
+    </div>
+
+    <div class="example-row">
+      <span class="piece piece--question">Hai mai</span>
+      <span class="plus">+</span>
+      <span class="piece piece--action">provare a</span>
+      <span class="plus">+</span>
+      <span class="piece piece--action">cucinare qualcosa</span>
+      <span class="plus">+</span>
+      <span class="piece piece--time">in spiaggia</span>
+      <span class="result">&rarr; Hai mai provato a cucinare qualcosa in spiaggia?</span>
+    </div>
+
   </div>
 
   <!-- Margin notes -->
@@ -534,6 +826,97 @@
   <span class="margin-note" style="bottom: 120px; left: 100px; transform: rotate(4deg);">mix &amp; match freely</span>
 
 </div>
+
+<script>
+(function() {
+  const sel = c => Array.from(document.querySelectorAll(`.cluster--${c} .frag`));
+  const clusters = {
+    starters: sel('starters'),
+    actions: sel('actions'),
+    bridges: sel('bridges'),
+    time: sel('time'),
+    questions: sel('questions'),
+    expressions: sel('expressions'),
+    endings: sel('endings'),
+  };
+
+  const pieceClass = {
+    starters: 'starter', actions: 'action', bridges: 'bridge',
+    time: 'time', questions: 'question', expressions: 'starter', endings: 'ending'
+  };
+
+  function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+  function cleanIt(frag) {
+    const it = frag.querySelector('.it').cloneNode(true);
+    it.querySelectorAll('.ellipsis').forEach(e => e.remove());
+    return it.textContent.trim();
+  }
+  function getEn(frag) {
+    return frag.querySelector('.en').textContent.replace(/\.\.\./g, '').trim();
+  }
+
+  // Pattern shapes — biased toward 3-5 piece combos that read like real sentences
+  const patterns = [
+    ['starters', 'actions'],
+    ['starters', 'actions', 'time'],
+    ['starters', 'actions', 'bridges', 'endings'],
+    ['starters', 'actions', 'bridges', 'time'],
+    ['questions', 'actions'],
+    ['questions', 'actions', 'time'],
+    ['expressions', 'starters', 'actions'],
+    ['starters', 'bridges', 'endings'],
+    ['expressions', 'starters', 'actions', 'time'],
+    ['starters', 'actions', 'bridges', 'actions'],
+  ];
+
+  function roll() {
+    const pat = pick(patterns);
+    const chosen = pat.map(p => ({ type: p, frag: pick(clusters[p]), text: cleanIt(pick(clusters[p])) }));
+    // re-pick text from the actual frag (the line above re-picked inadvertently)
+    chosen.forEach(c => c.text = cleanIt(c.frag));
+
+    const pills = chosen.map(c =>
+      `<span class="piece piece--${pieceClass[c.type]}">${c.text}</span>`
+    ).join('<span class="plus">+</span>');
+
+    const sentence = chosen.map(c => c.text).join(' ').replace(/\s+([?!.,])/g, '$1');
+    const gloss = chosen.map(c => getEn(c.frag)).join(' / ');
+
+    document.getElementById('rollOutput').innerHTML = `
+      <div class="roll-card">
+        <div class="example-row">${pills}</div>
+        <div class="rolled-sentence">&rarr; ${sentence}</div>
+        <div class="rolled-en">${gloss}</div>
+        <button class="speak-btn" id="speakBtn">&#x1F50A; ascolta</button>
+      </div>
+    `;
+
+    const speakBtn = document.getElementById('speakBtn');
+    if (speakBtn && 'speechSynthesis' in window) {
+      speakBtn.addEventListener('click', () => {
+        speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance(sentence);
+        u.lang = 'it-IT';
+        u.rate = 0.9;
+        speechSynthesis.speak(u);
+      });
+    } else if (speakBtn) {
+      speakBtn.style.display = 'none';
+    }
+  }
+
+  document.getElementById('rollBtn').addEventListener('click', roll);
+
+  // Keyboard: spacebar rolls
+  document.addEventListener('keydown', e => {
+    if (e.code === 'Space' && e.target.tagName !== 'INPUT' && e.target.tagName !== 'BUTTON') {
+      e.preventDefault();
+      roll();
+    }
+  });
+})();
+</script>
 
 <!-- Background doodle curves -->
 <svg class="bg-doodles" xmlns="http://www.w3.org/2000/svg">

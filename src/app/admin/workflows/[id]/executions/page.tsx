@@ -1,246 +1,293 @@
 "use client"
 
+/* Full execution history for a workflow. */
+
+import { useState, useMemo, use as usePromise } from "react"
 import Link from "next/link"
+import { notFound } from "next/navigation"
 import { Icon } from "@/components/shell"
-import { useState } from "react"
+import { NotificationToast } from "@/components/shared"
+import {
+  mockWorkflows,
+  NODE_ICON,
+  type Execution,
+  type ExecutionStatus,
+} from "@/lib/mock/workflows"
 
-/* ── Demo Data ─────────────────────────────────────────────────────────── */
+const FILTERS: Array<"All" | "Queued" | "Running" | "Paused" | "Completed" | "Failed"> = ["All", "Queued", "Running", "Paused", "Completed", "Failed"]
 
-type ExecStatus = "completed" | "running" | "failed"
-type StepStatus = "ok" | "running" | "fail" | "skipped"
-
-type Execution = {
-  id: string; trigger: string; started: string; duration: string;
-  status: ExecStatus; steps: number; stepsOk: number;
-  trace: { node: string; kind: string; status: StepStatus; duration: string; detail: string }[];
+function fmtDuration(ms: number): string {
+  if (!ms) return "—"
+  if (ms < 1000) return `${ms}ms`
+  if (ms < 60_000) return `${(ms / 1000).toFixed(2)}s`
+  return `${Math.floor(ms / 60_000)}m ${Math.floor((ms % 60_000) / 1000)}s`
 }
 
-const STATUS_TONE: Record<ExecStatus, string> = { completed: "ok", running: "accent", failed: "danger" }
-const STEP_TONE: Record<StepStatus, string> = { ok: "ok", running: "accent", fail: "danger", skipped: "muted" }
+const STATUS_TONE: Record<ExecutionStatus, "ok" | "danger" | "accent" | "warn" | "muted"> = {
+  completed: "ok", failed: "danger", running: "accent", paused: "warn", queued: "muted",
+}
 
-const EXECUTIONS: Execution[] = [
-  {
-    id: "run_2041", trigger: "booking/created", started: "Today 10:14 AM", duration: "1.24s", status: "completed", steps: 5, stepsOk: 5,
-    trace: [
-      { node: "New booking", kind: "TRIGGER", status: "ok", duration: "2ms", detail: "booking_id=bk-9281" },
-      { node: "Send welcome email", kind: "SEND_EMAIL", status: "ok", duration: "312ms", detail: "to: sarah@northwind.io" },
-      { node: "Wait 24 hours", kind: "WAIT", status: "ok", duration: "24h", detail: "resumed at 11:14 AM" },
-      { node: "Plan tier?", kind: "IF", status: "ok", duration: "4ms", detail: "plan=pro \u2192 true branch" },
-      { node: "Draft onboarding", kind: "AI_ACTION", status: "ok", duration: "908ms", detail: "claude-3.5 \u00b7 tone:warm \u00b7 342 tokens" },
-    ],
-  },
-  {
-    id: "run_2040", trigger: "booking/created", started: "Today 08:42 AM", duration: "0.89s", status: "completed", steps: 5, stepsOk: 5,
-    trace: [
-      { node: "New booking", kind: "TRIGGER", status: "ok", duration: "1ms", detail: "booking_id=bk-9278" },
-      { node: "Send welcome email", kind: "SEND_EMAIL", status: "ok", duration: "287ms", detail: "to: tom@vellum.co" },
-      { node: "Wait 24 hours", kind: "WAIT", status: "ok", duration: "24h", detail: "resumed at 09:42 AM" },
-      { node: "Plan tier?", kind: "IF", status: "ok", duration: "3ms", detail: "plan=pro \u2192 true branch" },
-      { node: "Draft onboarding", kind: "AI_ACTION", status: "ok", duration: "596ms", detail: "claude-3.5 \u00b7 tone:warm \u00b7 298 tokens" },
-    ],
-  },
-  {
-    id: "run_2039", trigger: "booking/created", started: "Today 07:14 AM", duration: "0.62s", status: "completed", steps: 5, stepsOk: 5,
-    trace: [
-      { node: "New booking", kind: "TRIGGER", status: "ok", duration: "2ms", detail: "booking_id=bk-9275" },
-      { node: "Send welcome email", kind: "SEND_EMAIL", status: "ok", duration: "301ms", detail: "to: yuki@castor.co" },
-      { node: "Wait 24 hours", kind: "WAIT", status: "ok", duration: "24h", detail: "resumed at 08:14 AM" },
-      { node: "Plan tier?", kind: "IF", status: "ok", duration: "3ms", detail: "plan=lite \u2192 false branch" },
-      { node: "Send basic guide", kind: "SEND_EMAIL", status: "ok", duration: "312ms", detail: "template: lite-welcome" },
-    ],
-  },
-  {
-    id: "run_2038", trigger: "booking/created", started: "Mon 4:32 PM", duration: "30.01s", status: "failed", steps: 5, stepsOk: 3,
-    trace: [
-      { node: "New booking", kind: "TRIGGER", status: "ok", duration: "2ms", detail: "booking_id=bk-9270" },
-      { node: "Send welcome email", kind: "SEND_EMAIL", status: "ok", duration: "298ms", detail: "to: liam@greystone.io" },
-      { node: "Wait 24 hours", kind: "WAIT", status: "ok", duration: "24h", detail: "resumed at 5:32 PM" },
-      { node: "Plan tier?", kind: "IF", status: "fail", duration: "30004ms", detail: "ERROR: timeout evaluating condition after 30s" },
-      { node: "Draft onboarding", kind: "AI_ACTION", status: "skipped", duration: "-", detail: "skipped: upstream failure" },
-    ],
-  },
-  {
-    id: "run_2037", trigger: "booking/created", started: "Mon 2:18 PM", duration: "1.01s", status: "completed", steps: 5, stepsOk: 5,
-    trace: [
-      { node: "New booking", kind: "TRIGGER", status: "ok", duration: "1ms", detail: "booking_id=bk-9268" },
-      { node: "Send welcome email", kind: "SEND_EMAIL", status: "ok", duration: "310ms", detail: "to: eleanor@brigham.com" },
-      { node: "Wait 24 hours", kind: "WAIT", status: "ok", duration: "24h", detail: "resumed at 3:18 PM" },
-      { node: "Plan tier?", kind: "IF", status: "ok", duration: "3ms", detail: "plan=pro \u2192 true branch" },
-      { node: "Draft onboarding", kind: "AI_ACTION", status: "ok", duration: "694ms", detail: "claude-3.5 \u00b7 tone:warm \u00b7 310 tokens" },
-    ],
-  },
-  {
-    id: "run_2036", trigger: "booking/created", started: "Mon 11:05 AM", duration: "0.94s", status: "completed", steps: 5, stepsOk: 5,
-    trace: [
-      { node: "New booking", kind: "TRIGGER", status: "ok", duration: "2ms", detail: "booking_id=bk-9264" },
-      { node: "Send welcome email", kind: "SEND_EMAIL", status: "ok", duration: "305ms", detail: "to: jonas@bowery.com" },
-      { node: "Wait 24 hours", kind: "WAIT", status: "ok", duration: "24h", detail: "resumed at 12:05 PM" },
-      { node: "Plan tier?", kind: "IF", status: "ok", duration: "4ms", detail: "plan=pro \u2192 true branch" },
-      { node: "Draft onboarding", kind: "AI_ACTION", status: "ok", duration: "627ms", detail: "claude-3.5 \u00b7 tone:warm \u00b7 275 tokens" },
-    ],
-  },
-]
+const TH: React.CSSProperties = {
+  textAlign: "left", padding: "10px 12px", fontWeight: 500, fontSize: 10,
+  color: "var(--ih-ink-40)", textTransform: "uppercase", letterSpacing: "0.12em",
+  fontFamily: "var(--ih-font-mono)",
+}
 
-const FILTERS = ["All", "Running", "Completed", "Failed"] as const
+/* ── Step trace + drawer ─────────────────────────────────────────────────── */
 
-const TH: React.CSSProperties = { textAlign: "left", padding: "10px 12px", fontWeight: 500, fontSize: 10, color: "var(--ih-ink-40)", textTransform: "uppercase", letterSpacing: "0.12em", fontFamily: "var(--ih-font-mono)" }
+function ExecutionDrawer({ ex, onClose, onAction }: { ex: Execution; onClose: () => void; onAction: (msg: string, tone?: "ok" | "info" | "warn" | "danger") => void }) {
+  return (
+    <aside key={ex.id} className="animate-slide-in-right" style={{
+      width: 460, borderLeft: "1px solid var(--ih-line)", background: "var(--ih-surface-2)",
+      display: "flex", flexDirection: "column", flexShrink: 0,
+    }}>
+      <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--ih-line)", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+        <div style={{ minWidth: 0 }}>
+          <div className="ih-mono" style={{ fontSize: 11, fontWeight: 600 }}>{ex.id}</div>
+          <div className="ih-eyebrow" style={{ fontSize: 9, marginTop: 4 }}>
+            {ex.status} · {ex.startedAt} · {fmtDuration(ex.durationMs)}
+          </div>
+        </div>
+        <button className="ih-btn ih-btn-quiet ih-btn-icon" style={{ height: 24, width: 24 }} onClick={onClose} title="Close">
+          <Icon name="x" size={12} />
+        </button>
+      </div>
 
-/* ── Page ──────────────────────────────────────────────────────────────── */
+      <div className="scrollbar-thin" style={{ flex: 1, overflowY: "auto", padding: 16 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1, background: "var(--ih-line)", border: "1px solid var(--ih-line)", borderRadius: "var(--ih-r-md)", overflow: "hidden", marginBottom: 16 }}>
+          {[
+            { label: "Status",       value: ex.status },
+            { label: "Steps",        value: `${ex.stepsCompleted} / ${ex.stepsTotal}` },
+            { label: "Duration",     value: fmtDuration(ex.durationMs) },
+            { label: "Triggered by", value: ex.triggeredBy.name },
+          ].map(s => (
+            <div key={s.label} style={{ background: "var(--ih-surface)", padding: "10px 12px" }}>
+              <div className="ih-eyebrow" style={{ fontSize: 8, marginBottom: 4 }}>{s.label}</div>
+              <div className="ih-serif ih-num" style={{ fontSize: 16, lineHeight: 1 }}>{s.value}</div>
+            </div>
+          ))}
+        </div>
 
-export default function WorkflowExecutionsPage() {
-  const [filter, setFilter] = useState<typeof FILTERS[number]>("All")
-  const [expanded, setExpanded] = useState<string | null>(null)
+        {ex.failureReason && (
+          <div style={{ background: "var(--ih-danger-soft)", borderRadius: "var(--ih-r-md)", padding: 12, marginBottom: 16, display: "flex", gap: 10, alignItems: "flex-start" }}>
+            <Icon name="flag" size={14} style={{ color: "var(--ih-danger)", marginTop: 1 }} />
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 600, color: "var(--ih-danger)", marginBottom: 2 }}>Failure reason</div>
+              <div style={{ fontSize: 12, color: "var(--ih-ink)", lineHeight: 1.45 }}>{ex.failureReason}</div>
+            </div>
+          </div>
+        )}
 
-  const filtered = filter === "All"
-    ? EXECUTIONS
-    : EXECUTIONS.filter((e) => e.status === filter.toLowerCase())
+        <div className="ih-eyebrow" style={{ marginBottom: 6 }}>Trigger</div>
+        <div className="ih-card" style={{ padding: 12, marginBottom: 14, background: "var(--ih-surface)" }}>
+          <div style={{ fontSize: 12, fontWeight: 500, marginBottom: 4 }}>{ex.trigger.summary}</div>
+          <pre className="ih-mono" style={{ fontSize: 10, margin: 0, color: "var(--ih-ink-65)", whiteSpace: "pre-wrap", wordBreak: "break-all" }}>{ex.trigger.payloadPreview}</pre>
+        </div>
 
-  const completedCount = EXECUTIONS.filter((e) => e.status === "completed").length
-  const failedCount = EXECUTIONS.filter((e) => e.status === "failed").length
+        <div className="ih-eyebrow" style={{ marginBottom: 6 }}>Step trace</div>
+        <div className="ih-card" style={{ padding: 4, background: "var(--ih-surface)", marginBottom: 14 }}>
+          {ex.steps.map((s, i) => {
+            const tone = s.status === "ok" ? "ok" : s.status === "fail" ? "danger" : s.status === "running" ? "accent" : "muted"
+            return (
+              <div key={i} style={{
+                display: "grid", gridTemplateColumns: "22px 22px 1fr auto auto", gap: 8,
+                alignItems: "center", padding: "8px 10px",
+                borderBottom: i === ex.steps.length - 1 ? 0 : "1px dashed var(--ih-line)",
+              }}>
+                <span className="ih-mono" style={{ fontSize: 9.5, color: "var(--ih-ink-40)", textAlign: "right" }}>{(i + 1).toString().padStart(2, "0")}</span>
+                <span style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <Icon name={NODE_ICON[s.nodeType] as never} size={11} style={{ color: "var(--ih-ink-50)" }} />
+                </span>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 12, fontWeight: 500 }}>{s.nodeLabel}</div>
+                  <div className="ih-mono" style={{ fontSize: 10, color: s.error ? "var(--ih-danger)" : "var(--ih-ink-50)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 240 }}>
+                    {s.error ?? s.outputPreview}
+                  </div>
+                </div>
+                <span className={`ih-pill ih-pill-${tone}`} style={{ fontSize: 8.5, padding: "2px 5px" }}>{s.status}</span>
+                <span className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-65)" }}>{fmtDuration(s.durationMs)}</span>
+              </div>
+            )
+          })}
+        </div>
+
+        <div className="ih-eyebrow" style={{ marginBottom: 6 }}>Final output</div>
+        <pre className="ih-mono" style={{ fontSize: 10.5, padding: 10, background: "var(--ih-surface)", borderRadius: "var(--ih-r-md)", border: "1px solid var(--ih-line)", margin: 0, color: "var(--ih-ink-65)", whiteSpace: "pre-wrap" }}>
+{ex.outputPreview}
+        </pre>
+      </div>
+
+      <div style={{ borderTop: "1px solid var(--ih-line)", padding: 12, display: "flex", gap: 6, background: "var(--ih-surface)" }}>
+        <button className="ih-btn ih-btn-accent" style={{ flex: 1, justifyContent: "center" }} onClick={() => onAction(`Retrying ${ex.id} from failed step`, "info")}>
+          <Icon name="refresh" size={11} /> Retry
+        </button>
+        <button className="ih-btn ih-btn-ghost" style={{ flex: 1, justifyContent: "center" }} onClick={() => onAction(`Replaying ${ex.id} with same payload`, "info")}>
+          <Icon name="play" size={11} /> Replay
+        </button>
+      </div>
+    </aside>
+  )
+}
+
+/* ── Page ────────────────────────────────────────────────────────────────── */
+
+export default function WorkflowExecutionsPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = usePromise(params)
+  const wf = mockWorkflows.getById(id)
+  if (!wf) notFound()
+
+  const [filter, setFilter] = useState<(typeof FILTERS)[number]>("All")
+  const [search, setSearch] = useState("")
+  const [openExId, setOpenExId] = useState<string | null>(wf.recentExecutions[0]?.id ?? null)
+  const [toast, setToast] = useState<{ message: string; tone?: "ok" | "info" | "warn" | "danger" } | null>(null)
+
+  const rows = useMemo(() => {
+    let r = wf.recentExecutions
+    if (filter !== "All") r = r.filter(e => e.status === filter.toLowerCase() as ExecutionStatus)
+    if (search.trim()) {
+      const q = search.toLowerCase()
+      r = r.filter(e => e.id.toLowerCase().includes(q) || e.trigger.summary.toLowerCase().includes(q))
+    }
+    return r
+  }, [wf, filter, search])
+
+  const completed = wf.recentExecutions.filter(e => e.status === "completed").length
+  const failed = wf.recentExecutions.filter(e => e.status === "failed").length
+  const successRate = wf.recentExecutions.length ? Math.round((completed / wf.recentExecutions.length) * 100) : 0
+  const avgDur = wf.recentExecutions.length
+    ? Math.round(wf.recentExecutions.reduce((s, e) => s + e.durationMs, 0) / wf.recentExecutions.length)
+    : 0
+  const selected = openExId ? wf.recentExecutions.find(e => e.id === openExId) ?? null : null
 
   return (
-    <div style={{ padding: "24px 28px 48px", maxWidth: 1400, margin: "0 auto" }}>
-      {/* Header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 24, gap: 24, flexWrap: "wrap" }}>
-        <div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-            <Link href="/admin/workflows" style={{ display: "flex", alignItems: "center", gap: 4, textDecoration: "none", color: "var(--ih-ink-50)" }}>
-              <Icon name="chevronLeft" size={12}/>
+    <div style={{ display: "flex", height: "calc(100vh - 64px)", margin: "-24px -24px" }}>
+      <section style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
+        {/* Top bar / breadcrumb */}
+        <div style={{ padding: "12px 24px", borderBottom: "1px solid var(--ih-line)", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <Link href="/admin/workflows" className="ih-btn ih-btn-quiet ih-btn-sm" style={{ textDecoration: "none" }}>
+              <Icon name="chevronLeft" size={12} />
               <span className="ih-eyebrow">Workflows</span>
             </Link>
-            <Icon name="chevronRight" size={10} style={{ color: "var(--ih-ink-30)" }}/>
-            <span className="ih-eyebrow">WF-204 Onboarding Northwind</span>
-            <Icon name="chevronRight" size={10} style={{ color: "var(--ih-ink-30)" }}/>
+            <Icon name="chevronRight" size={10} style={{ color: "var(--ih-ink-30)" }} />
+            <Link href={`/admin/workflows/${wf.id}`} style={{ textDecoration: "none", color: "var(--ih-ink)", fontSize: 13, fontWeight: 500 }}>{wf.name}</Link>
+            <Icon name="chevronRight" size={10} style={{ color: "var(--ih-ink-30)" }} />
             <span className="ih-eyebrow" style={{ color: "var(--ih-accent)" }}>Executions</span>
           </div>
-          <h1 className="ih-serif" style={{ margin: 0, fontSize: 38, lineHeight: 0.98 }}>
-            {EXECUTIONS.length} runs. <span className="ih-italic-red">{completedCount}</span> completed.
+          <div style={{ display: "flex", gap: 6 }}>
+            <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => setToast({ message: "Export queued · CSV ready in 30s", tone: "info" })}>
+              <Icon name="download" size={11} /> Export CSV
+            </button>
+            <Link href={`/admin/workflows/${wf.id}`} className="ih-btn ih-btn-primary ih-btn-sm" style={{ textDecoration: "none" }}>
+              <Icon name="chevronLeft" size={11} /> Back to workflow
+            </Link>
+          </div>
+        </div>
+
+        {/* Hero */}
+        <div style={{ padding: "18px 24px 12px", borderBottom: "1px solid var(--ih-line)" }}>
+          <div className="ih-eyebrow" style={{ marginBottom: 6 }}>{wf.id} · {wf.recentExecutions.length} runs</div>
+          <h1 className="ih-serif" style={{ fontSize: 30, margin: 0, lineHeight: 1.05 }}>
+            {wf.recentExecutions.length} runs. <span className="ih-italic-red">{completed}</span> completed.
           </h1>
         </div>
-        <div style={{ display: "flex", gap: 6 }}>
-          <button className="ih-btn ih-btn-ghost ih-btn-sm"><Icon name="download" size={12}/> Export</button>
-          <Link href="/admin/workflows/wf-204" className="ih-btn ih-btn-primary ih-btn-sm" style={{ textDecoration: "none" }}><Icon name="chevronLeft" size={11}/> Back to editor</Link>
+
+        {/* Stat strip */}
+        <div style={{ padding: "12px 24px", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 1, background: "var(--ih-line)", borderBottom: "1px solid var(--ih-line)" }}>
+          {[
+            { label: "Total runs",   value: String(wf.recentExecutions.length), tone: "var(--ih-ink)" },
+            { label: "Success rate", value: `${successRate}%`,                   tone: successRate >= 95 ? "var(--ih-ok)" : successRate >= 80 ? "var(--ih-warn)" : "var(--ih-danger)" },
+            { label: "Avg duration", value: fmtDuration(avgDur),                  tone: "var(--ih-ink)" },
+            { label: "Failed",       value: String(failed),                       tone: failed ? "var(--ih-danger)" : "var(--ih-ink-50)" },
+          ].map(s => (
+            <div key={s.label} style={{ background: "var(--ih-bg)", padding: "12px 16px" }}>
+              <div className="ih-eyebrow" style={{ fontSize: 9, marginBottom: 4 }}>{s.label}</div>
+              <div className="ih-serif ih-num" style={{ fontSize: 24, lineHeight: 1, color: s.tone }}>{s.value}</div>
+            </div>
+          ))}
         </div>
-      </div>
 
-      {/* Stats strip */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, marginBottom: 24 }}>
-        {[
-          { l: "Total runs", v: String(EXECUTIONS.length), d: "+3", h: "today", icon: "play" as const },
-          { l: "Success rate", v: `${Math.round((completedCount / EXECUTIONS.length) * 100)}%`, d: "\u22121 fail", h: "this week", icon: "check" as const },
-          { l: "Avg duration", v: "1.08s", d: "\u22120.2s", h: "vs last week", icon: "clock" as const },
-          { l: "Failed", v: String(failedCount), d: "1 timeout", h: "Monday", icon: "flag" as const, danger: true },
-        ].map((s) => (
-          <div key={s.l} className="ih-card" style={{ padding: "14px 14px" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-              <span className="ih-eyebrow">{s.l}</span>
-              <Icon name={s.icon} size={12} style={{ color: "var(--ih-ink-30)" }} />
-            </div>
-            <div className="ih-serif" style={{ fontSize: 30, lineHeight: 1 }}>{s.v}</div>
-            <div style={{ marginTop: 6, fontSize: 10.5, color: "var(--ih-ink-50)", display: "flex", gap: 5, alignItems: "center" }}>
-              <span style={{ color: "danger" in s ? "var(--ih-danger)" : "var(--ih-ok)", fontWeight: 500 }} className="ih-mono">{s.d}</span>
-              <span>{s.h}</span>
-            </div>
+        {/* Filters bar */}
+        <div style={{ padding: "10px 24px", display: "flex", gap: 8, alignItems: "center", borderBottom: "1px solid var(--ih-line)", flexWrap: "wrap" }}>
+          <div style={{ position: "relative", flex: 1, maxWidth: 320, minWidth: 200 }}>
+            <Icon name="search" size={13} style={{ position: "absolute", left: 10, top: 8, color: "var(--ih-ink-40)" }} />
+            <input className="ih-input" placeholder="Search run IDs, triggers…"
+              style={{ paddingLeft: 30 }} value={search} onChange={e => setSearch(e.target.value)} />
           </div>
-        ))}
-      </div>
+          <div style={{ display: "flex", gap: 4 }}>
+            {FILTERS.map(f => {
+              const count = f === "All" ? wf.recentExecutions.length : wf.recentExecutions.filter(e => e.status === f.toLowerCase() as ExecutionStatus).length
+              const active = filter === f
+              return (
+                <button key={f} onClick={() => setFilter(f)} className={`ih-btn ih-btn-sm ${active ? "ih-btn-ghost" : "ih-btn-quiet"}`} style={{ fontWeight: active ? 500 : 400 }}>
+                  {f} <span className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-40)", marginLeft: 4 }}>{count}</span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
 
-      {/* Filter tabs */}
-      <div style={{ display: "flex", gap: 4, marginBottom: 16 }}>
-        {FILTERS.map((f) => {
-          const count = f === "All" ? EXECUTIONS.length : EXECUTIONS.filter((e) => e.status === f.toLowerCase()).length
-          return (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={`ih-btn ih-btn-sm ${filter === f ? "ih-btn-ghost" : "ih-btn-quiet"}`}
-              style={{ fontWeight: filter === f ? 500 : 400 }}
-            >
-              {f} <span className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-40)", marginLeft: 4 }}>{count}</span>
-            </button>
-          )
-        })}
-      </div>
-
-      {/* Executions table */}
-      <div className="ih-card" style={{ overflow: "hidden" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-          <thead>
-            <tr style={{ background: "var(--ih-surface-2)" }}>
-              <th style={{ ...TH, paddingLeft: 18 }}>Run ID</th>
-              <th style={TH}>Trigger</th>
-              <th style={TH}>Started</th>
-              <th style={TH}>Duration</th>
-              <th style={TH}>Status</th>
-              <th style={TH}>Steps</th>
-              <th style={{ width: 36 }}></th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((e) => (
-              <>
-                <tr
-                  key={e.id}
-                  onClick={() => setExpanded(expanded === e.id ? null : e.id)}
-                  style={{ borderTop: "1px solid var(--ih-line)", cursor: "pointer", background: expanded === e.id ? "var(--ih-surface-2)" : undefined }}
-                >
-                  <td style={{ padding: "10px 12px 10px 18px" }}>
-                    <span className="ih-mono" style={{ fontSize: 11, fontWeight: 500 }}>{e.id}</span>
-                  </td>
-                  <td style={{ padding: "10px 12px" }}>
-                    <span className="ih-mono" style={{ fontSize: 10.5, color: "var(--ih-ink-65)" }}>{e.trigger}</span>
-                  </td>
-                  <td style={{ padding: "10px 12px" }}>
-                    <span className="ih-mono" style={{ fontSize: 10.5, color: "var(--ih-ink-50)" }}>{e.started}</span>
-                  </td>
-                  <td style={{ padding: "10px 12px" }}>
-                    <span className="ih-mono" style={{ fontSize: 11, fontWeight: 500 }}>{e.duration}</span>
-                  </td>
-                  <td style={{ padding: "10px 12px" }}>
-                    <span className={`ih-pill ih-pill-${STATUS_TONE[e.status]}`} style={{ fontSize: 9, padding: "2px 6px" }}>
-                      {e.status === "running" && <span className="ih-dot ih-dot-accent" style={{ marginRight: 4 }}/>}
-                      {e.status}
-                    </span>
-                  </td>
-                  <td style={{ padding: "10px 12px" }}>
-                    <span className="ih-mono" style={{ fontSize: 10.5 }}>{e.stepsOk}/{e.steps}</span>
-                  </td>
-                  <td style={{ padding: "10px 12px" }}>
-                    <Icon name={expanded === e.id ? "chevronDown" : "chevronRight"} size={11} style={{ color: "var(--ih-ink-30)" }}/>
-                  </td>
-                </tr>
-
-                {/* Expanded trace */}
-                {expanded === e.id && (
-                  <tr key={`${e.id}-trace`}>
-                    <td colSpan={7} style={{ padding: 0 }}>
-                      <div style={{ padding: "12px 18px 16px", background: "var(--ih-surface-2)", borderTop: "1px solid var(--ih-line)" }}>
-                        <div className="ih-eyebrow" style={{ marginBottom: 10 }}>Step-by-step trace</div>
-                        <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-                          {e.trace.map((s, si) => (
-                            <div key={si} style={{ display: "grid", gridTemplateColumns: "24px 1fr 100px 80px auto", gap: 10, alignItems: "center", padding: "8px 0", borderTop: si === 0 ? "0" : "1px solid var(--ih-line)" }}>
-                              <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                <span className={`ih-dot ih-dot-${STEP_TONE[s.status]}`}/>
-                              </div>
-                              <div>
-                                <div style={{ fontSize: 12, fontWeight: 500 }}>{s.node}</div>
-                                <div className="ih-mono" style={{ fontSize: 9.5, color: "var(--ih-ink-40)", marginTop: 2 }}>{s.kind}</div>
-                              </div>
-                              <span className="ih-mono" style={{ fontSize: 10.5, color: "var(--ih-ink-65)" }}>{s.duration}</span>
-                              <span className={`ih-pill ih-pill-${STEP_TONE[s.status]}`} style={{ fontSize: 8.5, padding: "2px 5px", textAlign: "center" }}>{s.status}</span>
-                              <span className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-50)" }}>{s.detail}</span>
-                            </div>
-                          ))}
+        {/* Table */}
+        <div className="scrollbar-thin" style={{ flex: 1, overflowY: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+            <thead style={{ position: "sticky", top: 0, background: "var(--ih-bg)", zIndex: 1 }}>
+              <tr style={{ borderBottom: "1px solid var(--ih-line)" }}>
+                <th style={{ ...TH, paddingLeft: 24 }}>Run ID</th>
+                <th style={TH}>Started</th>
+                <th style={TH}>Duration</th>
+                <th style={TH}>Trigger</th>
+                <th style={TH}>Triggered by</th>
+                <th style={TH}>Steps</th>
+                <th style={TH}>Status</th>
+                <th style={{ width: 24 }}></th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.length === 0 && (
+                <tr><td colSpan={8} style={{ padding: 40, textAlign: "center", fontSize: 12, color: "var(--ih-ink-40)" }}>No runs match these filters</td></tr>
+              )}
+              {rows.map(ex => {
+                const tone = STATUS_TONE[ex.status]
+                const isSelected = ex.id === openExId
+                const progress = ex.stepsTotal ? Math.round((ex.stepsCompleted / ex.stepsTotal) * 100) : 0
+                return (
+                  <tr key={ex.id} onClick={() => setOpenExId(ex.id)} style={{ borderTop: "1px solid var(--ih-line)", cursor: "pointer", background: isSelected ? "var(--ih-accent-soft-2)" : undefined }}>
+                    <td style={{ padding: "10px 12px 10px 24px" }}><span className="ih-mono" style={{ fontSize: 11, fontWeight: 500 }}>{ex.id}</span></td>
+                    <td style={{ padding: "10px 12px" }}><span className="ih-mono" style={{ fontSize: 11, color: "var(--ih-ink-65)" }}>{ex.startedAt}</span></td>
+                    <td style={{ padding: "10px 12px" }}><span className="ih-mono" style={{ fontSize: 11 }}>{fmtDuration(ex.durationMs)}</span></td>
+                    <td style={{ padding: "10px 12px" }}><span className="ih-mono" style={{ fontSize: 11, color: "var(--ih-ink-65)" }}>{ex.trigger.summary}</span></td>
+                    <td style={{ padding: "10px 12px" }}>
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                        <Icon name={ex.triggeredBy.type === "user" ? "user" : ex.triggeredBy.type === "webhook" ? "link" : ex.triggeredBy.type === "schedule" ? "clock" : "bolt"} size={11} style={{ color: "var(--ih-ink-50)" }} />
+                        <span style={{ fontSize: 11.5 }}>{ex.triggeredBy.name}</span>
+                      </span>
+                    </td>
+                    <td style={{ padding: "10px 12px", width: 160 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <div style={{ width: 60, height: 4, background: "var(--ih-surface-3)", borderRadius: 2, overflow: "hidden" }}>
+                          <div style={{ width: `${progress}%`, height: "100%", background: ex.status === "failed" ? "var(--ih-danger)" : "var(--ih-ok)" }} />
                         </div>
+                        <span className="ih-mono" style={{ fontSize: 10.5 }}>{ex.stepsCompleted}/{ex.stepsTotal}</span>
                       </div>
                     </td>
+                    <td style={{ padding: "10px 12px" }}>
+                      <span className={`ih-pill ih-pill-${tone}`} style={{ fontSize: 9, padding: "2px 6px" }}>
+                        {ex.status === "running" && <span className="ih-dot ih-dot-accent" style={{ marginRight: 4 }} />}
+                        {ex.status}
+                      </span>
+                    </td>
+                    <td style={{ padding: "10px 12px" }}><Icon name="chevronRight" size={11} style={{ color: "var(--ih-ink-30)" }} /></td>
                   </tr>
-                )}
-              </>
-            ))}
-          </tbody>
-        </table>
-      </div>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      {selected && <ExecutionDrawer ex={selected} onClose={() => setOpenExId(null)} onAction={(m, t) => setToast({ message: m, tone: t })} />}
+
+      {toast && <NotificationToast message={toast.message} tone={toast.tone} onDismiss={() => setToast(null)} />}
     </div>
   )
 }

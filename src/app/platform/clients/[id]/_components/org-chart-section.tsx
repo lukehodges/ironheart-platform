@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { Icon } from "@/components/shell"
+import { ChartGraph } from "@/components/onboarding/chart-graph"
 import { api } from "@/lib/trpc/react"
 import type { OrgChartTree } from "@/modules/onboarding/onboarding.types"
 
@@ -82,15 +83,14 @@ export function OrgChartSection({ engagementId, companyLabel }: OrgChartSectionP
                 </div>
               ))}
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              {tree.slice(0, 4).map((node) => (
-                <OrgRow key={node.id} node={node} depth={0} />
-              ))}
-              {tree.length > 4 && (
-                <div className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-40)", paddingLeft: 6 }}>
-                  …and {tree.length - 4} more top-level nodes
-                </div>
-              )}
+            <ChartGraph
+              tree={tree}
+              engagementId={engagementId}
+              compact
+              height={260}
+            />
+            <div className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-40)", marginTop: 8 }}>
+              Pan / scroll-zoom in canvas. Open editor for full controls.
             </div>
           </>
         )}
@@ -99,40 +99,3 @@ export function OrgChartSection({ engagementId, companyLabel }: OrgChartSectionP
   )
 }
 
-function OrgRow({ node, depth }: { node: OrgChartTree; depth: number }) {
-  const TYPE_TONE: Record<string, string> = {
-    DEPARTMENT: "var(--ih-ink-30)",
-    ROLE: "var(--ih-info)",
-    PERSON: "var(--ih-accent)",
-  }
-  return (
-    <>
-      <div style={{
-        display: "grid",
-        gridTemplateColumns: "16px 1fr auto auto",
-        gap: 10,
-        alignItems: "center",
-        padding: "6px 6px",
-        paddingLeft: 6 + depth * 16,
-        borderBottom: "1px dashed var(--ih-line)",
-      }}>
-        <span style={{ width: 6, height: 6, borderRadius: 999, background: TYPE_TONE[node.type] ?? "var(--ih-ink-30)" }} />
-        <div style={{ minWidth: 0 }}>
-          <span style={{ fontSize: 12.5, fontWeight: 500 }}>{node.label}</span>
-          {node.contactName && (
-            <span style={{ fontSize: 11, color: "var(--ih-ink-50)", marginLeft: 8 }}>
-              {node.contactName}{node.contactRole ? ` · ${node.contactRole}` : ""}
-            </span>
-          )}
-        </div>
-        <span className="ih-mono" style={{ fontSize: 9.5, color: "var(--ih-ink-40)" }}>{node.type}</span>
-        {node.headcount != null && (
-          <span className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-50)" }}>×{node.headcount}</span>
-        )}
-      </div>
-      {depth < 2 && node.children.slice(0, 4).map((child) => (
-        <OrgRow key={child.id} node={child} depth={depth + 1} />
-      ))}
-    </>
-  )
-}

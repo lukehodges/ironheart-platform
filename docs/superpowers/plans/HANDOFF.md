@@ -194,6 +194,36 @@ Per the `superpowers:subagent-driven-development` skill: dispatch one implemente
 
 ---
 
+## Wave J — Live wiring (Slices A–D)
+
+Done 2026-05-24 against the gap analysis at
+`docs/superpowers/plans/audits/2026-05-24-live-data-gap-analysis.md`.
+
+| Slice | SHA | What | Status |
+|---|---|---|---|
+| A | `b1ef207` | `/platform/today` = dashboard literal copy + `/platform` redirects there. Sidebar already pointed to `/platform/today`. | All sections still mock — KPI tiles, activity feed, schedule, engagements table, pipeline mini all carry `★ Mock — pending …` badges. |
+| B | `0af65c4` | `/platform/clients` list wired to `trpc.consulting.listForPlatform`. Server does stage filter + search; type/status/owner/risk/proposed/tag filters fall back to client-side. | Rows live (id/title/stage/status/customer name/email/phone). Health/value/nextAction/tags/recentActivity still mock (default to `—`). Stats grid still mock. Segments rail still mock. |
+| C | `8fdd103` | `/platform/clients/[id]` hub split into server `page.tsx` (DB fetch) + client `_components/engagement-hub-client.tsx`. Hero shows live engagement + customer + clientTenant. | Hero LIVE. All tabs except Onboarding/Audit/Report sub-routes (which were already live since Phase 0.1.C/0.3/0.4) still mock. |
+| D | `b498f75` | New `OrgChartSection` on hub Overview tab. Pulls live tree via `api.onboarding.getChart`. Empty state → "Build org chart" CTA to `/platform/clients/[id]/onboarding`. | LIVE. |
+
+### TODO markers introduced (sweep these when each proc lands)
+
+- `src/app/platform/today/page.tsx` — needs `analytics.activityFeed` (BUILD), `analytics.getKPIs`, `consulting.listForPlatform` extended w/ health/burn, `booking.listForCalendar` grouped, deals schema (BUILD).
+- `src/app/platform/clients/page.tsx` — needs `consulting.listForPlatform` EXTEND (health, value, nextAction, tags columns); `consulting.listSegments`; `consulting.engagementStats`; `users.list` for owner directory; `consulting.recentActivity`.
+- `src/app/platform/clients/[id]/_components/engagement-hub-client.tsx` — list of 8 missing procs in the top-of-file TODO comment (bookings, deals BUILD, payment.listInvoices by engagementId, workflow.listForEngagement, documents BUILD, activityFeed BUILD, consulting.listTeamContacts, customerNotes.list pinned).
+
+### Verification
+
+- `npx tsc --noEmit` — **PASS** for all `/platform/*` files I touched (zero new errors). Pre-existing baseline errors in `src/components/tenant-portal/__tests__/action-card.test.tsx` and `src/modules/consulting/__tests__/integration.test.ts` are unrelated.
+- HTTP probe — **skipped**. Background dev server (`bu44kfwz5`) was running per §2 but I did not curl-test in the agent session.
+
+### Constraint compliance
+
+- All 4 commits stage only the files I touched (4 files total). No `.planning/*` deletions or other branch-dirty files included. `git status` post-commit confirms.
+- Zero `--no-verify`, zero `drizzle-kit migrate`, zero `/admin/*` source-file edits.
+
+---
+
 ## 7. Commit log (current branch)
 
 ```

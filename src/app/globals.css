@@ -519,6 +519,22 @@
     from { opacity: 0; transform: translateX(-8px); }
     to { opacity: 1; transform: translateX(0); }
   }
+
+  .animate-slide-in-right {
+    animation: slide-in-right 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  @keyframes slide-in-right {
+    from { opacity: 0; transform: translateX(24px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+
+  .animate-pop-in {
+    animation: pop-in 0.14s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  @keyframes pop-in {
+    from { opacity: 0; transform: translateY(-4px) scale(0.98); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
 }
 
 /* Workflow canvas — theme-aware React Flow overrides */

@@ -34,6 +34,7 @@ import { consultingRouter, consultingClientRouter } from "@/modules/consulting";
 import { auditWorkspaceRouter } from "@/modules/audit-workspace";
 import { reportGeneratorRouter } from "@/modules/report-generator";
 import { onboardingRouter } from "@/modules/onboarding";
+import { breadcrumbRouter } from "@/modules/breadcrumb/breadcrumb.router";
 
 /**
  * Root tRPC router.
@@ -84,6 +85,7 @@ export const appRouter = router({
   auditWorkspace: auditWorkspaceRouter,
   reportGenerator: reportGeneratorRouter,
   onboarding: onboardingRouter,
+  breadcrumb: breadcrumbRouter,
 });
 
 export type AppRouter = typeof appRouter;

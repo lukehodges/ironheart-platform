@@ -17,6 +17,7 @@ import Link from "next/link"
 import { NotificationToast, InlineFormRow, DropdownMenu, EmailDraftDialog, FileUploadZone } from "@/components/shared"
 import { Icon } from "@/components/shell"
 import { OrgChartSection } from "./org-chart-section"
+import { ActivityFeed } from "@/components/onboarding/activity-feed"
 
 const MOCK_BADGE_STYLE = { color: "var(--ih-accent)", fontStyle: "italic", fontSize: 10, fontFamily: "var(--ih-font-sans)" } as const
 
@@ -80,6 +81,15 @@ function OverviewTab({ setActiveTab, engagement, customer: _customer, clientTena
     <>
       {/* Org chart — LIVE via api.onboarding.getChart */}
       <OrgChartSection engagementId={engagement.id} companyLabel={companyLabel} />
+
+      {/* Engagement activity — moved from onboarding editor side panel */}
+      <div className="ih-card" style={{ marginBottom: 24, padding: "14px 18px" }}>
+        <div style={{ marginBottom: 12 }}>
+          <span className="ih-eyebrow">Activity</span>
+          <h3 style={{ margin: "2px 0 0", fontSize: 15, fontWeight: 600 }}>Recent changes on this engagement</h3>
+        </div>
+        <ActivityFeed mode="consultant" engagementId={engagement.id} />
+      </div>
 
       {/* Connection map */}
       <div style={{ marginBottom: 24 }}>
@@ -879,27 +889,10 @@ export default function ClientHubPage({ engagement, customer, clientTenantSlug, 
               {labelHead ? labelHead + " " : ""}<span className="ih-italic-red">{labelTail}</span>
             </h1>
             <div style={{ marginTop: 10, display: "flex", gap: 18, fontSize: 11.5, color: "var(--ih-ink-50)", flexWrap: "wrap" }}>
-              <span><Icon name="building" size={11}/> &nbsp;{contactName}</span>
-              <span><Icon name="mail" size={11}/> &nbsp;{customer.email ?? "—"}</span>
-              <span><Icon name="phone" size={11}/> &nbsp;{customer.phone ?? "—"}</span>
-              <span><Icon name="clock" size={11}/> &nbsp;Customer since {since}</span>
-            </div>
-            {/* Sub-route links — those pages are already on live data (Phase 0.1.C / 0.3 / 0.4 / 0.5) */}
-            <div style={{ marginTop: 10, display: "flex", gap: 6, flexWrap: "wrap" }}>
-              <Link href={`/platform/clients/${engagement.id}/onboarding`} className="ih-btn ih-btn-ghost ih-btn-sm" style={{ textDecoration: "none" }}>
-                <Icon name="users" size={11}/> Onboarding
-              </Link>
-              <Link href={`/platform/clients/${engagement.id}/audit`} className="ih-btn ih-btn-ghost ih-btn-sm" style={{ textDecoration: "none" }}>
-                <Icon name="check" size={11}/> Audit workspace
-              </Link>
-              <Link href={`/platform/clients/${engagement.id}/report`} className="ih-btn ih-btn-ghost ih-btn-sm" style={{ textDecoration: "none" }}>
-                <Icon name="file" size={11}/> Report
-              </Link>
-              {clientTenantSlug && (
-                <Link href={`/${clientTenantSlug}/dashboard`} className="ih-btn ih-btn-ghost ih-btn-sm" style={{ textDecoration: "none" }} target="_blank">
-                  <Icon name="arrowUpRight" size={11}/> Client portal
-                </Link>
-              )}
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6, whiteSpace: "nowrap" }}><Icon name="building" size={11}/> {contactName}</span>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6, whiteSpace: "nowrap" }}><Icon name="mail" size={11}/> {customer.email ?? "—"}</span>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6, whiteSpace: "nowrap" }}><Icon name="phone" size={11}/> {customer.phone ?? "—"}</span>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6, whiteSpace: "nowrap" }}><Icon name="clock" size={11}/> Customer since {since}</span>
             </div>
           </div>
         </div>
@@ -920,10 +913,36 @@ export default function ClientHubPage({ engagement, customer, clientTenantSlug, 
       </div>
 
       {/* Tabs */}
-      <div style={{ padding: "0 28px", display: "flex", gap: 0, borderBottom: "1px solid var(--ih-line)", background: "var(--ih-bg)" }}>
+      <div style={{ padding: "0 28px", display: "flex", gap: 0, borderBottom: "1px solid var(--ih-line)", background: "var(--ih-bg)", alignItems: "center" }}>
         {tabs.map((t, i) => (
           <button key={t} onClick={() => setActiveTab(i)} style={{ background: "transparent", border: 0, padding: "12px 14px", fontSize: 12.5, color: activeTab === i ? "var(--ih-ink)" : "var(--ih-ink-50)", fontWeight: activeTab === i ? 500 : 400, cursor: "pointer", borderBottom: activeTab === i ? "2px solid var(--ih-accent)" : "2px solid transparent", marginBottom: "-1px" }}>{t}</button>
         ))}
+        <div style={{ flex: 1 }} />
+        <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+          {([
+            { label: "Onboarding", href: `/platform/clients/${engagement.id}/onboarding` },
+            { label: "Audit",      href: `/platform/clients/${engagement.id}/audit` },
+            { label: "Report",     href: `/platform/clients/${engagement.id}/report` },
+          ]).map(w => (
+            <Link key={w.label} href={w.href} className="ih-btn ih-btn-quiet ih-btn-sm" style={{ height: 24, textDecoration: "none", color: "var(--ih-ink-65)" }}>
+              {w.label} <Icon name="arrowUpRight" size={10} style={{ opacity: 0.6 }} />
+            </Link>
+          ))}
+          {clientTenantSlug && (
+            <>
+              <div style={{ width: 1, height: 14, background: "var(--ih-line)", margin: "0 4px" }} />
+              <Link
+                href={`/${clientTenantSlug}/dashboard`}
+                target="_blank"
+                className="ih-btn ih-btn-quiet ih-btn-sm"
+                style={{ height: 24, textDecoration: "none", color: "var(--ih-ink-65)" }}
+                title="Open client portal in new tab"
+              >
+                <Icon name="arrowUpRight" size={10}/> Client portal
+              </Link>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Body grid */}

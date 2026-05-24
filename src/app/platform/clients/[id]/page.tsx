@@ -4,6 +4,7 @@ import { customers } from "@/shared/db/schemas/customer.schema"
 import { tenants } from "@/shared/db/schemas/tenant.schema"
 import { eq } from "drizzle-orm"
 import { notFound } from "next/navigation"
+import { SetBreadcrumb } from "@/components/shell"
 import EngagementHubClient from "./_components/engagement-hub-client"
 
 export default async function ClientHubPage({
@@ -37,7 +38,9 @@ export default async function ClientHubPage({
     || "Unnamed company"
 
   return (
-    <EngagementHubClient
+    <>
+      <SetBreadcrumb segment={id} label={companyLabel} />
+      <EngagementHubClient
       engagement={{
         id: eng.id,
         title: eng.title,
@@ -59,5 +62,6 @@ export default async function ClientHubPage({
       clientTenantSlug={clientTenant?.slug ?? null}
       companyLabel={companyLabel}
     />
+    </>
   )
 }

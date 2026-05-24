@@ -1,0 +1,1499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pratica Italiana</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;600;700&family=Architects+Daughter&family=Permanent+Marker&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --paper: #f5f0e8;
+    --paper-dark: #ebe5d8;
+    --ink: #3a3228;
+    --ink-light: #8a7e70;
+    --ink-faint: #b8a898;
+    --pencil: #c8b8a4;
+    --red-margin: #d4a0a0;
+    --green: #4a6b5a;
+    --green-light: rgba(74,107,90,0.12);
+    --brown: #5c4033;
+    --brown-light: rgba(92,64,51,0.1);
+    --purple: #5b4a6a;
+    --purple-light: rgba(91,74,106,0.1);
+    --blue: #4a5568;
+    --blue-light: rgba(74,85,104,0.1);
+    --gold: #7a6a4a;
+    --gold-light: rgba(122,106,74,0.12);
+    --red-accent: #7a4a3a;
+    --red-accent-light: rgba(122,74,58,0.1);
+    --teal: #3a6050;
+    --teal-light: rgba(58,96,80,0.1);
+    --correct: #5a8a5a;
+    --wrong: #a05050;
+  }
+
+  body {
+    background: var(--paper);
+    min-height: 100vh;
+    font-family: 'Caveat', cursive;
+    overflow-x: hidden;
+    position: relative;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      to bottom, transparent, transparent 39px, #e0d8c8 39px, #e0d8c8 40px
+    );
+    opacity: 0.35;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  body::after {
+    content: '';
+    position: fixed;
+    top: 0; bottom: 0; left: 80px;
+    width: 1.5px;
+    background: var(--red-margin);
+    opacity: 0.3;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── NAV ── */
+  .top-bar {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 30px 20px 6px;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .page-title {
+    font-family: 'Architects Daughter', cursive;
+    font-size: 2.2rem;
+    color: var(--ink);
+    letter-spacing: 1px;
+    text-align: center;
+    border-bottom: 2px solid var(--pencil);
+    padding-bottom: 4px;
+  }
+
+  .mode-tabs {
+    display: flex;
+    gap: 4px;
+    justify-content: center;
+    padding: 10px 20px 16px;
+    position: relative;
+    z-index: 10;
+    flex-wrap: wrap;
+  }
+
+  .mode-tab {
+    font-family: 'Architects Daughter', cursive;
+    font-size: 1.05rem;
+    padding: 6px 18px;
+    border: none;
+    background: transparent;
+    color: var(--ink-light);
+    cursor: pointer;
+    border-radius: 3px;
+    transition: all 0.2s;
+    letter-spacing: 1px;
+    position: relative;
+  }
+
+  .mode-tab:hover {
+    color: var(--ink);
+    background: rgba(200,184,164,0.15);
+  }
+
+  .mode-tab.active {
+    color: var(--ink);
+    background: rgba(200,184,164,0.25);
+  }
+
+  .mode-tab.active::after {
+    content: '';
+    position: absolute;
+    bottom: 2px;
+    left: 20%;
+    right: 20%;
+    height: 2px;
+    background: var(--brown);
+    border-radius: 1px;
+  }
+
+  /* ── STATS BAR ── */
+  .stats-bar {
+    display: flex;
+    justify-content: center;
+    gap: 28px;
+    padding: 0 20px 18px;
+    position: relative;
+    z-index: 10;
+  }
+
+  .stat {
+    font-family: 'Caveat', cursive;
+    font-size: 1.15rem;
+    color: var(--ink-light);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .stat-num {
+    font-weight: 700;
+    font-size: 1.4rem;
+    color: var(--ink);
+  }
+
+  .stat--correct .stat-num { color: var(--correct); }
+  .stat--wrong .stat-num { color: var(--wrong); }
+
+  /* ── MAIN AREA ── */
+  .main {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 30px 80px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ── FLASH CARD ── */
+  .flash-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+  }
+
+  .card-container {
+    perspective: 800px;
+    width: 100%;
+    max-width: 520px;
+    height: 280px;
+    cursor: pointer;
+  }
+
+  .card-inner {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    transform-style: preserve-3d;
+  }
+
+  .card-inner.flipped {
+    transform: rotateY(180deg);
+  }
+
+  .card-face {
+    position: absolute;
+    inset: 0;
+    backface-visibility: hidden;
+    border-radius: 6px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 30px;
+    border: 1.5px solid var(--pencil);
+    background: var(--paper);
+    box-shadow: 2px 3px 8px rgba(0,0,0,0.06), inset 0 0 40px rgba(200,184,164,0.15);
+  }
+
+  .card-face--back {
+    transform: rotateY(180deg);
+  }
+
+  .card-label {
+    font-family: 'Architects Daughter', cursive;
+    font-size: 0.95rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .card-face--front .card-label { color: var(--blue); }
+  .card-face--back .card-label { color: var(--green); }
+
+  .card-text {
+    font-family: 'Caveat', cursive;
+    font-weight: 700;
+    font-size: 2.6rem;
+    color: var(--ink);
+    text-align: center;
+    line-height: 1.2;
+  }
+
+  .card-hint {
+    font-family: 'Caveat', cursive;
+    font-size: 1.15rem;
+    color: var(--ink-faint);
+    margin-top: 10px;
+    font-style: italic;
+  }
+
+  .card-category {
+    position: absolute;
+    top: 12px;
+    right: 16px;
+    font-family: 'Architects Daughter', cursive;
+    font-size: 0.8rem;
+    color: var(--pencil);
+    letter-spacing: 1px;
+  }
+
+  .card-counter {
+    position: absolute;
+    bottom: 12px;
+    left: 16px;
+    font-family: 'Caveat', cursive;
+    font-size: 0.95rem;
+    color: var(--pencil);
+  }
+
+  .flash-controls {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .btn {
+    font-family: 'Architects Daughter', cursive;
+    font-size: 1.1rem;
+    padding: 8px 22px;
+    border: 1.5px solid var(--pencil);
+    background: transparent;
+    color: var(--ink);
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.15s;
+    letter-spacing: 0.5px;
+  }
+
+  .btn:hover {
+    background: var(--paper-dark);
+    border-color: var(--ink-light);
+  }
+
+  .btn--correct {
+    border-color: var(--correct);
+    color: var(--correct);
+  }
+  .btn--correct:hover {
+    background: rgba(90,138,90,0.1);
+  }
+
+  .btn--wrong {
+    border-color: var(--wrong);
+    color: var(--wrong);
+  }
+  .btn--wrong:hover {
+    background: rgba(160,80,80,0.1);
+  }
+
+  .btn--skip {
+    border-color: transparent;
+    color: var(--ink-faint);
+    font-size: 1rem;
+  }
+
+  .tap-hint {
+    font-family: 'Caveat', cursive;
+    font-size: 1.1rem;
+    color: var(--ink-faint);
+    text-align: center;
+  }
+
+  /* Direction toggle */
+  .direction-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'Caveat', cursive;
+    font-size: 1.1rem;
+    color: var(--ink-light);
+    cursor: pointer;
+    padding: 4px 12px;
+    border-radius: 4px;
+    transition: background 0.15s;
+    user-select: none;
+  }
+  .direction-toggle:hover { background: rgba(200,184,164,0.15); }
+  .direction-toggle .arrow { font-size: 1.3rem; transition: transform 0.3s; }
+  .direction-toggle.reversed .arrow { transform: rotate(180deg); }
+
+  /* Filter chips */
+  .filter-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: center;
+    padding-bottom: 8px;
+  }
+
+  .chip {
+    font-family: 'Caveat', cursive;
+    font-size: 1rem;
+    padding: 3px 12px;
+    border: 1px solid var(--pencil);
+    background: transparent;
+    color: var(--ink-light);
+    cursor: pointer;
+    border-radius: 20px;
+    transition: all 0.15s;
+  }
+
+  .chip:hover { background: rgba(200,184,164,0.15); }
+  .chip.active {
+    background: var(--brown-light);
+    border-color: var(--brown);
+    color: var(--brown);
+  }
+
+  /* ── SENTENCE BUILDER ── */
+  .builder-area {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    align-items: center;
+  }
+
+  .builder-prompt {
+    text-align: center;
+    padding: 16px;
+  }
+
+  .builder-prompt-label {
+    font-family: 'Architects Daughter', cursive;
+    font-size: 0.95rem;
+    color: var(--ink-light);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  .builder-prompt-text {
+    font-family: 'Caveat', cursive;
+    font-weight: 700;
+    font-size: 2rem;
+    color: var(--ink);
+    line-height: 1.3;
+  }
+
+  .builder-slots {
+    min-height: 70px;
+    width: 100%;
+    max-width: 700px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 16px;
+    border: 1.5px dashed var(--pencil);
+    border-radius: 6px;
+    background: rgba(255,248,235,0.4);
+    align-items: center;
+    justify-content: center;
+    transition: border-color 0.3s;
+  }
+
+  .builder-slots.correct-flash {
+    border-color: var(--correct);
+    background: rgba(90,138,90,0.06);
+  }
+
+  .builder-slots.wrong-flash {
+    border-color: var(--wrong);
+    background: rgba(160,80,80,0.06);
+  }
+
+  .builder-slots:empty::before {
+    content: 'tap pieces below to build...';
+    font-family: 'Caveat', cursive;
+    font-size: 1.2rem;
+    color: var(--pencil);
+  }
+
+  .piece {
+    font-family: 'Caveat', cursive;
+    font-weight: 700;
+    font-size: 1.35rem;
+    padding: 5px 14px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s;
+    line-height: 1.2;
+    user-select: none;
+    border: 1px solid transparent;
+  }
+
+  .piece:hover {
+    transform: scale(1.05);
+    filter: brightness(0.95);
+  }
+
+  .piece.used {
+    opacity: 0.25;
+    pointer-events: none;
+    transform: scale(0.95);
+  }
+
+  .piece--starter { background: var(--brown-light); color: var(--brown); }
+  .piece--action { background: var(--green-light); color: var(--green); }
+  .piece--bridge { background: var(--purple-light); color: var(--purple); }
+  .piece--time { background: var(--blue-light); color: var(--blue); }
+  .piece--ending { background: var(--gold-light); color: var(--gold); }
+  .piece--question { background: var(--red-accent-light); color: var(--red-accent); }
+  .piece--expression { background: var(--teal-light); color: var(--teal); }
+  .piece--distractor { background: rgba(160,150,140,0.08); color: var(--ink-light); }
+
+  .piece.in-slot {
+    border: 1px dashed currentColor;
+    opacity: 0.85;
+  }
+
+  .builder-choices {
+    width: 100%;
+    max-width: 700px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    padding: 8px;
+  }
+
+  .builder-answer {
+    text-align: center;
+    font-family: 'Caveat', cursive;
+    font-size: 1.3rem;
+    padding: 8px 16px;
+    border-radius: 4px;
+    max-width: 700px;
+  }
+
+  .builder-answer.correct {
+    color: var(--correct);
+    background: rgba(90,138,90,0.08);
+  }
+
+  .builder-answer.wrong {
+    color: var(--wrong);
+    background: rgba(160,80,80,0.08);
+  }
+
+  /* ── SPEED ROUND ── */
+  .speed-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .speed-prompt {
+    text-align: center;
+    padding: 20px;
+  }
+
+  .speed-prompt-text {
+    font-family: 'Caveat', cursive;
+    font-weight: 700;
+    font-size: 2.4rem;
+    color: var(--ink);
+  }
+
+  .speed-prompt-sub {
+    font-family: 'Caveat', cursive;
+    font-size: 1.1rem;
+    color: var(--ink-faint);
+    margin-top: 4px;
+  }
+
+  .speed-options {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    width: 100%;
+    max-width: 550px;
+  }
+
+  .speed-opt {
+    font-family: 'Caveat', cursive;
+    font-weight: 600;
+    font-size: 1.5rem;
+    padding: 16px 20px;
+    border: 1.5px solid var(--pencil);
+    background: transparent;
+    color: var(--ink);
+    cursor: pointer;
+    border-radius: 5px;
+    transition: all 0.15s;
+    text-align: center;
+    line-height: 1.2;
+  }
+
+  .speed-opt:hover {
+    background: var(--paper-dark);
+    border-color: var(--ink-light);
+    transform: scale(1.02);
+  }
+
+  .speed-opt.correct-pick {
+    border-color: var(--correct);
+    background: rgba(90,138,90,0.12);
+    color: var(--correct);
+  }
+
+  .speed-opt.wrong-pick {
+    border-color: var(--wrong);
+    background: rgba(160,80,80,0.12);
+    color: var(--wrong);
+  }
+
+  .speed-opt.reveal-correct {
+    border-color: var(--correct);
+    background: rgba(90,138,90,0.08);
+  }
+
+  .speed-timer {
+    width: 100%;
+    max-width: 550px;
+    height: 4px;
+    background: var(--pencil);
+    border-radius: 2px;
+    overflow: hidden;
+    opacity: 0.5;
+  }
+
+  .speed-timer-fill {
+    height: 100%;
+    background: var(--brown);
+    border-radius: 2px;
+    transition: width 0.1s linear;
+  }
+
+  .streak-display {
+    font-family: 'Permanent Marker', cursive;
+    font-size: 1.1rem;
+    color: var(--gold);
+    letter-spacing: 1px;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .streak-display.visible { opacity: 1; }
+
+  /* ── HIDDEN ── */
+  .hidden { display: none !important; }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 700px) {
+    .page-title { font-size: 1.7rem; }
+    .card-container { height: 240px; }
+    .card-text { font-size: 2rem; }
+    .main { padding: 0 16px 60px; }
+    body::after { left: 30px; }
+    .speed-options { grid-template-columns: 1fr; }
+    .builder-prompt-text { font-size: 1.6rem; }
+  }
+
+  /* ── TRANSITIONS ── */
+  .fade-in {
+    animation: fadeIn 0.3s ease;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .card-container.slide-out {
+    animation: slideOut 0.25s ease forwards;
+  }
+
+  @keyframes slideOut {
+    to { opacity: 0; transform: translateX(60px); }
+  }
+
+  /* Score pop */
+  .score-pop {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.8);
+    font-family: 'Permanent Marker', cursive;
+    font-size: 3rem;
+    pointer-events: none;
+    z-index: 100;
+    opacity: 0;
+    animation: popUp 0.6s ease forwards;
+  }
+
+  .score-pop.right { color: var(--correct); }
+  .score-pop.nope { color: var(--wrong); }
+
+  @keyframes popUp {
+    0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+    30% { opacity: 1; transform: translate(-50%, -60%) scale(1.1); }
+    100% { opacity: 0; transform: translate(-50%, -80%) scale(1); }
+  }
+
+  /* Keyboard hint */
+  .key-hints {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    padding-top: 4px;
+  }
+
+  .key-hint {
+    font-family: 'Caveat', cursive;
+    font-size: 0.95rem;
+    color: var(--pencil);
+  }
+
+  .key-hint kbd {
+    display: inline-block;
+    padding: 1px 6px;
+    border: 1px solid var(--pencil);
+    border-radius: 3px;
+    font-family: monospace;
+    font-size: 0.8rem;
+    margin: 0 2px;
+    background: rgba(255,255,255,0.3);
+  }
+</style>
+</head>
+<body>
+
+<h1 class="page-title" style="text-align:center; padding:30px 20px 6px; position:relative; z-index:10;">Pratica Italiana</h1>
+
+<div class="mode-tabs">
+  <button class="mode-tab active" data-mode="flash">Flashcards</button>
+  <button class="mode-tab" data-mode="builder">Sentence Builder</button>
+  <button class="mode-tab" data-mode="speed">Speed Round</button>
+</div>
+
+<div class="stats-bar">
+  <div class="stat"><span class="stat-num" id="stat-seen">0</span> seen</div>
+  <div class="stat stat--correct"><span class="stat-num" id="stat-correct">0</span> right</div>
+  <div class="stat stat--wrong"><span class="stat-num" id="stat-wrong">0</span> missed</div>
+  <div class="streak-display" id="streak"></div>
+</div>
+
+<div class="main">
+
+  <!-- FLASH MODE -->
+  <div class="flash-area" id="mode-flash">
+    <div class="filter-row" id="flash-filters"></div>
+    <div class="direction-toggle" id="dir-toggle">
+      <span>English</span>
+      <span class="arrow">&rarr;</span>
+      <span>Italiano</span>
+    </div>
+
+    <div class="card-container" id="card-container">
+      <div class="card-inner" id="card-inner">
+        <div class="card-face card-face--front">
+          <span class="card-category" id="card-cat"></span>
+          <span class="card-label" id="front-label">ENGLISH</span>
+          <span class="card-text" id="front-text"></span>
+          <span class="card-hint" id="front-hint"></span>
+          <span class="card-counter" id="card-counter"></span>
+        </div>
+        <div class="card-face card-face--back">
+          <span class="card-label" id="back-label">ITALIANO</span>
+          <span class="card-text" id="back-text"></span>
+          <span class="card-hint" id="back-hint"></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="tap-hint" id="tap-hint">tap card or press <kbd>Space</kbd> to flip</div>
+
+    <div class="flash-controls hidden" id="flash-controls">
+      <button class="btn btn--wrong" id="btn-wrong">Missed it</button>
+      <button class="btn btn--skip" id="btn-skip">Skip</button>
+      <button class="btn btn--correct" id="btn-right">Got it!</button>
+    </div>
+
+    <div class="key-hints">
+      <span class="key-hint"><kbd>Space</kbd> flip</span>
+      <span class="key-hint"><kbd>&larr;</kbd> missed</span>
+      <span class="key-hint"><kbd>&rarr;</kbd> got it</span>
+      <span class="key-hint"><kbd>&darr;</kbd> skip</span>
+    </div>
+  </div>
+
+  <!-- BUILDER MODE -->
+  <div class="builder-area hidden" id="mode-builder">
+    <div class="builder-prompt">
+      <div class="builder-prompt-label">Translate this</div>
+      <div class="builder-prompt-text" id="builder-english"></div>
+    </div>
+
+    <div class="builder-slots" id="builder-slots"></div>
+    <div class="builder-answer hidden" id="builder-answer"></div>
+
+    <div class="builder-choices" id="builder-choices"></div>
+
+    <div class="flash-controls">
+      <button class="btn" id="builder-check">Check</button>
+      <button class="btn btn--skip" id="builder-clear">Clear</button>
+      <button class="btn" id="builder-next">Next &rarr;</button>
+    </div>
+  </div>
+
+  <!-- SPEED MODE -->
+  <div class="speed-area hidden" id="mode-speed">
+    <div class="speed-timer"><div class="speed-timer-fill" id="speed-timer-fill"></div></div>
+
+    <div class="speed-prompt">
+      <div class="speed-prompt-text" id="speed-text"></div>
+      <div class="speed-prompt-sub" id="speed-sub"></div>
+    </div>
+
+    <div class="speed-options" id="speed-options"></div>
+
+    <div class="key-hints">
+      <span class="key-hint"><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><kbd>4</kbd> pick answer</span>
+    </div>
+  </div>
+
+</div>
+
+<!-- SVG background doodles -->
+<svg style="position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0;" xmlns="http://www.w3.org/2000/svg">
+  <path d="M 200 300 Q 300 250, 400 320" stroke="#b8a090" fill="none" stroke-width="1.2" opacity="0.12" stroke-dasharray="4 6"/>
+  <path d="M 700 180 Q 800 250, 900 200" stroke="#b8a090" fill="none" stroke-width="1" opacity="0.10" stroke-dasharray="3 5"/>
+  <circle cx="150" cy="520" r="20" stroke="#c4b8a4" fill="none" stroke-width="1" opacity="0.08"/>
+</svg>
+
+<script>
+// ═══════════════════════════════════════════
+// DATA — extracted from both mind maps
+// ═══════════════════════════════════════════
+
+const WORDS = [
+  // Verbs
+  {it:"essere",en:"to be",cat:"verbi"},
+  {it:"avere",en:"to have",cat:"verbi"},
+  {it:"fare",en:"to do / make",cat:"verbi"},
+  {it:"andare",en:"to go",cat:"verbi"},
+  {it:"volere",en:"to want",cat:"verbi"},
+  {it:"potere",en:"to be able to",cat:"verbi"},
+  {it:"dovere",en:"to have to",cat:"verbi"},
+  {it:"dire",en:"to say",cat:"verbi"},
+  {it:"dare",en:"to give",cat:"verbi"},
+  {it:"sapere",en:"to know (fact)",cat:"verbi"},
+  {it:"conoscere",en:"to know (person)",cat:"verbi"},
+  {it:"vedere",en:"to see",cat:"verbi"},
+  {it:"venire",en:"to come",cat:"verbi"},
+  {it:"mettere",en:"to put",cat:"verbi"},
+  {it:"prendere",en:"to take",cat:"verbi"},
+  {it:"mangiare",en:"to eat",cat:"verbi"},
+  {it:"bere",en:"to drink",cat:"verbi"},
+  {it:"parlare",en:"to speak",cat:"verbi"},
+  {it:"pensare",en:"to think",cat:"verbi"},
+  {it:"trovare",en:"to find",cat:"verbi"},
+  {it:"stare",en:"to stay",cat:"verbi"},
+  {it:"partire",en:"to leave",cat:"verbi"},
+  {it:"arrivare",en:"to arrive",cat:"verbi"},
+  {it:"vivere",en:"to live",cat:"verbi"},
+  {it:"lavorare",en:"to work",cat:"verbi"},
+  {it:"comprare",en:"to buy",cat:"verbi"},
+  {it:"capire",en:"to understand",cat:"verbi"},
+  {it:"leggere",en:"to read",cat:"verbi"},
+  {it:"scrivere",en:"to write",cat:"verbi"},
+  {it:"dormire",en:"to sleep",cat:"verbi"},
+  // People
+  {it:"io",en:"I",cat:"persone"},
+  {it:"tu",en:"you",cat:"persone"},
+  {it:"lui / lei",en:"he / she",cat:"persone"},
+  {it:"noi",en:"we",cat:"persone"},
+  {it:"loro",en:"they",cat:"persone"},
+  {it:"uomo",en:"man",cat:"persone"},
+  {it:"donna",en:"woman",cat:"persone"},
+  {it:"bambino/a",en:"child",cat:"persone"},
+  {it:"amico/a",en:"friend",cat:"persone"},
+  {it:"persona",en:"person",cat:"persone"},
+  // Time
+  {it:"oggi",en:"today",cat:"tempo"},
+  {it:"domani",en:"tomorrow",cat:"tempo"},
+  {it:"ieri",en:"yesterday",cat:"tempo"},
+  {it:"adesso",en:"now",cat:"tempo"},
+  {it:"sempre",en:"always",cat:"tempo"},
+  {it:"mai",en:"never",cat:"tempo"},
+  {it:"a volte",en:"sometimes",cat:"tempo"},
+  {it:"gi\u00e0",en:"already",cat:"tempo"},
+  {it:"ancora",en:"still / yet",cat:"tempo"},
+  {it:"tempo",en:"time",cat:"tempo"},
+  {it:"giorno",en:"day",cat:"tempo"},
+  {it:"notte",en:"night",cat:"tempo"},
+  {it:"anno",en:"year",cat:"tempo"},
+  // Places & things
+  {it:"casa",en:"house",cat:"posti"},
+  {it:"acqua",en:"water",cat:"posti"},
+  {it:"cibo",en:"food",cat:"posti"},
+  {it:"soldi",en:"money",cat:"posti"},
+  {it:"cosa",en:"thing",cat:"posti"},
+  {it:"posto",en:"place",cat:"posti"},
+  {it:"citt\u00e0",en:"city",cat:"posti"},
+  {it:"strada",en:"street",cat:"posti"},
+  {it:"macchina",en:"car",cat:"posti"},
+  {it:"lavoro",en:"work / job",cat:"posti"},
+  // Adjectives
+  {it:"buono",en:"good",cat:"aggettivi"},
+  {it:"cattivo",en:"bad",cat:"aggettivi"},
+  {it:"grande",en:"big",cat:"aggettivi"},
+  {it:"piccolo",en:"small",cat:"aggettivi"},
+  {it:"nuovo",en:"new",cat:"aggettivi"},
+  {it:"vecchio",en:"old",cat:"aggettivi"},
+  {it:"bello",en:"beautiful",cat:"aggettivi"},
+  {it:"felice",en:"happy",cat:"aggettivi"},
+  {it:"primo",en:"first",cat:"aggettivi"},
+  {it:"ultimo",en:"last",cat:"aggettivi"},
+  {it:"stesso",en:"same",cat:"aggettivi"},
+  {it:"altro",en:"other",cat:"aggettivi"},
+  {it:"possibile",en:"possible",cat:"aggettivi"},
+  {it:"importante",en:"important",cat:"aggettivi"},
+  // Connectors
+  {it:"e",en:"and",cat:"connettori"},
+  {it:"o",en:"or",cat:"connettori"},
+  {it:"ma",en:"but",cat:"connettori"},
+  {it:"perch\u00e9",en:"because",cat:"connettori"},
+  {it:"se",en:"if",cat:"connettori"},
+  {it:"quando",en:"when",cat:"connettori"},
+  {it:"dove",en:"where",cat:"connettori"},
+  {it:"come",en:"how",cat:"connettori"},
+  {it:"che / cosa",en:"what",cat:"connettori"},
+  {it:"chi",en:"who",cat:"connettori"},
+  {it:"con",en:"with",cat:"connettori"},
+  {it:"senza",en:"without",cat:"connettori"},
+  {it:"per",en:"for",cat:"connettori"},
+  {it:"in",en:"in",cat:"connettori"},
+  {it:"di",en:"of",cat:"connettori"},
+  {it:"a",en:"to / at",cat:"connettori"},
+  {it:"questo",en:"this",cat:"connettori"},
+  {it:"quello",en:"that",cat:"connettori"},
+  {it:"pi\u00f9",en:"more",cat:"connettori"},
+  {it:"molto",en:"very",cat:"connettori"},
+  {it:"non",en:"not",cat:"connettori"},
+  {it:"s\u00ec",en:"yes",cat:"connettori"},
+  {it:"no",en:"no",cat:"connettori"},
+];
+
+const FRAGMENTS = [
+  // Starters
+  {it:"Voglio",en:"I want...",cat:"inizi",type:"starter"},
+  {it:"Posso",en:"I can... / Can I...",cat:"inizi",type:"starter"},
+  {it:"Devo",en:"I have to...",cat:"inizi",type:"starter"},
+  {it:"Vorrei",en:"I would like...",cat:"inizi",type:"starter"},
+  {it:"Mi piace",en:"I like...",cat:"inizi",type:"starter"},
+  {it:"Non mi piace",en:"I don't like...",cat:"inizi",type:"starter"},
+  {it:"Penso che",en:"I think that...",cat:"inizi",type:"starter"},
+  {it:"Credo che",en:"I believe that...",cat:"inizi",type:"starter"},
+  {it:"Non so se",en:"I don't know if...",cat:"inizi",type:"starter"},
+  {it:"Ho bisogno di",en:"I need...",cat:"inizi",type:"starter"},
+  {it:"Sto cercando di",en:"I'm trying to...",cat:"inizi",type:"starter"},
+  {it:"Non posso",en:"I can't...",cat:"inizi",type:"starter"},
+  {it:"So che",en:"I know that...",cat:"inizi",type:"starter"},
+  {it:"Preferisco",en:"I prefer...",cat:"inizi",type:"starter"},
+  // Actions
+  {it:"andare a",en:"to go to...",cat:"azioni",type:"action"},
+  {it:"parlare con",en:"to speak with...",cat:"azioni",type:"action"},
+  {it:"mangiare qualcosa",en:"to eat something",cat:"azioni",type:"action"},
+  {it:"fare questo",en:"to do this",cat:"azioni",type:"action"},
+  {it:"comprare",en:"to buy...",cat:"azioni",type:"action"},
+  {it:"trovare un posto",en:"to find a place",cat:"azioni",type:"action"},
+  {it:"prendere un caff\u00e8",en:"to have a coffee",cat:"azioni",type:"action"},
+  {it:"vedere qualcuno",en:"to see someone",cat:"azioni",type:"action"},
+  {it:"lavorare qui",en:"to work here",cat:"azioni",type:"action"},
+  {it:"dire qualcosa",en:"to say something",cat:"azioni",type:"action"},
+  {it:"capire questo",en:"to understand this",cat:"azioni",type:"action"},
+  {it:"tornare a casa",en:"to go back home",cat:"azioni",type:"action"},
+  // Bridges
+  {it:"ma non",en:"but not...",cat:"ponti",type:"bridge"},
+  {it:"perch\u00e9",en:"because...",cat:"ponti",type:"bridge"},
+  {it:"anche se",en:"even if...",cat:"ponti",type:"bridge"},
+  {it:"quando",en:"when...",cat:"ponti",type:"bridge"},
+  {it:"se",en:"if...",cat:"ponti",type:"bridge"},
+  {it:"e anche",en:"and also...",cat:"ponti",type:"bridge"},
+  {it:"per\u00f2",en:"however...",cat:"ponti",type:"bridge"},
+  {it:"invece di",en:"instead of...",cat:"ponti",type:"bridge"},
+  {it:"prima di",en:"before...",cat:"ponti",type:"bridge"},
+  {it:"dopo",en:"after...",cat:"ponti",type:"bridge"},
+  {it:"senza",en:"without...",cat:"ponti",type:"bridge"},
+  // Time/place
+  {it:"domani",en:"tomorrow",cat:"quando",type:"time"},
+  {it:"stasera",en:"tonight",cat:"quando",type:"time"},
+  {it:"adesso",en:"now",cat:"quando",type:"time"},
+  {it:"la prossima settimana",en:"next week",cat:"quando",type:"time"},
+  {it:"pi\u00f9 tardi",en:"later",cat:"quando",type:"time"},
+  {it:"in Italia",en:"in Italy",cat:"quando",type:"time"},
+  {it:"qui",en:"here",cat:"quando",type:"time"},
+  {it:"a casa",en:"at home",cat:"quando",type:"time"},
+  {it:"al ristorante",en:"at the restaurant",cat:"quando",type:"time"},
+  {it:"in citt\u00e0",en:"in the city",cat:"quando",type:"time"},
+  {it:"stamattina",en:"this morning",cat:"quando",type:"time"},
+  {it:"ogni giorno",en:"every day",cat:"quando",type:"time"},
+  // Questions
+  {it:"Dove posso",en:"Where can I...?",cat:"domande",type:"question"},
+  {it:"Quando",en:"When...?",cat:"domande",type:"question"},
+  {it:"Perch\u00e9 non",en:"Why not...?",cat:"domande",type:"question"},
+  {it:"Come si dice",en:"How do you say...?",cat:"domande",type:"question"},
+  {it:"Che cosa \u00e8",en:"What is...?",cat:"domande",type:"question"},
+  {it:"Chi \u00e8",en:"Who is...?",cat:"domande",type:"question"},
+  {it:"Quanto costa",en:"How much is...?",cat:"domande",type:"question"},
+  {it:"C'\u00e8",en:"Is there...?",cat:"domande",type:"question"},
+  {it:"\u00c8 possibile",en:"Is it possible...?",cat:"domande",type:"question"},
+  {it:"Mi pu\u00f2 aiutare con",en:"Can you help me with...?",cat:"domande",type:"question"},
+  // Expressions
+  {it:"Va bene",en:"It's fine / OK",cat:"espressioni",type:"expression"},
+  {it:"Non c'\u00e8 problema",en:"No problem",cat:"espressioni",type:"expression"},
+  {it:"Non importa",en:"It doesn't matter",cat:"espressioni",type:"expression"},
+  {it:"Dipende",en:"It depends",cat:"espressioni",type:"expression"},
+  {it:"Secondo me",en:"In my opinion...",cat:"espressioni",type:"expression"},
+  {it:"Per esempio",en:"For example...",cat:"espressioni",type:"expression"},
+  {it:"In realt\u00e0",en:"Actually...",cat:"espressioni",type:"expression"},
+  {it:"Forse",en:"Maybe...",cat:"espressioni",type:"expression"},
+  {it:"Certo!",en:"Of course!",cat:"espressioni",type:"expression"},
+  {it:"Hai ragione",en:"You're right",cat:"espressioni",type:"expression"},
+  {it:"Non lo so",en:"I don't know",cat:"espressioni",type:"expression"},
+  {it:"Mi sembra",en:"It seems to me...",cat:"espressioni",type:"expression"},
+  // Endings
+  {it:"\u00e8 importante",en:"is important",cat:"fini",type:"ending"},
+  {it:"non \u00e8 facile",en:"isn't easy",cat:"fini",type:"ending"},
+  {it:"\u00e8 possibile",en:"is possible",cat:"fini",type:"ending"},
+  {it:"\u00e8 difficile",en:"is difficult",cat:"fini",type:"ending"},
+  {it:"\u00e8 meglio",en:"is better",cat:"fini",type:"ending"},
+  {it:"non \u00e8 vero",en:"isn't true",cat:"fini",type:"ending"},
+  {it:"\u00e8 troppo",en:"is too much",cat:"fini",type:"ending"},
+  {it:"non funziona",en:"doesn't work",cat:"fini",type:"ending"},
+  {it:"mi piace molto",en:"I like it a lot",cat:"fini",type:"ending"},
+  {it:"\u00e8 la stessa cosa",en:"it's the same thing",cat:"fini",type:"ending"},
+];
+
+// Sentence combos for builder mode
+const SENTENCES = [
+  {en:"I want to go to the restaurant tonight", parts:[
+    {it:"Voglio",type:"starter"},{it:"andare a",type:"action"},{it:"al ristorante",type:"time"},{it:"stasera",type:"time"}
+  ]},
+  {en:"I can't work here because it doesn't work", parts:[
+    {it:"Non posso",type:"starter"},{it:"lavorare qui",type:"action"},{it:"perch\u00e9",type:"bridge"},{it:"non funziona",type:"ending"}
+  ]},
+  {en:"Where can I have a coffee here?", parts:[
+    {it:"Dove posso",type:"question"},{it:"prendere un caff\u00e8",type:"action"},{it:"qui",type:"time"}
+  ]},
+  {en:"I think it's better to go back home", parts:[
+    {it:"Penso che",type:"starter"},{it:"\u00e8 meglio",type:"ending"},{it:"tornare a casa",type:"action"}
+  ]},
+  {en:"I would like to say something but it isn't easy", parts:[
+    {it:"Vorrei",type:"starter"},{it:"dire qualcosa",type:"action"},{it:"ma non",type:"bridge"},{it:"\u00e8 facile",type:"ending"}
+  ]},
+  {en:"I need to find a place in the city", parts:[
+    {it:"Ho bisogno di",type:"starter"},{it:"trovare un posto",type:"action"},{it:"in citt\u00e0",type:"time"}
+  ]},
+  {en:"I'm trying to understand this", parts:[
+    {it:"Sto cercando di",type:"starter"},{it:"capire questo",type:"action"}
+  ]},
+  {en:"I don't like to work every day", parts:[
+    {it:"Non mi piace",type:"starter"},{it:"lavorare qui",type:"action"},{it:"ogni giorno",type:"time"}
+  ]},
+  {en:"I prefer to eat something at home", parts:[
+    {it:"Preferisco",type:"starter"},{it:"mangiare qualcosa",type:"action"},{it:"a casa",type:"time"}
+  ]},
+  {en:"Is it possible to speak with someone later?", parts:[
+    {it:"\u00c8 possibile",type:"question"},{it:"parlare con",type:"action"},{it:"qualcuno",type:"distractor"},{it:"pi\u00f9 tardi",type:"time"}
+  ]},
+  {en:"I know that it's important", parts:[
+    {it:"So che",type:"starter"},{it:"\u00e8 importante",type:"ending"}
+  ]},
+  {en:"How much is it? Maybe it's too much", parts:[
+    {it:"Quanto costa",type:"question"},{it:"Forse",type:"expression"},{it:"\u00e8 troppo",type:"ending"}
+  ]},
+  {en:"I believe it's the same thing", parts:[
+    {it:"Credo che",type:"starter"},{it:"\u00e8 la stessa cosa",type:"ending"}
+  ]},
+  {en:"I want to see someone tomorrow", parts:[
+    {it:"Voglio",type:"starter"},{it:"vedere qualcuno",type:"action"},{it:"domani",type:"time"}
+  ]},
+  {en:"How do you say this in Italy?", parts:[
+    {it:"Come si dice",type:"question"},{it:"questo",type:"distractor"},{it:"in Italia",type:"time"}
+  ]},
+  {en:"Actually, I don't know if it's possible", parts:[
+    {it:"In realt\u00e0",type:"expression"},{it:"Non so se",type:"starter"},{it:"\u00e8 possibile",type:"ending"}
+  ]},
+  {en:"I have to buy something before tonight", parts:[
+    {it:"Devo",type:"starter"},{it:"comprare",type:"action"},{it:"qualcosa",type:"distractor"},{it:"prima di",type:"bridge"},{it:"stasera",type:"time"}
+  ]},
+  {en:"In my opinion, it isn't true", parts:[
+    {it:"Secondo me",type:"expression"},{it:"non \u00e8 vero",type:"ending"}
+  ]},
+];
+
+// ═══════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════
+
+let currentMode = 'flash';
+let stats = { seen: 0, correct: 0, wrong: 0 };
+let streak = 0;
+
+// Flash state
+let flashDeck = [];
+let flashIndex = 0;
+let isFlipped = false;
+let showEnFirst = true; // en→it by default
+let activeFilters = new Set(['all']);
+const ALL_ITEMS = [...WORDS, ...FRAGMENTS];
+const CATEGORIES = [...new Set(ALL_ITEMS.map(w => w.cat))];
+const CAT_LABELS = {
+  verbi:"Verbi",persone:"Persone",tempo:"Tempo",posti:"Posti & Cose",
+  aggettivi:"Aggettivi",connettori:"Connettori",inizi:"Inizi",azioni:"Azioni",
+  ponti:"Ponti",quando:"Quando & Dove",domande:"Domande",espressioni:"Espressioni",fini:"Fini"
+};
+
+// Builder state
+let builderSentences = shuffle([...SENTENCES]);
+let builderIdx = 0;
+let selectedPieces = [];
+
+// Speed state
+let speedDeck = [];
+let speedIdx = 0;
+let speedTimer = null;
+let speedTimeLeft = 0;
+const SPEED_TIME = 8000;
+
+// ═══════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════
+
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function pick(arr, n) {
+  const s = shuffle([...arr]);
+  return s.slice(0, n);
+}
+
+function showPop(isCorrect) {
+  const el = document.createElement('div');
+  el.className = 'score-pop ' + (isCorrect ? 'right' : 'nope');
+  el.textContent = isCorrect ? (streak > 2 ? streak + '!' : '\u2713') : '\u2717';
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 700);
+}
+
+function updateStats() {
+  document.getElementById('stat-seen').textContent = stats.seen;
+  document.getElementById('stat-correct').textContent = stats.correct;
+  document.getElementById('stat-wrong').textContent = stats.wrong;
+  const streakEl = document.getElementById('streak');
+  if (streak >= 3) {
+    streakEl.textContent = streak + ' streak!';
+    streakEl.classList.add('visible');
+  } else {
+    streakEl.classList.remove('visible');
+  }
+}
+
+// ═══════════════════════════════════════════
+// MODE SWITCHING
+// ═══════════════════════════════════════════
+
+document.querySelectorAll('.mode-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    currentMode = tab.dataset.mode;
+    document.getElementById('mode-flash').classList.toggle('hidden', currentMode !== 'flash');
+    document.getElementById('mode-builder').classList.toggle('hidden', currentMode !== 'builder');
+    document.getElementById('mode-speed').classList.toggle('hidden', currentMode !== 'speed');
+    if (currentMode === 'flash') initFlash();
+    if (currentMode === 'builder') initBuilder();
+    if (currentMode === 'speed') initSpeed();
+  });
+});
+
+// ═══════════════════════════════════════════
+// FLASH MODE
+// ═══════════════════════════════════════════
+
+function buildFilters() {
+  const row = document.getElementById('flash-filters');
+  row.innerHTML = '';
+  const allChip = document.createElement('button');
+  allChip.className = 'chip active';
+  allChip.textContent = 'All';
+  allChip.addEventListener('click', () => {
+    activeFilters = new Set(['all']);
+    row.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+    allChip.classList.add('active');
+    initFlash();
+  });
+  row.appendChild(allChip);
+
+  CATEGORIES.forEach(cat => {
+    const chip = document.createElement('button');
+    chip.className = 'chip';
+    chip.textContent = CAT_LABELS[cat] || cat;
+    chip.dataset.cat = cat;
+    chip.addEventListener('click', () => {
+      allChip.classList.remove('active');
+      activeFilters.delete('all');
+      if (activeFilters.has(cat)) {
+        activeFilters.delete(cat);
+        chip.classList.remove('active');
+      } else {
+        activeFilters.add(cat);
+        chip.classList.add('active');
+      }
+      if (activeFilters.size === 0) {
+        activeFilters.add('all');
+        allChip.classList.add('active');
+      }
+      initFlash();
+    });
+    row.appendChild(chip);
+  });
+}
+
+function getFilteredItems() {
+  if (activeFilters.has('all')) return [...ALL_ITEMS];
+  return ALL_ITEMS.filter(w => activeFilters.has(w.cat));
+}
+
+function initFlash() {
+  flashDeck = shuffle(getFilteredItems());
+  flashIndex = 0;
+  showCard();
+}
+
+function showCard() {
+  if (flashIndex >= flashDeck.length) {
+    flashDeck = shuffle(getFilteredItems());
+    flashIndex = 0;
+  }
+  const item = flashDeck[flashIndex];
+  isFlipped = false;
+  const inner = document.getElementById('card-inner');
+  inner.classList.remove('flipped');
+
+  const front = showEnFirst ? item.en : item.it;
+  const back = showEnFirst ? item.it : item.en;
+
+  document.getElementById('front-label').textContent = showEnFirst ? 'ENGLISH' : 'ITALIANO';
+  document.getElementById('back-label').textContent = showEnFirst ? 'ITALIANO' : 'ENGLISH';
+  document.getElementById('front-text').textContent = front;
+  document.getElementById('back-text').textContent = back;
+  document.getElementById('card-cat').textContent = CAT_LABELS[item.cat] || item.cat;
+  document.getElementById('card-counter').textContent = (flashIndex + 1) + ' / ' + flashDeck.length;
+
+  // Hint for fragments
+  document.getElementById('front-hint').textContent = item.type ? '(' + item.type + ')' : '';
+  document.getElementById('back-hint').textContent = '';
+
+  document.getElementById('flash-controls').classList.add('hidden');
+  document.getElementById('tap-hint').classList.remove('hidden');
+
+  // Animate in
+  const container = document.getElementById('card-container');
+  container.classList.remove('slide-out');
+  container.classList.add('fade-in');
+  setTimeout(() => container.classList.remove('fade-in'), 300);
+}
+
+function flipCard() {
+  if (isFlipped) return;
+  isFlipped = true;
+  document.getElementById('card-inner').classList.add('flipped');
+  document.getElementById('flash-controls').classList.remove('hidden');
+  document.getElementById('tap-hint').classList.add('hidden');
+  stats.seen++;
+  updateStats();
+}
+
+function nextCard(result) {
+  if (result === 'correct') { stats.correct++; streak++; showPop(true); }
+  else if (result === 'wrong') { stats.wrong++; streak = 0; showPop(false); }
+  // skip resets nothing
+  updateStats();
+
+  const container = document.getElementById('card-container');
+  container.classList.add('slide-out');
+  setTimeout(() => {
+    flashIndex++;
+    showCard();
+  }, 250);
+}
+
+document.getElementById('card-container').addEventListener('click', flipCard);
+document.getElementById('btn-right').addEventListener('click', () => nextCard('correct'));
+document.getElementById('btn-wrong').addEventListener('click', () => nextCard('wrong'));
+document.getElementById('btn-skip').addEventListener('click', () => nextCard('skip'));
+
+// Direction toggle
+document.getElementById('dir-toggle').addEventListener('click', () => {
+  showEnFirst = !showEnFirst;
+  document.getElementById('dir-toggle').classList.toggle('reversed', !showEnFirst);
+  showCard();
+});
+
+// ═══════════════════════════════════════════
+// BUILDER MODE
+// ═══════════════════════════════════════════
+
+function initBuilder() {
+  builderSentences = shuffle([...SENTENCES]);
+  builderIdx = 0;
+  showBuilderSentence();
+}
+
+function showBuilderSentence() {
+  if (builderIdx >= builderSentences.length) {
+    builderSentences = shuffle([...SENTENCES]);
+    builderIdx = 0;
+  }
+  const s = builderSentences[builderIdx];
+  selectedPieces = [];
+
+  document.getElementById('builder-english').textContent = s.en;
+  document.getElementById('builder-slots').innerHTML = '';
+  document.getElementById('builder-answer').classList.add('hidden');
+
+  // Build choices: correct pieces + some distractors
+  const correctPieces = s.parts.map(p => ({...p, isCorrect: true}));
+  const distractorPool = FRAGMENTS.filter(f => !s.parts.some(p => p.it === f.it));
+  const numDistractors = Math.min(3, distractorPool.length);
+  const distractors = pick(distractorPool, numDistractors).map(d => ({
+    it: d.it, type: d.type || 'distractor', isCorrect: false
+  }));
+
+  const allChoices = shuffle([...correctPieces, ...distractors]);
+  const choicesEl = document.getElementById('builder-choices');
+  choicesEl.innerHTML = '';
+
+  allChoices.forEach((piece, i) => {
+    const el = document.createElement('div');
+    el.className = 'piece piece--' + piece.type;
+    el.textContent = piece.it;
+    el.dataset.idx = i;
+    el.dataset.it = piece.it;
+    el.dataset.correct = piece.isCorrect;
+    el.addEventListener('click', () => togglePiece(el, piece));
+    choicesEl.appendChild(el);
+  });
+}
+
+function togglePiece(el, piece) {
+  const slots = document.getElementById('builder-slots');
+  if (el.classList.contains('used')) {
+    // Remove from slots
+    el.classList.remove('used');
+    selectedPieces = selectedPieces.filter(p => p.el !== el);
+    const slotPiece = slots.querySelector(`[data-source="${el.dataset.idx}"]`);
+    if (slotPiece) slotPiece.remove();
+  } else {
+    // Add to slots
+    el.classList.add('used');
+    const slotEl = document.createElement('div');
+    slotEl.className = 'piece piece--' + piece.type + ' in-slot';
+    slotEl.textContent = piece.it;
+    slotEl.dataset.source = el.dataset.idx;
+    slotEl.addEventListener('click', () => {
+      el.classList.remove('used');
+      selectedPieces = selectedPieces.filter(p => p.el !== el);
+      slotEl.remove();
+    });
+    slots.appendChild(slotEl);
+    selectedPieces.push({ it: piece.it, el: el });
+  }
+}
+
+document.getElementById('builder-check').addEventListener('click', () => {
+  const s = builderSentences[builderIdx];
+  const userAnswer = selectedPieces.map(p => p.it).join(' ');
+  const correctAnswer = s.parts.map(p => p.it).join(' ');
+
+  const answerEl = document.getElementById('builder-answer');
+  const slotsEl = document.getElementById('builder-slots');
+  answerEl.classList.remove('hidden');
+
+  if (userAnswer === correctAnswer) {
+    answerEl.className = 'builder-answer correct';
+    answerEl.textContent = '\u2713 Perfetto! ' + correctAnswer;
+    slotsEl.classList.add('correct-flash');
+    stats.correct++;
+    streak++;
+    showPop(true);
+  } else {
+    answerEl.className = 'builder-answer wrong';
+    answerEl.textContent = 'Answer: ' + correctAnswer;
+    slotsEl.classList.add('wrong-flash');
+    stats.wrong++;
+    streak = 0;
+    showPop(false);
+  }
+  stats.seen++;
+  updateStats();
+  setTimeout(() => { slotsEl.classList.remove('correct-flash', 'wrong-flash'); }, 800);
+});
+
+document.getElementById('builder-clear').addEventListener('click', () => {
+  selectedPieces.forEach(p => p.el.classList.remove('used'));
+  selectedPieces = [];
+  document.getElementById('builder-slots').innerHTML = '';
+  document.getElementById('builder-answer').classList.add('hidden');
+});
+
+document.getElementById('builder-next').addEventListener('click', () => {
+  builderIdx++;
+  showBuilderSentence();
+});
+
+// ═══════════════════════════════════════════
+// SPEED MODE
+// ═══════════════════════════════════════════
+
+function initSpeed() {
+  speedDeck = shuffle([...ALL_ITEMS]);
+  speedIdx = 0;
+  showSpeedQuestion();
+}
+
+function showSpeedQuestion() {
+  if (speedTimer) clearInterval(speedTimer);
+  if (speedIdx >= speedDeck.length) {
+    speedDeck = shuffle([...ALL_ITEMS]);
+    speedIdx = 0;
+  }
+
+  const item = speedDeck[speedIdx];
+  const askIt = Math.random() > 0.5;
+
+  document.getElementById('speed-text').textContent = askIt ? item.it : item.en;
+  document.getElementById('speed-sub').textContent = askIt ? 'What does this mean?' : 'Come si dice?';
+
+  // Build 4 options
+  const correctAnswer = askIt ? item.en : item.it;
+  const wrongPool = ALL_ITEMS.filter(w => w.it !== item.it);
+  const wrongs = pick(wrongPool, 3).map(w => askIt ? w.en : w.it);
+  const options = shuffle([correctAnswer, ...wrongs]);
+
+  const optContainer = document.getElementById('speed-options');
+  optContainer.innerHTML = '';
+  options.forEach((opt, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'speed-opt';
+    btn.textContent = opt;
+    btn.dataset.correct = (opt === correctAnswer) ? 'true' : 'false';
+    btn.addEventListener('click', () => pickSpeedAnswer(btn, correctAnswer));
+    optContainer.appendChild(btn);
+  });
+
+  // Timer
+  speedTimeLeft = SPEED_TIME;
+  const fill = document.getElementById('speed-timer-fill');
+  fill.style.width = '100%';
+
+  speedTimer = setInterval(() => {
+    speedTimeLeft -= 100;
+    fill.style.width = Math.max(0, (speedTimeLeft / SPEED_TIME) * 100) + '%';
+    if (speedTimeLeft <= 0) {
+      clearInterval(speedTimer);
+      // Time's up — mark wrong
+      stats.seen++;
+      stats.wrong++;
+      streak = 0;
+      showPop(false);
+      updateStats();
+      // Reveal correct
+      optContainer.querySelectorAll('.speed-opt').forEach(b => {
+        if (b.dataset.correct === 'true') b.classList.add('reveal-correct');
+      });
+      setTimeout(() => { speedIdx++; showSpeedQuestion(); }, 1200);
+    }
+  }, 100);
+}
+
+function pickSpeedAnswer(btn, correctAnswer) {
+  if (speedTimer) clearInterval(speedTimer);
+
+  const isRight = btn.dataset.correct === 'true';
+  stats.seen++;
+
+  const container = document.getElementById('speed-options');
+  container.querySelectorAll('.speed-opt').forEach(b => {
+    b.style.pointerEvents = 'none';
+    if (b.dataset.correct === 'true') b.classList.add('reveal-correct');
+  });
+
+  if (isRight) {
+    btn.classList.add('correct-pick');
+    stats.correct++;
+    streak++;
+    showPop(true);
+  } else {
+    btn.classList.add('wrong-pick');
+    stats.wrong++;
+    streak = 0;
+    showPop(false);
+  }
+  updateStats();
+
+  setTimeout(() => { speedIdx++; showSpeedQuestion(); }, isRight ? 600 : 1400);
+}
+
+// ═══════════════════════════════════════════
+// KEYBOARD CONTROLS
+// ═══════════════════════════════════════════
+
+document.addEventListener('keydown', (e) => {
+  if (currentMode === 'flash') {
+    if (e.code === 'Space') { e.preventDefault(); if (!isFlipped) flipCard(); else nextCard('skip'); }
+    if (e.code === 'ArrowRight' && isFlipped) nextCard('correct');
+    if (e.code === 'ArrowLeft' && isFlipped) nextCard('wrong');
+    if (e.code === 'ArrowDown' && isFlipped) nextCard('skip');
+  }
+  if (currentMode === 'speed') {
+    const num = parseInt(e.key);
+    if (num >= 1 && num <= 4) {
+      const btns = document.querySelectorAll('#speed-options .speed-opt');
+      if (btns[num - 1] && !btns[num - 1].classList.contains('correct-pick') && !btns[num - 1].classList.contains('wrong-pick')) {
+        btns[num - 1].click();
+      }
+    }
+  }
+});
+
+// ═══════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════
+
+buildFilters();
+initFlash();
+</script>
+
+</body>
+</html>

@@ -3,6 +3,7 @@
 import type { ReactNode } from "react"
 import { ShellSidebar, type ShellSidebarProps } from "./sidebar"
 import { ShellTopbar, type ShellTopbarProps } from "./topbar"
+import { BreadcrumbProvider } from "./breadcrumb-context"
 
 export interface FrameProps {
   children: ReactNode
@@ -27,40 +28,42 @@ export function Frame({
   userInitials,
 }: FrameProps) {
   return (
-    <div
-      style={{
-        display: "flex",
-        position: "relative",
-        background: "var(--ih-bg)",
-        color: "var(--ih-ink)",
-        height: "100%",
-        width: "100%",
-        overflow: "hidden",
-        fontFamily: "var(--ih-font-sans)",
-        fontSize: 13,
-      }}
-    >
-      <ShellSidebar surface={surface} user={user} />
+    <BreadcrumbProvider>
       <div
         style={{
-          flex: 1,
           display: "flex",
-          flexDirection: "column",
-          minWidth: 0,
+          position: "relative",
+          background: "var(--ih-bg)",
+          color: "var(--ih-ink)",
+          height: "100%",
+          width: "100%",
+          overflow: "hidden",
+          fontFamily: "var(--ih-font-sans)",
+          fontSize: 13,
         }}
       >
-        <ShellTopbar
-          crumbs={crumbs}
-          rightActions={rightActions}
-          userInitials={userInitials}
-        />
-        <main
-          className="scrollbar-thin"
-          style={{ flex: 1, overflowY: "auto" }}
+        <ShellSidebar surface={surface} user={user} />
+        <div
+          style={{
+            flex: 1,
+            display: "flex",
+            flexDirection: "column",
+            minWidth: 0,
+          }}
         >
-          {children}
-        </main>
+          <ShellTopbar
+            crumbs={crumbs}
+            rightActions={rightActions}
+            userInitials={userInitials}
+          />
+          <main
+            className="scrollbar-thin"
+            style={{ flex: 1, overflowY: "auto" }}
+          >
+            {children}
+          </main>
+        </div>
       </div>
-    </div>
+    </BreadcrumbProvider>
   )
 }

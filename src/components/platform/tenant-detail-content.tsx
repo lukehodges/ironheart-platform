@@ -3,6 +3,7 @@
 import { TenantDetailHeader } from "@/components/platform/tenant-detail-header"
 import { TenantUsageCard } from "@/components/platform/tenant-usage-card"
 import { TenantModulesCard } from "@/components/platform/tenant-modules-card"
+import { SetBreadcrumb } from "@/components/shell"
 import { useTenantDetail } from "@/hooks/use-platform-tenants"
 import { usePlatformTenants } from "@/hooks/use-platform-tenants"
 import { toast } from "sonner"
@@ -110,6 +111,7 @@ export function TenantDetailContent({ tenantId }: TenantDetailContentProps) {
 
   return (
     <div className="space-y-6">
+      <SetBreadcrumb segment={tenantId} label={tenantDetail.name} />
       <TenantDetailHeader
         tenant={tenantDetail}
         onSuspend={handleSuspend}
