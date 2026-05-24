@@ -20,7 +20,7 @@
  */
 
 import { withAuth } from "@workos-inc/authkit-nextjs"
-import { eq, and } from "drizzle-orm"
+import { eq } from "drizzle-orm"
 import { db } from "@/shared/db"
 import { users, tenants } from "@/shared/db/schema"
 import { reportGeneratorRepository } from "@/modules/report-generator/report-generator.repository"
@@ -55,15 +55,11 @@ export async function GET(
   }
 
   // 3. Verify caller has access to this report's tenant.
-  //    Platform admin users have a user row in the platform tenant (tenantId == PLATFORM_TENANT_ID).
+  //    Platform admin (users.isPlatformAdmin = true) can read any report.
   //    Regular users must have a user row matching report.tenantId.
-  const platformTenantId = process.env.PLATFORM_TENANT_ID ?? null
-
   const dbUser = await db.query.users.findFirst({
-    where: and(
-      eq(users.workosUserId, authResult.user.id),
-    ),
-    columns: { id: true, tenantId: true },
+    where: eq(users.workosUserId, authResult.user.id),
+    columns: { id: true, tenantId: true, isPlatformAdmin: true },
   })
 
   if (!dbUser) {
@@ -73,9 +69,7 @@ export async function GET(
     })
   }
 
-  const isPlatformAdmin =
-    platformTenantId != null && dbUser.tenantId === platformTenantId
-
+  const isPlatformAdmin = dbUser.isPlatformAdmin === true
   const isTenantMember = dbUser.tenantId === report.tenantId
 
   if (!isPlatformAdmin && !isTenantMember) {
