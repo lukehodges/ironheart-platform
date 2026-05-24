@@ -89,6 +89,8 @@ export const engagementOrgChart = pgTable(
     edgeStyle: text("edge_style", { enum: ["SOLID", "DOTTED", "MATRIX"] })
       .notNull()
       .default("SOLID"),
+    // Free-text prose for per-node consultant notes (Phase 1.x).
+    notes: text("notes"),
 
     createdAt: timestamp("createdAt", { withTimezone: true })
       .notNull()

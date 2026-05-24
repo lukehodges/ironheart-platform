@@ -465,6 +465,7 @@ export const onboardingRouter = router({
       if (input.isFounder !== undefined) patch.isFounder = input.isFounder
       if (input.isFractional !== undefined) patch.isFractional = input.isFractional
       if (input.avatarColor !== undefined) patch.avatarColor = input.avatarColor
+      if (input.notes !== undefined) patch.notes = input.notes
       const updated = await onboardingRepository.updateNode({
         id: node.id,
         tenantId,
@@ -781,6 +782,7 @@ export const onboardingRouter = router({
       const patch: Record<string, unknown> = {}
       if (input.email !== undefined) patch.email = input.email
       if (input.tenureYears !== undefined) patch.tenureYears = input.tenureYears
+      if (input.notes !== undefined) patch.notes = input.notes
       const updated = await onboardingRepository.updateNode({
         id: nodeRow.id,
         tenantId,

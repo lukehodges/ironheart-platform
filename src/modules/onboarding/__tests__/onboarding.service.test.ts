@@ -88,6 +88,7 @@ function makeNode(overrides: Partial<OrgChartNodeRecord> = {}): OrgChartNodeReco
     isFractional: false,
     avatarColor: null,
     edgeStyle: "SOLID",
+    notes: null,
     createdAt: new Date("2026-01-01"),
     updatedAt: new Date("2026-01-01"),
     ...overrides,

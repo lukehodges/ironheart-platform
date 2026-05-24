@@ -159,6 +159,7 @@ export const onboardingRepository = {
         isFractional: input.isFractional ?? false,
         avatarColor: input.avatarColor ?? null,
         edgeStyle: input.edgeStyle ?? "SOLID",
+        notes: input.notes ?? null,
         createdAt: now,
         updatedAt: now,
       })
@@ -204,6 +205,7 @@ export const onboardingRepository = {
       isFractional: input.isFractional ?? false,
       avatarColor: input.avatarColor ?? null,
       edgeStyle: input.edgeStyle ?? ("SOLID" as const),
+      notes: input.notes ?? null,
       createdAt: now,
       updatedAt: now,
     }));

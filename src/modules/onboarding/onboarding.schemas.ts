@@ -53,6 +53,7 @@ const chartDepthFields = {
   isFractional: z.boolean().optional(),
   avatarColor: z.string().max(64).nullable().optional(),
   edgeStyle: edgeStyleEnum.optional(),
+  notes: z.string().max(10_000).nullable().optional(),
 }
 
 // ---------------------------------------------------------------------------
@@ -197,11 +198,13 @@ export const updateNodeMetaSchema = z.object({
   isFounder: z.boolean().optional(),
   isFractional: z.boolean().optional(),
   avatarColor: z.string().max(64).nullable().optional(),
+  notes: z.string().max(10_000).nullable().optional(),
 })
 
-// Client-side limited meta editor — only contact + tenure are self-editable.
+// Client-side limited meta editor — only contact + tenure + notes are self-editable.
 export const clientUpdateNodeMetaSchema = z.object({
   nodeId: z.string().uuid(),
   email: z.string().email().nullable().optional(),
   tenureYears: z.number().int().nonnegative().nullable().optional(),
+  notes: z.string().max(10_000).nullable().optional(),
 })

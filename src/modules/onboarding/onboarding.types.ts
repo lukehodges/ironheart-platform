@@ -74,6 +74,8 @@ export interface OrgChartNodeRecord {
   avatarColor: string | null
   /** Style of the INCOMING edge from this node's parent. */
   edgeStyle: EdgeStyle
+  /** Free-text prose for per-node consultant notes. */
+  notes: string | null
   createdAt: Date
   updatedAt: Date
 }
@@ -123,6 +125,7 @@ export interface CreateNodeInput {
   isFractional?: boolean
   avatarColor?: string | null
   edgeStyle?: EdgeStyle
+  notes?: string | null
 }
 
 export interface UpdateNodePatch {
@@ -148,6 +151,7 @@ export interface UpdateNodePatch {
   isFractional?: boolean
   avatarColor?: string | null
   edgeStyle?: EdgeStyle
+  notes?: string | null
 }
 
 export interface UpdateNodeInput {
