@@ -5,8 +5,10 @@ import {
   integer,
   timestamp,
   jsonb,
+  boolean,
   index,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { engagements } from "./client-portal.schema";
 
 // ── engagement_org_chart ─────────────────────────────────────────────────────
@@ -55,6 +57,38 @@ export const engagementOrgChart = pgTable(
     // Points to the completed_forms row on the Ironheart tenant.
     // Nullable — null means no form has been sent yet.
     formSendId: uuid("formSendId"),
+
+    // ── Chart depth (Phase 1.0) ──────────────────────────────────────────────
+    // Mirrored from the demo at /platform/clients/[id]/onboarding/demo.
+    // CHECK constraints enforce allowed values (see scripts/apply-chart-depth.ts).
+    kind: text("kind", {
+      enum: ["PERSON", "VACANCY", "CONTRACTOR", "ADVISOR", "EXTERNAL", "BUNDLE"],
+    })
+      .notNull()
+      .default("PERSON"),
+    auditFlags: text("audit_flags")
+      .array()
+      .notNull()
+      .default(sql`'{}'::text[]` as unknown as string[]),
+    interviewStatus: text("interview_status", {
+      enum: ["NONE", "TARGET", "INVITED", "SCHEDULED", "COMPLETED"],
+    })
+      .notNull()
+      .default("NONE"),
+    formStatus: text("form_status", {
+      enum: ["NONE", "PENDING", "SENT", "IN_PROGRESS", "COMPLETED"],
+    })
+      .notNull()
+      .default("NONE"),
+    tenureYears: integer("tenure_years"),
+    email: text("email"),
+    isFounder: boolean("is_founder").notNull().default(false),
+    isFractional: boolean("is_fractional").notNull().default(false),
+    avatarColor: text("avatar_color"),
+    // Edge style describes the INCOMING edge from parent (no edges table).
+    edgeStyle: text("edge_style", { enum: ["SOLID", "DOTTED", "MATRIX"] })
+      .notNull()
+      .default("SOLID"),
 
     createdAt: timestamp("createdAt", { withTimezone: true })
       .notNull()
