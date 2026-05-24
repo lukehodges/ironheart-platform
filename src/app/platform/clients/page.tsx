@@ -1,8 +1,15 @@
+// TODO(data-wiring): live row data from trpc.consulting.listForPlatform.
+// Segments (mockClients.segments), stats (mockClients.stats), owner directory
+// (mockClients.allOwners), and most ClientEngagement fields (health, value,
+// nextAction, owner, tags, recentActivity, outstanding) are still MOCK —
+// pending consulting.listForPlatform EXTEND (health/value/nextAction columns)
+// and a separate consulting.engagementStats / users.list call.
 "use client"
 
 import { useState, useMemo, useRef, useEffect } from "react"
 import Link from "next/link"
 import { Icon, type IconName } from "@/components/shell"
+import { api } from "@/lib/trpc/react"
 import {
   mockClients,
   STAGE_META,
@@ -13,6 +20,7 @@ import {
   type ClientSortBy,
   type ClientSortDir,
   type EngagementStage,
+  type EngagementStatus,
   type EngagementType,
 } from "@/lib/mock/clients"
 
@@ -36,6 +44,109 @@ const TH_STYLE: React.CSSProperties = {
   textAlign: "left", padding: "10px 10px", fontWeight: 500, fontSize: 10,
   color: "var(--ih-ink-40)", textTransform: "uppercase", letterSpacing: "0.12em",
   fontFamily: "var(--ih-font-mono)", cursor: "pointer", userSelect: "none",
+}
+
+/* ── Live → mock-shape adapter ───────────────────────────────────────────── */
+
+type LiveEngagementRow = {
+  engagement: {
+    id: string
+    title: string | null
+    type: string | null
+    status: string | null
+    stage: string | null
+    updatedAt: Date | string | null
+    createdAt: Date | string | null
+  }
+  customer: {
+    id: string
+    firstName: string | null
+    lastName: string | null
+    email: string | null
+    phone: string | null
+    notes: string | null
+  }
+}
+
+function initialsOf(name: string): string {
+  return name
+    .split(/\s+/)
+    .map((w) => w[0] ?? "")
+    .join("")
+    .slice(0, 2)
+    .toUpperCase()
+}
+
+function timeAgo(dateInput: Date | string | null | undefined): { label: string; ts: number } {
+  if (!dateInput) return { label: "—", ts: 0 }
+  const d = typeof dateInput === "string" ? new Date(dateInput) : dateInput
+  const ts = d.getTime()
+  const diffMs = Date.now() - ts
+  const min = Math.round(diffMs / 60000)
+  if (min < 1) return { label: "just now", ts }
+  if (min < 60) return { label: `${min}m ago`, ts }
+  const h = Math.round(min / 60)
+  if (h < 24) return { label: `${h}h ago`, ts }
+  const days = Math.round(h / 24)
+  if (days < 30) return { label: `${days}d ago`, ts }
+  return { label: d.toLocaleDateString(), ts }
+}
+
+function toClientEngagement(r: LiveEngagementRow): ClientEngagement {
+  const c = r.customer
+  // companyName lives in customer.notes per the tech-debt comment in
+  // provisioning.service.ts (h. Schema gap). Fall back to "First Last".
+  const fullName = `${c.firstName ?? ""} ${c.lastName ?? ""}`.trim()
+  const companyName = (c.notes ?? "").trim() || fullName || "Unknown"
+  const { label: lastActivity, ts: lastActivityTs } = timeAgo(r.engagement.updatedAt)
+
+  const validType: EngagementType =
+    r.engagement.type === "RETAINER" || r.engagement.type === "HYBRID"
+      ? r.engagement.type
+      : "PROJECT"
+  const validStatus: EngagementStatus =
+    r.engagement.status === "ACTIVE" || r.engagement.status === "PAUSED"
+      || r.engagement.status === "COMPLETED" || r.engagement.status === "CANCELLED"
+      || r.engagement.status === "PROPOSED" || r.engagement.status === "DRAFT"
+      ? r.engagement.status
+      : "DRAFT"
+  const validStage: EngagementStage =
+    (r.engagement.stage as EngagementStage | null)
+    && STAGE_META[r.engagement.stage as EngagementStage]
+      ? (r.engagement.stage as EngagementStage)
+      : "DISCOVERY"
+
+  return {
+    id: r.engagement.id,
+    customer: {
+      id: c.id,
+      initials: initialsOf(companyName),
+      name: companyName,
+      contactName: fullName || "—",
+      email: c.email ?? "—",
+      phone: c.phone ?? "—",
+      since: "—",
+      totalSpend: 0,
+      lastBooking: null,
+    },
+    title: r.engagement.title ?? "(untitled engagement)",
+    type: validType,
+    status: validStatus,
+    stage: validStage,
+    health: null,
+    value: null,
+    valueUnit: null,
+    nextAction: null,
+    owner: { id: "luke", initials: "LH", name: "Luke Hodges" },
+    tags: [],
+    lastActivity,
+    lastActivityTs,
+    proposed: validStatus === "PROPOSED",
+    risk: false,
+    riskReason: null,
+    outstanding: null,
+    recentActivity: [],
+  }
 }
 
 /* ── Popover (lightweight click-outside) ─────────────────────────────────── */
@@ -97,9 +208,11 @@ function SegmentRail({
   activeSegment: string; onSegmentChange: (id: string) => void;
   activeTags: string[]; onTagToggle: (tag: string) => void;
 }) {
+  // ★ Mock — pending consulting.listSegments + tag taxonomy
   const segments = mockClients.segments()
   return (
     <aside style={{ width: 200, borderRight: "1px solid var(--ih-line)", padding: "12px 8px", overflowY: "auto", flexShrink: 0 }} className="scrollbar-thin">
+      <div className="ih-eyebrow" style={{ padding: "0 8px 8px", fontSize: 9, color: "var(--ih-accent)" }}>★ Mock — pending consulting.listSegments</div>
       {segments.map((sec, i) => (
         <div key={i} style={{ marginBottom: 12 }}>
           <div className="ih-eyebrow" style={{ padding: "8px 8px 4px", fontSize: 9 }}>{sec.group}</div>
@@ -374,7 +487,8 @@ function PreviewDrawer({ row, onClose }: { row: ClientEngagement; onClose: () =>
           ))}
         </div>
 
-        <div className="ih-eyebrow" style={{ marginBottom: 8 }}>Recent activity</div>
+        <div className="ih-eyebrow" style={{ marginBottom: 8 }}>Recent activity <span style={{ color: "var(--ih-accent)", marginLeft: 6 }}>★ Mock — pending consulting.recentActivity</span></div>
+        {row.recentActivity.length === 0 && <div style={{ padding: "12px 0", color: "var(--ih-ink-40)", fontSize: 11 }}>No activity yet for this engagement.</div>}
         {row.recentActivity.map((it, i) => (
           <div key={i} style={{ display: "flex", gap: 10, padding: "7px 0", borderBottom: "1px dashed var(--ih-line)" }}>
             <span className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-40)", width: 60, flexShrink: 0 }}>{it.date}</span>
@@ -533,11 +647,57 @@ function FilterChips({
   )
 }
 
+/* ── Client-side filter + sort over live rows ───────────────────────────── */
+
+function applyClientSideFilters(
+  rows: ClientEngagement[],
+  opts: {
+    search: string
+    filters: ClientFilters
+    activeTags: string[]
+    sortBy: ClientSortBy
+    sortDir: ClientSortDir
+  },
+): ClientEngagement[] {
+  const { search, filters, activeTags, sortBy, sortDir } = opts
+  let out = rows
+
+  if (filters.stage?.length) out = out.filter(r => filters.stage!.includes(r.stage))
+  if (filters.type?.length) out = out.filter(r => filters.type!.includes(r.type))
+  if (filters.status?.length) out = out.filter(r => filters.status!.includes(r.status))
+  if (filters.owner?.length) out = out.filter(r => filters.owner!.includes(r.owner.id))
+  if (filters.risk) out = out.filter(r => r.risk)
+  if (filters.proposed) out = out.filter(r => r.proposed)
+  if (activeTags.length) out = out.filter(r => activeTags.some(t => r.tags.includes(t)))
+  if (search.trim()) {
+    const q = search.trim().toLowerCase()
+    out = out.filter(r =>
+      r.customer.name.toLowerCase().includes(q)
+      || r.title.toLowerCase().includes(q)
+      || r.tags.some(t => t.toLowerCase().includes(q))
+    )
+  }
+
+  const dir = sortDir === "asc" ? 1 : -1
+  out = [...out].sort((a, b) => {
+    let cmp = 0
+    switch (sortBy) {
+      case "lastActivity": cmp = a.lastActivityTs - b.lastActivityTs; break
+      case "value":        cmp = (a.value ?? 0) - (b.value ?? 0); break
+      case "health":       cmp = (a.health ?? 0) - (b.health ?? 0); break
+      case "customer":     cmp = a.customer.name.localeCompare(b.customer.name); break
+      case "stage":        cmp = STAGE_META[a.stage].idx - STAGE_META[b.stage].idx; break
+    }
+    return cmp * dir
+  })
+  return out
+}
+
 /* ── Main ────────────────────────────────────────────────────────────────── */
 
 export default function ClientsListPage() {
   const [view, setView] = useState<"table" | "board">("table")
-  const [selectedId, setSelectedId] = useState<string | null>("c-brigham")
+  const [selectedId, setSelectedId] = useState<string | null>(null)
   const [activeSegment, setActiveSegment] = useState("mine")
   const [search, setSearch] = useState("")
   const [filters, setFilters] = useState<ClientFilters>({})
@@ -546,13 +706,30 @@ export default function ClientsListPage() {
   const [sortDir, setSortDir] = useState<ClientSortDir>("desc")
   const [visibleColumns, setVisibleColumns] = useState<ColumnId[]>(COLUMNS.filter(c => c.default).map(c => c.id))
 
-  const rows = useMemo(() =>
-    mockClients.list({ segment: activeSegment, search, filters: { ...filters, tag: activeTags.length ? activeTags : undefined }, sortBy, sortDir }),
-    [activeSegment, search, filters, activeTags, sortBy, sortDir]
+  // ── Live data: engagements (rows) and stage counts ──
+  // Server already does stage filter + search; everything else (status, owner,
+  // tags, risk, proposed) is client-side until the backend gains those columns.
+  const stageFilter = filters.stage && filters.stage.length === 1 ? filters.stage[0] : undefined
+  const liveQuery = api.consulting.listForPlatform.useQuery({
+    stage: stageFilter,
+    search: search.trim() || undefined,
+    limit: 100,
+  })
+
+  const liveRows = useMemo<ClientEngagement[]>(() => {
+    const raw = liveQuery.data?.rows ?? []
+    return raw.map(toClientEngagement)
+  }, [liveQuery.data])
+
+  const rows = useMemo(
+    () => applyClientSideFilters(liveRows, { search: "", filters: { ...filters, stage: undefined }, activeTags, sortBy, sortDir }),
+    [liveRows, filters, activeTags, sortBy, sortDir],
   )
-  const stats = useMemo(() => mockClients.stats(rows), [rows])
-  const total = mockClients.total()
-  const selected = selectedId ? rows.find(r => r.id === selectedId) ?? mockClients.getById(selectedId) : null
+
+  // ★ Mock — stats / segments / owners until those procs exist.
+  const stats = useMemo(() => mockClients.stats(mockClients.list({})), [])
+  const total = liveRows.length || mockClients.total()
+  const selected = selectedId ? rows.find(r => r.id === selectedId) ?? null : null
   const activeFilterCount =
     (filters.stage?.length ?? 0) + (filters.type?.length ?? 0) + (filters.owner?.length ?? 0)
     + (filters.status?.length ?? 0) + (filters.risk ? 1 : 0) + (filters.proposed ? 1 : 0)
@@ -598,14 +775,21 @@ export default function ClientsListPage() {
         <div style={{ padding: "18px 20px 14px", borderBottom: "1px solid var(--ih-line)" }}>
           <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
             <div>
-              <div className="ih-eyebrow" style={{ marginBottom: 6 }}>Saved view · pinned <span style={{ color: "var(--ih-warn)", fontStyle: "italic", fontFamily: "var(--ih-font-sans)", textTransform: "none", letterSpacing: 0 }}>★ Demo data</span></div>
+              <div className="ih-eyebrow" style={{ marginBottom: 6 }}>Saved view · pinned</div>
               <h1 className="ih-serif" style={{ fontSize: 26, margin: 0 }}>
                 {viewLabel.split(" ").slice(0, -1).join(" ")}{" "}
                 <span className="ih-italic-red">{viewLabel.split(" ").slice(-1)[0]}</span>
               </h1>
               <div style={{ fontSize: 12, color: "var(--ih-ink-50)", marginTop: 4 }}>
-                {rows.length} engagement{rows.length !== 1 ? "s" : ""} · {rows.filter(r => r.nextAction).length} need a reply from you · last refreshed 2s ago
+                {liveQuery.isLoading
+                  ? "Loading engagements…"
+                  : `${rows.length} engagement${rows.length !== 1 ? "s" : ""} · live from consulting.listForPlatform`}
               </div>
+              {liveQuery.error && (
+                <div style={{ fontSize: 11, color: "var(--ih-danger)", marginTop: 4 }}>
+                  {liveQuery.error.message}
+                </div>
+              )}
             </div>
             <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
               <Popover width={240} trigger={
@@ -619,12 +803,12 @@ export default function ClientsListPage() {
                     const active = filters.stage?.includes(s) ?? false
                     return <PopoverItem key={s} active={active} onClick={() => active ? removeFilter("stage", s) : addFilter("stage", s)}>{STAGE_META[s].label}</PopoverItem>
                   })}
-                  <PopoverHeader>Type</PopoverHeader>
+                  <PopoverHeader>Type ★ Mock filter — client-side only</PopoverHeader>
                   {(Object.keys(TYPE_LABEL) as EngagementType[]).map(t => {
                     const active = filters.type?.includes(t) ?? false
                     return <PopoverItem key={t} active={active} onClick={() => active ? removeFilter("type", t) : addFilter("type", t)}>{TYPE_LABEL[t]}</PopoverItem>
                   })}
-                  <PopoverHeader>State</PopoverHeader>
+                  <PopoverHeader>State ★ Mock filter — client-side only</PopoverHeader>
                   <PopoverItem active={!!filters.risk} onClick={() => filters.risk ? removeFilter("risk") : addFilter("risk", "true")}>At risk</PopoverItem>
                   <PopoverItem active={!!filters.proposed} onClick={() => filters.proposed ? removeFilter("proposed") : addFilter("proposed", "true")}>Proposed</PopoverItem>
                 </>
@@ -675,6 +859,9 @@ export default function ClientsListPage() {
                   <Icon name="grid" size={11} /> Board
                 </button>
               </div>
+              <Link href="/platform/clients/new" className="ih-btn ih-btn-accent ih-btn-sm" style={{ textDecoration: "none" }}>
+                <Icon name="plus" size={11} /> New client
+              </Link>
             </div>
           </div>
         </div>
@@ -682,10 +869,10 @@ export default function ClientsListPage() {
         <div style={{ padding: "14px 20px", display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 1, background: "var(--ih-line)", borderBottom: "1px solid var(--ih-line)" }}>
           {[
             { label: "Showing",            value: String(rows.length), sub: `of ${total} total`, tone: "var(--ih-ink)" },
-            { label: "Monthly recurring",  value: `£${(stats.monthlyRecurring / 1000).toFixed(1)}K`, sub: "active retainers", tone: "var(--ih-ok)" },
-            { label: "Project pipeline",   value: `£${(stats.projectPipeline / 1000).toFixed(0)}K`, sub: "in flight", tone: "var(--ih-ink)" },
-            { label: "Awaiting approval",  value: String(stats.awaitingApproval), sub: stats.awaitingApproval ? "needs attention" : "all clear", tone: stats.awaitingApproval ? "var(--ih-warn)" : "var(--ih-ink-50)" },
-            { label: "Overdue invoices",   value: String(stats.overdueInvoices.count), sub: `£${stats.overdueInvoices.total.toLocaleString()} total`, tone: stats.overdueInvoices.count ? "var(--ih-danger)" : "var(--ih-ink-50)" },
+            { label: "Monthly recurring  ★ Mock", value: `£${(stats.monthlyRecurring / 1000).toFixed(1)}K`, sub: "active retainers", tone: "var(--ih-ok)" },
+            { label: "Project pipeline  ★ Mock",   value: `£${(stats.projectPipeline / 1000).toFixed(0)}K`, sub: "in flight", tone: "var(--ih-ink)" },
+            { label: "Awaiting approval  ★ Mock",  value: String(stats.awaitingApproval), sub: stats.awaitingApproval ? "needs attention" : "all clear", tone: stats.awaitingApproval ? "var(--ih-warn)" : "var(--ih-ink-50)" },
+            { label: "Overdue invoices  ★ Mock",   value: String(stats.overdueInvoices.count), sub: `£${stats.overdueInvoices.total.toLocaleString()} total`, tone: stats.overdueInvoices.count ? "var(--ih-danger)" : "var(--ih-ink-50)" },
           ].map((s) => (
             <div key={s.label} style={{ background: "var(--ih-bg)", padding: "12px 16px" }}>
               <div className="ih-eyebrow" style={{ fontSize: 9, marginBottom: 4 }}>{s.label}</div>
@@ -698,7 +885,7 @@ export default function ClientsListPage() {
         <div style={{ padding: "10px 20px", display: "flex", gap: 8, alignItems: "center", borderBottom: "1px solid var(--ih-line)", flexWrap: "wrap" }}>
           <div style={{ position: "relative", flex: 1, maxWidth: 320, minWidth: 220 }}>
             <Icon name="search" size={13} style={{ position: "absolute", left: 10, top: 8, color: "var(--ih-ink-40)" }} />
-            <input className="ih-input" placeholder="Search clients, engagement titles, tags…"
+            <input className="ih-input" placeholder="Search clients, engagement titles…"
               style={{ paddingLeft: 30 }} value={search} onChange={e => setSearch(e.target.value)} />
           </div>
           <FilterChips
@@ -736,10 +923,15 @@ export default function ClientsListPage() {
                     onClick={() => setSelectedId(r.id)}
                     onAddFilter={addFilter} />
                 ))}
-                {rows.length === 0 && (
+                {rows.length === 0 && !liveQuery.isLoading && (
                   <tr><td colSpan={visibleColumns.length + 2} style={{ padding: 40, textAlign: "center", color: "var(--ih-ink-40)", fontSize: 12 }}>
                     No engagements match these filters.{" "}
                     <button onClick={clearAll} className="ih-btn ih-btn-quiet ih-btn-sm" style={{ height: 22, marginLeft: 4 }}>Clear filters</button>
+                  </td></tr>
+                )}
+                {liveQuery.isLoading && (
+                  <tr><td colSpan={visibleColumns.length + 2} style={{ padding: 40, textAlign: "center", color: "var(--ih-ink-40)", fontSize: 12 }}>
+                    Loading…
                   </td></tr>
                 )}
               </tbody>
