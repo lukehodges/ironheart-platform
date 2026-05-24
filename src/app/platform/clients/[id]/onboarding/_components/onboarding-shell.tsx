@@ -361,8 +361,10 @@ export function OnboardingShell({
                   <OnboardingInspector
                     node={selectedNode}
                     row={selectedRow}
+                    allNodes={nodes}
                     engagementId={engagementId}
                     onClose={handleInspectorClose}
+                    onFocusNode={handleFocus}
                   />
                 )}
               </aside>
