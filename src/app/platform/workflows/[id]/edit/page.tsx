@@ -520,7 +520,7 @@ export default function WorkflowEditPage({ params }: { params: Promise<{ id: str
             <span onClick={() => setEditingName(true)} title="Click to rename" style={{ fontSize: 13, fontWeight: 500, cursor: "pointer", padding: "2px 4px", borderRadius: 4 }}>{name}</span>
           )}
           <span className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-40)" }}>v{savedVersion} draft</span>
-          <span className="ih-eyebrow" style={{ color: "var(--ih-accent)" }}>★ Demo data</span>
+          <span className="ih-eyebrow" style={{ color: "var(--ih-accent)" }}>★</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <Popover align="right" width={180} trigger={

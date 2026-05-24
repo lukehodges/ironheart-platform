@@ -1020,7 +1020,7 @@ export default function TeamMemberDetailPage({ params }: PageProps) {
           <Link href="/platform/team" className="ih-btn ih-btn-quiet ih-btn-sm" style={{ padding: "2px 6px", textDecoration: "none" }}>
             <Icon name="chevronLeft" size={12} /> Team
           </Link>
-          <span className="ih-eyebrow">/{member.id} · member · <span style={{ color: "var(--ih-accent)" }}>★ Demo data</span></span>
+          <span className="ih-eyebrow">/{member.id} · member · <span style={{ color: "var(--ih-accent)" }}>★</span></span>
         </div>
 
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 24 }}>

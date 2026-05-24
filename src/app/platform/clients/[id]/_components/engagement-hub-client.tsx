@@ -832,7 +832,7 @@ export default function ClientHubPage({ engagement, customer, clientTenantSlug, 
   const [activeTab, setActiveTab] = useState(0)
   const [toast, setToast] = useState<{message: string; tone?: string} | null>(null)
   const [emailDraft, setEmailDraft] = useState<{to: string; subject: string; body: string} | null>(null)
-  const tabs = ["Overview", "Engagements", "Bookings ★ Mock", "Deals ★ Mock", "Invoices ★ Mock", "Workflows ★ Mock", "Documents ★ Mock", "Activity ★ Mock", "Team"]
+  const tabs = ["Overview", "Engagements", "Bookings ★", "Deals ★", "Invoices ★", "Workflows ★", "Documents ★", "Activity ★", "Team"]
 
   const tabContent = [
     <OverviewTab key="overview" setActiveTab={setActiveTab} engagement={engagement} customer={customer} clientTenantSlug={clientTenantSlug} companyLabel={companyLabel} />,
@@ -906,10 +906,10 @@ export default function ClientHubPage({ engagement, customer, clientTenantSlug, 
         {/* Vital stats inline — ★ Mock */}
         <div style={{ display: "flex", gap: 22 }}>
           {([
-            ["Lifetime ★ Mock", "£48.2k", "ok"],
-            ["This sprint ★ Mock", "32/40h", "accent"],
-            ["Open inv. ★ Mock", "£4.2k", "warn"],
-            ["Health ★ Mock", "A−", "ok"],
+            ["Lifetime ★", "£48.2k", "ok"],
+            ["This sprint ★", "32/40h", "accent"],
+            ["Open inv. ★", "£4.2k", "warn"],
+            ["Health ★", "A−", "ok"],
           ] as [string, string, string][]).map(([l, v, t]) => (
             <div key={l}>
               <div className="ih-eyebrow" style={{ marginBottom: 4, ...MOCK_BADGE_STYLE }}>{l}</div>

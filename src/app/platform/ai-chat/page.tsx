@@ -93,7 +93,7 @@ export default function AIChatPage() {
     <div style={{ padding: "24px 28px 48px", maxWidth: 1000, margin: "0 auto", display: "flex", flexDirection: "column", height: "calc(100vh - 8rem)" }}>
       {/* Header */}
       <div style={{ marginBottom: 16 }}>
-        <div className="ih-eyebrow" style={{ marginBottom: 6 }}>Intelligence &middot; assistant · <span style={{ color: "var(--ih-accent)" }}>★ Demo data</span></div>
+        <div className="ih-eyebrow" style={{ marginBottom: 6 }}>Intelligence &middot; assistant · <span style={{ color: "var(--ih-accent)" }}>★</span></div>
         <h1 className="ih-serif" style={{ margin: 0, fontSize: 32, lineHeight: 1 }}>AI Assistant</h1>
         <p style={{ margin: "4px 0 0", fontSize: 13, color: "var(--ih-ink-50)" }}>Ask anything about your business</p>
       </div>

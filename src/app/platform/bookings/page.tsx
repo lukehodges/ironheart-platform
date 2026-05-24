@@ -44,7 +44,7 @@ export default function BookingsPage() {
       {/* Header */}
       <div style={{ padding: "24px 28px 16px", borderBottom: "1px solid var(--ih-line)", display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
         <div>
-          <div className="ih-eyebrow" style={{ marginBottom: 6 }}>This week · 23 bookings <span style={{ color: "var(--ih-accent)", marginLeft: 8 }}>★ Demo data</span></div>
+          <div className="ih-eyebrow" style={{ marginBottom: 6 }}>This week · 23 bookings <span style={{ color: "var(--ih-accent)", marginLeft: 8 }}>★</span></div>
           <h1 className="ih-serif" style={{ margin: 0, fontSize: 32 }}>Bookings. <span className="ih-italic-red">Tuesday</span>, 12 May.</h1>
         </div>
         <div style={{ display: "flex", gap: 4 }}>

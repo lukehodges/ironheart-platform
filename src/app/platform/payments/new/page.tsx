@@ -105,7 +105,7 @@ export default function NewInvoicePage() {
             <button className="ih-btn ih-btn-quiet ih-btn-sm" style={{ padding: "2px 6px" }} onClick={() => router.push("/platform/payments")}>
               <Icon name="chevronLeft" size={12} /> Back
             </button>
-            <span className="ih-eyebrow">new invoice · <span style={{ color: "var(--ih-accent)" }}>★ Demo data</span></span>
+            <span className="ih-eyebrow">new invoice · <span style={{ color: "var(--ih-accent)" }}>★</span></span>
           </div>
           <h1 className="ih-serif" style={{ margin: 0, fontSize: 32, lineHeight: 1 }}>Create invoice</h1>
         </div>

@@ -212,7 +212,7 @@ function SegmentRail({
   const segments = mockClients.segments()
   return (
     <aside style={{ width: 200, borderRight: "1px solid var(--ih-line)", padding: "12px 8px", overflowY: "auto", flexShrink: 0 }} className="scrollbar-thin">
-      <div className="ih-eyebrow" style={{ padding: "0 8px 8px", fontSize: 9, color: "var(--ih-accent)" }}>★ Mock — pending consulting.listSegments</div>
+      <div className="ih-eyebrow" style={{ padding: "0 8px 8px", fontSize: 9, color: "var(--ih-accent)" }}>★</div>
       {segments.map((sec, i) => (
         <div key={i} style={{ marginBottom: 12 }}>
           <div className="ih-eyebrow" style={{ padding: "8px 8px 4px", fontSize: 9 }}>{sec.group}</div>
@@ -487,7 +487,7 @@ function PreviewDrawer({ row, onClose }: { row: ClientEngagement; onClose: () =>
           ))}
         </div>
 
-        <div className="ih-eyebrow" style={{ marginBottom: 8 }}>Recent activity <span style={{ color: "var(--ih-accent)", marginLeft: 6 }}>★ Mock — pending consulting.recentActivity</span></div>
+        <div className="ih-eyebrow" style={{ marginBottom: 8 }}>Recent activity <span style={{ color: "var(--ih-accent)", marginLeft: 6 }}>★</span></div>
         {row.recentActivity.length === 0 && <div style={{ padding: "12px 0", color: "var(--ih-ink-40)", fontSize: 11 }}>No activity yet for this engagement.</div>}
         {row.recentActivity.map((it, i) => (
           <div key={i} style={{ display: "flex", gap: 10, padding: "7px 0", borderBottom: "1px dashed var(--ih-line)" }}>
@@ -803,12 +803,12 @@ export default function ClientsListPage() {
                     const active = filters.stage?.includes(s) ?? false
                     return <PopoverItem key={s} active={active} onClick={() => active ? removeFilter("stage", s) : addFilter("stage", s)}>{STAGE_META[s].label}</PopoverItem>
                   })}
-                  <PopoverHeader>Type ★ Mock filter — client-side only</PopoverHeader>
+                  <PopoverHeader>Type ★</PopoverHeader>
                   {(Object.keys(TYPE_LABEL) as EngagementType[]).map(t => {
                     const active = filters.type?.includes(t) ?? false
                     return <PopoverItem key={t} active={active} onClick={() => active ? removeFilter("type", t) : addFilter("type", t)}>{TYPE_LABEL[t]}</PopoverItem>
                   })}
-                  <PopoverHeader>State ★ Mock filter — client-side only</PopoverHeader>
+                  <PopoverHeader>State ★</PopoverHeader>
                   <PopoverItem active={!!filters.risk} onClick={() => filters.risk ? removeFilter("risk") : addFilter("risk", "true")}>At risk</PopoverItem>
                   <PopoverItem active={!!filters.proposed} onClick={() => filters.proposed ? removeFilter("proposed") : addFilter("proposed", "true")}>Proposed</PopoverItem>
                 </>
@@ -869,10 +869,10 @@ export default function ClientsListPage() {
         <div style={{ padding: "14px 20px", display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 1, background: "var(--ih-line)", borderBottom: "1px solid var(--ih-line)" }}>
           {[
             { label: "Showing",            value: String(rows.length), sub: `of ${total} total`, tone: "var(--ih-ink)" },
-            { label: "Monthly recurring  ★ Mock", value: `£${(stats.monthlyRecurring / 1000).toFixed(1)}K`, sub: "active retainers", tone: "var(--ih-ok)" },
-            { label: "Project pipeline  ★ Mock",   value: `£${(stats.projectPipeline / 1000).toFixed(0)}K`, sub: "in flight", tone: "var(--ih-ink)" },
-            { label: "Awaiting approval  ★ Mock",  value: String(stats.awaitingApproval), sub: stats.awaitingApproval ? "needs attention" : "all clear", tone: stats.awaitingApproval ? "var(--ih-warn)" : "var(--ih-ink-50)" },
-            { label: "Overdue invoices  ★ Mock",   value: String(stats.overdueInvoices.count), sub: `£${stats.overdueInvoices.total.toLocaleString()} total`, tone: stats.overdueInvoices.count ? "var(--ih-danger)" : "var(--ih-ink-50)" },
+            { label: "Monthly recurring  ★", value: `£${(stats.monthlyRecurring / 1000).toFixed(1)}K`, sub: "active retainers", tone: "var(--ih-ok)" },
+            { label: "Project pipeline  ★",   value: `£${(stats.projectPipeline / 1000).toFixed(0)}K`, sub: "in flight", tone: "var(--ih-ink)" },
+            { label: "Awaiting approval  ★",  value: String(stats.awaitingApproval), sub: stats.awaitingApproval ? "needs attention" : "all clear", tone: stats.awaitingApproval ? "var(--ih-warn)" : "var(--ih-ink-50)" },
+            { label: "Overdue invoices  ★",   value: String(stats.overdueInvoices.count), sub: `£${stats.overdueInvoices.total.toLocaleString()} total`, tone: stats.overdueInvoices.count ? "var(--ih-danger)" : "var(--ih-ink-50)" },
           ].map((s) => (
             <div key={s.label} style={{ background: "var(--ih-bg)", padding: "12px 16px" }}>
               <div className="ih-eyebrow" style={{ fontSize: 9, marginBottom: 4 }}>{s.label}</div>

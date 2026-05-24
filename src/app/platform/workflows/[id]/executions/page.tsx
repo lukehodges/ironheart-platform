@@ -172,7 +172,7 @@ export default function WorkflowExecutionsPage({ params }: { params: Promise<{ i
             <Icon name="chevronRight" size={10} style={{ color: "var(--ih-ink-30)" }} />
             <Link href={`/platform/workflows/${wf.id}`} style={{ textDecoration: "none", color: "var(--ih-ink)", fontSize: 13, fontWeight: 500 }}>{wf.name}</Link>
             <Icon name="chevronRight" size={10} style={{ color: "var(--ih-ink-30)" }} />
-            <span className="ih-eyebrow" style={{ color: "var(--ih-accent)" }}>Executions · ★ Demo data</span>
+            <span className="ih-eyebrow" style={{ color: "var(--ih-accent)" }}>Executions · ★</span>
           </div>
           <div style={{ display: "flex", gap: 6 }}>
             <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => setToast({ message: "Export queued · CSV ready in 30s", tone: "info" })}>

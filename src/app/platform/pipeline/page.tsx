@@ -810,7 +810,7 @@ export default function PipelineListPage() {
         <div style={{ padding: "18px 20px 14px", borderBottom: "1px solid var(--ih-line)" }}>
           <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
             <div>
-              <div className="ih-eyebrow" style={{ marginBottom: 6 }}>Pipeline · saved view <span style={{ color: "var(--ih-accent)", marginLeft: 8 }}>★ Demo data</span></div>
+              <div className="ih-eyebrow" style={{ marginBottom: 6 }}>Pipeline · saved view <span style={{ color: "var(--ih-accent)", marginLeft: 8 }}>★</span></div>
               <h1 className="ih-serif" style={{ fontSize: 26, margin: 0 }}>
                 {viewLabel.split(" ").slice(0, -1).join(" ")}{" "}
                 <span className="ih-italic-red">{viewLabel.split(" ").slice(-1)[0]}</span>

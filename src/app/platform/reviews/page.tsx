@@ -75,7 +75,7 @@ export default function ReviewsPage() {
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 28, gap: 24, flexWrap: "wrap" }}>
         <div>
-          <div className="ih-eyebrow" style={{ marginBottom: 8 }}>Intelligence &middot; reviews · <span style={{ color: "var(--ih-accent)" }}>★ Demo data</span></div>
+          <div className="ih-eyebrow" style={{ marginBottom: 8 }}>Intelligence &middot; reviews · <span style={{ color: "var(--ih-accent)" }}>★</span></div>
           <h1 className="ih-serif" style={{ margin: 0, fontSize: 44, lineHeight: 0.98 }}>
             34 reviews. <span className="ih-italic-red">4.8</span> average.
           </h1>

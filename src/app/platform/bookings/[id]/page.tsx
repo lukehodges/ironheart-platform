@@ -62,7 +62,7 @@ export default function BookingDetailPage() {
             <Link href="/platform/bookings" className="ih-btn ih-btn-quiet ih-btn-sm" style={{ padding: "2px 6px", textDecoration: "none" }}>
               <Icon name="chevronLeft" size={12} /> Bookings
             </Link>
-            <span className="ih-eyebrow">/bk_0913 {"·"} booking <span style={{ color: "var(--ih-accent)", marginLeft: 8 }}>★ Demo data</span></span>
+            <span className="ih-eyebrow">/bk_0913 {"·"} booking <span style={{ color: "var(--ih-accent)", marginLeft: 8 }}>★</span></span>
           </div>
           <h1 className="ih-serif" style={{ margin: 0, fontSize: 36, lineHeight: 1 }}>{booking.title}</h1>
           <div style={{ marginTop: 10, display: "flex", gap: 12, alignItems: "center" }}>

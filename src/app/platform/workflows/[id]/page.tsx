@@ -294,7 +294,7 @@ export default function WorkflowDetailPage({ params }: { params: Promise<{ id: s
           <span style={{ fontSize: 13, fontWeight: 500 }}>{wf.name}</span>
           <span className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-40)" }}>{wf.id}</span>
           <StatusPill status={wf.status} />
-          <span className="ih-eyebrow" style={{ color: "var(--ih-accent)" }}>★ Demo data</span>
+          <span className="ih-eyebrow" style={{ color: "var(--ih-accent)" }}>★</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={toggleStatus}>

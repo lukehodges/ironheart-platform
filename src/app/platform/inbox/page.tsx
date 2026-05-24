@@ -734,7 +734,7 @@ export default function InboxPage() {
       <div style={{ overflowY: "auto" }} className="scrollbar-thin">
         <div style={{ padding: "20px 24px 12px", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16 }}>
           <div>
-            <div className="ih-eyebrow">{items.length} event{items.length !== 1 ? "s" : ""} · last 24h · <span style={{ color: "var(--ih-accent)" }}>★ Demo data</span></div>
+            <div className="ih-eyebrow">{items.length} event{items.length !== 1 ? "s" : ""} · last 24h · <span style={{ color: "var(--ih-accent)" }}>★</span></div>
             <h1 className="ih-serif" style={{ margin: "6px 0 0", fontSize: 32 }}>Inbox. <span className="ih-italic-red">One</span> stream, every source.</h1>
           </div>
           {readIds.size > 0 && (

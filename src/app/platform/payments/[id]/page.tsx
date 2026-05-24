@@ -67,7 +67,7 @@ export default function InvoiceDetailPage() {
             <Link href="/platform/payments" className="ih-btn ih-btn-quiet ih-btn-sm" style={{ padding: "2px 6px", textDecoration: "none" }}>
               <Icon name="chevronLeft" size={12} /> Invoices
             </Link>
-            <span className="ih-eyebrow">/inv_2041 · invoice · <span style={{ color: "var(--ih-accent)" }}>★ Demo data</span></span>
+            <span className="ih-eyebrow">/inv_2041 · invoice · <span style={{ color: "var(--ih-accent)" }}>★</span></span>
           </div>
           <div style={{ display: "flex", gap: 14, alignItems: "baseline" }}>
             <h1 className="ih-mono" style={{ margin: 0, fontSize: 32, lineHeight: 1, letterSpacing: "-0.02em" }}>{invoice.number}</h1>

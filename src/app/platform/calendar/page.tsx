@@ -936,7 +936,7 @@ export default function CalendarPage() {
         <div style={{ padding: "16px 20px 12px", borderBottom: "1px solid var(--ih-line)" }}>
           <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
             <div>
-              <div className="ih-eyebrow" style={{ marginBottom: 6 }}>{weekLabel.range} <span style={{ color: "var(--ih-accent)", marginLeft: 8 }}>★ Demo data</span></div>
+              <div className="ih-eyebrow" style={{ marginBottom: 6 }}>{weekLabel.range} <span style={{ color: "var(--ih-accent)", marginLeft: 8 }}>★</span></div>
               <h1 className="ih-serif" style={{ fontSize: 28, margin: 0, lineHeight: 1 }}>
                 {weekLabel.monthYear.split(" ")[0]} <span className="ih-italic-red">{weekLabel.monthYear.split(" ")[1]}</span>
               </h1>

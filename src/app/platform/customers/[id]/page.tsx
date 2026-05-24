@@ -406,7 +406,7 @@ export default function CustomerDetailPage({ params }: PageProps) {
           <Link href="/platform/customers" className="ih-btn ih-btn-quiet ih-btn-sm" style={{ padding: "2px 6px", textDecoration: "none" }}>
             <Icon name="chevronLeft" size={12} /> Customers
           </Link>
-          <span className="ih-eyebrow">/{customer.id} · customer · <span style={{ color: "var(--ih-accent)" }}>★ Demo data</span></span>
+          <span className="ih-eyebrow">/{customer.id} · customer · <span style={{ color: "var(--ih-accent)" }}>★</span></span>
         </div>
 
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 24 }}>

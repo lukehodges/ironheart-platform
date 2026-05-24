@@ -97,7 +97,7 @@ export default function FormEditorPage() {
           <Icon name="chevronRight" size={10} style={{ color: "var(--ih-ink-30)" }}/>
           <span style={{ fontSize: 13, fontWeight: 500 }}>Owner / Director Questionnaire</span>
           <span className="ih-pill ih-pill-ok" style={{ marginLeft: 6 }}><span className="ih-dot ih-dot-ok"/> Active</span>
-          <span className="ih-eyebrow" style={{ marginLeft: 6, color: "var(--ih-accent)" }}>★ Demo data</span>
+          <span className="ih-eyebrow" style={{ marginLeft: 6, color: "var(--ih-accent)" }}>★</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => setToast({ message: "Preview mode opened", tone: "info" })}><Icon name="eye" size={11}/> Preview</button>

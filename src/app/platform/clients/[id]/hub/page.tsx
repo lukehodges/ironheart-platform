@@ -32,7 +32,7 @@ export default function ClientHubPage({ params }: { params: { id: string } }) {
               <span className="ih-eyebrow">/cli_204 {"·"} client</span>
               <span className="ih-pill ih-pill-ok"><span className="ih-dot ih-dot-ok"/> Active</span>
               <span className="ih-pill">Q2 retainer</span>
-              <span style={{ color: "var(--ih-warn)", fontStyle: "italic", fontSize: 10, fontFamily: "var(--ih-font-sans)" }}>★ Demo data</span>
+              <span style={{ color: "var(--ih-warn)", fontStyle: "italic", fontSize: 10, fontFamily: "var(--ih-font-sans)" }}>★</span>
             </div>
             <h1 className="ih-serif" style={{ margin: 0, fontSize: 44, lineHeight: 0.98 }}>Northwind <span className="ih-italic-red">Co.</span></h1>
             <div style={{ marginTop: 10, display: "flex", gap: 18, fontSize: 11.5, color: "var(--ih-ink-50)" }}>

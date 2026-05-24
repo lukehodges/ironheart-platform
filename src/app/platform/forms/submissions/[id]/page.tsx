@@ -52,7 +52,7 @@ export default function FormSubmissionDetailPage() {
         <span className="ih-eyebrow">Submissions</span>
         <Icon name="chevronRight" size={10} style={{ color: "var(--ih-ink-30)" }}/>
         <span className="ih-eyebrow" style={{ color: "var(--ih-accent)" }}>{SUBMISSION.id}</span>
-        <span className="ih-eyebrow" style={{ marginLeft: 8, color: "var(--ih-accent)" }}>★ Demo data</span>
+        <span className="ih-eyebrow" style={{ marginLeft: 8, color: "var(--ih-accent)" }}>★</span>
       </div>
 
       {/* Header */}

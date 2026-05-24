@@ -32,7 +32,7 @@ export default function DashboardPage() {
       {/* Hero greeting */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 28, gap: 24, flexWrap: "wrap" }}>
         <div>
-          <div className="ih-eyebrow" style={{ marginBottom: 8 }}>Tuesday &middot; 12 May &middot; week 20 <span style={{ color: "var(--ih-accent)", marginLeft: 8 }}>★ Demo data</span></div>
+          <div className="ih-eyebrow" style={{ marginBottom: 8 }}>Tuesday &middot; 12 May &middot; week 20 <span style={{ color: "var(--ih-accent)", marginLeft: 8 }}>★</span></div>
           <h1 className="ih-serif" style={{ margin: 0, fontSize: 44, lineHeight: 0.98 }}>
             Morning Luke. <span className="ih-italic-red">Three</span> things matter today.
           </h1>

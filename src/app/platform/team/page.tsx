@@ -636,7 +636,7 @@ export default function TeamPage() {
         <div style={{ padding: "18px 20px 14px", borderBottom: "1px solid var(--ih-line)" }}>
           <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
             <div>
-              <div className="ih-eyebrow" style={{ marginBottom: 6 }}>Team · workspace · <span style={{ color: "var(--ih-accent)" }}>★ Demo data</span></div>
+              <div className="ih-eyebrow" style={{ marginBottom: 6 }}>Team · workspace · <span style={{ color: "var(--ih-accent)" }}>★</span></div>
               <h1 className="ih-serif" style={{ fontSize: 30, margin: 0 }}>
                 Team. Your <span className="ih-italic-red">operating</span> bench.
               </h1>

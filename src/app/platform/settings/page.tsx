@@ -282,7 +282,7 @@ export default function SettingsPage() {
     <div style={{ padding: "24px 28px 48px", maxWidth: 1200, margin: "0 auto" }}>
       {/* Header */}
       <div style={{ marginBottom: 24 }}>
-        <div className="ih-eyebrow" style={{ marginBottom: 8 }}>Settings &middot; workspace &middot; <span style={{ color: "var(--ih-accent)" }}>★ Demo data</span></div>
+        <div className="ih-eyebrow" style={{ marginBottom: 8 }}>Settings &middot; workspace &middot; <span style={{ color: "var(--ih-accent)" }}>★</span></div>
         <h1 className="ih-serif" style={{ margin: 0, fontSize: 38, lineHeight: 0.98 }}>
           The Ironheart <span className="ih-italic-red">Ltd</span>
         </h1>

@@ -50,7 +50,7 @@ export default function PaymentsPage() {
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 24, gap: 24, flexWrap: "wrap" }}>
         <div>
-          <div className="ih-eyebrow" style={{ marginBottom: 8 }}>Finance &middot; invoices & payments · <span style={{ color: "var(--ih-accent)" }}>★ Demo data</span></div>
+          <div className="ih-eyebrow" style={{ marginBottom: 8 }}>Finance &middot; invoices & payments · <span style={{ color: "var(--ih-accent)" }}>★</span></div>
           <h1 className="ih-serif" style={{ margin: 0, fontSize: 38, lineHeight: 0.98 }}>
             &pound;184k invoiced. <span className="ih-italic-red">&pound;142k</span> collected.
           </h1>

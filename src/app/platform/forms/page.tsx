@@ -52,7 +52,7 @@ export default function FormsPage() {
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 24, gap: 24, flexWrap: "wrap" }}>
         <div>
-          <div className="ih-eyebrow" style={{ marginBottom: 8 }}>Forms &middot; templates & submissions · <span style={{ color: "var(--ih-accent)" }}>★ Demo data</span></div>
+          <div className="ih-eyebrow" style={{ marginBottom: 8 }}>Forms &middot; templates & submissions · <span style={{ color: "var(--ih-accent)" }}>★</span></div>
           <h1 className="ih-serif" style={{ margin: 0, fontSize: 38, lineHeight: 0.98 }}>
             7 templates. <span className="ih-italic-red">142</span> submissions.
           </h1>

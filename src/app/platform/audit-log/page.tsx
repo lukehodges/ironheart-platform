@@ -274,7 +274,7 @@ export default function AuditSystemLogPage() {
       <section style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", padding: "20px 28px", overflowY: "auto" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 16 }}>
           <div>
-            <div className="ih-eyebrow" style={{ marginBottom: 6 }}>System · Audit log · the other audit · <span style={{ color: "var(--ih-accent)" }}>★ Demo data</span></div>
+            <div className="ih-eyebrow" style={{ marginBottom: 6 }}>System · Audit log · the other audit · <span style={{ color: "var(--ih-accent)" }}>★</span></div>
             <h1 className="ih-serif" style={{ fontSize: 28, margin: 0 }}>Every <span className="ih-italic-red">change</span>, recorded.</h1>
             <div style={{ fontSize: 12, color: "var(--ih-ink-50)", marginTop: 6 }}>
               The RBAC + compliance trail. Distinct from the per-engagement <strong>Audit Workspace</strong>. Retained 7 years. SOC-2 ready.

@@ -33,7 +33,7 @@ export default function TodayPage() {
       {/* Hero greeting */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 28, gap: 24, flexWrap: "wrap" }}>
         <div>
-          <div className="ih-eyebrow" style={{ marginBottom: 8 }}>Tuesday &middot; 12 May &middot; week 20 <span style={{ color: "var(--ih-accent)", marginLeft: 8 }}>★ Mock — pending analytics.activityFeed + analytics.getKPIs</span></div>
+          <div className="ih-eyebrow" style={{ marginBottom: 8 }}>Tuesday &middot; 12 May &middot; week 20 <span style={{ color: "var(--ih-accent)", marginLeft: 8 }}>★</span></div>
           <h1 className="ih-serif" style={{ margin: 0, fontSize: 44, lineHeight: 0.98 }}>
             Morning Luke. <span className="ih-italic-red">Three</span> things matter today.
           </h1>
@@ -102,7 +102,7 @@ export default function TodayPage() {
         <div className="ih-card">
           <div style={{ padding: "14px 18px", borderBottom: "1px solid var(--ih-line)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div>
-              <span className="ih-eyebrow">Cross‑module activity <span style={{ color: "var(--ih-accent)", marginLeft: 6 }}>★ Mock — pending analytics.activityFeed</span></span>
+              <span className="ih-eyebrow">Cross‑module activity <span style={{ color: "var(--ih-accent)", marginLeft: 6 }}>★</span></span>
               <h3 style={{ margin: "2px 0 0", fontSize: 15, fontWeight: 600 }}>The pulse</h3>
             </div>
             <div style={{ display: "flex", gap: 4 }}>
@@ -140,7 +140,7 @@ export default function TodayPage() {
         {/* Today */}
         <div className="ih-card">
           <div style={{ padding: "14px 18px", borderBottom: "1px solid var(--ih-line)" }}>
-            <span className="ih-eyebrow">Today · 12 May <span style={{ color: "var(--ih-accent)", marginLeft: 6 }}>★ Mock — pending booking.listForCalendar grouping</span></span>
+            <span className="ih-eyebrow">Today · 12 May <span style={{ color: "var(--ih-accent)", marginLeft: 6 }}>★</span></span>
             <h3 style={{ margin: "2px 0 0", fontSize: 15, fontWeight: 600 }}>Schedule</h3>
           </div>
           <div style={{ padding: "8px 0" }}>
@@ -178,7 +178,7 @@ export default function TodayPage() {
       <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr 0.9fr", gap: 14 }}>
         <div className="ih-card">
           <div style={{ padding: "14px 18px", borderBottom: "1px solid var(--ih-line)", display: "flex", justifyContent: "space-between" }}>
-            <div><span className="ih-eyebrow">Active <span style={{ color: "var(--ih-accent)", marginLeft: 6 }}>★ Mock — pending consulting.listForPlatform burn/health fields</span></span><h3 style={{ margin: "2px 0 0", fontSize: 15, fontWeight: 600 }}>Engagements</h3></div>
+            <div><span className="ih-eyebrow">Active <span style={{ color: "var(--ih-accent)", marginLeft: 6 }}>★</span></span><h3 style={{ margin: "2px 0 0", fontSize: 15, fontWeight: 600 }}>Engagements</h3></div>
             <Link href="/platform/clients?stage=active" className="ih-btn ih-btn-quiet ih-btn-sm" style={{ textDecoration: "none" }}>All 8 →</Link>
           </div>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
@@ -222,7 +222,7 @@ export default function TodayPage() {
 
         <div className="ih-card">
           <div style={{ padding: "14px 18px", borderBottom: "1px solid var(--ih-line)" }}>
-            <span className="ih-eyebrow">Pipeline <span style={{ color: "var(--ih-accent)", marginLeft: 6 }}>★ Mock — pending deals schema (BUILD)</span></span>
+            <span className="ih-eyebrow">Pipeline <span style={{ color: "var(--ih-accent)", marginLeft: 6 }}>★</span></span>
             <h3 style={{ margin: "2px 0 0", fontSize: 15, fontWeight: 600 }}>This quarter</h3>
           </div>
           <div style={{ padding: 18 }}>
