@@ -101,14 +101,69 @@ export const handleOnboardingPlanApproved = inngest.createFunction(
       }
 
       // ── template lookup ────────────────────────────────────────────────
-      const templateId = templateBySlug.get(send.templateSlug)
-      if (!templateId) {
+      const resolvedTemplateId = templateBySlug.get(send.templateSlug)
+      if (!resolvedTemplateId) {
         log.error({ slug: send.templateSlug, nodeId: send.nodeId }, "Template slug not found in Ironheart tenant")
         errors++
         continue
       }
 
       try {
+        // ── merge per-node extraQuestions onto template fields ─────────
+        // If the node has any bespoke questions, clone the resolved template
+        // into a per-node engagement-scoped clone whose `fields` = template.fields
+        // + extraQuestions. This keeps the master library untouched while still
+        // letting the prospect see the combined questionnaire when they open
+        // /forms/[sessionKey].
+        const templateId = await step.run(`merge-extras-${send.nodeId}`, async () => {
+          const nodeRows = await db
+            .select({ extraQuestions: engagementOrgChart.extraQuestions })
+            .from(engagementOrgChart)
+            .where(eq(engagementOrgChart.id, send.nodeId))
+            .limit(1)
+
+          const extras = (nodeRows[0]?.extraQuestions as Array<{
+            id: string
+            label: string
+            type: "TEXT" | "TEXTAREA" | "SELECT"
+            options?: string[]
+          }>) ?? []
+          if (extras.length === 0) return resolvedTemplateId
+
+          const source = await formsRepository.findTemplateById(
+            ironheartTenantId,
+            resolvedTemplateId
+          )
+          if (!source) return resolvedTemplateId
+
+          // Merge: template fields first, extras at the bottom, marked optional.
+          const mergedFields = [
+            ...source.fields,
+            ...extras.map((q) => ({
+              id: q.id,
+              type: q.type === "TEXT" ? ("TEXT" as const) : q.type === "SELECT" ? ("SELECT" as const) : ("TEXTAREA" as const),
+              label: q.label,
+              required: false,
+              ...(q.options && q.options.length > 0 ? { options: q.options } : {}),
+            })),
+          ]
+
+          // Create an engagement-scoped clone with merged fields. We tag with a
+          // per-node suffix in the slug so re-sends don't collide.
+          const clone = await formsRepository.createTemplate(ironheartTenantId, {
+            name: `${source.name} (custom · ${send.nodeId.slice(0, 8)})`,
+            description: source.description,
+            fields: mergedFields,
+            isActive: source.isActive,
+            attachedServices: source.attachedServices,
+            sendTiming: source.sendTiming,
+            sendOffsetHours: source.sendOffsetHours,
+            requiresSignature: source.requiresSignature,
+            engagementId,
+            slug: null, // per-node clones are not slug-addressable
+          })
+          return clone.id
+        })
         // ── customer look-up or create on client tenant ────────────────
         const customerId = await step.run(`resolve-customer-${send.nodeId}`, async () => {
           const existing = await db

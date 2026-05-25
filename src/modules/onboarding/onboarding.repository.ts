@@ -15,6 +15,7 @@ import type {
   AuditFlag,
   NodeInterviewStatus,
   NodeFormStatus,
+  NodeExtraQuestion,
 } from "./onboarding.types";
 
 const log = logger.child({ module: "onboarding.repository" });
@@ -505,6 +506,37 @@ export const onboardingRepository = {
         : null;
 
     return { rows: rows as ChartActivityRecord[], hasMore, nextCursor };
+  },
+
+  /**
+   * Replaces the full extraQuestions array on a node. Caller composes the
+   * desired final array — append/remove logic lives in the router layer.
+   */
+  async updateNodeExtraQuestions(params: {
+    id: string;
+    tenantId: string;
+    questions: NodeExtraQuestion[];
+    editedBy: "CONSULTANT" | "CLIENT";
+  }): Promise<OrgChartNodeRecord> {
+    const now = new Date();
+    const [updated] = await db
+      .update(engagementOrgChart)
+      .set({
+        extraQuestions: params.questions,
+        version: sql`${engagementOrgChart.version} + 1`,
+        lastEditedBy: params.editedBy,
+        lastEditedAt: now,
+        updatedAt: now,
+      })
+      .where(
+        and(
+          eq(engagementOrgChart.id, params.id),
+          eq(engagementOrgChart.tenantId, params.tenantId)
+        )
+      )
+      .returning();
+    if (!updated) throw new NotFoundError("OrgChartNode", params.id);
+    return updated as OrgChartNodeRecord;
   },
 
   /**

@@ -25,7 +25,10 @@ import {
   setEdgeStyleSchema,
   updateNodeMetaSchema,
   clientUpdateNodeMetaSchema,
+  addNodeExtraQuestionSchema,
+  removeNodeExtraQuestionSchema,
 } from "./onboarding.schemas"
+import type { NodeExtraQuestion } from "./onboarding.types"
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -446,6 +449,76 @@ export const onboardingRouter = router({
         fromValue: null,
         toValue: { style: input.style },
         message: `${actorDisplayName(user)} set edge style of '${node.label}' to ${input.style}`,
+      })
+      return updated
+    }),
+
+  // ── Per-node extra questions (Slice 3) ─────────────────────────────────────
+
+  addNodeExtraQuestion: platformAdminProcedure
+    .input(addNodeExtraQuestionSchema)
+    .mutation(async ({ ctx, input }) => {
+      const user = ctx.session.user
+      const { node, tenantId } = await resolveNodeAndTenant(input.nodeId)
+      const fresh = await db.query.engagementOrgChart.findFirst({
+        where: eq(engagementOrgChart.id, node.id),
+        columns: { extraQuestions: true },
+      })
+      const current = ((fresh?.extraQuestions ?? []) as unknown as NodeExtraQuestion[]) ?? []
+      const newQuestion: NodeExtraQuestion = {
+        id: crypto.randomUUID(),
+        label: input.label,
+        type: input.type,
+        ...(input.options && input.options.length > 0 ? { options: input.options } : {}),
+      }
+      const updated = await onboardingRepository.updateNodeExtraQuestions({
+        id: node.id,
+        tenantId,
+        questions: [...current, newQuestion],
+        editedBy: "CONSULTANT",
+      })
+      await onboardingRepository.logActivity({
+        engagementId: node.engagementId,
+        nodeId: node.id,
+        actorType: "CONSULTANT",
+        actorId: user.id,
+        actorName: actorDisplayName(user),
+        action: "node.extraQuestion.added",
+        fromValue: null,
+        toValue: { id: newQuestion.id, label: newQuestion.label, type: newQuestion.type },
+        message: `${actorDisplayName(user)} added a bespoke question to '${node.label}'`,
+      })
+      return { node: updated, question: newQuestion }
+    }),
+
+  removeNodeExtraQuestion: platformAdminProcedure
+    .input(removeNodeExtraQuestionSchema)
+    .mutation(async ({ ctx, input }) => {
+      const user = ctx.session.user
+      const { node, tenantId } = await resolveNodeAndTenant(input.nodeId)
+      const fresh = await db.query.engagementOrgChart.findFirst({
+        where: eq(engagementOrgChart.id, node.id),
+        columns: { extraQuestions: true },
+      })
+      const current = ((fresh?.extraQuestions ?? []) as unknown as NodeExtraQuestion[]) ?? []
+      const removed = current.find((q) => q.id === input.id)
+      const next = current.filter((q) => q.id !== input.id)
+      const updated = await onboardingRepository.updateNodeExtraQuestions({
+        id: node.id,
+        tenantId,
+        questions: next,
+        editedBy: "CONSULTANT",
+      })
+      await onboardingRepository.logActivity({
+        engagementId: node.engagementId,
+        nodeId: node.id,
+        actorType: "CONSULTANT",
+        actorId: user.id,
+        actorName: actorDisplayName(user),
+        action: "node.extraQuestion.removed",
+        fromValue: removed ? { id: removed.id, label: removed.label } : null,
+        toValue: null,
+        message: `${actorDisplayName(user)} removed a bespoke question from '${node.label}'`,
       })
       return updated
     }),

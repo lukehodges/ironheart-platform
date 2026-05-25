@@ -92,6 +92,13 @@ export const engagementOrgChart = pgTable(
     // Free-text prose for per-node consultant notes (Phase 1.x).
     notes: text("notes"),
 
+    // Per-node bespoke extra questions, merged onto the resolved template's
+    // fields at form-send time. Each entry:
+    //   { id: string, label: string, type: 'TEXT'|'TEXTAREA'|'SELECT', options?: string[] }
+    extraQuestions: jsonb("extra_questions")
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+
     createdAt: timestamp("createdAt", { withTimezone: true })
       .notNull()
       .defaultNow(),

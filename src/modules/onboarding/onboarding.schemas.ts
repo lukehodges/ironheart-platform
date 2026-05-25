@@ -208,3 +208,25 @@ export const clientUpdateNodeMetaSchema = z.object({
   tenureYears: z.number().int().nonnegative().nullable().optional(),
   notes: z.string().max(10_000).nullable().optional(),
 })
+
+// ── Per-node extra questions (Slice 3) ───────────────────────────────────────
+export const nodeExtraQuestionTypeEnum = z.enum(["TEXT", "TEXTAREA", "SELECT"])
+
+export const nodeExtraQuestionSchema = z.object({
+  id: z.string().min(1),
+  label: z.string().min(1).max(500),
+  type: nodeExtraQuestionTypeEnum,
+  options: z.array(z.string()).optional(),
+})
+
+export const addNodeExtraQuestionSchema = z.object({
+  nodeId: z.string().uuid(),
+  label: z.string().min(1).max(500),
+  type: nodeExtraQuestionTypeEnum.default("TEXTAREA"),
+  options: z.array(z.string()).optional(),
+})
+
+export const removeNodeExtraQuestionSchema = z.object({
+  nodeId: z.string().uuid(),
+  id: z.string().min(1),
+})

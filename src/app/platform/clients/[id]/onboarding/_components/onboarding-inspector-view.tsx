@@ -291,6 +291,43 @@ export function OnboardingInspectorView({ node, row, allNodes, engagementId, onC
         </Field>
       )}
 
+      {/* Bespoke questions (read-only list) */}
+      {isPersonish && row.extraQuestions && row.extraQuestions.length > 0 && (
+        <Field label={`Bespoke questions · ${row.extraQuestions.length}`}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {row.extraQuestions.map((q) => (
+              <div
+                key={q.id}
+                style={{
+                  padding: "8px 10px",
+                  borderRadius: 6,
+                  border: "1px solid var(--ih-line)",
+                  background: "var(--ih-surface-2)",
+                  fontSize: 12,
+                  color: "var(--ih-ink)",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                }}
+              >
+                <span style={{ flex: 1 }}>{q.label}</span>
+                <span
+                  className="ih-mono"
+                  style={{
+                    fontSize: 9,
+                    letterSpacing: "0.08em",
+                    textTransform: "uppercase",
+                    color: "var(--ih-ink-40)",
+                  }}
+                >
+                  {q.type.toLowerCase()}
+                </span>
+              </div>
+            ))}
+          </div>
+        </Field>
+      )}
+
       {/* Notes prose block */}
       {row.notes && row.notes.trim() !== "" && (
         <Field label="Notes">

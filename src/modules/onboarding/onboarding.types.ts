@@ -41,6 +41,16 @@ export type NodeFormStatus =
 
 export type EdgeStyle = "SOLID" | "DOTTED" | "MATRIX"
 
+// ── Per-node bespoke questions (merged onto template at send time) ──────────
+export type NodeExtraQuestionType = "TEXT" | "TEXTAREA" | "SELECT"
+
+export interface NodeExtraQuestion {
+  id: string
+  label: string
+  type: NodeExtraQuestionType
+  options?: string[]
+}
+
 export interface OrgChartNodeRecord {
   id: string
   tenantId: string
@@ -76,6 +86,8 @@ export interface OrgChartNodeRecord {
   edgeStyle: EdgeStyle
   /** Free-text prose for per-node consultant notes. */
   notes: string | null
+  /** Per-node bespoke questions, merged onto the resolved template at form-send. */
+  extraQuestions: NodeExtraQuestion[]
   createdAt: Date
   updatedAt: Date
 }

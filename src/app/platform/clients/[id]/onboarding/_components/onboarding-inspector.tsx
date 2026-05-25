@@ -30,6 +30,7 @@ import {
   Lock,
   Workflow,
   Sparkles,
+  Plus,
 } from "lucide-react"
 import { api } from "@/lib/trpc/react"
 import type { DemoNode, AuditFlag as DemoAuditFlag, InterviewStatus as DemoInterviewStatus, FormStatus as DemoFormStatus, EdgeStyle as DemoEdgeStyle } from "../demo/_components/types"
@@ -96,6 +97,8 @@ export function OnboardingInspector({ node, row, allNodes, engagementId, onClose
 
   const updateNode = api.onboarding.updateNode.useMutation({ onSuccess: invalidate })
   const setKind = api.onboarding.setNodeKind.useMutation({ onSuccess: invalidate })
+  const addExtraQuestion = api.onboarding.addNodeExtraQuestion.useMutation({ onSuccess: invalidate })
+  const removeExtraQuestion = api.onboarding.removeNodeExtraQuestion.useMutation({ onSuccess: invalidate })
   const setAuditFlags = api.onboarding.setAuditFlags.useMutation({ onSuccess: invalidate })
   const setInterviewStatus = api.onboarding.setInterviewStatus.useMutation({ onSuccess: invalidate })
   const setFormStatus = api.onboarding.setFormStatus.useMutation({ onSuccess: invalidate })
@@ -401,6 +404,16 @@ export function OnboardingInspector({ node, row, allNodes, engagementId, onClose
         </Field>
       )}
 
+      {/* Per-node bespoke questions (Slice 3) — merged onto the resolved template at send time. */}
+      {isPersonish && (
+        <ExtraQuestionsEditor
+          row={row}
+          onAdd={(label, type) => addExtraQuestion.mutate({ nodeId: row.id, label, type })}
+          onRemove={(id) => removeExtraQuestion.mutate({ nodeId: row.id, id })}
+          isAdding={addExtraQuestion.isPending}
+        />
+      )}
+
       {/* Reporting — manager + direct reports */}
       <ReportingSection node={node} allNodes={allNodes} onFocusNode={onFocusNode} />
 
@@ -516,6 +529,151 @@ function segBtn(active: boolean): React.CSSProperties {
 
 function prettyStatus(s: string): string {
   return s.split("_").map((p) => p.charAt(0) + p.slice(1).toLowerCase()).join(" ")
+}
+
+/**
+ * Per-node bespoke question editor — add custom questions that get merged
+ * onto the resolved template at form-send time. Each question has a label,
+ * type (TEXT/TEXTAREA/SELECT), and optional options array.
+ */
+function ExtraQuestionsEditor({
+  row,
+  onAdd,
+  onRemove,
+  isAdding,
+}: {
+  row: OrgChartTree
+  onAdd: (label: string, type: "TEXT" | "TEXTAREA" | "SELECT") => void
+  onRemove: (id: string) => void
+  isAdding: boolean
+}) {
+  const [draftLabel, setDraftLabel] = useState("")
+  const [draftType, setDraftType] = useState<"TEXT" | "TEXTAREA" | "SELECT">("TEXTAREA")
+  const questions = (row.extraQuestions ?? []) as Array<{
+    id: string
+    label: string
+    type: "TEXT" | "TEXTAREA" | "SELECT"
+    options?: string[]
+  }>
+
+  return (
+    <Field label={`Bespoke questions (${questions.length})`}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 8 }}>
+        {questions.length === 0 && (
+          <p style={{ fontSize: 11.5, color: "var(--ih-ink-50)", margin: 0 }}>
+            No bespoke questions yet — add one below. These will appear at the bottom of the questionnaire for this person.
+          </p>
+        )}
+        {questions.map((q) => (
+          <div
+            key={q.id}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              padding: "6px 8px",
+              borderRadius: 6,
+              border: "1px solid var(--ih-line)",
+              background: "var(--ih-surface-2)",
+              fontSize: 12,
+            }}
+          >
+            <span style={{ flex: 1, color: "var(--ih-ink)" }}>{q.label}</span>
+            <span
+              className="ih-mono"
+              style={{
+                fontSize: 9,
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
+                color: "var(--ih-ink-40)",
+                flexShrink: 0,
+              }}
+            >
+              {q.type.toLowerCase()}
+            </span>
+            <button
+              type="button"
+              onClick={() => onRemove(q.id)}
+              aria-label="Remove question"
+              style={{
+                width: 22,
+                height: 22,
+                borderRadius: 4,
+                border: "1px solid var(--ih-line-2)",
+                background: "transparent",
+                cursor: "pointer",
+                color: "var(--ih-danger)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+              }}
+            >
+              <Trash2 size={11} />
+            </button>
+          </div>
+        ))}
+      </div>
+      <div style={{ display: "flex", gap: 6, alignItems: "flex-start" }}>
+        <textarea
+          value={draftLabel}
+          onChange={(e) => setDraftLabel(e.target.value)}
+          placeholder={`e.g. "What's the single decision you're worried about losing your grip on as you scale?"`}
+          rows={2}
+          style={{
+            flex: 1,
+            padding: "6px 10px",
+            borderRadius: 6,
+            border: "1px solid var(--ih-line-2)",
+            background: "var(--ih-surface)",
+            color: "var(--ih-ink)",
+            fontSize: 12,
+            fontFamily: "var(--ih-font-sans)",
+            outline: "none",
+            resize: "vertical",
+          }}
+        />
+        <select
+          value={draftType}
+          onChange={(e) => setDraftType(e.target.value as "TEXT" | "TEXTAREA" | "SELECT")}
+          style={{ ...inputStyle(), width: 110 }}
+        >
+          <option value="TEXTAREA">Textarea</option>
+          <option value="TEXT">Short text</option>
+          <option value="SELECT">Select</option>
+        </select>
+      </div>
+      <button
+        type="button"
+        onClick={() => {
+          const label = draftLabel.trim()
+          if (!label) return
+          onAdd(label, draftType)
+          setDraftLabel("")
+          setDraftType("TEXTAREA")
+        }}
+        disabled={!draftLabel.trim() || isAdding}
+        style={{
+          marginTop: 6,
+          padding: "5px 10px",
+          borderRadius: 6,
+          border: "1px solid var(--ih-line-2)",
+          background: "var(--ih-surface)",
+          color: "var(--ih-ink)",
+          fontSize: 12,
+          fontFamily: "var(--ih-font-sans)",
+          cursor: draftLabel.trim() && !isAdding ? "pointer" : "not-allowed",
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 6,
+          opacity: draftLabel.trim() && !isAdding ? 1 : 0.5,
+        }}
+      >
+        <Plus size={11} />
+        {isAdding ? "Adding…" : "Add question"}
+      </button>
+    </Field>
+  )
 }
 
 /**
