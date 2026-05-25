@@ -27,10 +27,16 @@ import { randomUUID } from "crypto"
 
 const ENGAGEMENT_ID = "c950c06a-1b41-4f46-9c89-660845d96bee"
 
-const DATABASE_URL = process.env.DATABASE_URL
-const IRONHEART_TENANT_ID = process.env.IRONHEART_TENANT_ID
-if (!DATABASE_URL) throw new Error("DATABASE_URL not set")
-if (!IRONHEART_TENANT_ID) throw new Error("IRONHEART_TENANT_ID not set")
+const DATABASE_URL: string = (() => {
+  const v = process.env.DATABASE_URL
+  if (!v) throw new Error("DATABASE_URL not set")
+  return v
+})()
+const IRONHEART_TENANT_ID: string = (() => {
+  const v = process.env.IRONHEART_TENANT_ID
+  if (!v) throw new Error("IRONHEART_TENANT_ID not set")
+  return v
+})()
 
 // Final status mix per prompt: 4 SENT, 1 IN_PROGRESS, 1 COMPLETED.
 // Status here is the **chart node form_status enum**
@@ -104,7 +110,7 @@ function log(msg: string) {
 }
 
 async function main() {
-  const sql = postgres(DATABASE_URL!)
+  const sql = postgres(DATABASE_URL)
   try {
     console.log("=== Brightline questionnaire send (demo prep) ===")
     console.log(`Engagement: ${ENGAGEMENT_ID}`)
