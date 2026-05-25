@@ -687,7 +687,14 @@ export const onboardingRouter = router({
       await assertClientMembership(input.engagementId, ctx.session.user.id)
 
       // 1. Chart nodes joined with completed_forms status
-      //    formSendId on the node references completed_forms.id
+      //    formSendId on the node references completed_forms.id.
+      //    sessionKey + chartFormStatus added so the portal audit page
+      //    can render "Fill in" / "Resume" CTAs directly (Phase 0.2.C+).
+      //    Note: completedForms.status is the DB FormStatus enum
+      //    (PENDING|COMPLETED|EXPIRED|CANCELLED) and gates the CTA;
+      //    engagement_org_chart.formStatus is the finer-grained chart
+      //    enum (NONE|PENDING|SENT|IN_PROGRESS|COMPLETED) and gates
+      //    display copy.
       const nodeRows = await db
         .select({
           nodeId: engagementOrgChart.id,
@@ -695,7 +702,9 @@ export const onboardingRouter = router({
           contactName: engagementOrgChart.contactName,
           contactEmail: engagementOrgChart.contactEmail,
           formSendId: engagementOrgChart.formSendId,
+          chartFormStatus: engagementOrgChart.formStatus,
           formStatus: completedForms.status,
+          sessionKey: completedForms.sessionKey,
           // completed_forms has no completedAt; use submittedAt as the
           // completion timestamp (set when the form is submitted/completed).
           formCompletedAt: completedForms.submittedAt,

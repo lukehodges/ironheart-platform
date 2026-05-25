@@ -4,13 +4,18 @@ import { api } from "@/lib/trpc/react"
 import Link from "next/link"
 import { CheckCircle2, Clock, AlertCircle, Calendar, FileText } from "lucide-react"
 
-// formStatus enum: PENDING | COMPLETED | EXPIRED | CANCELLED
-// A node with formSendId set means a form was dispatched; status starts PENDING.
+// Two enums in play here — see proc comment for full context:
+//   - DB FormStatus (completed_forms.status): PENDING | COMPLETED | EXPIRED | CANCELLED
+//   - Chart FormStatus (engagement_org_chart.form_status):
+//       NONE | PENDING | SENT | IN_PROGRESS | COMPLETED
+// Chart enum drives display copy; DB enum drives the CTA.
 const FORM_STATUS_DISPLAY: Record<
   string,
   { label: string; tone: "ok" | "warn" | "muted" }
 > = {
   PENDING: { label: "Awaiting response", tone: "warn" },
+  SENT: { label: "Awaiting response", tone: "warn" },
+  IN_PROGRESS: { label: "In progress", tone: "warn" },
   COMPLETED: { label: "Completed", tone: "ok" },
   EXPIRED: { label: "Expired", tone: "muted" },
   CANCELLED: { label: "Cancelled", tone: "muted" },
@@ -236,19 +241,35 @@ function FormRow({
     nodeId: string
     label: string
     formStatus: string | null
+    chartFormStatus: string | null
+    sessionKey: string | null
     formCompletedAt: Date | null
     contactName: string | null
     contactEmail: string | null
   }
 }) {
-  const status = node.formStatus ?? "PENDING"
-  const display = FORM_STATUS_DISPLAY[status] ?? FORM_STATUS_DISPLAY.PENDING
+  // Display copy uses the chart enum when available (richer states like
+  // IN_PROGRESS); falls back to the DB enum, then PENDING.
+  const displayStatus = node.chartFormStatus ?? node.formStatus ?? "PENDING"
+  const display =
+    FORM_STATUS_DISPLAY[displayStatus] ?? FORM_STATUS_DISPLAY.PENDING
+
+  // CTA gating uses the DB FormStatus — only PENDING rows are fillable.
+  // COMPLETED rows have no readonly view yet (form-fill route 410s a
+  // submitted token), so we just show a completed-date pip.
+  const dbStatus = node.formStatus ?? "PENDING"
+  const isFillable = dbStatus === "PENDING" && !!node.sessionKey
+  const isResume =
+    isFillable && node.chartFormStatus === "IN_PROGRESS"
+
   const Icon =
-    status === "COMPLETED"
+    displayStatus === "COMPLETED"
       ? CheckCircle2
-      : status === "PENDING"
+      : displayStatus === "IN_PROGRESS"
         ? Clock
-        : AlertCircle
+        : displayStatus === "SENT" || displayStatus === "PENDING"
+          ? Clock
+          : AlertCircle
   const iconColor =
     display.tone === "ok"
       ? "var(--ih-ok)"
@@ -259,7 +280,7 @@ function FormRow({
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 12, padding: 12 }}>
       <Icon size={16} style={{ color: iconColor, flexShrink: 0 }} />
-      <div style={{ flex: 1 }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
         <p style={{ fontSize: 13, fontWeight: 500, color: "var(--ih-ink)", margin: 0 }}>
           {node.contactName ?? node.label}
         </p>
@@ -267,12 +288,44 @@ function FormRow({
           {node.contactEmail ?? "—"}
         </p>
       </div>
-      <span style={{ fontSize: 11, color: iconColor }}>{display.label}</span>
+      <span style={{ fontSize: 11, color: iconColor, flexShrink: 0 }}>
+        {display.label}
+      </span>
       {node.formCompletedAt && (
-        <span className="ih-mono" style={{ fontSize: 9, color: "var(--ih-ink-40)" }}>
+        <span
+          className="ih-mono"
+          style={{ fontSize: 9, color: "var(--ih-ink-40)", flexShrink: 0 }}
+        >
           {new Date(node.formCompletedAt).toLocaleDateString()}
         </span>
       )}
+      <div
+        style={{
+          minWidth: 132,
+          display: "flex",
+          justifyContent: "flex-end",
+          flexShrink: 0,
+        }}
+      >
+        {isFillable ? (
+          <Link
+            href={`/forms/${node.sessionKey}`}
+            style={{
+              display: "inline-block",
+              padding: "6px 12px",
+              fontSize: 12,
+              fontWeight: 500,
+              borderRadius: 6,
+              background: "var(--ih-accent)",
+              color: "var(--ih-bg)",
+              textDecoration: "none",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {isResume ? "Resume" : "Fill in questionnaire"}
+          </Link>
+        ) : null}
+      </div>
     </div>
   )
 }
