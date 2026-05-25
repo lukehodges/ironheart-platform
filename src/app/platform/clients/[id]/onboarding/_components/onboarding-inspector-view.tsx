@@ -98,13 +98,11 @@ export function OnboardingInspectorView({ node, row, allNodes, onClose, onFocusN
   const manager = node.parentId ? allNodes.find((n) => n.id === node.parentId) ?? null : null
   const reports = allNodes.filter((n) => n.parentId === node.id)
 
-  // Compose value rows; we omit any whose value is null/empty.
+  // Compose value rows; we skip-render any whose value is null/empty so the
+  // inspector never shows a "broken" "Field: " row.
   const rows: Array<{ label: string; value: React.ReactNode }> = []
   if (row.email && row.email.trim() !== "") {
     rows.push({ label: "Email", value: row.email })
-  }
-  if (row.contactRole && row.contactRole.trim() !== "") {
-    rows.push({ label: "Role", value: row.contactRole })
   }
   if (row.tenureYears != null) {
     rows.push({ label: "Tenure", value: `${row.tenureYears} ${row.tenureYears === 1 ? "year" : "years"}` })

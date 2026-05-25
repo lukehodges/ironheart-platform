@@ -65,10 +65,10 @@ export function PortalInspectorView({ node, row, onClose }: PortalInspectorViewP
   const { bg: avBg, fg: avFg } = avatarColors(row.avatarColor)
   const interviewMeta = INTERVIEW_META[node.interviewStatus]
 
+  // Skip-render rows whose value is null/empty — keeps the inspector from
+  // ever showing a broken "Field: " line.
   const valueRows: Array<{ label: string; value: React.ReactNode }> = []
   if (row.email && row.email.trim() !== "") valueRows.push({ label: "Email", value: row.email })
-  if (row.contactRole && row.contactRole.trim() !== "")
-    valueRows.push({ label: "Role", value: row.contactRole })
   if (row.tenureYears != null)
     valueRows.push({
       label: "Tenure",
