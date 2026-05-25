@@ -12,6 +12,7 @@ import {
   sendFormSchema,
   submitFormSchema,
   listResponsesSchema,
+  duplicateTemplateSchema,
 } from "./forms.schemas";
 
 /**
@@ -35,6 +36,12 @@ export const formsRouter = router({
   createTemplate: modulePermission("forms:write")
     .input(createTemplateSchema)
     .mutation(async ({ ctx, input }) => formsService.createTemplate(ctx, input)),
+
+  /** Duplicate an existing template (master library or engagement clone)
+   *  into a NEW engagement-scoped clone. Used by /platform/forms "Duplicate as ClientName". */
+  duplicateTemplate: modulePermission("forms:write")
+    .input(duplicateTemplateSchema)
+    .mutation(async ({ ctx, input }) => formsService.duplicateTemplate(ctx, input)),
 
   updateTemplate: modulePermission("forms:write")
     .input(updateTemplateSchema)

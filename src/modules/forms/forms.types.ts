@@ -33,6 +33,10 @@ export type FormStatus = 'PENDING' | 'SENT' | 'COMPLETED' | 'EXPIRED'
 export interface FormTemplateRecord {
   id: string
   tenantId: string
+  /** Optional slug for stable lookup (set on Ironheart master library templates). */
+  slug?: string | null
+  /** When non-null, scopes this template to a single engagement (a per-client clone of a master). */
+  engagementId?: string | null
   name: string
   description?: string | null
   fields: FormField[]
@@ -91,6 +95,9 @@ export interface CreateTemplateInput {
   sendTiming?: FormSendTiming
   sendOffsetHours?: number | null
   requiresSignature?: boolean
+  /** When set, the template is scoped to a single engagement (per-client clone). */
+  engagementId?: string | null
+  slug?: string | null
 }
 
 export interface UpdateTemplateInput {

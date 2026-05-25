@@ -15,7 +15,11 @@ import type {
   updateTemplateSchema,
   sendFormSchema,
   listResponsesSchema,
+  duplicateTemplateSchema,
 } from "./forms.schemas";
+import { db } from "@/shared/db";
+import { tenants } from "@/shared/db/schemas/tenant.schema";
+import { eq } from "drizzle-orm";
 
 const log = logger.child({ module: "forms.service" });
 
@@ -27,6 +31,22 @@ function addDays(date: Date, days: number): Date {
   const d = new Date(date);
   d.setDate(d.getDate() + days);
   return d;
+}
+
+/**
+ * Resolves the Ironheart platform tenant id. Templates live on this tenant
+ * (master library + engagement-scoped clones). Falls back to the caller's
+ * own tenantId if the env var is missing AND no tenant has slug 'ironheart'
+ * — defensive only; in production the env var is always set.
+ */
+async function resolveIronheartTenantId(fallbackTenantId: string): Promise<string> {
+  if (process.env.IRONHEART_TENANT_ID) return process.env.IRONHEART_TENANT_ID;
+  const [row] = await db
+    .select({ id: tenants.id })
+    .from(tenants)
+    .where(eq(tenants.slug, "ironheart"))
+    .limit(1);
+  return row?.id ?? fallbackTenantId;
 }
 
 function validateFormResponses(
@@ -93,12 +113,62 @@ export const formsService = {
     ctx: Context,
     input: z.infer<typeof listTemplatesSchema>,
   ): Promise<{ rows: FormTemplateRecord[]; hasMore: boolean }> {
-    return formsRepository.listTemplates(ctx.tenantId, {
+    // Templates are stored on the Ironheart tenant (D-01: Luke is flat in /platform/*).
+    // Consultant view reads the Ironheart library + engagement-scoped clones, NOT the
+    // caller's ctx.tenantId. The opt-out flag falls back to ctx.tenantId for non-platform
+    // callers (e.g. tenants viewing their own forms in the future).
+    const tenantId =
+      input.includeIronheartLibrary === false
+        ? ctx.tenantId
+        : await resolveIronheartTenantId(ctx.tenantId);
+
+    return formsRepository.listTemplates(tenantId, {
       search: input.search,
       isActive: input.isActive,
       limit: input.limit,
       cursor: input.cursor,
+      engagementId: input.engagementId,
     });
+  },
+
+  async duplicateTemplate(
+    ctx: Context,
+    input: z.infer<typeof duplicateTemplateSchema>,
+  ): Promise<FormTemplateRecord> {
+    const tenantId = await resolveIronheartTenantId(ctx.tenantId);
+
+    const source = await formsRepository.findTemplateById(
+      tenantId,
+      input.sourceTemplateId,
+    );
+    if (!source) throw new NotFoundError("FormTemplate", input.sourceTemplateId);
+
+    const clone = await formsRepository.createTemplate(tenantId, {
+      name: input.name,
+      description: source.description ?? null,
+      fields: source.fields,
+      isActive: source.isActive,
+      attachedServices: source.attachedServices ?? null,
+      sendTiming: source.sendTiming,
+      sendOffsetHours: source.sendOffsetHours ?? null,
+      requiresSignature: source.requiresSignature,
+      engagementId: input.engagementId,
+      // Mirror the source slug onto the clone so the form-send flow can match
+      // engagement-scoped clones to the same role mapping as the master.
+      slug: source.slug ?? null,
+    });
+
+    log.info(
+      {
+        tenantId,
+        sourceTemplateId: input.sourceTemplateId,
+        cloneTemplateId: clone.id,
+        engagementId: input.engagementId,
+      },
+      "Form template duplicated as engagement clone",
+    );
+
+    return clone;
   },
 
   async getTemplate(

@@ -678,6 +678,9 @@ export const reviewAutomationSettings = pgTable("review_automation_settings", {
 export const formTemplates = pgTable("form_templates", {
 	id: uuid().primaryKey().notNull(),
 	tenantId: uuid().notNull(),
+	// When non-null, scopes this template to a single engagement (a per-client
+	// duplicate of a master template). NULL = master library template.
+	engagementId: uuid(),
 	name: text().notNull(),
 	slug: text(),
 	description: text(),
@@ -695,6 +698,7 @@ export const formTemplates = pgTable("form_templates", {
 }, (table) => [
 	index("form_templates_tenantId_active_idx").on( table.tenantId, table.active),
 	index("form_templates_tenantId_idx").on( table.tenantId),
+	index("form_templates_tenantId_engagementId_idx").on(table.tenantId, table.engagementId),
 	foreignKey({
 		columns: [table.tenantId],
 		foreignColumns: [tenants.id],

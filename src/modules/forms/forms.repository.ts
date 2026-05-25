@@ -26,6 +26,8 @@ function toFormTemplateRecord(row: FormTemplateRow): FormTemplateRecord {
   return {
     id: row.id,
     tenantId: row.tenantId,
+    slug: row.slug ?? null,
+    engagementId: row.engagementId ?? null,
     name: row.name,
     description: row.description ?? null,
     fields: (row.fields as FormTemplateRecord["fields"]) ?? [],
@@ -121,6 +123,12 @@ export const formsRepository = {
       isActive?: boolean;
       limit: number;
       cursor?: string;
+      /**
+       * When set: include templates where engagementId = this value OR
+       * engagementId IS NULL (master library). When undefined: include all
+       * templates on this tenant regardless of engagement scoping.
+       */
+      engagementId?: string;
     },
   ): Promise<{ rows: FormTemplateRecord[]; hasMore: boolean }> {
     const conditions = [eq(formTemplates.tenantId, tenantId)];
@@ -131,6 +139,12 @@ export const formsRepository = {
 
     if (opts.isActive !== undefined) {
       conditions.push(eq(formTemplates.active, opts.isActive));
+    }
+
+    if (opts.engagementId !== undefined) {
+      conditions.push(
+        sql`(${formTemplates.engagementId} IS NULL OR ${formTemplates.engagementId} = ${opts.engagementId})`,
+      );
     }
 
     if (opts.cursor) {
@@ -155,6 +169,43 @@ export const formsRepository = {
     };
   },
 
+  /** Look up a template by tenant + slug + optional engagement scope.
+   *  When engagementId is provided, prefers the engagement-scoped template if
+   *  one exists with the same slug; otherwise falls back to the master library
+   *  template (engagementId IS NULL). */
+  async findTemplateBySlug(
+    tenantId: string,
+    slug: string,
+    engagementId?: string | null,
+  ): Promise<FormTemplateRecord | null> {
+    if (engagementId) {
+      const scoped = await db
+        .select()
+        .from(formTemplates)
+        .where(
+          and(
+            eq(formTemplates.tenantId, tenantId),
+            eq(formTemplates.slug, slug),
+            eq(formTemplates.engagementId, engagementId),
+          ),
+        )
+        .limit(1);
+      if (scoped[0]) return toFormTemplateRecord(scoped[0]);
+    }
+    const master = await db
+      .select()
+      .from(formTemplates)
+      .where(
+        and(
+          eq(formTemplates.tenantId, tenantId),
+          eq(formTemplates.slug, slug),
+          sql`${formTemplates.engagementId} IS NULL`,
+        ),
+      )
+      .limit(1);
+    return master[0] ? toFormTemplateRecord(master[0]) : null;
+  },
+
   async createTemplate(
     tenantId: string,
     input: CreateTemplateInput,
@@ -166,6 +217,8 @@ export const formsRepository = {
       .values({
         id: crypto.randomUUID(),
         tenantId,
+        engagementId: input.engagementId ?? null,
+        slug: input.slug ?? null,
         name: input.name,
         description: input.description ?? null,
         fields: input.fields as unknown as typeof formTemplates.$inferInsert["fields"],

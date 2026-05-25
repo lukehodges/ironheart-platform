@@ -27,6 +27,9 @@ export const createTemplateSchema = z.object({
   sendTiming: z.enum(['IMMEDIATE', 'BEFORE_APPOINTMENT', 'AFTER_APPOINTMENT']).default('IMMEDIATE'),
   sendOffsetHours: z.number().optional().nullable(),
   requiresSignature: z.boolean().default(false),
+  // Scope this template to a single engagement (per-client clone). NULL/undefined = master library.
+  engagementId: z.string().uuid().optional().nullable(),
+  slug: z.string().optional().nullable(),
 })
 
 export const updateTemplateSchema = z.object({
@@ -46,6 +49,22 @@ export const listTemplatesSchema = z.object({
   isActive: z.boolean().optional(),
   limit: z.number().default(50),
   cursor: z.string().optional(),
+  /**
+   * When set, returns engagement-scoped templates for that engagement PLUS master
+   * library templates (engagementId IS NULL) on the Ironheart tenant. The consultant
+   * /platform/forms list passes no engagementId — they get the master library
+   * + all engagement-scoped clones across all engagements on the Ironheart tenant.
+   */
+  engagementId: z.string().uuid().optional(),
+  // When true (default), templates are scoped to the Ironheart tenant regardless of caller's ctx.tenantId.
+  // Set false to fetch only the caller's own tenant templates.
+  includeIronheartLibrary: z.boolean().optional(),
+})
+
+export const duplicateTemplateSchema = z.object({
+  sourceTemplateId: z.string().uuid(),
+  engagementId: z.string().uuid(),
+  name: z.string().min(1),
 })
 
 export const sendFormSchema = z.object({

@@ -47,10 +47,13 @@ export const handleOnboardingPlanApproved = inngest.createFunction(
     }
 
     // ── Step 1: batch-fetch all templates by slug ─────────────────────────
+    // Returns BOTH master library templates (engagementId IS NULL) and any
+    // engagement-scoped clones for THIS engagement. We then prefer the
+    // engagement-scoped clone per slug if one exists.
     const templateRows = await step.run("fetch-templates", async () => {
       const slugs = [...new Set(plan.sends.map((s) => s.templateSlug))]
       return await db
-        .select({ id: formTemplates.id, slug: formTemplates.slug })
+        .select({ id: formTemplates.id, slug: formTemplates.slug, engagementId: formTemplates.engagementId })
         .from(formTemplates)
         .where(
           and(
@@ -60,11 +63,20 @@ export const handleOnboardingPlanApproved = inngest.createFunction(
         )
     })
 
-    const templateBySlug = new Map(
-      (templateRows as Array<{ id: string; slug: string | null }>)
-        .filter((r): r is { id: string; slug: string } => r.slug !== null)
-        .map((r) => [r.slug, r.id])
-    )
+    const templateBySlug = new Map<string, string>()
+    for (const row of templateRows as Array<{ id: string; slug: string | null; engagementId: string | null }>) {
+      if (!row.slug) continue
+      const isScoped = row.engagementId === engagementId
+      const existing = templateBySlug.get(row.slug)
+      // Prefer engagement-scoped clone. If no scoped one yet OR the existing entry
+      // is the master (we can detect indirectly by re-checking the source), overwrite.
+      // Simpler rule: scoped row always wins. Master row only writes if no entry yet.
+      if (isScoped) {
+        templateBySlug.set(row.slug, row.id)
+      } else if (!existing) {
+        templateBySlug.set(row.slug, row.id)
+      }
+    }
 
     let sent = 0
     let skipped = 0

@@ -1,33 +1,20 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { NotificationToast } from "@/components/shared"
 import { Icon } from "@/components/shell"
+import { api } from "@/lib/trpc/react"
 
-/* ── Data ────────────────────────────────────────────────────────────────── */
-
-type Template = {
-  id: string; name: string; description: string; fields: number;
-  submissions: number; lastUsed: string; status: "active" | "draft" | "archived";
-}
-
-const TEMPLATES: Template[] = [
-  { id: "tpl-1", name: "Owner / Director", description: "Strategic leadership assessment covering vision, governance, and growth planning", fields: 24, submissions: 31, lastUsed: "3d ago", status: "active" },
-  { id: "tpl-2", name: "Operations", description: "Operational efficiency audit across processes, systems, and team workflows", fields: 28, submissions: 26, lastUsed: "1w ago", status: "active" },
-  { id: "tpl-3", name: "Finance", description: "Financial health check covering cash flow, margins, forecasting, and controls", fields: 22, submissions: 18, lastUsed: "2w ago", status: "active" },
-  { id: "tpl-4", name: "Sales & Revenue", description: "Pipeline, conversion metrics, pricing strategy, and revenue growth levers", fields: 20, submissions: 24, lastUsed: "4d ago", status: "active" },
-  { id: "tpl-5", name: "Team Member", description: "Individual contributor pulse on culture, workload, tools, and growth", fields: 16, submissions: 28, lastUsed: "2d ago", status: "active" },
-  { id: "tpl-6", name: "Quick Pulse", description: "5-minute check-in for ongoing engagements. Satisfaction, blockers, priorities", fields: 8, submissions: 12, lastUsed: "1d ago", status: "active" },
-  { id: "tpl-7", name: "General Intake", description: "New client discovery form. Background, goals, budget, timeline, constraints", fields: 18, submissions: 3, lastUsed: "5d ago", status: "draft" },
-]
+/* ── Types from the live API ─────────────────────────────────────────────── */
 
 type Submission = {
   id: string; form: string; submittedBy: string; client: string;
   date: string; status: "complete" | "partial" | "expired";
 }
 
+// ★ Mock — pending forms.listResponses cross-tenant aggregation (Wave K).
 const SUBMISSIONS: Submission[] = [
   { id: "sub-1", form: "Quick Pulse", submittedBy: "Mira Sato", client: "Northwind", date: "May 10", status: "complete" },
   { id: "sub-2", form: "Team Member", submittedBy: "Sam Park", client: "Northwind", date: "May 9", status: "complete" },
@@ -47,14 +34,38 @@ const TH: React.CSSProperties = { textAlign: "left", padding: "10px 12px", fontW
 export default function FormsPage() {
   const router = useRouter()
   const [toast, setToast] = useState<{message: string; tone?: string} | null>(null)
+  const [duplicateFor, setDuplicateFor] = useState<{ id: string; name: string } | null>(null)
+
+  // Live template list — pulls the Ironheart master library + every engagement-scoped clone.
+  const templatesQuery = api.forms.listTemplates.useQuery({ limit: 100 })
+  // Live engagements (used to populate the "Duplicate as ClientName" dropdown).
+  const engagementsQuery = api.consulting.listForPlatform.useQuery({ limit: 100 })
+
+  const templates = templatesQuery.data?.rows ?? []
+  const engagements = useMemo(() => engagementsQuery.data?.rows ?? [], [engagementsQuery.data])
+
+  /** Map engagementId → "{Company} — {Title}" for the popover. */
+  const engagementLabelById = useMemo(() => {
+    const m = new Map<string, string>()
+    for (const r of engagements) {
+      const company = (r.customer.notes ?? "").trim() ||
+        `${r.customer.firstName ?? ""} ${r.customer.lastName ?? ""}`.trim() ||
+        "Unknown"
+      m.set(r.engagement.id, `${company} — ${r.engagement.title}`)
+    }
+    return m
+  }, [engagements])
+
+  const totalSubmissions = SUBMISSIONS.length // ★ Mock until forms.listResponses across tenants
+
   return (
     <div style={{ padding: "24px 28px 48px", maxWidth: 1400, margin: "0 auto" }}>
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 24, gap: 24, flexWrap: "wrap" }}>
         <div>
-          <div className="ih-eyebrow" style={{ marginBottom: 8 }}>Forms &middot; templates & submissions · <span style={{ color: "var(--ih-accent)" }}>★</span></div>
+          <div className="ih-eyebrow" style={{ marginBottom: 8 }}>Forms &middot; templates & submissions</div>
           <h1 className="ih-serif" style={{ margin: 0, fontSize: 38, lineHeight: 0.98 }}>
-            7 templates. <span className="ih-italic-red">142</span> submissions.
+            {templatesQuery.isLoading ? "…" : templates.length} templates. <span className="ih-italic-red">{totalSubmissions}</span> submissions <span style={{ color: "var(--ih-accent)" }}>★</span>.
           </h1>
         </div>
         <div style={{ display: "flex", gap: 6 }}>
@@ -63,13 +74,13 @@ export default function FormsPage() {
         </div>
       </div>
 
-      {/* Stats strip */}
+      {/* Stats strip — ★ Mock for completion + avg time + submissions count */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, marginBottom: 24 }}>
         {[
-          { l: "Total submissions", v: "142", d: "+18", h: "this month", icon: "file" as const },
-          { l: "Completion rate", v: "89%", d: "+2.4%", h: "vs last month", icon: "check" as const },
-          { l: "Avg time to complete", v: "12m", d: "−1m", h: "improving", icon: "clock" as const },
-          { l: "Active templates", v: "6", d: "+1 draft", h: "7 total", icon: "grid" as const },
+          { l: "Total submissions ★", v: String(totalSubmissions), d: "+18", h: "this month", icon: "file" as const },
+          { l: "Completion rate ★", v: "89%", d: "+2.4%", h: "vs last month", icon: "check" as const },
+          { l: "Avg time to complete ★", v: "12m", d: "−1m", h: "improving", icon: "clock" as const },
+          { l: "Templates", v: String(templates.length), d: `${templates.filter(t => t.engagementId).length} client-scoped`, h: "live count", icon: "grid" as const },
         ].map((s) => (
           <div key={s.l} className="ih-card" style={{ padding: "14px 14px" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
@@ -92,39 +103,65 @@ export default function FormsPage() {
             <span className="ih-eyebrow">Templates</span>
             <h3 style={{ margin: "2px 0 0", fontSize: 15, fontWeight: 600 }}>Questionnaire library</h3>
           </div>
-          <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => setToast({message: "Filter applied", tone: "ok"})}><Icon name="filter" size={11}/> Filter</button>
+          <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => setToast({message: "Filter applied — ★ pending backend", tone: "ok"})}><Icon name="filter" size={11}/> Filter <span style={{ color: "var(--ih-accent)" }}>★</span></button>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
-          {TEMPLATES.map((t) => (
-            <div key={t.id} className="ih-card" style={{ padding: 18, display: "flex", flexDirection: "column" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
-                <div>
-                  <div className="ih-serif" style={{ fontSize: 17, lineHeight: 1.1 }}>{t.name}</div>
+        {templatesQuery.isLoading ? (
+          <div style={{ padding: 24, color: "var(--ih-ink-50)", fontSize: 13 }}>Loading templates…</div>
+        ) : templates.length === 0 ? (
+          <div style={{ padding: 24, color: "var(--ih-ink-50)", fontSize: 13 }}>No templates yet.</div>
+        ) : (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
+            {templates.map((t) => {
+              const fieldCount = t.fields?.length ?? 0
+              const scopedLabel = t.engagementId ? engagementLabelById.get(t.engagementId) : null
+              const statusKey: "active" | "draft" = t.isActive ? "active" : "draft"
+              return (
+                <div key={t.id} className="ih-card" style={{ padding: 18, display: "flex", flexDirection: "column" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
+                    <div style={{ minWidth: 0 }}>
+                      <div className="ih-serif" style={{ fontSize: 17, lineHeight: 1.1 }}>{t.name}</div>
+                      {scopedLabel && (
+                        <div style={{ marginTop: 4, fontSize: 10.5, color: "var(--ih-accent)", textTransform: "uppercase", letterSpacing: "0.08em", fontFamily: "var(--ih-font-mono)" }}>
+                          Scoped · {scopedLabel}
+                        </div>
+                      )}
+                      {!scopedLabel && t.slug && (
+                        <div style={{ marginTop: 4, fontSize: 10.5, color: "var(--ih-ink-40)", fontFamily: "var(--ih-font-mono)" }}>
+                          Master · {t.slug}
+                        </div>
+                      )}
+                    </div>
+                    <span className={`ih-pill ih-pill-${STATUS_TONE[statusKey]}`} style={{ fontSize: 9, padding: "2px 6px", flexShrink: 0 }}>{statusKey}</span>
+                  </div>
+                  <p style={{ margin: "0 0 12px", fontSize: 12, color: "var(--ih-ink-65)", lineHeight: 1.5, flex: 1 }}>{t.description ?? "—"}</p>
+                  <div style={{ display: "flex", gap: 16, marginBottom: 12, fontSize: 11 }}>
+                    <span style={{ color: "var(--ih-ink-50)" }}><span className="ih-mono" style={{ fontWeight: 500, color: "var(--ih-ink)" }}>{fieldCount}</span> fields</span>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: 12, borderTop: "1px solid var(--ih-line)", gap: 6 }}>
+                    <button
+                      className="ih-btn ih-btn-quiet ih-btn-sm"
+                      onClick={() => setDuplicateFor({ id: t.id, name: t.name })}
+                      style={{ fontSize: 11 }}
+                    >
+                      <Icon name="plus" size={11}/> Duplicate as client
+                    </button>
+                    <Link href={`/platform/forms/${t.id}`} className="ih-btn ih-btn-ghost ih-btn-sm" style={{ textDecoration: "none" }}>Edit <Icon name="arrowRight" size={11}/></Link>
+                  </div>
                 </div>
-                <span className={`ih-pill ih-pill-${STATUS_TONE[t.status]}`} style={{ fontSize: 9, padding: "2px 6px", flexShrink: 0 }}>{t.status}</span>
-              </div>
-              <p style={{ margin: "0 0 12px", fontSize: 12, color: "var(--ih-ink-65)", lineHeight: 1.5, flex: 1 }}>{t.description}</p>
-              <div style={{ display: "flex", gap: 16, marginBottom: 12, fontSize: 11 }}>
-                <span style={{ color: "var(--ih-ink-50)" }}><span className="ih-mono" style={{ fontWeight: 500, color: "var(--ih-ink)" }}>{t.fields}</span> fields</span>
-                <span style={{ color: "var(--ih-ink-50)" }}><span className="ih-mono" style={{ fontWeight: 500, color: "var(--ih-ink)" }}>{t.submissions}</span> submissions</span>
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: 12, borderTop: "1px solid var(--ih-line)" }}>
-                <span className="ih-mono" style={{ fontSize: 10, color: "var(--ih-ink-40)" }}>Last used {t.lastUsed}</span>
-                <Link href={`/platform/forms/${t.id}`} className="ih-btn ih-btn-ghost ih-btn-sm" style={{ textDecoration: "none" }}>Edit <Icon name="arrowRight" size={11}/></Link>
-              </div>
-            </div>
-          ))}
-        </div>
+              )
+            })}
+          </div>
+        )}
       </div>
 
-      {/* Recent submissions table */}
+      {/* Recent submissions table — ★ Mock for cross-tenant aggregation */}
       <div className="ih-card" style={{ overflow: "hidden" }}>
         <div style={{ padding: "14px 18px", borderBottom: "1px solid var(--ih-line)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
-            <span className="ih-eyebrow">Recent submissions</span>
+            <span className="ih-eyebrow">Recent submissions <span style={{ color: "var(--ih-accent)" }}>★</span></span>
             <h3 style={{ margin: "2px 0 0", fontSize: 15, fontWeight: 600 }}>Incoming responses</h3>
           </div>
-          <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => setToast({message: "Showing all 142 submissions", tone: "ok"})}>View all 142 &rarr;</button>
+          <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={() => setToast({message: "Showing all submissions — ★ pending backend", tone: "ok"})}>View all &rarr;</button>
         </div>
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
           <thead>
@@ -160,7 +197,120 @@ export default function FormsPage() {
           </tbody>
         </table>
       </div>
+
+      {duplicateFor && (
+        <DuplicateDialog
+          sourceTemplateId={duplicateFor.id}
+          sourceName={duplicateFor.name}
+          engagementOptions={engagements.map((r) => ({
+            id: r.engagement.id,
+            label: engagementLabelById.get(r.engagement.id) ?? r.engagement.title,
+            company: (r.customer.notes ?? "").trim() ||
+              `${r.customer.firstName ?? ""} ${r.customer.lastName ?? ""}`.trim() ||
+              "Client",
+          }))}
+          onClose={() => setDuplicateFor(null)}
+          onDone={() => {
+            setToast({ message: "Template duplicated", tone: "ok" })
+            setDuplicateFor(null)
+            templatesQuery.refetch()
+          }}
+        />
+      )}
+
       {toast && <NotificationToast message={toast.message} tone={toast.tone as any} onDismiss={() => setToast(null)} />}
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Duplicate dialog — pick engagement + override name
+// ---------------------------------------------------------------------------
+
+function DuplicateDialog({
+  sourceTemplateId,
+  sourceName,
+  engagementOptions,
+  onClose,
+  onDone,
+}: {
+  sourceTemplateId: string
+  sourceName: string
+  engagementOptions: Array<{ id: string; label: string; company: string }>
+  onClose: () => void
+  onDone: () => void
+}) {
+  const [engagementId, setEngagementId] = useState<string>(engagementOptions[0]?.id ?? "")
+  const company = engagementOptions.find((o) => o.id === engagementId)?.company ?? "Client"
+  const [name, setName] = useState<string>(`${company} — ${sourceName}`)
+
+  const dup = api.forms.duplicateTemplate.useMutation({
+    onSuccess: onDone,
+    onError: (e) => alert(`Duplicate failed: ${e.message}`),
+  })
+
+  // When engagement changes, refresh the name prefix to match the new company.
+  function handleEngagementChange(newId: string) {
+    setEngagementId(newId)
+    const newCompany = engagementOptions.find((o) => o.id === newId)?.company ?? "Client"
+    setName(`${newCompany} — ${sourceName}`)
+  }
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(0,0,0,0.4)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 50,
+      }}
+      onClick={onClose}
+    >
+      <div
+        className="ih-card"
+        style={{ width: 460, padding: 22, background: "var(--ih-surface)" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="ih-eyebrow" style={{ marginBottom: 4 }}>Duplicate template</div>
+        <h3 style={{ margin: "0 0 14px", fontSize: 17 }} className="ih-serif">Clone “{sourceName}” as a client-scoped template</h3>
+
+        <label style={{ display: "block", marginBottom: 12 }}>
+          <span className="ih-eyebrow" style={{ marginBottom: 4, display: "block" }}>Engagement</span>
+          <select
+            value={engagementId}
+            onChange={(e) => handleEngagementChange(e.target.value)}
+            style={{ width: "100%", padding: "6px 10px", borderRadius: 6, border: "1px solid var(--ih-line)", background: "var(--ih-surface-2)", fontSize: 13 }}
+          >
+            {engagementOptions.length === 0 && <option value="">No engagements found</option>}
+            {engagementOptions.map((o) => (
+              <option key={o.id} value={o.id}>{o.label}</option>
+            ))}
+          </select>
+        </label>
+
+        <label style={{ display: "block", marginBottom: 16 }}>
+          <span className="ih-eyebrow" style={{ marginBottom: 4, display: "block" }}>Template name</span>
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            style={{ width: "100%", padding: "6px 10px", borderRadius: 6, border: "1px solid var(--ih-line)", background: "var(--ih-surface-2)", fontSize: 13 }}
+          />
+        </label>
+
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+          <button className="ih-btn ih-btn-quiet ih-btn-sm" onClick={onClose}>Cancel</button>
+          <button
+            className="ih-btn ih-btn-primary ih-btn-sm"
+            disabled={!engagementId || !name.trim() || dup.isPending}
+            onClick={() => dup.mutate({ sourceTemplateId, engagementId, name: name.trim() })}
+          >
+            {dup.isPending ? "Duplicating…" : "Duplicate"}
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
