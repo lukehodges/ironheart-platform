@@ -21,7 +21,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { ArrowLeft, Activity, Plus, Sparkles, Upload } from "lucide-react"
+import { ArrowLeft, Activity, Plus, Sparkles, Upload, Pencil, Check } from "lucide-react"
 import { ReactFlowProvider } from "reactflow"
 import { api } from "@/lib/trpc/react"
 import DemoGraph, { type DemoGraphViewportApi } from "../demo/_components/demo-graph"
@@ -37,6 +37,7 @@ import type { DemoNode, LayoutDirection, Overlay } from "../demo/_components/typ
 
 import { OnboardingSplash } from "./onboarding-splash"
 import { OnboardingInspector } from "./onboarding-inspector"
+import { OnboardingInspectorView } from "./onboarding-inspector-view"
 import { Shortlist, FormsList, AuditList } from "./overlay-lists"
 import { flattenChart, findRow } from "./adapter"
 import { PlanPreviewModal } from "@/components/onboarding/plan-preview-modal"
@@ -63,6 +64,11 @@ export function OnboardingShell({
 
   // shell-state
   const [view, setView] = useState<"splash" | "chart">("chart")
+  // View vs edit gate for the inspector + toolbar. Defaults to "view" so the
+  // chart presents as a polished read-only display on first load; hitting the
+  // toolbar Edit button unlocks mutation surface. Persisted per engagement so
+  // the choice sticks across reloads.
+  const [mode, setMode] = useState<"view" | "edit">("view")
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [focusedId, setFocusedId] = useState<string | null>(null)
   const [overlay, setOverlay] = useState<Overlay>("NONE")
@@ -94,6 +100,27 @@ export function OnboardingShell({
     else if (view === "splash") setView("chart")
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isEmpty, chartQuery.isLoading])
+
+  // Hydrate mode from localStorage on mount + persist on change. Keyed by
+  // engagement so different clients keep independent toggles.
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    try {
+      const stored = window.localStorage.getItem(`onboarding.mode.${engagementId}`)
+      if (stored === "edit" || stored === "view") setMode(stored)
+    } catch {
+      // no-op (private mode / blocked storage)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [engagementId])
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    try {
+      window.localStorage.setItem(`onboarding.mode.${engagementId}`, mode)
+    } catch {
+      // no-op
+    }
+  }, [engagementId, mode])
 
   const graphNodes = useMemo(() => bundleSiblings(nodes, { enabled: bundleRoles }), [nodes, bundleRoles])
   const aggregates = useMemo(() => computeAggregates(nodes), [nodes])
@@ -274,6 +301,8 @@ export function OnboardingShell({
               coveragePct={stats.coveragePct}
               mapped={stats.mapped}
               total={stats.totalPeople}
+              mode={mode}
+              onModeToggle={() => setMode((m) => (m === "view" ? "edit" : "view"))}
               onApprove={() => setPlanOpen(true)}
               onActivity={() => setActivityOpen(true)}
               onComingSoon={(label) => flashToast(`${label} — coming soon ★`)}
@@ -358,14 +387,24 @@ export function OnboardingShell({
                 }}
               >
                 {selectedNode && selectedRow && (
-                  <OnboardingInspector
-                    node={selectedNode}
-                    row={selectedRow}
-                    allNodes={nodes}
-                    engagementId={engagementId}
-                    onClose={handleInspectorClose}
-                    onFocusNode={handleFocus}
-                  />
+                  mode === "edit" ? (
+                    <OnboardingInspector
+                      node={selectedNode}
+                      row={selectedRow}
+                      allNodes={nodes}
+                      engagementId={engagementId}
+                      onClose={handleInspectorClose}
+                      onFocusNode={handleFocus}
+                    />
+                  ) : (
+                    <OnboardingInspectorView
+                      node={selectedNode}
+                      row={selectedRow}
+                      allNodes={nodes}
+                      onClose={handleInspectorClose}
+                      onFocusNode={handleFocus}
+                    />
+                  )
                 )}
               </aside>
             </div>
@@ -409,6 +448,8 @@ function SlimHeader({
   coveragePct,
   mapped,
   total,
+  mode,
+  onModeToggle,
   onApprove,
   onActivity,
   onComingSoon,
@@ -418,10 +459,13 @@ function SlimHeader({
   coveragePct: number
   mapped: number
   total: number
+  mode: "view" | "edit"
+  onModeToggle: () => void
   onApprove: () => void
   onActivity: () => void
   onComingSoon: (label: string) => void
 }): React.ReactElement {
+  const isEdit = mode === "edit"
   return (
     <header
       style={{
@@ -467,36 +511,69 @@ function SlimHeader({
           Mapped <strong className="ih-num" style={{ color: "var(--ih-ink)", fontWeight: 600 }}>{mapped}/{total}</strong>
         </span>
       </div>
-      <button
-        type="button"
-        onClick={() => onComingSoon("AI suggestions")}
-        title="AI suggestions"
-        style={pillBtn()}
-      >
-        <Sparkles size={11} />
-        Suggestions <span className="ih-mono" style={{ fontSize: 9, color: "var(--ih-ink-40)", marginLeft: 4 }}>★</span>
-      </button>
-      <button
-        type="button"
-        onClick={() => onComingSoon("Bulk import")}
-        title="Bulk import"
-        style={pillBtn()}
-      >
-        <Upload size={11} />
-        Import <span className="ih-mono" style={{ fontSize: 9, color: "var(--ih-ink-40)", marginLeft: 4 }}>★</span>
-      </button>
-      <button
-        type="button"
-        onClick={() => onComingSoon("Add node")}
-        title="Command palette · Cmd+K"
-        style={pillBtn()}
-      >
-        <Plus size={11} />
-        Add <span className="ih-mono" style={{ fontSize: 9, opacity: 0.6, marginLeft: 4 }}>⌘K ★</span>
-      </button>
+      {isEdit && (
+        <>
+          <button
+            type="button"
+            onClick={() => onComingSoon("AI suggestions")}
+            title="AI suggestions"
+            style={pillBtn()}
+          >
+            <Sparkles size={11} />
+            Suggestions <span className="ih-mono" style={{ fontSize: 9, color: "var(--ih-ink-40)", marginLeft: 4 }}>★</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => onComingSoon("Bulk import")}
+            title="Bulk import"
+            style={pillBtn()}
+          >
+            <Upload size={11} />
+            Import <span className="ih-mono" style={{ fontSize: 9, color: "var(--ih-ink-40)", marginLeft: 4 }}>★</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => onComingSoon("Add node")}
+            title="Command palette · Cmd+K"
+            style={pillBtn()}
+          >
+            <Plus size={11} />
+            Add <span className="ih-mono" style={{ fontSize: 9, opacity: 0.6, marginLeft: 4 }}>⌘K ★</span>
+          </button>
+        </>
+      )}
       <button type="button" onClick={onActivity} title="Activity" style={pillBtn()}>
         <Activity size={11} />
         Activity
+      </button>
+      <button
+        type="button"
+        onClick={onModeToggle}
+        title={isEdit ? "Switch back to view mode" : "Switch to edit mode"}
+        style={
+          isEdit
+            ? {
+                padding: "5px 12px",
+                borderRadius: 6,
+                background: "var(--ih-ink)",
+                border: "1px solid var(--ih-ink)",
+                color: "#fff",
+                fontSize: 11.5,
+                fontFamily: "var(--ih-font-sans)",
+                fontWeight: 600,
+                cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+              }
+            : {
+                ...pillBtn(),
+                color: "var(--ih-ink)",
+              }
+        }
+      >
+        {isEdit ? <Check size={11} /> : <Pencil size={11} />}
+        {isEdit ? "Done" : "Edit"}
       </button>
       <button
         type="button"

@@ -19,6 +19,8 @@ import { computeAggregates } from "@/app/platform/clients/[id]/onboarding/demo/_
 import type { DemoNode, LayoutDirection } from "@/app/platform/clients/[id]/onboarding/demo/_components/types"
 import { flattenChart, findRow } from "@/app/platform/clients/[id]/onboarding/_components/adapter"
 import { PortalInspector } from "./portal-inspector"
+import { PortalInspectorView } from "./portal-inspector-view"
+import { Pencil, Check } from "lucide-react"
 
 interface PortalShellProps {
   engagementId: string
@@ -42,6 +44,10 @@ export function PortalShell({ engagementId, engagementTitle, companyLabel, tenan
   })
 
   const [bannerOpen, setBannerOpen] = useState(true)
+  // Mirror the consultant shell's view/edit toggle on the prospect portal so
+  // arriving prospects see a polished read-only chart by default. Persisted
+  // per engagement via localStorage.
+  const [mode, setMode] = useState<"view" | "edit">("view")
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [focusedId, setFocusedId] = useState<string | null>(null)
   const [direction, setDirection] = useState<LayoutDirection>("LR")
@@ -173,6 +179,26 @@ export function PortalShell({ engagementId, engagementTitle, companyLabel, tenan
     return () => window.removeEventListener("keydown", onKey)
   }, [selectedId, handleInspectorClose])
 
+  // Hydrate + persist mode per engagement.
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    try {
+      const stored = window.localStorage.getItem(`onboarding.mode.${engagementId}`)
+      if (stored === "edit" || stored === "view") setMode(stored)
+    } catch {
+      // no-op
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [engagementId])
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    try {
+      window.localStorage.setItem(`onboarding.mode.${engagementId}`, mode)
+    } catch {
+      // no-op
+    }
+  }, [engagementId, mode])
+
   if (chartQuery.isLoading) {
     return (
       <div style={{ padding: 32, fontSize: 13, color: "var(--ih-ink-50)", fontFamily: "var(--ih-font-sans)" }}>
@@ -253,6 +279,44 @@ export function PortalShell({ engagementId, engagementTitle, companyLabel, tenan
             <span style={{ fontSize: 14, fontWeight: 600, color: "var(--ih-ink)" }}>{companyLabel}</span>
           </div>
           <div style={{ flex: 1 }} />
+          <button
+            type="button"
+            onClick={() => setMode((m) => (m === "view" ? "edit" : "view"))}
+            title={mode === "edit" ? "Switch back to view mode" : "Switch to edit mode"}
+            style={
+              mode === "edit"
+                ? {
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                    padding: "5px 12px",
+                    borderRadius: 6,
+                    background: "var(--ih-ink)",
+                    border: "1px solid var(--ih-ink)",
+                    color: "#fff",
+                    fontSize: 11.5,
+                    fontFamily: "var(--ih-font-sans)",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                  }
+                : {
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                    padding: "5px 10px",
+                    borderRadius: 6,
+                    background: "transparent",
+                    border: "1px solid var(--ih-line)",
+                    color: "var(--ih-ink)",
+                    fontSize: 11.5,
+                    fontFamily: "var(--ih-font-sans)",
+                    cursor: "pointer",
+                  }
+            }
+          >
+            {mode === "edit" ? <Check size={11} /> : <Pencil size={11} />}
+            {mode === "edit" ? "Done" : "Edit"}
+          </button>
           <span className="ih-mono" style={{ fontSize: 10.5, color: "var(--ih-ink-50)" }}>
             {tenantSlug}.ironheart.app
           </span>
@@ -311,12 +375,20 @@ export function PortalShell({ engagementId, engagementTitle, companyLabel, tenan
             }}
           >
             {selectedNode && selectedRow && (
-              <PortalInspector
-                node={selectedNode}
-                row={selectedRow}
-                engagementId={engagementId}
-                onClose={handleInspectorClose}
-              />
+              mode === "edit" ? (
+                <PortalInspector
+                  node={selectedNode}
+                  row={selectedRow}
+                  engagementId={engagementId}
+                  onClose={handleInspectorClose}
+                />
+              ) : (
+                <PortalInspectorView
+                  node={selectedNode}
+                  row={selectedRow}
+                  onClose={handleInspectorClose}
+                />
+              )
             )}
           </aside>
         </div>
