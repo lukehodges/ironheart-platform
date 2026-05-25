@@ -414,13 +414,22 @@ export const formsService = {
     ctx: Context,
     input: z.infer<typeof listResponsesSchema>,
   ): Promise<{ rows: CompletedFormRecord[]; hasMore: boolean }> {
-    return formsRepository.listResponses(ctx.tenantId, {
+    // When scoping by engagementId, resolve from the Ironheart tenant —
+    // form_templates + completed_forms for /platform/* live there, not on the
+    // caller's ctx.tenantId. Without engagement scoping we keep the legacy
+    // ctx.tenantId behaviour (used by older booking-based callers).
+    const tenantId = input.engagementId
+      ? await resolveIronheartTenantId(ctx.tenantId)
+      : ctx.tenantId;
+
+    return formsRepository.listResponses(tenantId, {
       templateId: input.templateId,
       bookingId: input.bookingId,
       customerId: input.customerId,
       status: input.status,
       limit: input.limit,
       cursor: input.cursor,
+      engagementId: input.engagementId,
     });
   },
 

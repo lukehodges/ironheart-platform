@@ -85,4 +85,16 @@ export const listResponsesSchema = z.object({
   status: z.enum(['PENDING', 'SENT', 'COMPLETED', 'EXPIRED']).optional(),
   limit: z.number().default(50),
   cursor: z.string().optional(),
+  /**
+   * Scope responses to a single engagement. Matches via two paths (UNIONed):
+   *   1. completed_forms.templateId → form_templates where engagementId = ?
+   *      (engagement-scoped clones — per-client templates)
+   *   2. engagement_org_chart.formSendId → completed_forms.id where
+   *      engagement_org_chart.engagementId = ?
+   *      (forms sent from the master library where no per-node extras existed)
+   * Both paths are needed because handleOnboardingPlanApproved only CLONES the
+   * template when bespoke extras exist; otherwise the master template is used
+   * and the engagement link lives only on org_chart_node.formSendId.
+   */
+  engagementId: z.string().uuid().optional(),
 })

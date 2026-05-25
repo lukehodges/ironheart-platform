@@ -1,8 +1,8 @@
 import { db } from "@/shared/db";
 import { logger } from "@/shared/logger";
 import { NotFoundError } from "@/shared/errors";
-import { formTemplates, completedForms } from "@/shared/db/schema";
-import { eq, and, ilike, desc, sql } from "drizzle-orm";
+import { formTemplates, completedForms, engagementOrgChart } from "@/shared/db/schema";
+import { eq, and, ilike, desc, sql, or } from "drizzle-orm";
 import type {
   FormTemplateRecord,
   CompletedFormRecord,
@@ -373,6 +373,16 @@ export const formsRepository = {
       status?: FormStatus;
       limit: number;
       cursor?: string;
+      /**
+       * Filter to responses linked to a specific engagement. Two link paths
+       * exist (UNIONed via OR):
+       *   - form_templates.engagementId  (engagement-scoped template clones)
+       *   - engagement_org_chart.formSendId → completed_forms.id
+       *     (forms sent from master library — engagement link only on the
+       *      org chart node)
+       * See forms.schemas.ts listResponsesSchema for the longer rationale.
+       */
+      engagementId?: string;
     },
   ): Promise<{ rows: CompletedFormRecord[]; hasMore: boolean }> {
     const conditions = [eq(completedForms.tenantId, tenantId)];
@@ -397,6 +407,44 @@ export const formsRepository = {
       conditions.push(
         sql`${completedForms.createdAt} <= ${new Date(opts.cursor)}`,
       );
+    }
+
+    if (opts.engagementId) {
+      // Match EITHER:
+      //   (a) the template attached to this completed form is engagement-scoped, OR
+      //   (b) an engagement_org_chart node for this engagement points at this
+      //       completed form via formSendId.
+      // LEFT JOIN both, OR the predicates, DISTINCT to dedupe.
+      const rows = await db
+        .selectDistinct({ cf: completedForms })
+        .from(completedForms)
+        .leftJoin(
+          formTemplates,
+          eq(formTemplates.id, completedForms.templateId),
+        )
+        .leftJoin(
+          engagementOrgChart,
+          eq(engagementOrgChart.formSendId, completedForms.id),
+        )
+        .where(
+          and(
+            ...conditions,
+            or(
+              eq(formTemplates.engagementId, opts.engagementId),
+              eq(engagementOrgChart.engagementId, opts.engagementId),
+            ),
+          ),
+        )
+        .orderBy(desc(completedForms.createdAt))
+        .limit(opts.limit + 1);
+
+      const hasMore = rows.length > opts.limit;
+      return {
+        rows: (hasMore ? rows.slice(0, opts.limit) : rows).map((r) =>
+          toCompletedFormRecord(r.cf),
+        ),
+        hasMore,
+      };
     }
 
     const rows = await db
