@@ -39,6 +39,8 @@ import { OnboardingSplash } from "./onboarding-splash"
 import { OnboardingInspector } from "./onboarding-inspector"
 import { OnboardingInspectorView } from "./onboarding-inspector-view"
 import { Shortlist, FormsList, AuditList } from "./overlay-lists"
+import { computeSuggestions, LiveSuggestionsDrawer } from "./suggestions"
+import type { Suggestion } from "../demo/_components/types"
 import { flattenChart, findRow } from "./adapter"
 import { PlanPreviewModal } from "@/components/onboarding/plan-preview-modal"
 import { ActivityFeed } from "@/components/onboarding/activity-feed"
@@ -79,6 +81,7 @@ export function OnboardingShell({
   const [focusSubtreeId, setFocusSubtreeId] = useState<string | null>(null)
   const [planOpen, setPlanOpen] = useState(false)
   const [activityOpen, setActivityOpen] = useState(false)
+  const [suggestionsOpen, setSuggestionsOpen] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const revealSnapshotRef = useRef<{
     collapsedIds: Set<string>
@@ -125,6 +128,7 @@ export function OnboardingShell({
   const graphNodes = useMemo(() => bundleSiblings(nodes, { enabled: bundleRoles }), [nodes, bundleRoles])
   const aggregates = useMemo(() => computeAggregates(nodes), [nodes])
   const stats = useMemo(() => computeStats(nodes), [nodes])
+  const suggestions = useMemo(() => computeSuggestions(nodes), [nodes])
 
   const selectedNode = selectedId ? nodes.find((n) => n.id === selectedId) ?? null : null
   const selectedRow = selectedId ? findRow(tree, selectedId) : null
@@ -305,6 +309,13 @@ export function OnboardingShell({
               onModeToggle={() => setMode((m) => (m === "view" ? "edit" : "view"))}
               onApprove={() => setPlanOpen(true)}
               onActivity={() => setActivityOpen(true)}
+              onOpenSuggestions={() => {
+                // Suggestions + overlay drawer share the left edge — close the
+                // other before showing this one.
+                if (overlay !== "NONE") setOverlay("NONE")
+                setSuggestionsOpen(true)
+              }}
+              suggestionCount={suggestions.length}
               onComingSoon={(label) => flashToast(`${label} — coming soon ★`)}
             />
             <DemoToolbar
@@ -339,7 +350,20 @@ export function OnboardingShell({
                 onToggleCollapse={handleToggleCollapse}
               />
 
-              <FloatingOverlayMenu overlay={overlay} onOverlayChange={setOverlay} />
+              <FloatingOverlayMenu
+                overlay={overlay}
+                onOverlayChange={(o) => {
+                  // Overlay drawer + suggestions drawer share the left edge —
+                  // opening one auto-dismisses the other.
+                  if (
+                    (o === "INTERVIEW_COVERAGE" || o === "FORM_STATUS" || o === "AUDIT_CRITICAL") &&
+                    suggestionsOpen
+                  ) {
+                    setSuggestionsOpen(false)
+                  }
+                  setOverlay(o)
+                }}
+              />
               <FloatingLegend />
 
               {/* Left-side drawer for overlay shortcuts */}
@@ -366,6 +390,17 @@ export function OnboardingShell({
               <SlideDrawer side="right" open={activityOpen} onClose={() => setActivityOpen(false)} title="Activity" width={360}>
                 <ActivityFeed mode="consultant" engagementId={engagementId} />
               </SlideDrawer>
+
+              {/* Heuristic suggestions drawer — shares the left edge with the
+                  overlay drawer, so opening one auto-dismisses the other. */}
+              <LiveSuggestionsDrawer
+                suggestions={suggestions}
+                open={suggestionsOpen}
+                onClose={() => setSuggestionsOpen(false)}
+                onAction={(s: Suggestion) => {
+                  if (s.action?.nodeId) handleFocus(s.action.nodeId)
+                }}
+              />
 
               {/* Inspector */}
               <aside
@@ -452,6 +487,8 @@ function SlimHeader({
   onModeToggle,
   onApprove,
   onActivity,
+  onOpenSuggestions,
+  suggestionCount,
   onComingSoon,
 }: {
   engagementTitle: string
@@ -463,6 +500,8 @@ function SlimHeader({
   onModeToggle: () => void
   onApprove: () => void
   onActivity: () => void
+  onOpenSuggestions: () => void
+  suggestionCount: number
   onComingSoon: (label: string) => void
 }): React.ReactElement {
   const isEdit = mode === "edit"
@@ -515,12 +554,28 @@ function SlimHeader({
         <>
           <button
             type="button"
-            onClick={() => onComingSoon("AI suggestions")}
-            title="AI suggestions"
+            onClick={onOpenSuggestions}
+            title="Suggestions"
             style={pillBtn()}
           >
             <Sparkles size={11} />
-            Suggestions <span className="ih-mono" style={{ fontSize: 9, color: "var(--ih-ink-40)", marginLeft: 4 }}>★</span>
+            Suggestions
+            {suggestionCount > 0 && (
+              <span
+                className="ih-mono"
+                style={{
+                  marginLeft: 4,
+                  padding: "1px 6px",
+                  borderRadius: 999,
+                  background: "var(--ih-accent)",
+                  color: "#fff",
+                  fontSize: 9.5,
+                  lineHeight: "1.4",
+                }}
+              >
+                {suggestionCount}
+              </span>
+            )}
           </button>
           <button
             type="button"
