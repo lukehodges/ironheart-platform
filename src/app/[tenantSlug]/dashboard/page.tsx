@@ -33,6 +33,14 @@ export default async function TenantDashboardPage({
   const onboardingEnabled =
     !!engagement && onboardingStages.includes(engagement.stage ?? "")
 
+  // Audit progress is meaningful once forms are out (ONBOARDING) through REPORTING.
+  const auditProgressEnabled = onboardingEnabled
+
+  // Report is only available once the engagement has reached REPORTING (or beyond).
+  const reportStages = ["REPORTING", "IMPLEMENTING", "RETAINER", "CLOSED_WON"]
+  const reportEnabled =
+    !!engagement && reportStages.includes(engagement.stage ?? "")
+
   const displayName = user.firstName ?? user.email
 
   return (
@@ -59,20 +67,19 @@ export default async function TenantDashboardPage({
           disabled={!onboardingEnabled}
         />
         <ActionCard
-          icon="calendar"
-          title="Upcoming sessions"
-          subtitle="View scheduled calls with your consultant."
-          href={`/${tenantSlug}/dashboard/sessions`}
-          disabled
-          badge="Coming soon"
+          icon="list-checks"
+          title="Audit progress"
+          subtitle="See your questionnaire responses + interview schedule."
+          href={`/${tenantSlug}/dashboard/audit`}
+          disabled={!auditProgressEnabled}
         />
         <ActionCard
           icon="file-text"
-          title="View documents"
-          subtitle="Access your audit deliverables and notes."
-          href={`/${tenantSlug}/dashboard/documents`}
-          disabled
-          badge="Coming soon"
+          title="Audit report"
+          subtitle="Findings, recommendations, and the operations roadmap."
+          href={`/${tenantSlug}/dashboard/report`}
+          disabled={!reportEnabled}
+          badge={reportEnabled ? undefined : "Available after audit completes"}
         />
       </div>
     </div>
