@@ -28,6 +28,7 @@
 import { X, Crown, Wallet, Database, ShieldCheck, Lock, Workflow, Sparkles } from "lucide-react"
 import type { DemoNode, AuditFlag as DemoAuditFlag } from "../demo/_components/types"
 import type { OrgChartTree } from "@/modules/onboarding/onboarding.types"
+import { api } from "@/lib/trpc/react"
 
 const AVATAR_HEX: Record<string, { bg: string; fg: string }> = {
   indigo: { bg: "#E4E4F3", fg: "#3F3D8C" },
@@ -81,17 +82,35 @@ interface OnboardingInspectorViewProps {
   node: DemoNode
   row: OrgChartTree
   allNodes: DemoNode[]
+  engagementId: string
   onClose: () => void
   onFocusNode: (id: string) => void
 }
 
-export function OnboardingInspectorView({ node, row, allNodes, onClose, onFocusNode }: OnboardingInspectorViewProps) {
+export function OnboardingInspectorView({ node, row, allNodes, engagementId, onClose, onFocusNode }: OnboardingInspectorViewProps) {
   const isPersonish =
     node.kind === "PERSON" ||
     node.kind === "CONTRACTOR" ||
     node.kind === "ADVISOR" ||
     node.kind === "EXTERNAL" ||
     node.kind === "VACANCY"
+
+  // Resolve the assigned template name from its slug (read-only display).
+  // Includes engagement-scoped clones + master library on the Ironheart tenant.
+  const templatesQuery = api.forms.listTemplates.useQuery(
+    { engagementId, limit: 100 },
+    { enabled: isPersonish },
+  )
+  const resolvedTemplateName = (() => {
+    if (!row.templateSlugOverride) return null
+    const rows = templatesQuery.data?.rows ?? []
+    // Prefer engagement-scoped over master.
+    const scoped = rows.find((t) => t.slug === row.templateSlugOverride && t.engagementId === engagementId)
+    if (scoped) return `${scoped.name} (client-specific)`
+    const master = rows.find((t) => t.slug === row.templateSlugOverride && !t.engagementId)
+    if (master) return master.name
+    return row.templateSlugOverride
+  })()
   const { bg: avBg, fg: avFg } = avatarColors(row.avatarColor)
   const interviewMeta = INTERVIEW_META[node.interviewStatus] ?? INTERVIEW_META.NOT_TARGET!
   const formMeta = FORM_META[node.formStatus] ?? FORM_META.NOT_SENT!
@@ -111,6 +130,11 @@ export function OnboardingInspectorView({ node, row, allNodes, onClose, onFocusN
   if (row.isFractional) rows.push({ label: "Fractional", value: "Yes" })
   if (row.parentId && row.edgeStyle && row.edgeStyle !== "SOLID") {
     rows.push({ label: "Edge", value: row.edgeStyle.charAt(0) + row.edgeStyle.slice(1).toLowerCase() })
+  }
+  if (isPersonish && resolvedTemplateName) {
+    rows.push({ label: "Questionnaire", value: resolvedTemplateName })
+  } else if (isPersonish && row.contactEmail) {
+    rows.push({ label: "Questionnaire", value: "Default (auto-mapped to role)" })
   }
 
   return (

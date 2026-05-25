@@ -384,6 +384,23 @@ export function OnboardingInspector({ node, row, allNodes, engagementId, onClose
         </>
       )}
 
+      {/* Questionnaire template (consultant-only). Dropdown of engagement-scoped + master templates. */}
+      {isPersonish && (
+        <Field label="Questionnaire template">
+          <TemplateSelect
+            engagementId={engagementId}
+            value={row.templateSlugOverride ?? ""}
+            onChange={(slug) =>
+              updateNode.mutate({
+                id: row.id,
+                version: row.version,
+                patch: { templateSlugOverride: slug || null },
+              })
+            }
+          />
+        </Field>
+      )}
+
       {/* Reporting — manager + direct reports */}
       <ReportingSection node={node} allNodes={allNodes} onFocusNode={onFocusNode} />
 
@@ -499,6 +516,59 @@ function segBtn(active: boolean): React.CSSProperties {
 
 function prettyStatus(s: string): string {
   return s.split("_").map((p) => p.charAt(0) + p.slice(1).toLowerCase()).join(" ")
+}
+
+/**
+ * Dropdown of templates a consultant can pin on a node.
+ *   - "" → "Default (auto-mapped to role)"
+ *   - Engagement-scoped templates first (Client-specific group)
+ *   - Master Ironheart library second
+ *
+ * Persists via the inspector's updateNode mutation. The value stored on the
+ * node is the template SLUG (so the form-send flow can resolve the
+ * engagement-scoped clone vs master at dispatch time).
+ */
+function TemplateSelect({
+  engagementId,
+  value,
+  onChange,
+}: {
+  engagementId: string
+  value: string
+  onChange: (slug: string) => void
+}) {
+  const templatesQuery = api.forms.listTemplates.useQuery({ engagementId, limit: 100 })
+  const rows = templatesQuery.data?.rows ?? []
+  const scoped = rows.filter((r) => r.engagementId === engagementId)
+  const master = rows.filter((r) => !r.engagementId)
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      disabled={templatesQuery.isLoading}
+      style={inputStyle()}
+    >
+      <option value="">Default (auto-mapped to role)</option>
+      {scoped.length > 0 && (
+        <optgroup label="Client-specific">
+          {scoped.map((t) => (
+            <option key={t.id} value={t.slug ?? t.id}>
+              {t.name} ({t.fields?.length ?? 0} qs)
+            </option>
+          ))}
+        </optgroup>
+      )}
+      {master.length > 0 && (
+        <optgroup label="Master library">
+          {master.map((t) => (
+            <option key={t.id} value={t.slug ?? t.id}>
+              {t.name} ({t.fields?.length ?? 0} qs)
+            </option>
+          ))}
+        </optgroup>
+      )}
+    </select>
+  )
 }
 
 function ReportingSection({ node, allNodes, onFocusNode }: { node: DemoNode; allNodes: DemoNode[]; onFocusNode: (id: string) => void }) {

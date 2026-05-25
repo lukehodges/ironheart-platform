@@ -410,13 +410,12 @@ export function NodeInspector({
             </Field>
           )}
 
-          <Field label="Template override (slug)">
-            <input
+          <Field label="Questionnaire template">
+            <TemplateSelect
+              engagementId={engagementId}
               value={form.templateSlugOverride}
-              onChange={(e) => setForm({ ...form, templateSlugOverride: e.target.value })}
+              onChange={(slug) => setForm({ ...form, templateSlugOverride: slug })}
               disabled={!isConsultant}
-              placeholder={isConsultant ? "Leave blank to auto-detect from role" : ""}
-              style={isConsultant ? inputStyle : disabledInputStyle}
             />
           </Field>
 
@@ -748,4 +747,61 @@ const disabledInputStyle: React.CSSProperties = {
   opacity: 0.5,
   cursor: "not-allowed",
   background: "var(--ih-surface-2)",
+}
+
+/**
+ * Dropdown of templates the consultant can pin on a node. Options:
+ *   - "" → "Default (auto-mapped to role)"
+ *   - Engagement-scoped templates (rendered first, labelled "Client-specific")
+ *   - Master library templates (separated by an optgroup)
+ *
+ * value = templateSlugOverride (the slug, NOT the templateId — so the form-send
+ * flow can resolve the engagement-scoped clone vs master at dispatch time).
+ */
+function TemplateSelect({
+  engagementId,
+  value,
+  onChange,
+  disabled,
+}: {
+  engagementId: string
+  value: string
+  onChange: (slug: string) => void
+  disabled: boolean
+}) {
+  const templatesQuery = api.forms.listTemplates.useQuery({ engagementId, limit: 100 })
+  const rows = templatesQuery.data?.rows ?? []
+  // Group by engagement-scoped vs master library.
+  const scoped = rows.filter((r) => r.engagementId === engagementId)
+  const master = rows.filter((r) => !r.engagementId)
+  const optStyle: React.CSSProperties = {}
+
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      disabled={disabled || templatesQuery.isLoading}
+      style={disabled ? disabledInputStyle : inputStyle}
+    >
+      <option value="">Default (auto-mapped to role)</option>
+      {scoped.length > 0 && (
+        <optgroup label="Client-specific">
+          {scoped.map((t) => (
+            <option key={t.id} value={t.slug ?? t.id} style={optStyle}>
+              {t.name} ({t.fields?.length ?? 0} qs)
+            </option>
+          ))}
+        </optgroup>
+      )}
+      {master.length > 0 && (
+        <optgroup label="Master library">
+          {master.map((t) => (
+            <option key={t.id} value={t.slug ?? t.id} style={optStyle}>
+              {t.name} ({t.fields?.length ?? 0} qs)
+            </option>
+          ))}
+        </optgroup>
+      )}
+    </select>
+  )
 }
