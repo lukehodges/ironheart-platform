@@ -56,6 +56,11 @@ export interface CompletedFormRecord {
   templateId: string
   bookingId?: string | null
   customerId?: string | null
+  /** Snapshot of recipient name captured at send time. May be empty for legacy
+   *  rows. Surfaced on the engagement-hub Forms tab as the "Contact" column. */
+  customerName?: string | null
+  /** Snapshot of recipient email at send time. */
+  customerEmail?: string | null
   sessionKey: string
   status: FormStatus
   responses?: Record<string, unknown> | null

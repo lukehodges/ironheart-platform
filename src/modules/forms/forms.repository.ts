@@ -79,6 +79,8 @@ function toCompletedFormRecord(row: CompletedFormRow): CompletedFormRecord {
     templateId: row.templateId,
     bookingId: row.bookingId ?? null,
     customerId: row.customerId ?? null,
+    customerName: row.customerName ?? null,
+    customerEmail: row.customerEmail ?? null,
     sessionKey: row.sessionKey ?? "",
     status: mapFormStatus(row.status),
     responses: (row.responses as Record<string, unknown>) ?? null,

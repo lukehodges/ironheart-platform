@@ -17,6 +17,7 @@ import Link from "next/link"
 import { NotificationToast, InlineFormRow, DropdownMenu, EmailDraftDialog, FileUploadZone } from "@/components/shared"
 import { Icon } from "@/components/shell"
 import { OrgChartSection } from "./org-chart-section"
+import { FormsTab } from "./forms-tab"
 import { ActivityFeed } from "@/components/onboarding/activity-feed"
 
 const MOCK_BADGE_STYLE = { color: "var(--ih-accent)", fontStyle: "italic", fontSize: 10, fontFamily: "var(--ih-font-sans)" } as const
@@ -842,10 +843,11 @@ export default function ClientHubPage({ engagement, customer, clientTenantSlug, 
   const [activeTab, setActiveTab] = useState(0)
   const [toast, setToast] = useState<{message: string; tone?: string} | null>(null)
   const [emailDraft, setEmailDraft] = useState<{to: string; subject: string; body: string} | null>(null)
-  const tabs = ["Overview", "Engagements", "Bookings ★", "Deals ★", "Invoices ★", "Workflows ★", "Documents ★", "Activity ★", "Team"]
+  const tabs = ["Overview", "Forms", "Engagements", "Bookings ★", "Deals ★", "Invoices ★", "Workflows ★", "Documents ★", "Activity ★", "Team"]
 
   const tabContent = [
     <OverviewTab key="overview" setActiveTab={setActiveTab} engagement={engagement} customer={customer} clientTenantSlug={clientTenantSlug} companyLabel={companyLabel} />,
+    <FormsTab key="forms" engagementId={engagement.id} />,
     <EngagementsTab key="engagements" />,
     <BookingsTab key="bookings" />,
     <DealsTab key="deals" />,
