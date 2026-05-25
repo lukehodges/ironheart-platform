@@ -217,12 +217,26 @@ export default function FormSubmissionPage() {
     },
   })
 
+  // Compose the rendered title. When the form was sent via an engagement-scoped
+  // template clone, the template name may already start with the customer name
+  // (because /platform/forms "Duplicate as ClientName" prefills the new name as
+  // "{ClientName} — {OriginalName}"). In that case render the template name as-is
+  // to avoid "Brightline Logistics — Brightline Logistics — Owner / Director".
+  const composedTitle = (() => {
+    if (!formData?.template) return ""
+    const tmpl = formData.template.name
+    const customer = formData.customerName ?? null
+    if (!customer) return tmpl
+    if (tmpl.toLowerCase().startsWith(customer.toLowerCase())) return tmpl
+    return `${customer} — ${tmpl}`
+  })()
+
   // Update page title when form loads
   useEffect(() => {
-    if (formData?.template) {
-      document.title = `${formData.template.name} - Form Submission`
+    if (composedTitle) {
+      document.title = `${composedTitle} - Form Submission`
     }
-  }, [formData])
+  }, [composedTitle])
 
   // Loading state
   if (isLoading) {
@@ -352,7 +366,7 @@ export default function FormSubmissionPage() {
       <header className="border-b border-border bg-card/80 backdrop-blur-sm sticky top-0 z-10">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 py-4">
           <div>
-            <h1 className="text-lg font-semibold">{formData.template.name}</h1>
+            <h1 className="text-lg font-semibold">{composedTitle}</h1>
             {formData.template.description && (
               <p className="text-sm text-muted-foreground">{formData.template.description}</p>
             )}

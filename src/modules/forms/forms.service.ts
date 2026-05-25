@@ -19,6 +19,8 @@ import type {
 } from "./forms.schemas";
 import { db } from "@/shared/db";
 import { tenants } from "@/shared/db/schemas/tenant.schema";
+import { engagements } from "@/shared/db/schemas/client-portal.schema";
+import { customers } from "@/shared/db/schemas/customer.schema";
 import { eq } from "drizzle-orm";
 
 const log = logger.child({ module: "forms.service" });
@@ -302,7 +304,13 @@ export const formsService = {
 
   async getFormByToken(
     token: string,
-  ): Promise<{ template: FormTemplateRecord; instance: CompletedFormRecord }> {
+  ): Promise<{
+    template: FormTemplateRecord;
+    instance: CompletedFormRecord;
+    /** Customer / company name resolved from the engagement attached to the template (if any).
+     *  Null when the template isn't engagement-scoped or no engagement linkage can be resolved. */
+    customerName: string | null;
+  }> {
     const instance = await formsRepository.findByToken(token);
     if (!instance) throw new NotFoundError("Form", token);
 
@@ -317,7 +325,31 @@ export const formsService = {
     );
     if (!template) throw new NotFoundError("FormTemplate", instance.templateId);
 
-    return { template, instance };
+    // Resolve the engagement → customer name for the public form title (Slice 4).
+    // Path: template.engagementId → engagements.customerId → customers.notes (companyName)
+    //   or customers.firstName + lastName as fallback.
+    let customerName: string | null = null;
+    if (template.engagementId) {
+      const rows = await db
+        .select({
+          companyName: customers.notes,
+          firstName: customers.firstName,
+          lastName: customers.lastName,
+        })
+        .from(engagements)
+        .innerJoin(customers, eq(customers.id, engagements.customerId))
+        .where(eq(engagements.id, template.engagementId))
+        .limit(1);
+      const row = rows[0];
+      if (row) {
+        customerName =
+          (row.companyName ?? "").trim() ||
+          `${row.firstName ?? ""} ${row.lastName ?? ""}`.trim() ||
+          null;
+      }
+    }
+
+    return { template, instance, customerName };
   },
 
   async submitFormResponse(
