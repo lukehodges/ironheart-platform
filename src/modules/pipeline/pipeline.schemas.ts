@@ -1,95 +1,150 @@
-import { z } from 'zod'
+import { z } from "zod"
 
-// Pipeline CRUD
-export const createPipelineSchema = z.object({
-  name: z.string().min(1).max(100),
-  description: z.string().max(500).optional(),
-  isDefault: z.boolean().optional(),
-  stages: z
-    .array(
-      z.object({
-        name: z.string().min(1).max(50),
-        slug: z
-          .string()
-          .min(1)
-          .max(50)
-          .regex(/^[a-z0-9-]+$/),
-        position: z.number().int().min(0),
-        color: z.string().max(50).optional(),
-        type: z.enum(['OPEN', 'WON', 'LOST']).default('OPEN'),
-      }),
-    )
-    .min(1),
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+export const dealStageSchema = z.enum([
+  "qualified",
+  "demo",
+  "proposal",
+  "won",
+  "lost",
+  "dormant",
+])
+
+export const dealProductSchema = z.enum([
+  "audit",
+  "build_sprint",
+  "retainer",
+  "other",
+])
+
+// ---------------------------------------------------------------------------
+// Common helpers
+// ---------------------------------------------------------------------------
+
+const uuid = z.string().uuid()
+const isoDate = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "Expected YYYY-MM-DD")
+  .nullable()
+  .optional()
+
+// ---------------------------------------------------------------------------
+// Inputs
+// ---------------------------------------------------------------------------
+
+export const listDealsSchema = z.object({
+  stage: dealStageSchema.optional(),
+  ownerId: uuid.optional(),
+  productLine: dealProductSchema.optional(),
+  search: z.string().min(1).max(200).optional(),
 })
 
-export const updatePipelineSchema = z.object({
-  pipelineId: z.uuid(),
-  name: z.string().min(1).max(100).optional(),
-  description: z.string().max(500).nullable().optional(),
-  isDefault: z.boolean().optional(),
+export const getDealSchema = z.object({
+  dealId: uuid,
 })
 
-export const archivePipelineSchema = z.object({ pipelineId: z.uuid() })
-export const getPipelineByIdSchema = z.object({ pipelineId: z.uuid() })
-
-// Stage Configuration
-export const addStageSchema = z.object({
-  pipelineId: z.uuid(),
-  name: z.string().min(1).max(50),
-  slug: z
-    .string()
-    .min(1)
-    .max(50)
-    .regex(/^[a-z0-9-]+$/),
-  position: z.number().int().min(0),
-  color: z.string().max(50).optional(),
-  type: z.enum(['OPEN', 'WON', 'LOST']).default('OPEN'),
-  allowedTransitions: z.array(z.uuid()).default([]),
+export const createDealSchema = z.object({
+  companyId: uuid,
+  primaryContactId: uuid.nullish(),
+  originTouchId: uuid.nullish(),
+  name: z.string().min(1).max(200),
+  stage: dealStageSchema.optional(),
+  product: dealProductSchema.optional(),
+  valueEstimate: z.number().nonnegative().nullish(),
+  probability: z.number().int().min(0).max(100).nullish(),
+  expectedClose: isoDate,
+  ownerUserId: uuid.nullish(),
+  notes: z.string().max(5000).nullish(),
 })
 
-export const updateStageSchema = z.object({
-  stageId: z.uuid(),
-  name: z.string().min(1).max(50).optional(),
-  color: z.string().max(50).nullable().optional(),
-  type: z.enum(['OPEN', 'WON', 'LOST']).optional(),
-  allowedTransitions: z.array(z.uuid()).optional(),
+export const updateDealSchema = z.object({
+  dealId: uuid,
+  name: z.string().min(1).max(200).optional(),
+  product: dealProductSchema.optional(),
+  valueEstimate: z.number().nonnegative().nullish(),
+  probability: z.number().int().min(0).max(100).nullish(),
+  expectedClose: isoDate,
+  ownerUserId: uuid.nullish(),
+  notes: z.string().max(5000).nullish(),
+  closeReason: z.string().max(500).nullish(),
 })
 
-export const removeStageSchema = z.object({
-  stageId: z.uuid(),
-  reassignToStageId: z.uuid(),
+export const moveStageSchema = z.object({
+  dealId: uuid,
+  newStage: dealStageSchema,
+  reason: z.string().max(500).optional(),
 })
 
-export const reorderStagesSchema = z.object({
-  pipelineId: z.uuid(),
-  stageIds: z.array(z.uuid()).min(1),
+export const addNoteSchema = z.object({
+  dealId: uuid,
+  body: z.string().min(1).max(5000),
 })
 
-// Member Operations
-export const addMemberSchema = z.object({
-  pipelineId: z.uuid(),
-  customerId: z.uuid(),
-  stageId: z.uuid().optional(),
-  dealValue: z.number().min(0).optional(),
-  metadata: z.record(z.string(), z.unknown()).optional(),
+export const recordMeetingSchema = z.object({
+  dealId: uuid,
+  meetingPayload: z
+    .object({
+      scheduledAt: z.string().datetime().optional(),
+      attendees: z.array(z.string()).optional(),
+      notes: z.string().max(2000).optional(),
+      externalEventId: z.string().optional(),
+    })
+    .passthrough(),
 })
 
-export const moveMemberSchema = z.object({
-  memberId: z.uuid(),
-  toStageId: z.uuid(),
-  dealValue: z.number().min(0).optional(),
-  lostReason: z.string().max(500).optional(),
-  notes: z.string().max(1000).optional(),
+export const recordProposalSchema = z.object({
+  dealId: uuid,
+  proposalRef: z.object({
+    proposalId: z.string().optional(),
+    url: z.string().url().optional(),
+    sentAt: z.string().datetime().optional(),
+    amount: z.number().optional(),
+  }).passthrough(),
 })
 
-export const removeMemberSchema = z.object({ memberId: z.uuid() })
-
-export const updateMemberSchema = z.object({
-  memberId: z.uuid(),
-  dealValue: z.number().min(0).nullable().optional(),
-  metadata: z.record(z.string(), z.unknown()).optional(),
+export const recordContractSchema = z.object({
+  dealId: uuid,
+  contractRef: z.object({
+    contractId: z.string().optional(),
+    url: z.string().url().optional(),
+    signedAt: z.string().datetime().optional(),
+    amount: z.number().optional(),
+  }).passthrough(),
 })
 
-export const listMembersSchema = z.object({ pipelineId: z.uuid() })
-export const getSummarySchema = z.object({ pipelineId: z.uuid() })
-export const getMemberHistorySchema = z.object({ memberId: z.uuid() })
+export const convertFromReplySchema = z.object({
+  replyId: uuid,
+  dealInput: z.object({
+    companyId: uuid,
+    primaryContactId: uuid.nullish(),
+    name: z.string().min(1).max(200),
+    stage: dealStageSchema.optional(),
+    product: dealProductSchema.optional(),
+    valueEstimate: z.number().nonnegative().nullish(),
+    probability: z.number().int().min(0).max(100).nullish(),
+    expectedClose: isoDate,
+    ownerUserId: uuid.nullish(),
+    notes: z.string().max(5000).nullish(),
+  }),
+})
+
+export const listDealEventsSchema = z.object({
+  dealId: uuid,
+})
+
+// ---------------------------------------------------------------------------
+// Inferred types
+// ---------------------------------------------------------------------------
+
+export type ListDealsInput = z.infer<typeof listDealsSchema>
+export type CreateDealZodInput = z.infer<typeof createDealSchema>
+export type UpdateDealZodInput = z.infer<typeof updateDealSchema>
+export type MoveStageInput = z.infer<typeof moveStageSchema>
+export type AddNoteInput = z.infer<typeof addNoteSchema>
+export type RecordMeetingInput = z.infer<typeof recordMeetingSchema>
+export type RecordProposalInput = z.infer<typeof recordProposalSchema>
+export type RecordContractInput = z.infer<typeof recordContractSchema>
+export type ConvertFromReplyInput = z.infer<typeof convertFromReplySchema>

@@ -1,6 +1,13 @@
 // src/modules/integrations/integrations.registry.ts
 import type { IntegrationProvider } from './integrations.types'
 import { googleCalendarProvider } from './providers/google-calendar.provider'
+import { gmailProvider } from './providers/gmail.provider'
+import { stripeProvider } from './providers/stripe.provider'
+import { companiesHouseProvider } from './providers/companies-house.provider'
+
+// Side-effect import: registers Stripe webhook processors against
+// (source='stripe', kind=...) in the processor registry.
+import './processors/stripe-webhook.processor'
 
 /**
  * Provider registry — the single source of truth for all registered integrations.
@@ -10,6 +17,9 @@ import { googleCalendarProvider } from './providers/google-calendar.provider'
  */
 const PROVIDERS: Record<string, IntegrationProvider> = {
   [googleCalendarProvider.slug]: googleCalendarProvider,
+  [gmailProvider.slug]: gmailProvider,
+  [stripeProvider.slug]: stripeProvider,
+  [companiesHouseProvider.slug]: companiesHouseProvider,
 }
 
 /**

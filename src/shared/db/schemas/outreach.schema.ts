@@ -3,223 +3,299 @@ import {
   pgEnum,
   uuid,
   text,
-  integer,
   boolean,
-  timestamp,
+  numeric,
   jsonb,
+  timestamp,
   uniqueIndex,
   index,
   foreignKey,
-  check,
 } from "drizzle-orm/pg-core"
 import { sql } from "drizzle-orm"
 import { tenants } from "./tenant.schema"
-import { users } from "./auth.schema"
-import { customers } from "./customer.schema"
-
-import type { OutreachStep } from "@/modules/outreach/outreach.types"
+import { rawEvents } from "./event-framework.schema"
 
 // ---------------------------------------------------------------------------
 // Enums
 // ---------------------------------------------------------------------------
 
-export const outreachContactStatusEnum = pgEnum("outreach_contact_status", [
-  "ACTIVE",
-  "REPLIED",
-  "BOUNCED",
-  "OPTED_OUT",
-  "CONVERTED",
-  "PAUSED",
-  "COMPLETED",
+export const outreachEmployeeBandEnum = pgEnum("outreach_employee_band", [
+  "1-2",
+  "3-15",
+  "15-50",
+  "50+",
 ])
 
-export const outreachActivityTypeEnum = pgEnum("outreach_activity_type", [
-  "SENT",
-  "REPLIED",
-  "BOUNCED",
-  "OPTED_OUT",
-  "SKIPPED",
-  "CALL_COMPLETED",
-  "MEETING_BOOKED",
-  "CONVERTED",
-  "UNDONE",
+export const outreachCompanySourceEnum = pgEnum("outreach_company_source", [
+  "cold",
+  "referral",
+  "inbound",
+  "manual",
 ])
 
-export const outreachSentimentEnum = pgEnum("outreach_sentiment", [
-  "POSITIVE",
-  "NEUTRAL",
-  "NEGATIVE",
-  "NOT_NOW",
+export const outreachChannelEnum = pgEnum("outreach_channel", [
+  "email",
+  "linkedin",
+  "phone",
 ])
 
-export const outreachReplyCategoryEnum = pgEnum("outreach_reply_category", [
-  "INTERESTED",
-  "NOT_NOW",
-  "NOT_INTERESTED",
-  "WRONG_PERSON",
-  "AUTO_REPLY",
+export const outreachCampaignStatusEnum = pgEnum("outreach_campaign_status", [
+  "draft",
+  "active",
+  "paused",
+  "complete",
+])
+
+export const outreachDeliveryStatusEnum = pgEnum("outreach_delivery_status", [
+  "queued",
+  "sent",
+  "delivered",
+  "bounced",
+  "failed",
+])
+
+export const outreachReplyStatusEnum = pgEnum("outreach_reply_status", [
+  "none",
+  "positive",
+  "negative",
+  "ooo",
+  "converter",
+  "wrong_person",
+  "auto_reply",
+])
+
+export const outreachClassifierEnum = pgEnum("outreach_classifier", [
+  "claude",
+  "luke",
+  "rule",
 ])
 
 // ---------------------------------------------------------------------------
 // Tables
 // ---------------------------------------------------------------------------
 
-export const outreachSequences = pgTable("outreach_sequences", {
+export const companies = pgTable("companies", {
   id: uuid().primaryKey().default(sql`gen_random_uuid()`).notNull(),
   tenantId: uuid().notNull(),
   name: text().notNull(),
-  description: text(),
-  sector: text().notNull(),
-  targetIcp: text(),
-  isActive: boolean().default(true).notNull(),
-  abVariant: text(),
-  pairedSequenceId: uuid(),
-  steps: jsonb().$type<OutreachStep[]>().notNull(),
-  archivedAt: timestamp({ precision: 3, mode: 'date' }),
+  domain: text(),
+  industry: text(),
+  employeeBand: outreachEmployeeBandEnum(),
+  city: text(),
+  country: text(),
+  ownerLed: boolean().default(false).notNull(),
+  source: outreachCompanySourceEnum().default("cold").notNull(),
+  doNotContact: boolean().default(false).notNull(),
+  dncReason: text(),
+  dncAt: timestamp({ precision: 3, mode: 'date' }),
+  enrichment: jsonb().$type<Record<string, unknown>>().default({}).notNull(),
+  notes: text(),
   createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
   updatedAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 }, (table) => [
-  index("outreach_sequences_tenantId_idx").on(table.tenantId),
-  index("outreach_sequences_tenantId_sector_idx").on(table.tenantId, table.sector),
+  index("companies_tenantId_domain_idx").on(table.tenantId, table.domain),
+  index("companies_tenantId_city_idx").on(table.tenantId, table.city),
+  index("companies_tenantId_doNotContact_idx").on(table.tenantId, table.doNotContact),
   foreignKey({
     columns: [table.tenantId],
     foreignColumns: [tenants.id],
-    name: "outreach_sequences_tenantId_fkey",
+    name: "companies_tenantId_fkey",
+  }).onUpdate("cascade").onDelete("cascade"),
+])
+
+export const contacts = pgTable("contacts", {
+  id: uuid().primaryKey().default(sql`gen_random_uuid()`).notNull(),
+  tenantId: uuid().notNull(),
+  companyId: uuid().notNull(),
+  fullName: text().notNull(),
+  role: text(),
+  email: text(),
+  phone: text(),
+  linkedinUrl: text(),
+  isOwner: boolean().default(false).notNull(),
+  isDecisionMaker: boolean().default(false).notNull(),
+  bounced: boolean().default(false).notNull(),
+  doNotContact: boolean().default(false).notNull(),
+  createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+}, (table) => [
+  uniqueIndex("contacts_tenantId_email_key")
+    .on(table.tenantId, table.email)
+    .where(sql`"email" IS NOT NULL`),
+  index("contacts_companyId_idx").on(table.companyId),
+  index("contacts_tenantId_email_idx").on(table.tenantId, table.email),
+  foreignKey({
+    columns: [table.tenantId],
+    foreignColumns: [tenants.id],
+    name: "contacts_tenantId_fkey",
   }).onUpdate("cascade").onDelete("cascade"),
   foreignKey({
-    columns: [table.pairedSequenceId],
+    columns: [table.companyId],
+    foreignColumns: [companies.id],
+    name: "contacts_companyId_fkey",
+  }).onUpdate("cascade").onDelete("cascade"),
+])
+
+export const campaigns = pgTable("campaigns", {
+  id: uuid().primaryKey().default(sql`gen_random_uuid()`).notNull(),
+  tenantId: uuid().notNull(),
+  name: text().notNull(),
+  channel: outreachChannelEnum().notNull(),
+  city: text(),
+  industryFocus: text(),
+  status: outreachCampaignStatusEnum().default("draft").notNull(),
+  startedAt: timestamp({ precision: 3, mode: 'date' }),
+  endedAt: timestamp({ precision: 3, mode: 'date' }),
+  createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+}, (table) => [
+  index("campaigns_tenantId_status_idx").on(table.tenantId, table.status),
+  foreignKey({
+    columns: [table.tenantId],
+    foreignColumns: [tenants.id],
+    name: "campaigns_tenantId_fkey",
+  }).onUpdate("cascade").onDelete("cascade"),
+])
+
+export const templates = pgTable("templates", {
+  id: uuid().primaryKey().default(sql`gen_random_uuid()`).notNull(),
+  tenantId: uuid().notNull(),
+  name: text().notNull(),
+  channel: outreachChannelEnum().notNull(),
+  subject: text(),
+  body: text().notNull(),
+  variables: jsonb().$type<Record<string, unknown>>().default({}).notNull(),
+  parentId: uuid(),
+  active: boolean().default(true).notNull(),
+  createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+}, (table) => [
+  index("templates_tenantId_active_idx").on(table.tenantId, table.active),
+  foreignKey({
+    columns: [table.tenantId],
+    foreignColumns: [tenants.id],
+    name: "templates_tenantId_fkey",
+  }).onUpdate("cascade").onDelete("cascade"),
+  foreignKey({
+    columns: [table.parentId],
     foreignColumns: [table.id],
-    name: "outreach_sequences_pairedSequenceId_fkey",
+    name: "templates_parentId_fkey",
   }).onUpdate("cascade").onDelete("set null"),
-  check("outreach_sequences_ab_check", sql`"abVariant" IS NULL OR "pairedSequenceId" IS NOT NULL`),
 ])
 
-export const outreachContacts = pgTable("outreach_contacts", {
+export const touches = pgTable("touches", {
   id: uuid().primaryKey().default(sql`gen_random_uuid()`).notNull(),
   tenantId: uuid().notNull(),
-  customerId: uuid().notNull(),
-  sequenceId: uuid().notNull(),
-  assignedUserId: uuid(),
-  status: outreachContactStatusEnum().default("ACTIVE").notNull(),
-  currentStep: integer().default(1).notNull(),
-  nextDueAt: timestamp({ precision: 3, mode: 'date' }),
-  enrolledAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
-  completedAt: timestamp({ precision: 3, mode: 'date' }),
-  lastActivityAt: timestamp({ precision: 3, mode: 'date' }),
-  pipelineMemberId: uuid(),
-  notes: text(),
-  sentiment: outreachSentimentEnum(),
-  replyCategory: outreachReplyCategoryEnum(),
-  snoozedUntil: timestamp({ precision: 3, mode: 'date' }),
+  campaignId: uuid(),
+  contactId: uuid().notNull(),
+  templateId: uuid(),
+  channel: outreachChannelEnum().notNull(),
+  sentAt: timestamp({ precision: 3, mode: 'date' }),
+  subjectRendered: text(),
+  bodyRendered: text(),
+  deliveryStatus: outreachDeliveryStatusEnum().default("queued").notNull(),
+  openAt: timestamp({ precision: 3, mode: 'date' }),
+  clickAt: timestamp({ precision: 3, mode: 'date' }),
+  replyStatus: outreachReplyStatusEnum().default("none").notNull(),
+  replyAt: timestamp({ precision: 3, mode: 'date' }),
+  replySummary: text(),
+  nextAction: text(),
+  nextActionAt: timestamp({ precision: 3, mode: 'date' }),
+  externalMessageId: text(),
   createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
   updatedAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 }, (table) => [
-  uniqueIndex("outreach_contacts_tenantId_customerId_sequenceId_key").on(table.tenantId, table.customerId, table.sequenceId),
-  index("outreach_contacts_tenantId_status_nextDueAt_idx").on(table.tenantId, table.status, table.nextDueAt),
-  index("outreach_contacts_sequenceId_idx").on(table.sequenceId),
-  index("outreach_contacts_customerId_idx").on(table.customerId),
-  index("outreach_contacts_assignedUserId_idx").on(table.assignedUserId),
+  index("touches_tenantId_contactId_sentAt_idx")
+    .on(table.tenantId, table.contactId, table.sentAt.desc()),
+  index("touches_campaignId_idx").on(table.campaignId),
+  index("touches_awaiting_reply_idx")
+    .on(table.deliveryStatus)
+    .where(sql`"replyStatus" = 'none'`),
   foreignKey({
     columns: [table.tenantId],
     foreignColumns: [tenants.id],
-    name: "outreach_contacts_tenantId_fkey",
+    name: "touches_tenantId_fkey",
   }).onUpdate("cascade").onDelete("cascade"),
   foreignKey({
-    columns: [table.customerId],
-    foreignColumns: [customers.id],
-    name: "outreach_contacts_customerId_fkey",
-  }).onUpdate("cascade").onDelete("cascade"),
-  foreignKey({
-    columns: [table.sequenceId],
-    foreignColumns: [outreachSequences.id],
-    name: "outreach_contacts_sequenceId_fkey",
-  }).onUpdate("cascade").onDelete("cascade"),
-  foreignKey({
-    columns: [table.assignedUserId],
-    foreignColumns: [users.id],
-    name: "outreach_contacts_assignedUserId_fkey",
+    columns: [table.campaignId],
+    foreignColumns: [campaigns.id],
+    name: "touches_campaignId_fkey",
   }).onUpdate("cascade").onDelete("set null"),
-])
-
-export const outreachActivities = pgTable("outreach_activities", {
-  id: uuid().primaryKey().default(sql`gen_random_uuid()`).notNull(),
-  tenantId: uuid().notNull(),
-  contactId: uuid().notNull(),
-  sequenceId: uuid().notNull(),
-  customerId: uuid().notNull(),
-  stepPosition: integer().notNull(),
-  channel: text().notNull(),
-  activityType: outreachActivityTypeEnum().notNull(),
-  deliveredTo: text(),
-  notes: text(),
-  performedByUserId: uuid(),
-  previousState: jsonb().$type<{ currentStep: number; status: string; nextDueAt: string | null }>(),
-  occurredAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
-  createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
-}, (table) => [
-  index("outreach_activities_tenantId_sequenceId_activityType_occurredAt_idx")
-    .on(table.tenantId, table.sequenceId, table.activityType, table.occurredAt),
-  index("outreach_activities_contactId_idx").on(table.contactId),
-  index("outreach_activities_tenantId_occurredAt_idx").on(table.tenantId, table.occurredAt),
-  foreignKey({
-    columns: [table.tenantId],
-    foreignColumns: [tenants.id],
-    name: "outreach_activities_tenantId_fkey",
-  }).onUpdate("cascade").onDelete("cascade"),
   foreignKey({
     columns: [table.contactId],
-    foreignColumns: [outreachContacts.id],
-    name: "outreach_activities_contactId_fkey",
+    foreignColumns: [contacts.id],
+    name: "touches_contactId_fkey",
   }).onUpdate("cascade").onDelete("cascade"),
   foreignKey({
-    columns: [table.performedByUserId],
-    foreignColumns: [users.id],
-    name: "outreach_activities_performedByUserId_fkey",
+    columns: [table.templateId],
+    foreignColumns: [templates.id],
+    name: "touches_templateId_fkey",
   }).onUpdate("cascade").onDelete("set null"),
 ])
 
-// ---------------------------------------------------------------------------
-// Templates & Snippets
-// ---------------------------------------------------------------------------
-
-export const outreachTemplates = pgTable("outreach_templates", {
+export const replies = pgTable("replies", {
   id: uuid().primaryKey().default(sql`gen_random_uuid()`).notNull(),
   tenantId: uuid().notNull(),
-  name: text().notNull(),
-  category: text().notNull(),
-  channel: text().notNull(),
+  // Nullable — replies can be unsolicited (no originating touch).
+  touchId: uuid(),
+  contactId: uuid().notNull(),
+  receivedAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
   subject: text(),
-  bodyMarkdown: text().notNull(),
-  tags: text("tags").array(),
-  isActive: boolean().default(true).notNull(),
+  body: text(),
+  classifiedAs: text(),
+  classifiedBy: outreachClassifierEnum(),
+  classificationConfidence: numeric({ precision: 5, scale: 4 }),
+  needsReview: boolean().default(true).notNull(),
+  handled: boolean().default(false).notNull(),
+  handledAt: timestamp({ precision: 3, mode: 'date' }),
+  rawEventId: uuid(),
   createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
-  updatedAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 }, (table) => [
-  index("outreach_templates_tenantId_idx").on(table.tenantId),
-  index("outreach_templates_tenantId_category_idx").on(table.tenantId, table.category),
+  index("replies_tenantId_needsReview_idx")
+    .on(table.tenantId)
+    .where(sql`"needsReview" = true`),
+  index("replies_touchId_idx").on(table.touchId),
+  index("replies_contactId_receivedAt_idx").on(table.contactId, table.receivedAt.desc()),
   foreignKey({
     columns: [table.tenantId],
     foreignColumns: [tenants.id],
-    name: "outreach_templates_tenantId_fkey",
+    name: "replies_tenantId_fkey",
   }).onUpdate("cascade").onDelete("cascade"),
+  foreignKey({
+    columns: [table.touchId],
+    foreignColumns: [touches.id],
+    name: "replies_touchId_fkey",
+  }).onUpdate("cascade").onDelete("set null"),
+  foreignKey({
+    columns: [table.contactId],
+    foreignColumns: [contacts.id],
+    name: "replies_contactId_fkey",
+  }).onUpdate("cascade").onDelete("cascade"),
+  foreignKey({
+    columns: [table.rawEventId],
+    foreignColumns: [rawEvents.id],
+    name: "replies_rawEventId_fkey",
+  }).onUpdate("cascade").onDelete("set null"),
 ])
 
-export const outreachSnippets = pgTable("outreach_snippets", {
+export const dncList = pgTable("dnc_list", {
   id: uuid().primaryKey().default(sql`gen_random_uuid()`).notNull(),
   tenantId: uuid().notNull(),
-  name: text().notNull(),
-  category: text().notNull(),
-  bodyMarkdown: text().notNull(),
-  isActive: boolean().default(true).notNull(),
-  createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
-  updatedAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+  email: text(),
+  domain: text(),
+  reason: text(),
+  addedAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+  addedBy: text(),
 }, (table) => [
-  index("outreach_snippets_tenantId_idx").on(table.tenantId),
-  index("outreach_snippets_tenantId_category_idx").on(table.tenantId, table.category),
+  uniqueIndex("dnc_list_tenantId_email_key")
+    .on(table.tenantId, table.email)
+    .where(sql`"email" IS NOT NULL`),
+  uniqueIndex("dnc_list_tenantId_domain_key")
+    .on(table.tenantId, table.domain)
+    .where(sql`"domain" IS NOT NULL`),
   foreignKey({
     columns: [table.tenantId],
     foreignColumns: [tenants.id],
-    name: "outreach_snippets_tenantId_fkey",
+    name: "dnc_list_tenantId_fkey",
   }).onUpdate("cascade").onDelete("cascade"),
 ])
 
@@ -227,8 +303,10 @@ export const outreachSnippets = pgTable("outreach_snippets", {
 // Type aliases
 // ---------------------------------------------------------------------------
 
-export type OutreachSequenceRow = typeof outreachSequences.$inferSelect
-export type OutreachContactRow = typeof outreachContacts.$inferSelect
-export type OutreachActivityRow = typeof outreachActivities.$inferSelect
-export type OutreachTemplateRow = typeof outreachTemplates.$inferSelect
-export type OutreachSnippetRow = typeof outreachSnippets.$inferSelect
+export type CompanyRow = typeof companies.$inferSelect
+export type ContactRow = typeof contacts.$inferSelect
+export type CampaignRow = typeof campaigns.$inferSelect
+export type TemplateRow = typeof templates.$inferSelect
+export type TouchRow = typeof touches.$inferSelect
+export type ReplyRow = typeof replies.$inferSelect
+export type DncListRow = typeof dncList.$inferSelect

@@ -107,6 +107,29 @@ type IronheartEvents = {
       rating: number;
     };
   };
+  "pipeline/deal.created": {
+    data: {
+      dealId: string;
+      tenantId: string;
+      companyId: string | null;
+      stage: string;
+    };
+  };
+  "pipeline/deal.stage_changed": {
+    data: {
+      dealId: string;
+      tenantId: string;
+      from: string;
+      to: string;
+    };
+  };
+  "pipeline/deal.won": {
+    data: {
+      dealId: string;
+      tenantId: string;
+      companyId: string | null;
+    };
+  };
   "pipeline/member.added": {
     data: {
       memberId: string;

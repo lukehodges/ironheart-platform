@@ -1,31 +1,64 @@
-import { db } from "@/shared/db";
-import { logger } from "@/shared/logger";
-import { NotFoundError, BadRequestError } from "@/shared/errors";
-import { inngest } from "@/shared/inngest";
-import type { Context } from "@/shared/trpc";
-import { customers } from "@/shared/db/schema";
-import { eq, and } from "drizzle-orm";
-import { outreachRepository } from "./outreach.repository";
-import { pipelineService } from "@/modules/pipeline";
-import { deriveSentiment } from "./outreach.types";
+import { db } from "@/shared/db"
+import { logger } from "@/shared/logger"
+import { NotFoundError, ForbiddenError, BadRequestError } from "@/shared/errors"
+import { events } from "@/shared/db/schemas/event-framework.schema"
+import type { Context } from "@/shared/trpc"
+import { outreachRepository } from "./outreach.repository"
 import type {
-  OutreachSequenceRecord,
-  OutreachContactRecord,
-  OutreachContactWithDetails,
-  OutreachActivityRecord,
-  OutreachTemplateRecord,
-  OutreachSnippetRecord,
-  OutreachStep,
-  DashboardContact,
-  DailyDashboard,
-  SequencePerformance,
-  SectorPerformance,
-  RenderedTemplate,
-  OutreachActivityType,
-  OutreachReplyCategory,
-} from "./outreach.types";
+  CompanyRecord,
+  ContactRecord,
+  CampaignRecord,
+  TemplateRecord,
+  TouchRecord,
+  ReplyRecord,
+  DncListRecord,
+  CreateCompanyInput,
+  UpdateCompanyInput,
+  CreateContactInput,
+  UpdateContactInput,
+  CreateCampaignInput,
+  CreateTemplateInput,
+  SendTouchInput,
+  RecordReplyInput,
+  AddDncInput,
+  BulkImportLeadRow,
+  BulkImportResult,
+  OutreachClassifier,
+} from "./outreach.types"
+import type { OutreachEventKind } from "./outreach.events"
 
-const log = logger.child({ module: "outreach.service" });
+const log = logger.child({ module: "outreach.service" })
+
+// ---------------------------------------------------------------------------
+// Event emission helper — insert into the `events` outbox table.
+// ---------------------------------------------------------------------------
+
+async function emitEvent(params: {
+  tenantId: string
+  kind: OutreachEventKind
+  entityType: string
+  entityId: string
+  payload: Record<string, unknown>
+  actor?: string | null
+}): Promise<void> {
+  await db.insert(events).values({
+    tenantId: params.tenantId,
+    kind: params.kind,
+    entityType: params.entityType,
+    entityId: params.entityId,
+    payload: params.payload,
+    actor: params.actor ?? null,
+  })
+}
+
+function actorFromCtx(ctx: Context): string | null {
+  return ctx.user?.id ?? null
+}
+
+function ensureTenant(ctx: Context): string {
+  if (!ctx.tenantId) throw new ForbiddenError("Tenant scope required")
+  return ctx.tenantId
+}
 
 // ===============================================================
 // OUTREACH SERVICE
@@ -33,58 +66,51 @@ const log = logger.child({ module: "outreach.service" });
 
 export const outreachService = {
   // -------------------------------------------------------------------
-  // SEQUENCES
+  // COMPANIES
   // -------------------------------------------------------------------
 
-  async listSequences(
+  async listCompanies(
     ctx: Context,
-    filters?: { sector?: string; isActive?: boolean },
-  ): Promise<OutreachSequenceRecord[]> {
-    return outreachRepository.listSequences(ctx.tenantId, filters);
-  },
-
-  async getSequenceById(ctx: Context, sequenceId: string): Promise<OutreachSequenceRecord> {
-    return outreachRepository.findSequenceById(ctx.tenantId, sequenceId);
-  },
-
-  async createSequence(
-    ctx: Context,
-    input: {
-      name: string;
-      description?: string | null;
-      sector: string;
-      targetIcp?: string | null;
-      isActive?: boolean;
-      abVariant?: string | null;
-      pairedSequenceId?: string | null;
-      steps: OutreachStep[];
+    opts: {
+      search?: string
+      city?: string
+      doNotContact?: boolean
+      limit: number
+      cursor?: string
     },
-  ): Promise<OutreachSequenceRecord> {
-    const sequence = await outreachRepository.createSequence(ctx.tenantId, input);
-    log.info({ tenantId: ctx.tenantId, sequenceId: sequence.id }, "Outreach sequence created");
-    return sequence;
+  ) {
+    return outreachRepository.listCompanies(ensureTenant(ctx), opts)
   },
 
-  async updateSequence(
+  async getCompany(ctx: Context, companyId: string): Promise<CompanyRecord> {
+    const c = await outreachRepository.findCompanyById(ensureTenant(ctx), companyId)
+    if (!c) throw new NotFoundError("Company", companyId)
+    return c
+  },
+
+  async createCompany(
     ctx: Context,
-    sequenceId: string,
-    input: Partial<{
-      name: string;
-      description: string | null;
-      sector: string;
-      targetIcp: string | null;
-      isActive: boolean;
-      abVariant: string | null;
-      pairedSequenceId: string | null;
-      steps: OutreachStep[];
-    }>,
-  ): Promise<OutreachSequenceRecord> {
-    return outreachRepository.updateSequence(ctx.tenantId, sequenceId, input);
+    input: CreateCompanyInput,
+  ): Promise<CompanyRecord> {
+    const tenantId = ensureTenant(ctx)
+    const c = await outreachRepository.createCompany(tenantId, input)
+    await emitEvent({
+      tenantId,
+      kind: "company.created",
+      entityType: "company",
+      entityId: c.id,
+      payload: { name: c.name, domain: c.domain },
+      actor: actorFromCtx(ctx),
+    })
+    return c
   },
 
-  async archiveSequence(ctx: Context, sequenceId: string): Promise<void> {
-    await outreachRepository.archiveSequence(ctx.tenantId, sequenceId);
-    log.info({ tenantId: ctx.tenantId, sequenceId }, "Outreach sequence archived");
+  async updateCompany(
+    ctx: Context,
+    companyId: string,
+    input: UpdateCompanyInput,
+  ): Promise<CompanyRecord> {
+    return outreachRepository.updateCompany(ensureTenant(ctx), companyId, input)
   },
 
   // -------------------------------------------------------------------
@@ -93,564 +119,71 @@ export const outreachService = {
 
   async listContacts(
     ctx: Context,
-    filters: {
-      sequenceId?: string;
-      status?: string;
-      assignedUserId?: string;
-      search?: string;
-      cursor?: string;
-      limit?: number;
+    opts: {
+      companyId?: string
+      search?: string
+      doNotContact?: boolean
+      bounced?: boolean
+      limit: number
+      cursor?: string
     },
-  ): Promise<{ rows: OutreachContactWithDetails[]; hasMore: boolean }> {
-    return outreachRepository.listContacts(ctx.tenantId, filters);
+  ) {
+    return outreachRepository.listContacts(ensureTenant(ctx), opts)
   },
 
-  async getContactById(ctx: Context, contactId: string): Promise<OutreachContactRecord> {
-    return outreachRepository.findContactById(ctx.tenantId, contactId);
+  async createContact(
+    ctx: Context,
+    input: CreateContactInput,
+  ): Promise<ContactRecord> {
+    const tenantId = ensureTenant(ctx)
+    const c = await outreachRepository.createContact(tenantId, input)
+    await emitEvent({
+      tenantId,
+      kind: "contact.created",
+      entityType: "contact",
+      entityId: c.id,
+      payload: { companyId: c.companyId, email: c.email },
+      actor: actorFromCtx(ctx),
+    })
+    return c
   },
 
-  async getContactActivities(
+  async updateContact(
     ctx: Context,
     contactId: string,
-    pagination: { cursor?: string; limit: number },
-  ): Promise<{ activities: OutreachActivityRecord[]; hasMore: boolean }> {
-    // Validate contact exists and belongs to tenant
-    await outreachRepository.findContactById(ctx.tenantId, contactId);
-    const activities = await outreachRepository.getContactActivities(ctx.tenantId, contactId);
-
-    // Apply cursor pagination
-    let filtered = activities;
-    if (pagination.cursor) {
-      const cursorIdx = filtered.findIndex((a) => a.id === pagination.cursor);
-      if (cursorIdx >= 0) {
-        filtered = filtered.slice(cursorIdx + 1);
-      }
-    }
-
-    const hasMore = filtered.length > pagination.limit;
-    return {
-      activities: filtered.slice(0, pagination.limit),
-      hasMore,
-    };
+    input: UpdateContactInput,
+  ): Promise<ContactRecord> {
+    return outreachRepository.updateContact(ensureTenant(ctx), contactId, input)
   },
 
-  async enrollContact(
+  async markContactBounced(
     ctx: Context,
-    input: {
-      customerId: string;
-      sequenceId: string;
-      assignedUserId?: string | null;
-      notes?: string | null;
+    contactId: string,
+  ): Promise<ContactRecord> {
+    return outreachRepository.markContactBounced(ensureTenant(ctx), contactId)
+  },
+
+  // -------------------------------------------------------------------
+  // CAMPAIGNS
+  // -------------------------------------------------------------------
+
+  async listCampaigns(
+    ctx: Context,
+    opts: {
+      status?: CampaignRecord["status"]
+      channel?: CampaignRecord["channel"]
+      limit: number
+      cursor?: string
     },
-  ): Promise<OutreachContactRecord> {
-    const contact = await outreachRepository.enrollContact(ctx.tenantId, input);
-
-    await inngest.send({
-      name: "outreach/contact.enrolled",
-      data: {
-        contactId: contact.id,
-        customerId: input.customerId,
-        sequenceId: input.sequenceId,
-        tenantId: ctx.tenantId,
-      },
-    });
-
-    log.info(
-      { tenantId: ctx.tenantId, contactId: contact.id, sequenceId: input.sequenceId },
-      "Contact enrolled in outreach sequence",
-    );
-    return contact;
+  ) {
+    return outreachRepository.listCampaigns(ensureTenant(ctx), opts)
   },
 
-  async logActivity(
+  async createCampaign(
     ctx: Context,
-    input: {
-      contactId: string;
-      activityType: OutreachActivityType;
-      notes?: string | null;
-      deliveredTo?: string | null;
-    },
-  ): Promise<OutreachContactRecord> {
-    const now = new Date();
-
-    // 1. Get contact and validate state
-    const contact = await outreachRepository.findContactById(ctx.tenantId, input.contactId);
-
-    if (contact.status === "BOUNCED" || contact.status === "OPTED_OUT") {
-      throw new BadRequestError(
-        `Cannot log activity for contact with status ${contact.status}`,
-      );
-    }
-
-    // 2. Get sequence for steps
-    const sequence = await outreachRepository.findSequenceById(ctx.tenantId, contact.sequenceId);
-    const steps = sequence.steps ?? [];
-
-    // 3. Determine current step info
-    const stepPosition = contact.currentStep;
-    const currentStepDef = steps[stepPosition - 1];
-    const channel = currentStepDef?.channel ?? "EMAIL";
-
-    // Capture previous state for undo support
-    const previousState = {
-      currentStep: contact.currentStep,
-      status: contact.status,
-      nextDueAt: contact.nextDueAt?.toISOString() ?? null,
-    };
-
-    // 4. Insert activity
-    await outreachRepository.logActivity(ctx.tenantId, {
-      contactId: contact.id,
-      sequenceId: contact.sequenceId,
-      customerId: contact.customerId,
-      stepPosition,
-      channel,
-      activityType: input.activityType,
-      deliveredTo: input.deliveredTo,
-      notes: input.notes,
-      performedByUserId: ctx.user?.id ?? null,
-      previousState,
-    });
-
-    // 5. State transitions
-    const updatePayload: {
-      status?: string;
-      currentStep?: number;
-      nextDueAt?: Date | null;
-      completedAt?: Date | null;
-      lastActivityAt?: Date | null;
-    } = {
-      lastActivityAt: now,
-    };
-
-    switch (input.activityType) {
-      case "SENT":
-      case "CALL_COMPLETED":
-      case "SKIPPED": {
-        // Advance to next step
-        const nextStepIndex = stepPosition; // steps[stepPosition] is the next one (0-based)
-        const nextStep = steps[nextStepIndex];
-
-        if (nextStep) {
-          const nextDueAt = new Date(now.getTime() + nextStep.delayDays * 86400000);
-          updatePayload.currentStep = stepPosition + 1;
-          updatePayload.nextDueAt = nextDueAt;
-        } else {
-          // No more steps — sequence completed
-          updatePayload.status = "COMPLETED";
-          updatePayload.completedAt = now;
-          updatePayload.nextDueAt = null;
-        }
-        break;
-      }
-
-      case "REPLIED":
-      case "MEETING_BOOKED": {
-        updatePayload.status = "REPLIED";
-        updatePayload.nextDueAt = null;
-        break;
-      }
-
-      case "BOUNCED": {
-        updatePayload.status = "BOUNCED";
-        updatePayload.nextDueAt = null;
-        updatePayload.completedAt = now;
-        break;
-      }
-
-      case "OPTED_OUT": {
-        updatePayload.status = "OPTED_OUT";
-        updatePayload.nextDueAt = null;
-        updatePayload.completedAt = now;
-        break;
-      }
-    }
-
-    // 6. Update contact
-    const updated = await outreachRepository.updateContactStatus(
-      ctx.tenantId,
-      contact.id,
-      updatePayload,
-    );
-
-    // 7. Emit event (non-blocking — don't fail the mutation if Inngest is unavailable)
-    inngest.send({
-      name: "outreach/activity.logged",
-      data: {
-        contactId: contact.id,
-        sequenceId: contact.sequenceId,
-        customerId: contact.customerId,
-        activityType: input.activityType,
-        sector: sequence.sector,
-        tenantId: ctx.tenantId,
-      },
-    }).catch((err) => log.warn({ err }, "Failed to send outreach activity event"));
-
-    log.info(
-      { tenantId: ctx.tenantId, contactId: contact.id, activityType: input.activityType },
-      "Outreach activity logged",
-    );
-
-    return updated;
-  },
-
-  async getBodyForStep(
-    ctx: Context,
-    input: { contactId: string; stepPosition?: number },
-  ): Promise<RenderedTemplate> {
-    // 1. Get contact + sequence
-    const contact = await outreachRepository.findContactById(ctx.tenantId, input.contactId);
-    const sequence = await outreachRepository.findSequenceById(ctx.tenantId, contact.sequenceId);
-
-    // 2. Determine step position
-    const position = input.stepPosition ?? contact.currentStep;
-    const step = sequence.steps[position - 1];
-
-    if (!step) {
-      throw new BadRequestError(`Step at position ${position} does not exist in sequence`);
-    }
-
-    // 3. Get customer record
-    const [customer] = await db
-      .select()
-      .from(customers)
-      .where(
-        and(
-          eq(customers.id, contact.customerId),
-          eq(customers.tenantId, ctx.tenantId),
-        ),
-      )
-      .limit(1);
-
-    if (!customer) throw new NotFoundError("Customer", contact.customerId);
-
-    // 4. Extract company from tags
-    const tags = customer.tags ?? [];
-    const companyTag = tags.find((t) => t.startsWith("company:"));
-    const company = companyTag ? companyTag.slice("company:".length) : "";
-
-    // 5. Build replacements
-    const replacements: Record<string, string> = {
-      "{{firstName}}": customer.firstName ?? "",
-      "{{lastName}}": customer.lastName ?? "",
-      "{{company}}": company,
-      "{{sector}}": sequence.sector ?? "",
-    };
-
-    // 6. Replace placeholders with sanitised values
-    function replaceTemplate(template: string): string {
-      let result = template;
-      for (const [placeholder, value] of Object.entries(replacements)) {
-        // Sanitise: replace {{ and }} in resolved values to prevent injection
-        const sanitised = value.replace(/\{\{/g, "{ {").replace(/\}\}/g, "} }");
-        result = result.replaceAll(placeholder, sanitised);
-      }
-      return result;
-    }
-
-    const body = replaceTemplate(step.bodyMarkdown);
-    const subject = step.subject ? replaceTemplate(step.subject) : null;
-
-    return {
-      subject,
-      body,
-      channel: step.channel,
-      stepNotes: step.notes ?? null,
-    };
-  },
-
-  async convertContact(
-    ctx: Context,
-    input: {
-      contactId: string;
-      pipelineId: string;
-      stageId: string;
-      dealValue?: number | null;
-    },
-  ): Promise<OutreachContactRecord> {
-    const now = new Date();
-
-    // 1. Get contact and validate status
-    const contact = await outreachRepository.findContactById(ctx.tenantId, input.contactId);
-
-    if (contact.status !== "REPLIED") {
-      throw new BadRequestError(
-        `Cannot convert contact with status ${contact.status}. Contact must be in REPLIED status.`,
-      );
-    }
-
-    // 2. Add to pipeline
-    const member = await pipelineService.addMember(ctx, {
-      pipelineId: input.pipelineId,
-      customerId: contact.customerId,
-      stageId: input.stageId,
-      dealValue: input.dealValue,
-      metadata: { source: "outreach", sequenceId: contact.sequenceId },
-    });
-
-    // 3. Update contact status
-    const updated = await outreachRepository.updateContactStatus(
-      ctx.tenantId,
-      contact.id,
-      {
-        status: "CONVERTED",
-        pipelineMemberId: member.id,
-        completedAt: now,
-      },
-    );
-
-    // 4. Log CONVERTED activity
-    const sequence = await outreachRepository.findSequenceById(ctx.tenantId, contact.sequenceId);
-    const currentStep = sequence.steps[contact.currentStep - 1];
-
-    await outreachRepository.logActivity(ctx.tenantId, {
-      contactId: contact.id,
-      sequenceId: contact.sequenceId,
-      customerId: contact.customerId,
-      stepPosition: contact.currentStep,
-      channel: currentStep?.channel ?? "EMAIL",
-      activityType: "CONVERTED",
-      notes: `Converted to pipeline ${input.pipelineId}`,
-    });
-
-    // 5. Emit event
-    await inngest.send({
-      name: "outreach/contact.converted",
-      data: {
-        contactId: contact.id,
-        customerId: contact.customerId,
-        sequenceId: contact.sequenceId,
-        pipelineId: input.pipelineId,
-        pipelineMemberId: member.id,
-        tenantId: ctx.tenantId,
-      },
-    });
-
-    log.info(
-      { tenantId: ctx.tenantId, contactId: contact.id, pipelineMemberId: member.id },
-      "Outreach contact converted to pipeline member",
-    );
-
-    return updated;
-  },
-
-  async pauseContact(ctx: Context, contactId: string): Promise<OutreachContactRecord> {
-    const contact = await outreachRepository.findContactById(ctx.tenantId, contactId);
-
-    if (contact.status !== "ACTIVE") {
-      throw new BadRequestError(
-        `Cannot pause contact with status ${contact.status}. Contact must be ACTIVE.`,
-      );
-    }
-
-    return outreachRepository.pauseContact(ctx.tenantId, contactId);
-  },
-
-  async resumeContact(ctx: Context, contactId: string): Promise<OutreachContactRecord> {
-    const contact = await outreachRepository.findContactById(ctx.tenantId, contactId);
-
-    if (contact.status !== "PAUSED") {
-      throw new BadRequestError(
-        `Cannot resume contact with status ${contact.status}. Contact must be PAUSED.`,
-      );
-    }
-
-    // Get sequence to compute new nextDueAt
-    const sequence = await outreachRepository.findSequenceById(ctx.tenantId, contact.sequenceId);
-    const currentStepDef = sequence.steps[contact.currentStep - 1];
-    const delayMs = currentStepDef ? currentStepDef.delayDays * 86400000 : 0;
-    const nextDueAt = new Date(Date.now() + delayMs);
-
-    return outreachRepository.resumeContact(ctx.tenantId, contactId, nextDueAt);
-  },
-
-  async categorizeContact(
-    ctx: Context,
-    input: { contactId: string; replyCategory: OutreachReplyCategory },
-  ): Promise<OutreachContactRecord> {
-    const contact = await outreachRepository.findContactById(ctx.tenantId, input.contactId);
-
-    if (contact.status !== "REPLIED") {
-      throw new BadRequestError(
-        `Cannot categorize contact with status ${contact.status}. Contact must be REPLIED.`,
-      );
-    }
-
-    const sentiment = deriveSentiment(input.replyCategory);
-    const updated = await outreachRepository.categorizeContact(
-      ctx.tenantId,
-      input.contactId,
-      input.replyCategory,
-      sentiment,
-    );
-
-    log.info(
-      { tenantId: ctx.tenantId, contactId: input.contactId, replyCategory: input.replyCategory, sentiment },
-      "Outreach contact categorized",
-    );
-
-    return updated;
-  },
-
-  async snoozeContact(
-    ctx: Context,
-    input: { contactId: string; snoozedUntil: Date },
-  ): Promise<OutreachContactRecord> {
-    const contact = await outreachRepository.findContactById(ctx.tenantId, input.contactId);
-
-    if (contact.status !== "REPLIED") {
-      throw new BadRequestError(
-        `Cannot snooze contact with status ${contact.status}. Contact must be REPLIED.`,
-      );
-    }
-
-    const updated = await outreachRepository.snoozeContact(
-      ctx.tenantId,
-      input.contactId,
-      input.snoozedUntil,
-    );
-
-    log.info(
-      { tenantId: ctx.tenantId, contactId: input.contactId, snoozedUntil: input.snoozedUntil },
-      "Outreach contact snoozed",
-    );
-
-    return updated;
-  },
-
-  async undoActivity(
-    ctx: Context,
-    input: { contactId: string; activityId: string },
-  ): Promise<OutreachContactRecord> {
-    const activity = await outreachRepository.findActivityById(ctx.tenantId, input.activityId);
-
-    // Validate activity belongs to the specified contact
-    if (activity.contactId !== input.contactId) {
-      throw new BadRequestError("Activity does not belong to this contact.");
-    }
-
-    // Validate time window (30 seconds server-side)
-    const elapsed = Date.now() - activity.occurredAt.getTime();
-    if (elapsed > 30_000) {
-      throw new BadRequestError("Undo window has expired (30 seconds maximum).");
-    }
-
-    if (!activity.previousState) {
-      throw new BadRequestError("This activity cannot be undone — no previous state recorded.");
-    }
-
-    // Revert contact state
-    const updated = await outreachRepository.updateContactStatus(
-      ctx.tenantId,
-      input.contactId,
-      {
-        currentStep: activity.previousState.currentStep,
-        status: activity.previousState.status,
-        nextDueAt: activity.previousState.nextDueAt ? new Date(activity.previousState.nextDueAt) : null,
-        lastActivityAt: new Date(),
-      },
-    );
-
-    // Log compensating UNDONE activity
-    const contact = await outreachRepository.findContactById(ctx.tenantId, input.contactId);
-    const sequence = await outreachRepository.findSequenceById(ctx.tenantId, contact.sequenceId);
-    const step = sequence.steps[activity.previousState.currentStep - 1];
-
-    await outreachRepository.logActivity(ctx.tenantId, {
-      contactId: input.contactId,
-      sequenceId: contact.sequenceId,
-      customerId: contact.customerId,
-      stepPosition: activity.previousState.currentStep,
-      channel: step?.channel ?? "EMAIL",
-      activityType: "UNDONE",
-      notes: `Undo of ${activity.activityType} at step ${activity.stepPosition}`,
-    });
-
-    log.info(
-      { tenantId: ctx.tenantId, contactId: input.contactId, activityId: input.activityId },
-      "Outreach activity undone",
-    );
-
-    return updated;
-  },
-
-  async batchLogActivity(
-    ctx: Context,
-    input: { contactIds: string[]; activityType: "SENT" | "SKIPPED"; notes?: string },
-  ): Promise<{ succeeded: number; failed: number; errors: Array<{ contactId: string; error: string }> }> {
-    const results = { succeeded: 0, failed: 0, errors: [] as Array<{ contactId: string; error: string }> };
-
-    for (const contactId of input.contactIds) {
-      try {
-        await this.logActivity(ctx, {
-          contactId,
-          activityType: input.activityType,
-          notes: input.notes,
-        });
-        results.succeeded++;
-      } catch (err) {
-        results.failed++;
-        results.errors.push({
-          contactId,
-          error: err instanceof Error ? err.message : "Unknown error",
-        });
-      }
-    }
-
-    log.info(
-      { tenantId: ctx.tenantId, succeeded: results.succeeded, failed: results.failed },
-      "Batch outreach activity logged",
-    );
-
-    return results;
-  },
-
-  async reactivateSnoozedContacts(): Promise<number> {
-    const count = await outreachRepository.reactivateSnoozedContacts();
-    log.info({ count }, "Reactivated snoozed outreach contacts");
-    return count;
-  },
-
-  // -------------------------------------------------------------------
-  // DASHBOARD
-  // -------------------------------------------------------------------
-
-  async getDashboard(ctx: Context): Promise<DailyDashboard> {
-    const now = new Date();
-    const startOfToday = new Date(now);
-    startOfToday.setHours(0, 0, 0, 0);
-
-    const [dueNow, overdue, recentReplies, todayStats] = await Promise.all([
-      outreachRepository.getDueContacts(ctx.tenantId, now),
-      outreachRepository.getOverdueContacts(ctx.tenantId, now),
-      outreachRepository.getRecentReplies(ctx.tenantId),
-      outreachRepository.getTodayStats(ctx.tenantId, startOfToday),
-    ]);
-
-    return {
-      dueNow,
-      overdue,
-      recentReplies,
-      todayStats,
-    };
-  },
-
-  // -------------------------------------------------------------------
-  // ANALYTICS
-  // -------------------------------------------------------------------
-
-  async getSequenceAnalytics(
-    ctx: Context,
-    filters?: { dateFrom?: Date; dateTo?: Date; sector?: string },
-  ): Promise<SequencePerformance[]> {
-    return outreachRepository.getSequencePerformance(ctx.tenantId, filters);
-  },
-
-  async getSectorAnalytics(
-    ctx: Context,
-    filters?: { dateFrom?: Date; dateTo?: Date },
-  ): Promise<SectorPerformance[]> {
-    return outreachRepository.getSectorPerformance(ctx.tenantId, filters);
+    input: CreateCampaignInput,
+  ): Promise<CampaignRecord> {
+    return outreachRepository.createCampaign(ensureTenant(ctx), input)
   },
 
   // -------------------------------------------------------------------
@@ -659,119 +192,535 @@ export const outreachService = {
 
   async listTemplates(
     ctx: Context,
-    filters?: { category?: string; isActive?: boolean },
-  ): Promise<OutreachTemplateRecord[]> {
-    return outreachRepository.listTemplates(ctx.tenantId, filters);
-  },
-
-  async getTemplateById(ctx: Context, templateId: string): Promise<OutreachTemplateRecord> {
-    return outreachRepository.findTemplateById(ctx.tenantId, templateId);
+    opts: {
+      channel?: TemplateRecord["channel"]
+      active?: boolean
+      limit: number
+      cursor?: string
+    },
+  ) {
+    return outreachRepository.listTemplates(ensureTenant(ctx), opts)
   },
 
   async createTemplate(
     ctx: Context,
-    input: {
-      name: string;
-      category: string;
-      channel: string;
-      subject?: string | null;
-      bodyMarkdown: string;
-      tags?: string[] | null;
-      isActive?: boolean;
-    },
-  ): Promise<OutreachTemplateRecord> {
-    const template = await outreachRepository.createTemplate(ctx.tenantId, input);
-    log.info({ tenantId: ctx.tenantId, templateId: template.id }, "Outreach template created");
-    return template;
-  },
-
-  async updateTemplate(
-    ctx: Context,
-    templateId: string,
-    input: Partial<{
-      name: string;
-      category: string;
-      channel: string;
-      subject: string | null;
-      bodyMarkdown: string;
-      tags: string[] | null;
-      isActive: boolean;
-    }>,
-  ): Promise<OutreachTemplateRecord> {
-    return outreachRepository.updateTemplate(ctx.tenantId, templateId, input);
-  },
-
-  async deleteTemplate(ctx: Context, templateId: string): Promise<OutreachTemplateRecord> {
-    const deleted = await outreachRepository.deleteTemplate(ctx.tenantId, templateId);
-    log.info({ tenantId: ctx.tenantId, templateId }, "Outreach template deleted");
-    return deleted;
-  },
-
-  async duplicateTemplate(ctx: Context, templateId: string): Promise<OutreachTemplateRecord> {
-    const source = await outreachRepository.findTemplateById(ctx.tenantId, templateId);
-
-    const copy = await outreachRepository.createTemplate(ctx.tenantId, {
-      name: `${source.name} (copy)`,
-      category: source.category,
-      channel: source.channel,
-      subject: source.subject,
-      bodyMarkdown: source.bodyMarkdown,
-      tags: source.tags,
-      isActive: source.isActive,
-    });
-
-    log.info(
-      { tenantId: ctx.tenantId, sourceTemplateId: templateId, newTemplateId: copy.id },
-      "Outreach template duplicated",
-    );
-    return copy;
+    input: CreateTemplateInput,
+  ): Promise<TemplateRecord> {
+    return outreachRepository.createTemplate(ensureTenant(ctx), input)
   },
 
   // -------------------------------------------------------------------
-  // SNIPPETS
+  // TOUCHES
   // -------------------------------------------------------------------
 
-  async listSnippets(
+  async listTouches(
     ctx: Context,
-    filters?: { category?: string; isActive?: boolean },
-  ): Promise<OutreachSnippetRecord[]> {
-    return outreachRepository.listSnippets(ctx.tenantId, filters);
-  },
-
-  async getSnippetById(ctx: Context, snippetId: string): Promise<OutreachSnippetRecord> {
-    return outreachRepository.findSnippetById(ctx.tenantId, snippetId);
-  },
-
-  async createSnippet(
-    ctx: Context,
-    input: {
-      name: string;
-      category: string;
-      bodyMarkdown: string;
-      isActive?: boolean;
+    opts: {
+      contactId?: string
+      campaignId?: string
+      deliveryStatus?: TouchRecord["deliveryStatus"]
+      awaitingReplyOnly?: boolean
+      limit: number
+      cursor?: string
     },
-  ): Promise<OutreachSnippetRecord> {
-    const snippet = await outreachRepository.createSnippet(ctx.tenantId, input);
-    log.info({ tenantId: ctx.tenantId, snippetId: snippet.id }, "Outreach snippet created");
-    return snippet;
+  ) {
+    return outreachRepository.listTouches(ensureTenant(ctx), opts)
   },
 
-  async updateSnippet(
+  /**
+   * Insert a touch into the outbox. Checks DNC first; throws BadRequestError
+   * if the contact is on the DNC list. Emits `touch.queued`.
+   */
+  async sendTouch(ctx: Context, input: SendTouchInput): Promise<TouchRecord> {
+    const tenantId = ensureTenant(ctx)
+
+    // Load contact for DNC + tenant verification
+    const contact = await outreachRepository.findContactById(
+      tenantId,
+      input.contactId,
+    )
+    if (!contact) throw new NotFoundError("Contact", input.contactId)
+
+    if (contact.email) {
+      const dnc = await outreachRepository.isDoNotContact(tenantId, contact.email)
+      if (dnc) {
+        throw new BadRequestError(
+          `Contact ${input.contactId} is on the do-not-contact list`,
+        )
+      }
+    }
+    if (contact.doNotContact) {
+      throw new BadRequestError(
+        `Contact ${input.contactId} has do_not_contact flag set`,
+      )
+    }
+
+    const touch = await outreachRepository.insertTouch(tenantId, {
+      contactId: input.contactId,
+      campaignId: input.campaignId ?? null,
+      templateId: input.templateId ?? null,
+      channel: input.channel,
+      subjectRendered: input.renderedSubject ?? null,
+      bodyRendered: input.renderedBody ?? null,
+      externalMessageId: input.externalMessageId ?? null,
+      deliveryStatus: "queued",
+    })
+
+    await emitEvent({
+      tenantId,
+      kind: "touch.queued",
+      entityType: "touch",
+      entityId: touch.id,
+      payload: {
+        contactId: touch.contactId,
+        campaignId: touch.campaignId,
+        templateId: touch.templateId,
+        channel: touch.channel,
+      },
+      actor: actorFromCtx(ctx),
+    })
+
+    log.info({ tenantId, touchId: touch.id }, "Touch queued")
+    return touch
+  },
+
+  async markTouchSent(
     ctx: Context,
-    snippetId: string,
-    input: Partial<{
-      name: string;
-      category: string;
-      bodyMarkdown: string;
-      isActive: boolean;
-    }>,
-  ): Promise<OutreachSnippetRecord> {
-    return outreachRepository.updateSnippet(ctx.tenantId, snippetId, input);
+    touchId: string,
+    sentAt: Date,
+    externalMessageId?: string | null,
+  ): Promise<TouchRecord> {
+    const tenantId = ensureTenant(ctx)
+    const patch: Partial<typeof import("@/shared/db/schemas/outreach.schema").touches.$inferInsert> =
+      {
+        deliveryStatus: "sent",
+        sentAt,
+      }
+    if (externalMessageId !== undefined) patch.externalMessageId = externalMessageId
+    const touch = await outreachRepository.updateTouch(tenantId, touchId, patch)
+    await emitEvent({
+      tenantId,
+      kind: "touch.sent",
+      entityType: "touch",
+      entityId: touch.id,
+      payload: { sentAt: sentAt.toISOString(), externalMessageId: touch.externalMessageId },
+      actor: actorFromCtx(ctx),
+    })
+    return touch
   },
 
-  async deleteSnippet(ctx: Context, snippetId: string): Promise<OutreachSnippetRecord> {
-    const deleted = await outreachRepository.deleteSnippet(ctx.tenantId, snippetId);
-    log.info({ tenantId: ctx.tenantId, snippetId }, "Outreach snippet deleted");
-    return deleted;
+  async markTouchDelivered(
+    ctx: Context,
+    touchId: string,
+  ): Promise<TouchRecord> {
+    const tenantId = ensureTenant(ctx)
+    const touch = await outreachRepository.updateTouch(tenantId, touchId, {
+      deliveryStatus: "delivered",
+    })
+    await emitEvent({
+      tenantId,
+      kind: "touch.delivered",
+      entityType: "touch",
+      entityId: touch.id,
+      payload: {},
+      actor: actorFromCtx(ctx),
+    })
+    return touch
   },
-};
+
+  async markTouchBounced(
+    ctx: Context,
+    touchId: string,
+  ): Promise<TouchRecord> {
+    const tenantId = ensureTenant(ctx)
+    const touch = await outreachRepository.updateTouch(tenantId, touchId, {
+      deliveryStatus: "bounced",
+    })
+    // Also flip the parent contact's bounced flag
+    if (touch.contactId) {
+      await outreachRepository.markContactBounced(tenantId, touch.contactId)
+    }
+    await emitEvent({
+      tenantId,
+      kind: "touch.bounced",
+      entityType: "touch",
+      entityId: touch.id,
+      payload: { contactId: touch.contactId },
+      actor: actorFromCtx(ctx),
+    })
+    return touch
+  },
+
+  // -------------------------------------------------------------------
+  // REPLIES
+  // -------------------------------------------------------------------
+
+  async listReplies(
+    ctx: Context,
+    opts: {
+      needsReview?: boolean
+      handled?: boolean
+      contactId?: string
+      limit: number
+      cursor?: string
+    },
+  ) {
+    return outreachRepository.listReplies(ensureTenant(ctx), opts)
+  },
+
+  async listRepliesEnriched(
+    ctx: Context,
+    opts: {
+      needsReview?: boolean
+      handled?: boolean
+      contactId?: string
+      sinceDays?: number
+      limit: number
+      cursor?: string
+    },
+  ) {
+    return outreachRepository.listRepliesEnriched(ensureTenant(ctx), opts)
+  },
+
+  /**
+   * Record an inbound reply. If touchId provided, updates the parent touch's
+   * replyStatus + replyAt. Emits `reply.received`.
+   */
+  async recordReply(
+    ctx: Context,
+    input: RecordReplyInput,
+  ): Promise<ReplyRecord> {
+    const tenantId = ensureTenant(ctx)
+
+    const reply = await outreachRepository.insertReply(tenantId, {
+      contactId: input.contactId,
+      touchId: input.touchId ?? null,
+      receivedAt: input.receivedAt,
+      subject: input.subject ?? null,
+      body: input.body ?? null,
+      classifiedAs: input.classifiedAs ?? null,
+      classifiedBy: input.classifiedBy ?? null,
+      classificationConfidence: input.classificationConfidence ?? null,
+      rawEventId: input.rawEventId ?? null,
+    })
+
+    if (input.touchId) {
+      const replyStatus = mapClassifiedToReplyStatus(input.classifiedAs)
+      await outreachRepository.updateTouch(tenantId, input.touchId, {
+        replyStatus,
+        replyAt: reply.receivedAt,
+        replySummary: input.subject ?? null,
+      })
+    }
+
+    await emitEvent({
+      tenantId,
+      kind: "reply.received",
+      entityType: "reply",
+      entityId: reply.id,
+      payload: {
+        contactId: reply.contactId,
+        touchId: reply.touchId,
+        classifiedAs: reply.classifiedAs,
+      },
+      actor: actorFromCtx(ctx),
+    })
+
+    log.info({ tenantId, replyId: reply.id }, "Reply recorded")
+    return reply
+  },
+
+  /**
+   * Re-classify an existing reply (manual or AI). If confidence > 0.8 marks
+   * needsReview=false. Emits `reply.classified`.
+   */
+  async classifyReply(
+    ctx: Context,
+    replyId: string,
+    classifiedAs: string,
+    classifiedBy: OutreachClassifier,
+    confidence?: number,
+  ): Promise<ReplyRecord> {
+    const tenantId = ensureTenant(ctx)
+
+    const needsReview = (confidence ?? 0) <= 0.8
+    const patch: Partial<typeof import("@/shared/db/schemas/outreach.schema").replies.$inferInsert> =
+      {
+        classifiedAs,
+        classifiedBy,
+        classificationConfidence: confidence != null ? String(confidence) : null,
+        needsReview,
+      }
+    const reply = await outreachRepository.updateReply(tenantId, replyId, patch)
+
+    // Also propagate the new replyStatus to the parent touch (if any).
+    if (reply.touchId) {
+      await outreachRepository.updateTouch(tenantId, reply.touchId, {
+        replyStatus: mapClassifiedToReplyStatus(classifiedAs),
+      })
+    }
+
+    await emitEvent({
+      tenantId,
+      kind: "reply.classified",
+      entityType: "reply",
+      entityId: reply.id,
+      payload: { classifiedAs, classifiedBy, confidence: confidence ?? null },
+      actor: actorFromCtx(ctx),
+    })
+    return reply
+  },
+
+  // -------------------------------------------------------------------
+  // DNC
+  // -------------------------------------------------------------------
+
+  async listDnc(
+    ctx: Context,
+    opts: { search?: string; limit: number; cursor?: string },
+  ) {
+    return outreachRepository.listDnc(ensureTenant(ctx), opts)
+  },
+
+  async checkDnc(ctx: Context, email: string): Promise<{ doNotContact: boolean }> {
+    const dnc = await outreachRepository.isDoNotContact(
+      ensureTenant(ctx),
+      email,
+    )
+    return { doNotContact: dnc }
+  },
+
+  /**
+   * Add to DNC list AND flip any matching contacts.do_not_contact / companies.do_not_contact.
+   * Emits `dnc.added`.
+   */
+  async addToDnc(
+    ctx: Context,
+    input: AddDncInput & { addedBy?: string | null },
+  ): Promise<DncListRecord> {
+    const tenantId = ensureTenant(ctx)
+    if (!input.email && !input.domain) {
+      throw new BadRequestError("Either email or domain is required")
+    }
+
+    const email = input.email?.toLowerCase() ?? null
+    const domain = input.domain?.toLowerCase() ?? null
+
+    const row = await outreachRepository.insertDnc(tenantId, {
+      email,
+      domain,
+      reason: input.reason ?? null,
+      addedBy: input.addedBy ?? actorFromCtx(ctx),
+    })
+
+    // Flip contacts (by email if provided, otherwise by domain)
+    await outreachRepository.flipMatchingContactsDnc(tenantId, {
+      email,
+      domain,
+    })
+
+    if (domain) {
+      await outreachRepository.flipMatchingCompaniesDnc(
+        tenantId,
+        domain,
+        input.reason ?? null,
+      )
+    }
+
+    await emitEvent({
+      tenantId,
+      kind: "dnc.added",
+      entityType: "dnc",
+      entityId: row.id,
+      payload: { email, domain, reason: input.reason ?? null },
+      actor: actorFromCtx(ctx),
+    })
+
+    log.info({ tenantId, dncId: row.id, email, domain }, "DNC entry added")
+    return row
+  },
+
+  // -------------------------------------------------------------------
+  // BULK IMPORT
+  // -------------------------------------------------------------------
+
+  /**
+   * Bulk import leads: dedup by company.domain + contact.email. Returns counts.
+   * Emits `leads.imported` once at the end.
+   */
+  async bulkImportLeads(
+    ctx: Context,
+    rows: BulkImportLeadRow[],
+  ): Promise<BulkImportResult> {
+    const tenantId = ensureTenant(ctx)
+
+    let companiesCreated = 0
+    let contactsCreated = 0
+    let skipped = 0
+
+    // Build unique-domain → CompanyRecord cache (existing + new)
+    const domainCache = new Map<string, CompanyRecord>()
+    // Companies without a domain are always inserted (no dedup possible).
+
+    // ----- 1. Dedup + create companies -----
+    const seenDomains = new Set<string>()
+    const companiesToInsert: CreateCompanyInput[] = []
+    const noDomainRowIndices: number[] = [] // indices in `rows` needing a fresh company
+
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i]!
+      const domain = r.domain?.toLowerCase() ?? null
+      if (!domain) {
+        noDomainRowIndices.push(i)
+        continue
+      }
+      if (seenDomains.has(domain)) continue
+      seenDomains.add(domain)
+
+      const existing = await outreachRepository.findCompanyByDomain(
+        tenantId,
+        domain,
+      )
+      if (existing) {
+        domainCache.set(domain, existing)
+      } else {
+        companiesToInsert.push({
+          name: r.companyName,
+          domain,
+          industry: r.industry ?? null,
+          city: r.city ?? null,
+          country: r.country ?? null,
+          employeeBand: r.employeeBand ?? null,
+          ownerLed: r.ownerLed ?? false,
+          source: "cold",
+        })
+      }
+    }
+
+    if (companiesToInsert.length > 0) {
+      const inserted = await outreachRepository.bulkInsertCompanies(
+        tenantId,
+        companiesToInsert,
+      )
+      companiesCreated = inserted.length
+      for (const c of inserted) {
+        if (c.domain) domainCache.set(c.domain.toLowerCase(), c)
+      }
+    }
+
+    // ----- 2. Per-row: ensure company exists (handles no-domain case), then dedup contacts by email -----
+    const contactsToInsert: CreateContactInput[] = []
+
+    // Pre-fetch existing contacts for all candidate emails in one query
+    const candidateEmails = Array.from(
+      new Set(
+        rows
+          .map((r) => r.email?.toLowerCase())
+          .filter((e): e is string => Boolean(e)),
+      ),
+    )
+    const existingContacts = await outreachRepository.findContactsByEmails(
+      tenantId,
+      candidateEmails,
+    )
+    const existingEmailSet = new Set(
+      existingContacts.map((c) => c.email!.toLowerCase()),
+    )
+    const seenEmails = new Set<string>()
+
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i]!
+      const domain = r.domain?.toLowerCase() ?? null
+
+      // Resolve companyId
+      let companyId: string | undefined
+      if (domain) {
+        companyId = domainCache.get(domain)?.id
+      } else {
+        // No-domain row → create a fresh standalone company
+        const c = await outreachRepository.createCompany(tenantId, {
+          name: r.companyName,
+          city: r.city ?? null,
+          country: r.country ?? null,
+          industry: r.industry ?? null,
+          employeeBand: r.employeeBand ?? null,
+          ownerLed: r.ownerLed ?? false,
+          source: "cold",
+        })
+        companiesCreated++
+        companyId = c.id
+      }
+      if (!companyId) {
+        skipped++
+        continue
+      }
+
+      const email = r.email?.toLowerCase() ?? null
+      if (email) {
+        if (existingEmailSet.has(email) || seenEmails.has(email)) {
+          skipped++
+          continue
+        }
+        seenEmails.add(email)
+      }
+
+      contactsToInsert.push({
+        companyId,
+        fullName: r.contactName,
+        role: r.role ?? null,
+        email,
+        phone: r.phone ?? null,
+        linkedinUrl: r.linkedinUrl ?? null,
+        isOwner: r.isOwner ?? false,
+        isDecisionMaker: r.isDecisionMaker ?? false,
+      })
+    }
+
+    if (contactsToInsert.length > 0) {
+      const inserted = await outreachRepository.bulkInsertContacts(
+        tenantId,
+        contactsToInsert,
+      )
+      contactsCreated = inserted.length
+    }
+
+    const result: BulkImportResult = {
+      companiesCreated,
+      contactsCreated,
+      skipped,
+    }
+
+    await emitEvent({
+      tenantId,
+      kind: "leads.imported",
+      entityType: "import",
+      // We use the tenantId as a placeholder entityId for the batch.
+      entityId: tenantId,
+      payload: { ...result, totalRows: rows.length },
+      actor: actorFromCtx(ctx),
+    })
+
+    log.info({ tenantId, ...result }, "Bulk lead import complete")
+    return result
+  },
+}
+
+// ---------------------------------------------------------------------------
+// helpers
+// ---------------------------------------------------------------------------
+
+function mapClassifiedToReplyStatus(
+  classifiedAs?: string | null,
+): TouchRecord["replyStatus"] {
+  if (!classifiedAs) return "none"
+  const c = classifiedAs.toLowerCase()
+  if (c === "positive" || c.includes("interested") || c.includes("yes"))
+    return "positive"
+  if (c === "negative" || c.includes("not_interested") || c === "no")
+    return "negative"
+  if (c === "ooo" || c.includes("out_of_office")) return "ooo"
+  if (c === "converter" || c.includes("convert")) return "converter"
+  if (c === "wrong_person") return "wrong_person"
+  if (c === "auto_reply" || c.includes("auto")) return "auto_reply"
+  return "none"
+}

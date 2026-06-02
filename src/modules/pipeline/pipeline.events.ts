@@ -1,42 +1,49 @@
+/**
+ * Pipeline module — Inngest subscribers.
+ *
+ * Note: this module emits via `emitEvent` (events outbox table) for the
+ * cross-module event framework. These Inngest functions provide additional
+ * side-effect handlers (logging, fan-out) that can subscribe to the same
+ * `pipeline/...` Inngest stream if/when emitters bridge to Inngest.
+ */
+
 import { inngest } from "@/shared/inngest"
 import { logger } from "@/shared/logger"
 
 const log = logger.child({ module: "pipeline.events" })
 
-const onMemberAdded = inngest.createFunction(
-  { id: "pipeline-member-added", retries: 3 },
-  { event: "pipeline/member.added" },
+const onDealCreated = inngest.createFunction(
+  { id: "pipeline-deal-created", retries: 3 },
+  { event: "pipeline/deal.created" },
   async ({ event }) => {
-    const { memberId, pipelineId, customerId, tenantId } = event.data
-    log.info({ memberId, pipelineId, customerId, tenantId }, "Pipeline member added")
-  }
+    const { dealId, tenantId, companyId, stage } = event.data
+    log.info({ dealId, tenantId, companyId, stage }, "Deal created")
+  },
 )
 
-const onMemberMoved = inngest.createFunction(
-  { id: "pipeline-member-moved", retries: 3 },
-  { event: "pipeline/member.moved" },
+const onDealStageChanged = inngest.createFunction(
+  { id: "pipeline-deal-stage-changed", retries: 3 },
+  { event: "pipeline/deal.stage_changed" },
   async ({ event }) => {
-    const { memberId, pipelineId, fromStageId, toStageId, tenantId } = event.data
-    log.info({ memberId, pipelineId, fromStageId, toStageId, tenantId }, "Pipeline member moved")
-  }
+    const { dealId, from, to, tenantId } = event.data
+    log.info({ dealId, from, to, tenantId }, "Deal stage changed")
+  },
 )
 
-const onMemberRemoved = inngest.createFunction(
-  { id: "pipeline-member-removed", retries: 3 },
-  { event: "pipeline/member.removed" },
+const onDealWon = inngest.createFunction(
+  { id: "pipeline-deal-won", retries: 3 },
+  { event: "pipeline/deal.won" },
   async ({ event }) => {
-    const { memberId, pipelineId, customerId, tenantId } = event.data
-    log.info({ memberId, pipelineId, customerId, tenantId }, "Pipeline member removed")
-  }
+    const { dealId, tenantId, companyId } = event.data
+    log.info(
+      { dealId, tenantId, companyId },
+      "Deal won — downstream should trigger client onboarding",
+    )
+  },
 )
 
-const onMemberClosed = inngest.createFunction(
-  { id: "pipeline-member-closed", retries: 3 },
-  { event: "pipeline/member.closed" },
-  async ({ event }) => {
-    const { memberId, pipelineId, customerId, stageType, dealValue, tenantId } = event.data
-    log.info({ memberId, pipelineId, customerId, stageType, dealValue, tenantId }, "Pipeline member closed")
-  }
-)
-
-export const pipelineFunctions = [onMemberAdded, onMemberMoved, onMemberRemoved, onMemberClosed]
+export const pipelineFunctions = [
+  onDealCreated,
+  onDealStageChanged,
+  onDealWon,
+]

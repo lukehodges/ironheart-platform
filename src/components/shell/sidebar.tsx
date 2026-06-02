@@ -113,6 +113,13 @@ const PLATFORM_SECTIONS: NavSectionDef[] = [
     ],
   },
   {
+    title: "Outreach",
+    items: [
+      { id: "outreach", label: "Outreach", icon: "mail", href: "/platform/outreach" },
+      { id: "outreach-inbox", label: "Inbox", icon: "chat", href: "/platform/outreach/inbox" },
+    ],
+  },
+  {
     title: "Catalog",
     items: [
       { id: "products", label: "Products", icon: "grid", href: "/platform/products" },

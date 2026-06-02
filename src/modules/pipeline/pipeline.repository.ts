@@ -1,763 +1,260 @@
-import { db } from "@/shared/db";
-import { logger } from "@/shared/logger";
-import { NotFoundError } from "@/shared/errors";
+import { db } from "@/shared/db"
+import { logger } from "@/shared/logger"
+import { NotFoundError } from "@/shared/errors"
+import { deals, dealEvents } from "@/shared/db/schemas/pipeline.schema"
 import {
-  pipelines,
-  pipelineStages,
-  pipelineMembers,
-  pipelineStageHistory,
-  customers,
-} from "@/shared/db/schema";
-import {
-  eq,
   and,
-  desc,
   asc,
+  desc,
+  eq,
+  ilike,
+  inArray,
   sql,
-  count,
-  sum,
-} from "drizzle-orm";
+} from "drizzle-orm"
 import type {
-  PipelineRecord,
-  PipelineStageRecord,
-  PipelineMemberRecord,
-  PipelineMemberWithCustomer,
-  PipelineWithStages,
-  PipelineStageHistoryRecord,
-  PipelineStageSummary,
-} from "./pipeline.types";
+  CreateDealInput,
+  DealRecord,
+  DealEventRecord,
+  DealEventKind,
+  DealStage,
+  ListDealsFilters,
+  StageCounts,
+  UpdateDealInput,
+} from "./pipeline.types"
+import { toDealRecord, toDealEventRecord } from "./pipeline.types"
 
-const log = logger.child({ module: "pipeline.repository" });
-
-// ---------------------------------------------------------------------------
-// Row types
-// ---------------------------------------------------------------------------
-
-type PipelineRow = typeof pipelines.$inferSelect;
-type PipelineStageRow = typeof pipelineStages.$inferSelect;
-type PipelineMemberRow = typeof pipelineMembers.$inferSelect;
-type PipelineStageHistoryRow = typeof pipelineStageHistory.$inferSelect;
+const log = logger.child({ module: "pipeline.repository" })
 
 // ---------------------------------------------------------------------------
-// Row mappers
+// Drizzle insert helpers
 // ---------------------------------------------------------------------------
 
-function toPipelineRecord(row: PipelineRow): PipelineRecord {
-  return {
-    id: row.id,
-    tenantId: row.tenantId,
-    name: row.name,
-    description: row.description ?? null,
-    isDefault: row.isDefault,
-    isArchived: row.isArchived,
-    createdAt: row.createdAt,
-    updatedAt: row.updatedAt,
-  };
+type DealInsert = typeof deals.$inferInsert
+type DealEventInsert = typeof dealEvents.$inferInsert
+
+function numericOrNull(v: number | null | undefined): string | null {
+  return v == null ? null : String(v)
 }
 
-function toStageRecord(row: PipelineStageRow): PipelineStageRecord {
-  return {
-    id: row.id,
-    tenantId: row.tenantId,
-    pipelineId: row.pipelineId,
-    name: row.name,
-    slug: row.slug,
-    position: row.position,
-    color: row.color ?? null,
-    type: row.type,
-    allowedTransitions: row.allowedTransitions ?? [],
-    createdAt: row.createdAt,
-    updatedAt: row.updatedAt,
-  };
-}
-
-function toMemberRecord(row: PipelineMemberRow): PipelineMemberRecord {
-  return {
-    id: row.id,
-    tenantId: row.tenantId,
-    pipelineId: row.pipelineId,
-    customerId: row.customerId,
-    stageId: row.stageId,
-    dealValue: row.dealValue != null ? Number(row.dealValue) : null,
-    lostReason: row.lostReason ?? null,
-    enteredStageAt: row.enteredStageAt,
-    addedAt: row.addedAt,
-    closedAt: row.closedAt ?? null,
-    metadata: (row.metadata as Record<string, unknown>) ?? {},
-    createdAt: row.createdAt,
-    updatedAt: row.updatedAt,
-  };
-}
-
-function toHistoryRecord(row: PipelineStageHistoryRow): PipelineStageHistoryRecord {
-  return {
-    id: row.id,
-    tenantId: row.tenantId,
-    memberId: row.memberId,
-    fromStageId: row.fromStageId ?? null,
-    toStageId: row.toStageId,
-    changedAt: row.changedAt,
-    changedById: row.changedById ?? null,
-    dealValue: row.dealValue != null ? Number(row.dealValue) : null,
-    lostReason: row.lostReason ?? null,
-    notes: row.notes ?? null,
-  };
-}
-
-// ===============================================================
+// ===========================================================================
 // PIPELINE REPOSITORY
-// ===============================================================
+// ===========================================================================
 
 export const pipelineRepository = {
-  // -------------------------------------------------------------------
-  // PIPELINE CRUD
-  // -------------------------------------------------------------------
+  // ---- READ: Deals ----
 
-  async list(tenantId: string): Promise<PipelineRecord[]> {
+  async getDealById(
+    tenantId: string,
+    dealId: string,
+  ): Promise<DealRecord | null> {
     const rows = await db
       .select()
-      .from(pipelines)
-      .where(eq(pipelines.tenantId, tenantId))
-      .orderBy(desc(pipelines.isDefault), asc(pipelines.name));
-
-    return rows.map(toPipelineRecord);
+      .from(deals)
+      .where(and(eq(deals.id, dealId), eq(deals.tenantId, tenantId)))
+      .limit(1)
+    return rows[0] ? toDealRecord(rows[0]) : null
   },
 
-  async findById(tenantId: string, pipelineId: string): Promise<PipelineWithStages> {
-    const [row] = await db
-      .select()
-      .from(pipelines)
-      .where(
-        and(
-          eq(pipelines.id, pipelineId),
-          eq(pipelines.tenantId, tenantId),
-        ),
-      )
-      .limit(1);
-
-    if (!row) throw new NotFoundError("Pipeline", pipelineId);
-
-    const stageRows = await db
-      .select()
-      .from(pipelineStages)
-      .where(
-        and(
-          eq(pipelineStages.pipelineId, pipelineId),
-          eq(pipelineStages.tenantId, tenantId),
-        ),
-      )
-      .orderBy(asc(pipelineStages.position));
-
-    return {
-      ...toPipelineRecord(row),
-      stages: stageRows.map(toStageRecord),
-    };
-  },
-
-  async findDefault(tenantId: string): Promise<PipelineWithStages | null> {
-    const [row] = await db
-      .select()
-      .from(pipelines)
-      .where(
-        and(
-          eq(pipelines.tenantId, tenantId),
-          eq(pipelines.isDefault, true),
-        ),
-      )
-      .limit(1);
-
-    if (!row) return null;
-
-    const stageRows = await db
-      .select()
-      .from(pipelineStages)
-      .where(
-        and(
-          eq(pipelineStages.pipelineId, row.id),
-          eq(pipelineStages.tenantId, tenantId),
-        ),
-      )
-      .orderBy(asc(pipelineStages.position));
-
-    return {
-      ...toPipelineRecord(row),
-      stages: stageRows.map(toStageRecord),
-    };
-  },
-
-  async create(
+  async listDeals(
     tenantId: string,
-    input: {
-      name: string;
-      description?: string | null;
-      isDefault?: boolean;
-      stages?: Array<{
-        name: string;
-        slug: string;
-        position: number;
-        color?: string | null;
-        type?: "OPEN" | "WON" | "LOST";
-        allowedTransitions?: string[];
-      }>;
-    },
-  ): Promise<PipelineWithStages> {
-    const now = new Date();
+    filters: ListDealsFilters = {},
+  ): Promise<DealRecord[]> {
+    const conditions = [eq(deals.tenantId, tenantId)]
 
-    return db.transaction(async (tx) => {
-      // If marking as default, unset other defaults first
-      if (input.isDefault) {
-        await tx
-          .update(pipelines)
-          .set({ isDefault: false, updatedAt: now })
-          .where(
-            and(
-              eq(pipelines.tenantId, tenantId),
-              eq(pipelines.isDefault, true),
-            ),
-          );
-      }
-
-      const [pipelineRow] = await tx
-        .insert(pipelines)
-        .values({
-          tenantId,
-          name: input.name,
-          description: input.description ?? null,
-          isDefault: input.isDefault ?? false,
-          isArchived: false,
-          createdAt: now,
-          updatedAt: now,
-        })
-        .returning();
-
-      const pipelineId = pipelineRow!.id;
-
-      let stageRows: PipelineStageRow[] = [];
-      if (input.stages && input.stages.length > 0) {
-        stageRows = await tx
-          .insert(pipelineStages)
-          .values(
-            input.stages.map((s) => ({
-              tenantId,
-              pipelineId,
-              name: s.name,
-              slug: s.slug,
-              position: s.position,
-              color: s.color ?? null,
-              type: s.type ?? ("OPEN" as const),
-              allowedTransitions: s.allowedTransitions ?? [],
-              createdAt: now,
-              updatedAt: now,
-            })),
-          )
-          .returning();
-      }
-
-      log.info({ tenantId, pipelineId, stageCount: stageRows.length }, "Pipeline created");
-
-      return {
-        ...toPipelineRecord(pipelineRow!),
-        stages: stageRows.map(toStageRecord).sort((a, b) => a.position - b.position),
-      };
-    });
-  },
-
-  async update(
-    tenantId: string,
-    pipelineId: string,
-    input: Partial<{
-      name: string;
-      description: string | null;
-      isDefault: boolean;
-    }>,
-  ): Promise<PipelineRecord> {
-    const now = new Date();
-
-    return db.transaction(async (tx) => {
-      // If marking as default, unset other defaults first
-      if (input.isDefault) {
-        await tx
-          .update(pipelines)
-          .set({ isDefault: false, updatedAt: now })
-          .where(
-            and(
-              eq(pipelines.tenantId, tenantId),
-              eq(pipelines.isDefault, true),
-            ),
-          );
-      }
-
-      const updateData: Record<string, unknown> = { updatedAt: now };
-      if (input.name !== undefined) updateData.name = input.name;
-      if (input.description !== undefined) updateData.description = input.description;
-      if (input.isDefault !== undefined) updateData.isDefault = input.isDefault;
-
-      const [updated] = await tx
-        .update(pipelines)
-        .set(updateData as Partial<typeof pipelines.$inferInsert>)
-        .where(
-          and(
-            eq(pipelines.id, pipelineId),
-            eq(pipelines.tenantId, tenantId),
-          ),
-        )
-        .returning();
-
-      if (!updated) throw new NotFoundError("Pipeline", pipelineId);
-
-      log.info({ tenantId, pipelineId }, "Pipeline updated");
-      return toPipelineRecord(updated);
-    });
-  },
-
-  async archive(tenantId: string, pipelineId: string): Promise<void> {
-    const [updated] = await db
-      .update(pipelines)
-      .set({ isArchived: true, updatedAt: new Date() })
-      .where(
-        and(
-          eq(pipelines.id, pipelineId),
-          eq(pipelines.tenantId, tenantId),
-        ),
-      )
-      .returning();
-
-    if (!updated) throw new NotFoundError("Pipeline", pipelineId);
-    log.info({ tenantId, pipelineId }, "Pipeline archived");
-  },
-
-  // -------------------------------------------------------------------
-  // STAGE CONFIGURATION
-  // -------------------------------------------------------------------
-
-  async findStageById(tenantId: string, stageId: string): Promise<PipelineStageRecord> {
-    const [row] = await db
-      .select()
-      .from(pipelineStages)
-      .where(
-        and(
-          eq(pipelineStages.id, stageId),
-          eq(pipelineStages.tenantId, tenantId),
-        ),
-      )
-      .limit(1);
-
-    if (!row) throw new NotFoundError("PipelineStage", stageId);
-    return toStageRecord(row);
-  },
-
-  async addStage(
-    tenantId: string,
-    input: {
-      pipelineId: string;
-      name: string;
-      slug: string;
-      position: number;
-      color?: string | null;
-      type?: "OPEN" | "WON" | "LOST";
-      allowedTransitions?: string[];
-    },
-  ): Promise<PipelineStageRecord> {
-    const now = new Date();
-
-    const [row] = await db
-      .insert(pipelineStages)
-      .values({
-        tenantId,
-        pipelineId: input.pipelineId,
-        name: input.name,
-        slug: input.slug,
-        position: input.position,
-        color: input.color ?? null,
-        type: input.type ?? "OPEN",
-        allowedTransitions: input.allowedTransitions ?? [],
-        createdAt: now,
-        updatedAt: now,
-      })
-      .returning();
-
-    log.info({ tenantId, stageId: row!.id, pipelineId: input.pipelineId }, "Pipeline stage added");
-    return toStageRecord(row!);
-  },
-
-  async updateStage(
-    tenantId: string,
-    stageId: string,
-    input: Partial<{
-      name: string;
-      color: string | null;
-      type: "OPEN" | "WON" | "LOST";
-      allowedTransitions: string[];
-    }>,
-  ): Promise<PipelineStageRecord> {
-    const updateData: Record<string, unknown> = { updatedAt: new Date() };
-    if (input.name !== undefined) updateData.name = input.name;
-    if (input.color !== undefined) updateData.color = input.color;
-    if (input.type !== undefined) updateData.type = input.type;
-    if (input.allowedTransitions !== undefined) updateData.allowedTransitions = input.allowedTransitions;
-
-    const [updated] = await db
-      .update(pipelineStages)
-      .set(updateData as Partial<typeof pipelineStages.$inferInsert>)
-      .where(
-        and(
-          eq(pipelineStages.id, stageId),
-          eq(pipelineStages.tenantId, tenantId),
-        ),
-      )
-      .returning();
-
-    if (!updated) throw new NotFoundError("PipelineStage", stageId);
-    log.info({ tenantId, stageId }, "Pipeline stage updated");
-    return toStageRecord(updated);
-  },
-
-  async removeStage(
-    tenantId: string,
-    stageId: string,
-    reassignToStageId: string,
-  ): Promise<void> {
-    await db.transaction(async (tx) => {
-      // Reassign members from the removed stage to the target stage
-      await tx
-        .update(pipelineMembers)
-        .set({
-          stageId: reassignToStageId,
-          enteredStageAt: new Date(),
-          updatedAt: new Date(),
-        })
-        .where(
-          and(
-            eq(pipelineMembers.stageId, stageId),
-            eq(pipelineMembers.tenantId, tenantId),
-          ),
-        );
-
-      // Strip the removed stage from sibling allowedTransitions arrays
-      // Find all stages in the same pipeline that reference this stageId
-      const siblingStages = await tx
-        .select()
-        .from(pipelineStages)
-        .where(eq(pipelineStages.tenantId, tenantId));
-
-      for (const sibling of siblingStages) {
-        if (sibling.allowedTransitions && sibling.allowedTransitions.includes(stageId)) {
-          const filtered = sibling.allowedTransitions.filter((id) => id !== stageId);
-          await tx
-            .update(pipelineStages)
-            .set({ allowedTransitions: filtered, updatedAt: new Date() })
-            .where(eq(pipelineStages.id, sibling.id));
-        }
-      }
-
-      // Delete the stage
-      await tx
-        .delete(pipelineStages)
-        .where(
-          and(
-            eq(pipelineStages.id, stageId),
-            eq(pipelineStages.tenantId, tenantId),
-          ),
-        );
-
-      log.info({ tenantId, stageId, reassignToStageId }, "Pipeline stage removed");
-    });
-  },
-
-  async reorderStages(
-    tenantId: string,
-    pipelineId: string,
-    stageIds: string[],
-  ): Promise<void> {
-    const now = new Date();
-
-    await db.transaction(async (tx) => {
-      for (let i = 0; i < stageIds.length; i++) {
-        await tx
-          .update(pipelineStages)
-          .set({ position: i, updatedAt: now })
-          .where(
-            and(
-              eq(pipelineStages.id, stageIds[i]!),
-              eq(pipelineStages.pipelineId, pipelineId),
-              eq(pipelineStages.tenantId, tenantId),
-            ),
-          );
-      }
-
-      log.info({ tenantId, pipelineId, stageCount: stageIds.length }, "Pipeline stages reordered");
-    });
-  },
-
-  // -------------------------------------------------------------------
-  // MEMBER OPERATIONS
-  // -------------------------------------------------------------------
-
-  async findMemberById(tenantId: string, memberId: string): Promise<PipelineMemberRecord> {
-    const [row] = await db
-      .select()
-      .from(pipelineMembers)
-      .where(
-        and(
-          eq(pipelineMembers.id, memberId),
-          eq(pipelineMembers.tenantId, tenantId),
-        ),
-      )
-      .limit(1);
-
-    if (!row) throw new NotFoundError("PipelineMember", memberId);
-    return toMemberRecord(row);
-  },
-
-  async addMember(
-    tenantId: string,
-    input: {
-      pipelineId: string;
-      customerId: string;
-      stageId: string;
-      dealValue?: number | null;
-      metadata?: Record<string, unknown>;
-    },
-  ): Promise<PipelineMemberRecord> {
-    const now = new Date();
-
-    const [row] = await db
-      .insert(pipelineMembers)
-      .values({
-        tenantId,
-        pipelineId: input.pipelineId,
-        customerId: input.customerId,
-        stageId: input.stageId,
-        dealValue: input.dealValue != null ? input.dealValue.toString() : null,
-        metadata: input.metadata ?? {},
-        enteredStageAt: now,
-        addedAt: now,
-        createdAt: now,
-        updatedAt: now,
-      })
-      .returning();
-
-    log.info({ tenantId, memberId: row!.id, pipelineId: input.pipelineId }, "Pipeline member added");
-    return toMemberRecord(row!);
-  },
-
-  async updateMemberStage(
-    tenantId: string,
-    memberId: string,
-    input: {
-      stageId: string;
-      enteredStageAt?: Date;
-      dealValue?: number | null;
-      lostReason?: string | null;
-      closedAt?: Date | null;
-    },
-  ): Promise<PipelineMemberRecord> {
-    const updateData: Record<string, unknown> = {
-      stageId: input.stageId,
-      enteredStageAt: input.enteredStageAt ?? new Date(),
-      updatedAt: new Date(),
-    };
-
-    if (input.dealValue !== undefined) {
-      updateData.dealValue = input.dealValue != null ? input.dealValue.toString() : null;
+    if (filters.stage) {
+      conditions.push(eq(deals.stage, filters.stage))
     }
-    if (input.lostReason !== undefined) updateData.lostReason = input.lostReason;
-    if (input.closedAt !== undefined) updateData.closedAt = input.closedAt;
-
-    const [updated] = await db
-      .update(pipelineMembers)
-      .set(updateData as Partial<typeof pipelineMembers.$inferInsert>)
-      .where(
-        and(
-          eq(pipelineMembers.id, memberId),
-          eq(pipelineMembers.tenantId, tenantId),
-        ),
-      )
-      .returning();
-
-    if (!updated) throw new NotFoundError("PipelineMember", memberId);
-    log.info({ tenantId, memberId, stageId: input.stageId }, "Pipeline member stage updated");
-    return toMemberRecord(updated);
-  },
-
-  async removeMember(tenantId: string, memberId: string): Promise<void> {
-    const result = await db
-      .delete(pipelineMembers)
-      .where(
-        and(
-          eq(pipelineMembers.id, memberId),
-          eq(pipelineMembers.tenantId, tenantId),
-        ),
-      )
-      .returning();
-
-    if (result.length === 0) throw new NotFoundError("PipelineMember", memberId);
-    log.info({ tenantId, memberId }, "Pipeline member removed");
-  },
-
-  async updateMember(
-    tenantId: string,
-    memberId: string,
-    input: Partial<{
-      dealValue: number | null;
-      metadata: Record<string, unknown>;
-    }>,
-  ): Promise<PipelineMemberRecord> {
-    const updateData: Record<string, unknown> = { updatedAt: new Date() };
-
-    if (input.dealValue !== undefined) {
-      updateData.dealValue = input.dealValue != null ? input.dealValue.toString() : null;
+    if (filters.ownerId) {
+      conditions.push(eq(deals.ownerUserId, filters.ownerId))
     }
-    if (input.metadata !== undefined) updateData.metadata = input.metadata;
+    if (filters.productLine) {
+      conditions.push(eq(deals.product, filters.productLine))
+    }
+    if (filters.search) {
+      conditions.push(ilike(deals.name, `%${filters.search}%`))
+    }
 
-    const [updated] = await db
-      .update(pipelineMembers)
-      .set(updateData as Partial<typeof pipelineMembers.$inferInsert>)
-      .where(
-        and(
-          eq(pipelineMembers.id, memberId),
-          eq(pipelineMembers.tenantId, tenantId),
-        ),
-      )
-      .returning();
+    const rows = await db
+      .select()
+      .from(deals)
+      .where(and(...conditions))
+      .orderBy(desc(deals.updatedAt))
 
-    if (!updated) throw new NotFoundError("PipelineMember", memberId);
-    log.info({ tenantId, memberId }, "Pipeline member updated");
-    return toMemberRecord(updated);
+    return rows.map(toDealRecord)
   },
 
-  async listMembers(
+  async getDealsByOriginTouch(touchId: string): Promise<DealRecord[]> {
+    const rows = await db
+      .select()
+      .from(deals)
+      .where(eq(deals.originTouchId, touchId))
+      .orderBy(desc(deals.createdAt))
+    return rows.map(toDealRecord)
+  },
+
+  async findDealByCompany(
     tenantId: string,
-    pipelineId: string,
-  ): Promise<PipelineMemberWithCustomer[]> {
+    companyId: string,
+  ): Promise<DealRecord | null> {
+    const rows = await db
+      .select()
+      .from(deals)
+      .where(and(eq(deals.tenantId, tenantId), eq(deals.companyId, companyId)))
+      .orderBy(desc(deals.createdAt))
+      .limit(1)
+    return rows[0] ? toDealRecord(rows[0]) : null
+  },
+
+  // ---- READ: Aggregations ----
+
+  async getStageCounts(tenantId: string): Promise<StageCounts> {
     const rows = await db
       .select({
-        member: pipelineMembers,
-        customerFirstName: customers.firstName,
-        customerLastName: customers.lastName,
-        customerEmail: customers.email,
-        customerTags: customers.tags,
+        stage: deals.stage,
+        count: sql<number>`count(*)::int`,
       })
-      .from(pipelineMembers)
-      .innerJoin(customers, eq(pipelineMembers.customerId, customers.id))
-      .where(
-        and(
-          eq(pipelineMembers.pipelineId, pipelineId),
-          eq(pipelineMembers.tenantId, tenantId),
-        ),
-      )
-      .orderBy(asc(pipelineMembers.enteredStageAt));
+      .from(deals)
+      .where(eq(deals.tenantId, tenantId))
+      .groupBy(deals.stage)
 
-    return rows.map((r) => ({
-      ...toMemberRecord(r.member),
-      customerName: `${r.customerFirstName} ${r.customerLastName}`.trim(),
-      customerEmail: r.customerEmail ?? null,
-      customerTags: r.customerTags ?? [],
-    }));
+    const out: StageCounts = {
+      qualified: 0,
+      demo: 0,
+      proposal: 0,
+      won: 0,
+      lost: 0,
+      dormant: 0,
+    }
+    for (const row of rows) {
+      out[row.stage as DealStage] = Number(row.count)
+    }
+    return out
   },
 
-  async getSummary(
-    tenantId: string,
-    pipelineId: string,
-  ): Promise<PipelineStageSummary[]> {
-    const rows = await db
-      .select({
-        stageId: pipelineMembers.stageId,
-        count: count(),
-        totalDealValue: sum(pipelineMembers.dealValue),
-      })
-      .from(pipelineMembers)
-      .where(
-        and(
-          eq(pipelineMembers.pipelineId, pipelineId),
-          eq(pipelineMembers.tenantId, tenantId),
-        ),
-      )
-      .groupBy(pipelineMembers.stageId);
-
-    return rows.map((r) => ({
-      stageId: r.stageId,
-      count: Number(r.count),
-      totalDealValue: r.totalDealValue != null ? Number(r.totalDealValue) : 0,
-    }));
-  },
-
-  async countActiveMembers(
-    tenantId: string,
-    pipelineId: string,
-  ): Promise<number> {
-    const [result] = await db
-      .select({ count: count() })
-      .from(pipelineMembers)
-      .innerJoin(
-        pipelineStages,
-        eq(pipelineMembers.stageId, pipelineStages.id),
-      )
-      .where(
-        and(
-          eq(pipelineMembers.pipelineId, pipelineId),
-          eq(pipelineMembers.tenantId, tenantId),
-          eq(pipelineStages.type, "OPEN"),
-        ),
-      );
-
-    return Number(result?.count ?? 0);
-  },
-
-  // -------------------------------------------------------------------
-  // HISTORY
-  // -------------------------------------------------------------------
-
-  async createHistoryEntry(
-    tenantId: string,
-    input: {
-      memberId: string;
-      fromStageId: string | null;
-      toStageId: string;
-      changedById?: string | null;
-      dealValue?: number | null;
-      lostReason?: string | null;
-      notes?: string | null;
-    },
-  ): Promise<PipelineStageHistoryRecord> {
+  /**
+   * Weighted forecast: SUM(value_estimate * probability/100) over open deals.
+   * Open deals = stage not in (won, lost, dormant).
+   */
+  async getWeightedValue(tenantId: string): Promise<number> {
     const [row] = await db
-      .insert(pipelineStageHistory)
-      .values({
-        tenantId,
-        memberId: input.memberId,
-        fromStageId: input.fromStageId ?? null,
-        toStageId: input.toStageId,
-        changedAt: new Date(),
-        changedById: input.changedById ?? null,
-        dealValue: input.dealValue != null ? input.dealValue.toString() : null,
-        lostReason: input.lostReason ?? null,
-        notes: input.notes ?? null,
+      .select({
+        total: sql<string | null>`COALESCE(SUM(${deals.valueEstimate} * COALESCE(${deals.probability}, 0) / 100.0), 0)`,
       })
-      .returning();
-
-    log.info(
-      { tenantId, memberId: input.memberId, fromStageId: input.fromStageId, toStageId: input.toStageId },
-      "Pipeline stage history entry created",
-    );
-
-    return toHistoryRecord(row!);
+      .from(deals)
+      .where(
+        and(
+          eq(deals.tenantId, tenantId),
+          inArray(deals.stage, ["qualified", "demo", "proposal"] as DealStage[]),
+        ),
+      )
+    return row?.total != null ? Number(row.total) : 0
   },
 
-  async getMemberHistory(
+  // ---- WRITE: Deals ----
+
+  async createDeal(
     tenantId: string,
-    memberId: string,
-  ): Promise<PipelineStageHistoryRecord[]> {
+    input: CreateDealInput,
+  ): Promise<DealRecord> {
+    const values: DealInsert = {
+      tenantId,
+      companyId: input.companyId,
+      primaryContactId: input.primaryContactId ?? null,
+      originTouchId: input.originTouchId ?? null,
+      name: input.name,
+      stage: input.stage ?? "qualified",
+      product: input.product ?? "other",
+      valueEstimate: numericOrNull(input.valueEstimate ?? null),
+      probability: input.probability ?? null,
+      expectedClose: input.expectedClose ?? null,
+      ownerUserId: input.ownerUserId ?? null,
+      notes: input.notes ?? null,
+    }
+
+    const [row] = await db.insert(deals).values(values).returning()
+    if (!row) throw new Error("createDeal: insert returned no row")
+    log.info({ tenantId, dealId: row.id }, "Deal created")
+    return toDealRecord(row)
+  },
+
+  async updateDeal(
+    tenantId: string,
+    dealId: string,
+    patch: UpdateDealInput & {
+      stage?: DealStage
+      closedAt?: Date | null
+    },
+  ): Promise<DealRecord> {
+    const updateData: Partial<DealInsert> = { updatedAt: new Date() }
+
+    if (patch.name !== undefined) updateData.name = patch.name
+    if (patch.product !== undefined) updateData.product = patch.product
+    if (patch.valueEstimate !== undefined)
+      updateData.valueEstimate = numericOrNull(patch.valueEstimate)
+    if (patch.probability !== undefined)
+      updateData.probability = patch.probability
+    if (patch.expectedClose !== undefined)
+      updateData.expectedClose = patch.expectedClose
+    if (patch.ownerUserId !== undefined)
+      updateData.ownerUserId = patch.ownerUserId
+    if (patch.notes !== undefined) updateData.notes = patch.notes
+    if (patch.closeReason !== undefined)
+      updateData.closeReason = patch.closeReason
+    if (patch.stage !== undefined) updateData.stage = patch.stage
+    if (patch.closedAt !== undefined) updateData.closedAt = patch.closedAt
+
+    const [updated] = await db
+      .update(deals)
+      .set(updateData)
+      .where(and(eq(deals.id, dealId), eq(deals.tenantId, tenantId)))
+      .returning()
+
+    if (!updated) throw new NotFoundError("Deal", dealId)
+    log.info({ tenantId, dealId }, "Deal updated")
+    return toDealRecord(updated)
+  },
+
+  async deleteDeal(tenantId: string, dealId: string): Promise<void> {
+    await db
+      .delete(deals)
+      .where(and(eq(deals.id, dealId), eq(deals.tenantId, tenantId)))
+    log.info({ tenantId, dealId }, "Deal deleted")
+  },
+
+  // ---- READ / WRITE: Deal events ----
+
+  async listDealEvents(
+    tenantId: string,
+    dealId: string,
+  ): Promise<DealEventRecord[]> {
     const rows = await db
       .select()
-      .from(pipelineStageHistory)
+      .from(dealEvents)
       .where(
-        and(
-          eq(pipelineStageHistory.tenantId, tenantId),
-          eq(pipelineStageHistory.memberId, memberId),
-        ),
+        and(eq(dealEvents.tenantId, tenantId), eq(dealEvents.dealId, dealId)),
       )
-      .orderBy(desc(pipelineStageHistory.changedAt));
-
-    return rows.map(toHistoryRecord);
+      .orderBy(asc(dealEvents.at))
+    return rows.map(toDealEventRecord)
   },
-};
+
+  async createDealEvent(
+    tenantId: string,
+    input: {
+      dealId: string
+      kind: DealEventKind
+      payload?: Record<string, unknown>
+      actor?: string | null
+    },
+  ): Promise<DealEventRecord> {
+    const values: DealEventInsert = {
+      tenantId,
+      dealId: input.dealId,
+      kind: input.kind,
+      payload: input.payload ?? {},
+      actor: input.actor ?? null,
+    }
+    const [row] = await db.insert(dealEvents).values(values).returning()
+    if (!row) throw new Error("createDealEvent: insert returned no row")
+    return toDealEventRecord(row)
+  },
+}

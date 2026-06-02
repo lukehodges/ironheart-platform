@@ -29,6 +29,13 @@
       "when": 1779560739672,
       "tag": "0003_workos_org_id",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1780247483749,
+      "tag": "0004_event-framework",
+      "breakpoints": true
     }
   ]
 }

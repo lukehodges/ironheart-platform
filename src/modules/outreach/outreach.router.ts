@@ -1,204 +1,161 @@
-import { router, tenantProcedure, permissionProcedure, createModuleMiddleware } from "@/shared/trpc"
+import { z } from "zod"
+import {
+  router,
+  tenantProcedure,
+  permissionProcedure,
+  createModuleMiddleware,
+} from "@/shared/trpc"
 import { outreachService } from "./outreach.service"
 import {
-  createSequenceSchema,
-  updateSequenceSchema,
-  getSequenceByIdSchema,
-  archiveSequenceSchema,
-  enrollContactSchema,
+  // companies
+  listCompaniesSchema,
+  createCompanySchema,
+  updateCompanySchema,
+  // contacts
   listContactsSchema,
-  getContactByIdSchema,
-  getBodySchema,
-  logActivitySchema,
-  convertContactSchema,
-  pauseContactSchema,
-  resumeContactSchema,
-  sequenceAnalyticsSchema,
-  sectorAnalyticsSchema,
-  categorizeContactSchema,
-  snoozeContactSchema,
-  batchLogActivitySchema,
-  undoActivitySchema,
-  getContactDetailSchema,
-  getContactActivitiesSchema,
+  createContactSchema,
+  updateContactSchema,
+  markContactBouncedSchema,
+  // campaigns
+  listCampaignsSchema,
+  createCampaignSchema,
+  // templates
   listTemplatesSchema,
-  getTemplateByIdSchema,
   createTemplateSchema,
-  updateTemplateSchema,
-  deleteTemplateSchema,
-  listSnippetsSchema,
-  getSnippetByIdSchema,
-  createSnippetSchema,
-  updateSnippetSchema,
-  deleteSnippetSchema,
+  // touches
+  listTouchesSchema,
+  sendTouchSchema,
+  // replies
+  listRepliesSchema,
+  listRepliesEnrichedSchema,
+  classifyReplySchema,
+  // dnc
+  addToDncSchema,
+  listDncSchema,
+  checkDncSchema,
+  // bulk
+  bulkImportLeadsSchema,
 } from "./outreach.schemas"
 
 const moduleGate = createModuleMiddleware("outreach")
 const moduleProcedure = tenantProcedure.use(moduleGate)
-const modulePermission = (perm: string) => permissionProcedure(perm).use(moduleGate)
+const modulePermission = (perm: string) =>
+  permissionProcedure(perm).use(moduleGate)
+
+const uuid = z.string().uuid()
 
 export const outreachRouter = router({
-  // Sequences
-  listSequences: moduleProcedure
-    .query(async ({ ctx }) => outreachService.listSequences(ctx)),
+  // ----------------------------------------------------------- COMPANIES
+  listCompanies: moduleProcedure
+    .input(listCompaniesSchema)
+    .query(({ ctx, input }) => outreachService.listCompanies(ctx, input)),
 
-  getSequenceById: moduleProcedure
-    .input(getSequenceByIdSchema)
-    .query(async ({ ctx, input }) => outreachService.getSequenceById(ctx, input.sequenceId)),
+  getCompany: moduleProcedure
+    .input(z.object({ id: uuid }))
+    .query(({ ctx, input }) => outreachService.getCompany(ctx, input.id)),
 
-  createSequence: modulePermission("outreach:write")
-    .input(createSequenceSchema)
-    .mutation(async ({ ctx, input }) => outreachService.createSequence(ctx, input)),
+  createCompany: modulePermission("outreach:write")
+    .input(createCompanySchema)
+    .mutation(({ ctx, input }) => outreachService.createCompany(ctx, input)),
 
-  updateSequence: modulePermission("outreach:write")
-    .input(updateSequenceSchema)
-    .mutation(async ({ ctx, input }) =>
-      outreachService.updateSequence(ctx, input.sequenceId, {
-        name: input.name,
-        description: input.description,
-        sector: input.sector,
-        targetIcp: input.targetIcp,
-        isActive: input.isActive,
-        steps: input.steps,
-      })
-    ),
+  updateCompany: modulePermission("outreach:write")
+    .input(updateCompanySchema)
+    .mutation(({ ctx, input }) => {
+      const { id, ...rest } = input
+      return outreachService.updateCompany(ctx, id, rest)
+    }),
 
-  archiveSequence: modulePermission("outreach:write")
-    .input(archiveSequenceSchema)
-    .mutation(async ({ ctx, input }) => outreachService.archiveSequence(ctx, input.sequenceId)),
-
-  // Contacts
-  enrollContact: modulePermission("outreach:write")
-    .input(enrollContactSchema)
-    .mutation(async ({ ctx, input }) => outreachService.enrollContact(ctx, input)),
-
+  // ----------------------------------------------------------- CONTACTS
   listContacts: moduleProcedure
     .input(listContactsSchema)
-    .query(async ({ ctx, input }) => outreachService.listContacts(ctx, input)),
+    .query(({ ctx, input }) => outreachService.listContacts(ctx, input)),
 
-  getContactById: moduleProcedure
-    .input(getContactByIdSchema)
-    .query(async ({ ctx, input }) => outreachService.getContactById(ctx, input.contactId)),
+  createContact: modulePermission("outreach:write")
+    .input(createContactSchema)
+    .mutation(({ ctx, input }) => outreachService.createContact(ctx, input)),
 
-  getBody: moduleProcedure
-    .input(getBodySchema)
-    .query(async ({ ctx, input }) => outreachService.getBodyForStep(ctx, input)),
+  updateContact: modulePermission("outreach:write")
+    .input(updateContactSchema)
+    .mutation(({ ctx, input }) => {
+      const { id, ...rest } = input
+      return outreachService.updateContact(ctx, id, rest)
+    }),
 
-  logActivity: modulePermission("outreach:write")
-    .input(logActivitySchema)
-    .mutation(async ({ ctx, input }) => outreachService.logActivity(ctx, input)),
-
-  convertContact: modulePermission("outreach:write")
-    .input(convertContactSchema)
-    .mutation(async ({ ctx, input }) => outreachService.convertContact(ctx, input)),
-
-  pauseContact: modulePermission("outreach:write")
-    .input(pauseContactSchema)
-    .mutation(async ({ ctx, input }) => outreachService.pauseContact(ctx, input.contactId)),
-
-  resumeContact: modulePermission("outreach:write")
-    .input(resumeContactSchema)
-    .mutation(async ({ ctx, input }) => outreachService.resumeContact(ctx, input.contactId)),
-
-  // Contact — categorize & snooze
-  categorizeContact: modulePermission("outreach:write")
-    .input(categorizeContactSchema)
-    .mutation(async ({ ctx, input }) => outreachService.categorizeContact(ctx, input)),
-
-  snoozeContact: modulePermission("outreach:write")
-    .input(snoozeContactSchema)
-    .mutation(async ({ ctx, input }) => outreachService.snoozeContact(ctx, input)),
-
-  // Contact — batch & undo
-  batchLogActivity: modulePermission("outreach:write")
-    .input(batchLogActivitySchema)
-    .mutation(async ({ ctx, input }) => outreachService.batchLogActivity(ctx, input)),
-
-  undoActivity: modulePermission("outreach:write")
-    .input(undoActivitySchema)
-    .mutation(async ({ ctx, input }) => outreachService.undoActivity(ctx, input)),
-
-  // Contact — detail & activities
-  getContactDetail: moduleProcedure
-    .input(getContactDetailSchema)
-    .query(async ({ ctx, input }) => outreachService.getContactById(ctx, input.contactId)),
-
-  getContactActivities: moduleProcedure
-    .input(getContactActivitiesSchema)
-    .query(async ({ ctx, input }) =>
-      outreachService.getContactActivities(ctx, input.contactId, {
-        cursor: input.cursor,
-        limit: input.limit,
-      }),
+  markBounced: modulePermission("outreach:write")
+    .input(markContactBouncedSchema)
+    .mutation(({ ctx, input }) =>
+      outreachService.markContactBounced(ctx, input.id),
     ),
 
-  // Dashboard
-  getDashboard: moduleProcedure
-    .query(async ({ ctx }) => outreachService.getDashboard(ctx)),
+  // ---------------------------------------------------------- CAMPAIGNS
+  listCampaigns: moduleProcedure
+    .input(listCampaignsSchema)
+    .query(({ ctx, input }) => outreachService.listCampaigns(ctx, input)),
 
-  // Analytics
-  sequenceAnalytics: moduleProcedure
-    .input(sequenceAnalyticsSchema)
-    .query(async ({ ctx, input }) => outreachService.getSequenceAnalytics(ctx, input)),
+  createCampaign: modulePermission("outreach:write")
+    .input(createCampaignSchema)
+    .mutation(({ ctx, input }) => outreachService.createCampaign(ctx, input)),
 
-  sectorAnalytics: moduleProcedure
-    .input(sectorAnalyticsSchema)
-    .query(async ({ ctx, input }) => outreachService.getSectorAnalytics(ctx, input)),
-
-  // Templates
+  // ---------------------------------------------------------- TEMPLATES
   listTemplates: moduleProcedure
     .input(listTemplatesSchema)
-    .query(async ({ ctx, input }) => outreachService.listTemplates(ctx, input)),
-
-  getTemplateById: moduleProcedure
-    .input(getTemplateByIdSchema)
-    .query(async ({ ctx, input }) => outreachService.getTemplateById(ctx, input.templateId)),
+    .query(({ ctx, input }) => outreachService.listTemplates(ctx, input)),
 
   createTemplate: modulePermission("outreach:write")
     .input(createTemplateSchema)
-    .mutation(async ({ ctx, input }) => outreachService.createTemplate(ctx, input)),
+    .mutation(({ ctx, input }) => outreachService.createTemplate(ctx, input)),
 
-  updateTemplate: modulePermission("outreach:write")
-    .input(updateTemplateSchema)
-    .mutation(async ({ ctx, input }) =>
-      outreachService.updateTemplate(ctx, input.templateId, {
-        name: input.name, category: input.category, channel: input.channel,
-        subject: input.subject, bodyMarkdown: input.bodyMarkdown,
-        tags: input.tags, isActive: input.isActive,
-      })
+  // ----------------------------------------------------------- TOUCHES
+  listTouches: moduleProcedure
+    .input(listTouchesSchema)
+    .query(({ ctx, input }) => outreachService.listTouches(ctx, input)),
+
+  sendTouch: modulePermission("outreach:write")
+    .input(sendTouchSchema)
+    .mutation(({ ctx, input }) => outreachService.sendTouch(ctx, input)),
+
+  // ----------------------------------------------------------- REPLIES
+  listReplies: moduleProcedure
+    .input(listRepliesSchema)
+    .query(({ ctx, input }) => outreachService.listReplies(ctx, input)),
+
+  listRepliesEnriched: moduleProcedure
+    .input(listRepliesEnrichedSchema)
+    .query(({ ctx, input }) =>
+      outreachService.listRepliesEnriched(ctx, input),
     ),
 
-  deleteTemplate: modulePermission("outreach:write")
-    .input(deleteTemplateSchema)
-    .mutation(async ({ ctx, input }) => outreachService.deleteTemplate(ctx, input.templateId)),
-
-  duplicateTemplate: modulePermission("outreach:write")
-    .input(getTemplateByIdSchema)
-    .mutation(async ({ ctx, input }) => outreachService.duplicateTemplate(ctx, input.templateId)),
-
-  // Snippets
-  listSnippets: moduleProcedure
-    .input(listSnippetsSchema)
-    .query(async ({ ctx, input }) => outreachService.listSnippets(ctx, input)),
-
-  getSnippetById: moduleProcedure
-    .input(getSnippetByIdSchema)
-    .query(async ({ ctx, input }) => outreachService.getSnippetById(ctx, input.snippetId)),
-
-  createSnippet: modulePermission("outreach:write")
-    .input(createSnippetSchema)
-    .mutation(async ({ ctx, input }) => outreachService.createSnippet(ctx, input)),
-
-  updateSnippet: modulePermission("outreach:write")
-    .input(updateSnippetSchema)
-    .mutation(async ({ ctx, input }) =>
-      outreachService.updateSnippet(ctx, input.snippetId, {
-        name: input.name, category: input.category,
-        bodyMarkdown: input.bodyMarkdown, isActive: input.isActive,
-      })
+  classifyReply: modulePermission("outreach:write")
+    .input(classifyReplySchema)
+    .mutation(({ ctx, input }) =>
+      outreachService.classifyReply(
+        ctx,
+        input.replyId,
+        input.classifiedAs,
+        input.classifiedBy,
+        input.confidence,
+      ),
     ),
 
-  deleteSnippet: modulePermission("outreach:write")
-    .input(deleteSnippetSchema)
-    .mutation(async ({ ctx, input }) => outreachService.deleteSnippet(ctx, input.snippetId)),
+  // ---------------------------------------------------------- BULK IMPORT
+  bulkImportLeads: modulePermission("outreach:write")
+    .input(bulkImportLeadsSchema)
+    .mutation(({ ctx, input }) =>
+      outreachService.bulkImportLeads(ctx, input.rows),
+    ),
+
+  // ---------------------------------------------------------- DNC
+  addToDnc: modulePermission("outreach:write")
+    .input(addToDncSchema)
+    .mutation(({ ctx, input }) => outreachService.addToDnc(ctx, input)),
+
+  listDnc: moduleProcedure
+    .input(listDncSchema)
+    .query(({ ctx, input }) => outreachService.listDnc(ctx, input)),
+
+  checkDnc: moduleProcedure
+    .input(checkDncSchema)
+    .query(({ ctx, input }) => outreachService.checkDnc(ctx, input.email)),
 })
+
+export type OutreachRouter = typeof outreachRouter

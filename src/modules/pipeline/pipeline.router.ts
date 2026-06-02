@@ -1,116 +1,152 @@
-import { router, tenantProcedure, permissionProcedure, createModuleMiddleware } from "@/shared/trpc"
+import {
+  router,
+  tenantProcedure,
+  permissionProcedure,
+  createModuleMiddleware,
+} from "@/shared/trpc"
 import { pipelineService } from "./pipeline.service"
 import {
-  createPipelineSchema,
-  updatePipelineSchema,
-  archivePipelineSchema,
-  getPipelineByIdSchema,
-  addStageSchema,
-  updateStageSchema,
-  removeStageSchema,
-  reorderStagesSchema,
-  addMemberSchema,
-  moveMemberSchema,
-  removeMemberSchema,
-  updateMemberSchema,
-  listMembersSchema,
-  getSummarySchema,
-  getMemberHistorySchema,
+  listDealsSchema,
+  getDealSchema,
+  createDealSchema,
+  updateDealSchema,
+  moveStageSchema,
+  addNoteSchema,
+  recordMeetingSchema,
+  recordProposalSchema,
+  recordContractSchema,
+  convertFromReplySchema,
+  listDealEventsSchema,
 } from "./pipeline.schemas"
 
 const moduleGate = createModuleMiddleware("pipeline")
 const moduleProcedure = tenantProcedure.use(moduleGate)
-const modulePermission = (perm: string) => permissionProcedure(perm).use(moduleGate)
+const modulePermission = (perm: string) =>
+  permissionProcedure(perm).use(moduleGate)
+
+function actorFor(ctx: { user: { id: string } | null }): string | null {
+  return ctx.user?.id ?? null
+}
 
 export const pipelineRouter = router({
-  // Pipeline CRUD
-  list: moduleProcedure
-    .query(async ({ ctx }) => pipelineService.listPipelines(ctx)),
+  // ---------- Queries ----------
 
-  getById: moduleProcedure
-    .input(getPipelineByIdSchema)
-    .query(async ({ ctx, input }) => pipelineService.getPipelineById(ctx, input.pipelineId)),
+  listDeals: moduleProcedure
+    .input(listDealsSchema.optional())
+    .query(async ({ ctx, input }) =>
+      pipelineService.listDeals(ctx.tenantId, input ?? {}),
+    ),
 
-  getDefault: moduleProcedure
-    .query(async ({ ctx }) => pipelineService.getDefaultPipeline(ctx)),
+  getDeal: moduleProcedure
+    .input(getDealSchema)
+    .query(async ({ ctx, input }) =>
+      pipelineService.getDeal(ctx.tenantId, input.dealId),
+    ),
 
-  create: modulePermission("pipeline:write")
-    .input(createPipelineSchema)
-    .mutation(async ({ ctx, input }) => pipelineService.createPipeline(ctx, input)),
+  listDealEvents: moduleProcedure
+    .input(listDealEventsSchema)
+    .query(async ({ ctx, input }) =>
+      pipelineService.listDealEvents(ctx.tenantId, input.dealId),
+    ),
 
-  update: modulePermission("pipeline:write")
-    .input(updatePipelineSchema)
+  getStageCounts: moduleProcedure.query(async ({ ctx }) =>
+    pipelineService.getStageCounts(ctx.tenantId),
+  ),
+
+  getWeightedValue: moduleProcedure.query(async ({ ctx }) =>
+    pipelineService.getWeightedValue(ctx.tenantId),
+  ),
+
+  // ---------- Mutations ----------
+
+  createDeal: modulePermission("pipeline:write")
+    .input(createDealSchema)
     .mutation(async ({ ctx, input }) =>
-      pipelineService.updatePipeline(ctx, input.pipelineId, {
-        name: input.name,
-        description: input.description,
-        isDefault: input.isDefault,
+      pipelineService.createDeal({
+        tenantId: ctx.tenantId,
+        actor: actorFor(ctx),
+        ...input,
+      }),
+    ),
+
+  updateDeal: modulePermission("pipeline:write")
+    .input(updateDealSchema)
+    .mutation(async ({ ctx, input }) => {
+      const { dealId, ...patch } = input
+      return pipelineService.updateDeal({
+        tenantId: ctx.tenantId,
+        dealId,
+        patch,
+        actor: actorFor(ctx),
       })
-    ),
+    }),
 
-  archive: modulePermission("pipeline:write")
-    .input(archivePipelineSchema)
-    .mutation(async ({ ctx, input }) => pipelineService.archivePipeline(ctx, input.pipelineId)),
-
-  // Stage configuration
-  addStage: modulePermission("pipeline:write")
-    .input(addStageSchema)
-    .mutation(async ({ ctx, input }) => pipelineService.addStage(ctx, input)),
-
-  updateStage: modulePermission("pipeline:write")
-    .input(updateStageSchema)
+  moveStage: modulePermission("pipeline:write")
+    .input(moveStageSchema)
     .mutation(async ({ ctx, input }) =>
-      pipelineService.updateStage(ctx, input.stageId, {
-        name: input.name,
-        color: input.color,
-        type: input.type,
-        allowedTransitions: input.allowedTransitions,
-      })
+      pipelineService.moveStage({
+        tenantId: ctx.tenantId,
+        dealId: input.dealId,
+        newStage: input.newStage,
+        reason: input.reason ?? null,
+        actor: actorFor(ctx),
+      }),
     ),
 
-  removeStage: modulePermission("pipeline:write")
-    .input(removeStageSchema)
+  addNote: modulePermission("pipeline:write")
+    .input(addNoteSchema)
     .mutation(async ({ ctx, input }) =>
-      pipelineService.removeStage(ctx, input.stageId, input.reassignToStageId)
+      pipelineService.addNote({
+        tenantId: ctx.tenantId,
+        dealId: input.dealId,
+        body: input.body,
+        actor: actorFor(ctx),
+      }),
     ),
 
-  reorderStages: modulePermission("pipeline:write")
-    .input(reorderStagesSchema)
+  recordMeeting: modulePermission("pipeline:write")
+    .input(recordMeetingSchema)
     .mutation(async ({ ctx, input }) =>
-      pipelineService.reorderStages(ctx, input.pipelineId, input.stageIds)
+      pipelineService.recordMeetingBooked({
+        tenantId: ctx.tenantId,
+        dealId: input.dealId,
+        meetingPayload: input.meetingPayload,
+        actor: actorFor(ctx),
+      }),
     ),
 
-  // Member operations
-  addMember: modulePermission("pipeline:write")
-    .input(addMemberSchema)
-    .mutation(async ({ ctx, input }) => pipelineService.addMember(ctx, input)),
-
-  moveMember: modulePermission("pipeline:write")
-    .input(moveMemberSchema)
-    .mutation(async ({ ctx, input }) => pipelineService.moveMember(ctx, input)),
-
-  removeMember: modulePermission("pipeline:write")
-    .input(removeMemberSchema)
-    .mutation(async ({ ctx, input }) => pipelineService.removeMember(ctx, input.memberId)),
-
-  updateMember: modulePermission("pipeline:write")
-    .input(updateMemberSchema)
+  recordProposal: modulePermission("pipeline:write")
+    .input(recordProposalSchema)
     .mutation(async ({ ctx, input }) =>
-      pipelineService.updateMember(ctx, input.memberId, {
-        dealValue: input.dealValue,
-        metadata: input.metadata,
-      })
+      pipelineService.recordProposalSent({
+        tenantId: ctx.tenantId,
+        dealId: input.dealId,
+        proposalRef: input.proposalRef,
+        actor: actorFor(ctx),
+      }),
     ),
 
-  listMembers: moduleProcedure
-    .input(listMembersSchema)
-    .query(async ({ ctx, input }) => pipelineService.listMembers(ctx, input.pipelineId)),
+  recordContract: modulePermission("pipeline:write")
+    .input(recordContractSchema)
+    .mutation(async ({ ctx, input }) =>
+      pipelineService.recordContractSigned({
+        tenantId: ctx.tenantId,
+        dealId: input.dealId,
+        contractRef: input.contractRef,
+        actor: actorFor(ctx),
+      }),
+    ),
 
-  getSummary: moduleProcedure
-    .input(getSummarySchema)
-    .query(async ({ ctx, input }) => pipelineService.getSummary(ctx, input.pipelineId)),
-
-  getMemberHistory: moduleProcedure
-    .input(getMemberHistorySchema)
-    .query(async ({ ctx, input }) => pipelineService.getMemberHistory(ctx, input.memberId)),
+  convertFromReply: modulePermission("pipeline:write")
+    .input(convertFromReplySchema)
+    .mutation(async ({ ctx, input }) =>
+      pipelineService.convertFromReply({
+        tenantId: ctx.tenantId,
+        replyId: input.replyId,
+        dealInput: input.dealInput,
+        actor: actorFor(ctx),
+      }),
+    ),
 })
+
+export type PipelineRouter = typeof pipelineRouter

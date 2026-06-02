@@ -122,4 +122,36 @@ export interface IntegrationProvider {
    * Disconnect this integration for a user — revoke tokens, stop webhooks.
    */
   disconnect(userId: string, tenantId: string): Promise<void>
+
+  // ─── NEW (Phase: event-framework) — all optional, backward-compatible ─────
+
+  /**
+   * Pull-style sync. The hub invokes this on a schedule (or on-demand) for
+   * each enabled integration_connections row. The provider polls the external
+   * system, drops new items into raw_events (via jobs.ingestRawEvent), and
+   * returns an updated cursor + count.
+   *
+   * MUST NOT throw — the runner reports recordSyncError on rejection but
+   * providers should still surface useful errors via thrown Error.
+   */
+  pull?(
+    ctx: IntegrationContext,
+    cursor: unknown
+  ): Promise<{ newCursor: unknown; ingested: number }>
+
+  /**
+   * On-demand enrichment hook. Used by app services that want to look up a
+   * company or contact in the external system (e.g. fetch Stripe customer
+   * details from a stripe_customer_id we already hold).
+   */
+  enrich?(
+    query: { kind: 'company' | 'contact'; identifier: string },
+    ctx: IntegrationContext
+  ): Promise<Record<string, unknown>>
+
+  /**
+   * Declare what raw_event kinds this provider produces. Used by the
+   * processor-wiring discovery layer to detect unhandled kinds at boot.
+   */
+  readonly produces?: ReadonlyArray<{ source: string; kind: string }>
 }

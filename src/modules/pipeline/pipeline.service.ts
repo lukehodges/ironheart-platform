@@ -1,331 +1,369 @@
-import { logger } from "@/shared/logger";
-import { NotFoundError, BadRequestError } from "@/shared/errors";
-import { inngest } from "@/shared/inngest";
-import type { Context } from "@/shared/trpc";
-import { pipelineRepository } from "./pipeline.repository";
-import type {
-  PipelineRecord,
-  PipelineMemberRecord,
-  PipelineMemberWithCustomer,
-  PipelineWithStages,
-  PipelineStageRecord,
-  PipelineStageHistoryRecord,
-  PipelineStageSummary,
-} from "./pipeline.types";
+import { logger } from "@/shared/logger"
+import { NotFoundError, BadRequestError } from "@/shared/errors"
+import { db } from "@/shared/db"
+import { replies } from "@/shared/db/schemas/outreach.schema"
+import { eq, and } from "drizzle-orm"
+import { emitEvent } from "@/modules/jobs/event-emitter"
+import { pipelineRepository } from "./pipeline.repository"
+import {
+  TERMINAL_STAGES,
+  STAGE_ORDER,
+  type CreateDealInput,
+  type DealRecord,
+  type DealEventRecord,
+  type DealStage,
+  type ListDealsFilters,
+  type StageCounts,
+  type UpdateDealInput,
+} from "./pipeline.types"
 
-const log = logger.child({ module: "pipeline.service" });
+const log = logger.child({ module: "pipeline.service" })
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function actorFromTenant(tenantId: string, ownerId?: string | null): string {
+  return ownerId ?? `tenant:${tenantId}`
+}
+
+async function loadDealOrThrow(
+  tenantId: string,
+  dealId: string,
+): Promise<DealRecord> {
+  const deal = await pipelineRepository.getDealById(tenantId, dealId)
+  if (!deal) throw new NotFoundError("Deal", dealId)
+  return deal
+}
+
+// ===========================================================================
+// PIPELINE SERVICE
+// ===========================================================================
 
 export const pipelineService = {
-  // ---------------------------------------------------------------------------
-  // PIPELINE CRUD
-  // ---------------------------------------------------------------------------
+  // ----- Queries -----
 
-  async listPipelines(ctx: Context): Promise<PipelineRecord[]> {
-    return pipelineRepository.list(ctx.tenantId);
+  async listDeals(
+    tenantId: string,
+    filters: ListDealsFilters = {},
+  ): Promise<DealRecord[]> {
+    return pipelineRepository.listDeals(tenantId, filters)
   },
 
-  async getPipelineById(ctx: Context, pipelineId: string): Promise<PipelineWithStages> {
-    const pipeline = await pipelineRepository.findById(ctx.tenantId, pipelineId);
-    if (!pipeline) throw new NotFoundError("Pipeline", pipelineId);
-    return pipeline;
+  async getDeal(tenantId: string, dealId: string): Promise<DealRecord> {
+    return loadDealOrThrow(tenantId, dealId)
   },
 
-  async getDefaultPipeline(ctx: Context): Promise<PipelineWithStages> {
-    const pipeline = await pipelineRepository.findDefault(ctx.tenantId);
-    if (!pipeline) throw new NotFoundError("Pipeline", "default");
-    return pipeline;
+  async listDealEvents(
+    tenantId: string,
+    dealId: string,
+  ): Promise<DealEventRecord[]> {
+    await loadDealOrThrow(tenantId, dealId)
+    return pipelineRepository.listDealEvents(tenantId, dealId)
   },
 
-  async createPipeline(
-    ctx: Context,
-    input: {
-      name: string;
-      description?: string | null;
-      isDefault?: boolean;
-      stages?: Array<{
-        name: string;
-        slug: string;
-        position: number;
-        color?: string | null;
-        type?: "OPEN" | "WON" | "LOST";
-        allowedTransitions?: string[];
-      }>;
-    },
-  ): Promise<PipelineWithStages> {
-    const pipeline = await pipelineRepository.create(ctx.tenantId, input);
-    log.info({ tenantId: ctx.tenantId, pipelineId: pipeline.id }, "Pipeline created");
-    return pipeline;
+  async getStageCounts(tenantId: string): Promise<StageCounts> {
+    return pipelineRepository.getStageCounts(tenantId)
   },
 
-  async updatePipeline(
-    ctx: Context,
-    pipelineId: string,
-    input: Partial<{
-      name: string;
-      description: string | null;
-      isDefault: boolean;
-    }>,
-  ): Promise<PipelineRecord> {
-    return pipelineRepository.update(ctx.tenantId, pipelineId, input);
+  async getWeightedValue(tenantId: string): Promise<number> {
+    return pipelineRepository.getWeightedValue(tenantId)
   },
 
-  async archivePipeline(ctx: Context, pipelineId: string): Promise<void> {
-    // Validate pipeline exists
-    await pipelineRepository.findById(ctx.tenantId, pipelineId);
+  // ----- Mutations -----
 
-    // Check for active members
-    const activeCount = await pipelineRepository.countActiveMembers(ctx.tenantId, pipelineId);
-    if (activeCount > 0) {
-      throw new BadRequestError(
-        `Cannot archive pipeline with ${activeCount} active member(s). Move or remove them first.`,
-      );
-    }
+  async createDeal(
+    args: { tenantId: string; actor?: string | null } & CreateDealInput,
+  ): Promise<DealRecord> {
+    const { tenantId, actor, ...input } = args
+    const initialStage = input.stage ?? "qualified"
 
-    await pipelineRepository.archive(ctx.tenantId, pipelineId);
-    log.info({ tenantId: ctx.tenantId, pipelineId }, "Pipeline archived");
-  },
+    const deal = await pipelineRepository.createDeal(tenantId, {
+      ...input,
+      stage: initialStage,
+    })
 
-  // ---------------------------------------------------------------------------
-  // STAGE CONFIGURATION
-  // ---------------------------------------------------------------------------
+    await pipelineRepository.createDealEvent(tenantId, {
+      dealId: deal.id,
+      kind: "stage_changed",
+      payload: { from: null, to: initialStage },
+      actor: actor ?? null,
+    })
 
-  async addStage(
-    ctx: Context,
-    input: {
-      pipelineId: string;
-      name: string;
-      slug: string;
-      position: number;
-      color?: string | null;
-      type?: "OPEN" | "WON" | "LOST";
-      allowedTransitions?: string[];
-    },
-  ): Promise<PipelineStageRecord> {
-    return pipelineRepository.addStage(ctx.tenantId, input);
-  },
-
-  async updateStage(
-    ctx: Context,
-    stageId: string,
-    input: Partial<{
-      name: string;
-      color: string | null;
-      type: "OPEN" | "WON" | "LOST";
-      allowedTransitions: string[];
-    }>,
-  ): Promise<PipelineStageRecord> {
-    return pipelineRepository.updateStage(ctx.tenantId, stageId, input);
-  },
-
-  async removeStage(ctx: Context, stageId: string, reassignToStageId: string): Promise<void> {
-    return pipelineRepository.removeStage(ctx.tenantId, stageId, reassignToStageId);
-  },
-
-  async reorderStages(ctx: Context, pipelineId: string, stageIds: string[]): Promise<void> {
-    return pipelineRepository.reorderStages(ctx.tenantId, pipelineId, stageIds);
-  },
-
-  // ---------------------------------------------------------------------------
-  // MEMBER OPERATIONS
-  // ---------------------------------------------------------------------------
-
-  async addMember(
-    ctx: Context,
-    input: {
-      pipelineId: string;
-      customerId: string;
-      stageId?: string;
-      dealValue?: number | null;
-      metadata?: Record<string, unknown>;
-    },
-  ): Promise<PipelineMemberRecord> {
-    let stageId = input.stageId;
-
-    // If no stageId provided, find the first OPEN stage
-    if (!stageId) {
-      const pipeline = await pipelineRepository.findById(ctx.tenantId, input.pipelineId);
-      const firstOpenStage = pipeline.stages
-        .filter((s) => s.type === "OPEN")
-        .sort((a, b) => a.position - b.position)[0];
-
-      if (!firstOpenStage) {
-        throw new BadRequestError("Pipeline has no OPEN stages to add member to");
-      }
-      stageId = firstOpenStage.id;
-    }
-
-    const member = await pipelineRepository.addMember(ctx.tenantId, {
-      pipelineId: input.pipelineId,
-      customerId: input.customerId,
-      stageId,
-      dealValue: input.dealValue,
-      metadata: input.metadata,
-    });
-
-    // Create initial history entry
-    await pipelineRepository.createHistoryEntry(ctx.tenantId, {
-      memberId: member.id,
-      fromStageId: null,
-      toStageId: stageId,
-      changedById: ctx.user?.id ?? null,
-    });
-
-    // Emit event
-    await inngest.send({
-      name: "pipeline/member.added",
-      data: {
-        memberId: member.id,
-        pipelineId: input.pipelineId,
-        customerId: input.customerId,
-        stageId,
-        tenantId: ctx.tenantId,
+    await emitEvent({
+      tenantId,
+      kind: "deal.created",
+      entityType: "deal",
+      entityId: deal.id,
+      payload: {
+        dealId: deal.id,
+        companyId: deal.companyId,
+        stage: deal.stage,
+        product: deal.product,
+        originTouchId: deal.originTouchId,
       },
-    });
+      actor: actorFromTenant(tenantId, actor),
+    })
 
-    log.info(
-      { tenantId: ctx.tenantId, memberId: member.id, pipelineId: input.pipelineId, stageId },
-      "Pipeline member added",
-    );
-
-    return member;
+    return deal
   },
 
-  async moveMember(
-    ctx: Context,
-    input: {
-      memberId: string;
-      toStageId: string;
-      dealValue?: number | null;
-      lostReason?: string | null;
-      notes?: string | null;
-    },
-  ): Promise<PipelineMemberRecord> {
-    // Find member
-    const member = await pipelineRepository.findMemberById(ctx.tenantId, input.memberId);
+  async moveStage(args: {
+    tenantId: string
+    dealId: string
+    newStage: DealStage
+    actor?: string | null
+    reason?: string | null
+  }): Promise<DealRecord> {
+    const { tenantId, dealId, newStage, actor, reason } = args
+    const existing = await loadDealOrThrow(tenantId, dealId)
 
-    // Find current stage
-    const currentStage = await pipelineRepository.findStageById(ctx.tenantId, member.stageId);
-
-    // Find target stage
-    const targetStage = await pipelineRepository.findStageById(ctx.tenantId, input.toStageId);
-
-    // Validate transition — empty allowedTransitions = terminal (no moves allowed)
-    if (!currentStage.allowedTransitions.includes(input.toStageId)) {
-      throw new BadRequestError(
-        `Transition from "${currentStage.name}" to "${targetStage.name}" is not allowed`,
-      );
+    if (existing.stage === newStage) {
+      // No-op, but still emit a stage_changed? We just return existing.
+      return existing
     }
 
-    // Determine closedAt
-    let closedAt: Date | null = null;
-    if (targetStage.type === "WON" || targetStage.type === "LOST") {
-      closedAt = new Date();
-    }
+    const closedAt = TERMINAL_STAGES.has(newStage) ? new Date() : null
 
-    // Update member stage
-    const updated = await pipelineRepository.updateMemberStage(ctx.tenantId, input.memberId, {
-      stageId: input.toStageId,
-      dealValue: input.dealValue,
-      lostReason: input.lostReason,
+    const updated = await pipelineRepository.updateDeal(tenantId, dealId, {
+      stage: newStage,
       closedAt,
-    });
+      ...(reason ? { closeReason: reason } : {}),
+    })
 
-    // Create history entry
-    await pipelineRepository.createHistoryEntry(ctx.tenantId, {
-      memberId: input.memberId,
-      fromStageId: member.stageId,
-      toStageId: input.toStageId,
-      changedById: ctx.user?.id ?? null,
-      dealValue: input.dealValue,
-      lostReason: input.lostReason,
-      notes: input.notes,
-    });
+    await pipelineRepository.createDealEvent(tenantId, {
+      dealId,
+      kind: "stage_changed",
+      payload: { from: existing.stage, to: newStage, reason: reason ?? null },
+      actor: actor ?? null,
+    })
 
-    // Emit moved event
-    await inngest.send({
-      name: "pipeline/member.moved",
-      data: {
-        memberId: input.memberId,
-        pipelineId: member.pipelineId,
-        customerId: member.customerId,
-        fromStageId: member.stageId,
-        toStageId: input.toStageId,
-        dealValue: updated.dealValue,
-        tenantId: ctx.tenantId,
+    await emitEvent({
+      tenantId,
+      kind: "deal.stage_changed",
+      entityType: "deal",
+      entityId: dealId,
+      payload: {
+        dealId,
+        from: existing.stage,
+        to: newStage,
+        reason: reason ?? null,
       },
-    });
+      actor: actorFromTenant(tenantId, actor),
+    })
 
-    // Emit closed event if terminal
-    if (targetStage.type === "WON" || targetStage.type === "LOST") {
-      await inngest.send({
-        name: "pipeline/member.closed",
-        data: {
-          memberId: input.memberId,
-          pipelineId: member.pipelineId,
-          customerId: member.customerId,
-          stageType: targetStage.type,
-          dealValue: updated.dealValue,
-          tenantId: ctx.tenantId,
+    if (newStage === "won") {
+      await emitEvent({
+        tenantId,
+        kind: "deal.won",
+        entityType: "deal",
+        entityId: dealId,
+        payload: {
+          dealId,
+          companyId: updated.companyId,
+          product: updated.product,
+          valueEstimate: updated.valueEstimate,
         },
-      });
+        actor: actorFromTenant(tenantId, actor),
+      })
     }
 
-    log.info(
-      {
-        tenantId: ctx.tenantId,
-        memberId: input.memberId,
-        fromStageId: member.stageId,
-        toStageId: input.toStageId,
-      },
-      "Pipeline member moved",
-    );
-
-    return updated;
+    return updated
   },
 
-  async removeMember(ctx: Context, memberId: string): Promise<void> {
-    const member = await pipelineRepository.findMemberById(ctx.tenantId, memberId);
+  async updateDeal(args: {
+    tenantId: string
+    dealId: string
+    patch: UpdateDealInput
+    actor?: string | null
+  }): Promise<DealRecord> {
+    const { tenantId, dealId, patch, actor } = args
+    await loadDealOrThrow(tenantId, dealId)
+    const updated = await pipelineRepository.updateDeal(tenantId, dealId, patch)
 
-    await pipelineRepository.removeMember(ctx.tenantId, memberId);
+    await emitEvent({
+      tenantId,
+      kind: "deal.updated",
+      entityType: "deal",
+      entityId: dealId,
+      payload: { dealId, patch },
+      actor: actorFromTenant(tenantId, actor),
+    })
 
-    await inngest.send({
-      name: "pipeline/member.removed",
-      data: {
-        memberId,
-        pipelineId: member.pipelineId,
-        customerId: member.customerId,
-        tenantId: ctx.tenantId,
-      },
-    });
-
-    log.info({ tenantId: ctx.tenantId, memberId }, "Pipeline member removed");
+    return updated
   },
 
-  async updateMember(
-    ctx: Context,
-    memberId: string,
-    input: Partial<{
-      dealValue: number | null;
-      metadata: Record<string, unknown>;
-    }>,
-  ): Promise<PipelineMemberRecord> {
-    return pipelineRepository.updateMember(ctx.tenantId, memberId, input);
+  async addNote(args: {
+    tenantId: string
+    dealId: string
+    body: string
+    actor?: string | null
+  }): Promise<DealEventRecord> {
+    const { tenantId, dealId, body, actor } = args
+    await loadDealOrThrow(tenantId, dealId)
+
+    const event = await pipelineRepository.createDealEvent(tenantId, {
+      dealId,
+      kind: "note_added",
+      payload: { body },
+      actor: actor ?? null,
+    })
+
+    await emitEvent({
+      tenantId,
+      kind: "deal.note_added",
+      entityType: "deal",
+      entityId: dealId,
+      payload: { dealId, body, eventId: event.id },
+      actor: actorFromTenant(tenantId, actor),
+    })
+
+    return event
   },
 
-  async listMembers(ctx: Context, pipelineId: string): Promise<PipelineMemberWithCustomer[]> {
-    return pipelineRepository.listMembers(ctx.tenantId, pipelineId);
+  async recordMeetingBooked(args: {
+    tenantId: string
+    dealId: string
+    meetingPayload: Record<string, unknown>
+    actor?: string | null
+  }): Promise<DealEventRecord> {
+    const { tenantId, dealId, meetingPayload, actor } = args
+    await loadDealOrThrow(tenantId, dealId)
+
+    const event = await pipelineRepository.createDealEvent(tenantId, {
+      dealId,
+      kind: "meeting_booked",
+      payload: meetingPayload,
+      actor: actor ?? null,
+    })
+
+    await emitEvent({
+      tenantId,
+      kind: "deal.meeting_booked",
+      entityType: "deal",
+      entityId: dealId,
+      payload: { dealId, meeting: meetingPayload, eventId: event.id },
+      actor: actorFromTenant(tenantId, actor),
+    })
+
+    return event
   },
 
-  async getSummary(ctx: Context, pipelineId: string): Promise<PipelineStageSummary[]> {
-    return pipelineRepository.getSummary(ctx.tenantId, pipelineId);
+  async recordProposalSent(args: {
+    tenantId: string
+    dealId: string
+    proposalRef: Record<string, unknown>
+    actor?: string | null
+  }): Promise<DealRecord> {
+    const { tenantId, dealId, proposalRef, actor } = args
+    const existing = await loadDealOrThrow(tenantId, dealId)
+
+    const event = await pipelineRepository.createDealEvent(tenantId, {
+      dealId,
+      kind: "proposal_sent",
+      payload: proposalRef,
+      actor: actor ?? null,
+    })
+
+    await emitEvent({
+      tenantId,
+      kind: "deal.proposal_sent",
+      entityType: "deal",
+      entityId: dealId,
+      payload: { dealId, proposal: proposalRef, eventId: event.id },
+      actor: actorFromTenant(tenantId, actor),
+    })
+
+    // Auto-advance stage to proposal if currently behind.
+    let current = existing
+    if (
+      STAGE_ORDER[current.stage] < STAGE_ORDER.proposal &&
+      !TERMINAL_STAGES.has(current.stage)
+    ) {
+      current = await this.moveStage({
+        tenantId,
+        dealId,
+        newStage: "proposal",
+        actor,
+        reason: "auto: proposal_sent",
+      })
+    }
+
+    return current
   },
 
-  async getMemberHistory(
-    ctx: Context,
-    memberId: string,
-  ): Promise<PipelineStageHistoryRecord[]> {
-    // Validate member exists
-    await pipelineRepository.findMemberById(ctx.tenantId, memberId);
-    return pipelineRepository.getMemberHistory(ctx.tenantId, memberId);
+  async recordContractSigned(args: {
+    tenantId: string
+    dealId: string
+    contractRef: Record<string, unknown>
+    actor?: string | null
+  }): Promise<DealRecord> {
+    const { tenantId, dealId, contractRef, actor } = args
+    const existing = await loadDealOrThrow(tenantId, dealId)
+
+    const event = await pipelineRepository.createDealEvent(tenantId, {
+      dealId,
+      kind: "contract_signed",
+      payload: contractRef,
+      actor: actor ?? null,
+    })
+
+    await emitEvent({
+      tenantId,
+      kind: "deal.contract_signed",
+      entityType: "deal",
+      entityId: dealId,
+      payload: { dealId, contract: contractRef, eventId: event.id },
+      actor: actorFromTenant(tenantId, actor),
+    })
+
+    if (existing.stage !== "won") {
+      return this.moveStage({
+        tenantId,
+        dealId,
+        newStage: "won",
+        actor,
+        reason: "auto: contract_signed",
+      })
+    }
+    return existing
   },
-};
+
+  /**
+   * Convert a positive outreach reply into a pipeline deal.
+   *
+   * Looks up the reply (tenant-scoped), uses its touchId as the deal's
+   * origin_touch_id for attribution, then creates the deal.
+   */
+  async convertFromReply(args: {
+    tenantId: string
+    replyId: string
+    dealInput: Omit<CreateDealInput, "originTouchId">
+    actor?: string | null
+  }): Promise<DealRecord> {
+    const { tenantId, replyId, dealInput, actor } = args
+
+    const [reply] = await db
+      .select()
+      .from(replies)
+      .where(and(eq(replies.id, replyId), eq(replies.tenantId, tenantId)))
+      .limit(1)
+
+    if (!reply) throw new NotFoundError("Reply", replyId)
+
+    if (!reply.touchId) {
+      throw new BadRequestError(
+        "Reply has no originating touch — cannot attribute deal",
+      )
+    }
+
+    return this.createDeal({
+      tenantId,
+      actor,
+      ...dealInput,
+      originTouchId: reply.touchId,
+    })
+  },
+}
+
+export type PipelineService = typeof pipelineService

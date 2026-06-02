@@ -1,216 +1,246 @@
-import { z } from 'zod'
+import { z } from "zod"
 
 // ---------------------------------------------------------------------------
-// Shared sub-schemas
+// Enums (mirror outreach.schema.ts pg enums)
 // ---------------------------------------------------------------------------
 
-const outreachStepSchema = z.object({
-  position: z.number().int().min(1),
-  channel: z.enum(['EMAIL', 'LINKEDIN_REQUEST', 'LINKEDIN_MESSAGE', 'CALL']),
-  delayDays: z.number().int().min(0),
-  subject: z.string().max(200).optional(),
-  bodyMarkdown: z.string().min(1).max(5000),
-  notes: z.string().max(500).optional(),
-})
+export const outreachChannelEnum = z.enum(["email", "linkedin", "phone"])
+export const outreachEmployeeBandEnum = z.enum(["1-2", "3-15", "15-50", "50+"])
+export const outreachCompanySourceEnum = z.enum([
+  "cold",
+  "referral",
+  "inbound",
+  "manual",
+])
+export const outreachCampaignStatusEnum = z.enum([
+  "draft",
+  "active",
+  "paused",
+  "complete",
+])
+export const outreachDeliveryStatusEnum = z.enum([
+  "queued",
+  "sent",
+  "delivered",
+  "bounced",
+  "failed",
+])
+export const outreachReplyStatusEnum = z.enum([
+  "none",
+  "positive",
+  "negative",
+  "ooo",
+  "converter",
+  "wrong_person",
+  "auto_reply",
+])
+export const outreachClassifierEnum = z.enum(["claude", "luke", "rule"])
 
 // ---------------------------------------------------------------------------
-// Sequence schemas
+// Common
 // ---------------------------------------------------------------------------
 
-export const createSequenceSchema = z.object({
-  name: z.string().min(1).max(100),
-  description: z.string().max(500).optional(),
-  sector: z.string().min(1).max(100),
-  targetIcp: z.string().max(500).optional(),
-  isActive: z.boolean().optional(),
-  abVariant: z.string().max(50).optional(),
-  pairedSequenceId: z.uuid().optional(),
-  steps: z.array(outreachStepSchema).min(1),
-})
+const uuid = z.string().uuid()
+const emailOptional = z.string().email().optional().nullable()
 
-export const updateSequenceSchema = z.object({
-  sequenceId: z.uuid(),
-  name: z.string().min(1).max(100).optional(),
-  description: z.string().max(500).nullable().optional(),
-  sector: z.string().min(1).max(100).optional(),
-  targetIcp: z.string().max(500).nullable().optional(),
-  isActive: z.boolean().optional(),
-  steps: z.array(outreachStepSchema).min(1).optional(),
-})
-
-export const getSequenceByIdSchema = z.object({ sequenceId: z.uuid() })
-export const archiveSequenceSchema = z.object({ sequenceId: z.uuid() })
-
-// ---------------------------------------------------------------------------
-// Contact schemas
-// ---------------------------------------------------------------------------
-
-export const enrollContactSchema = z.object({
-  customerId: z.uuid(),
-  sequenceId: z.uuid(),
-  assignedUserId: z.uuid().optional(),
-  notes: z.string().max(1000).optional(),
-})
-
-export const listContactsSchema = z.object({
-  sequenceId: z.uuid().optional(),
-  status: z.enum([
-    'ACTIVE',
-    'REPLIED',
-    'BOUNCED',
-    'OPTED_OUT',
-    'CONVERTED',
-    'PAUSED',
-    'COMPLETED',
-  ]).optional(),
-  assignedUserId: z.uuid().optional(),
-  search: z.string().max(200).optional(),
-  cursor: z.uuid().optional(),
-  limit: z.number().int().min(1).max(100).default(50),
-})
-
-export const getContactByIdSchema = z.object({ contactId: z.uuid() })
-
-export const getBodySchema = z.object({
-  contactId: z.uuid(),
-  stepPosition: z.number().int().min(1).optional(),
-})
-
-export const logActivitySchema = z.object({
-  contactId: z.uuid(),
-  activityType: z.enum([
-    'SENT',
-    'REPLIED',
-    'BOUNCED',
-    'OPTED_OUT',
-    'SKIPPED',
-    'CALL_COMPLETED',
-    'MEETING_BOOKED',
-    'CONVERTED',
-  ]),
-  notes: z.string().max(1000).optional(),
-  deliveredTo: z.string().max(200).optional(),
-})
-
-export const convertContactSchema = z.object({
-  contactId: z.uuid(),
-  pipelineId: z.uuid(),
-  stageId: z.uuid(),
-  dealValue: z.number().min(0).optional(),
-})
-
-export const pauseContactSchema = z.object({ contactId: z.uuid() })
-export const resumeContactSchema = z.object({ contactId: z.uuid() })
-
-// IMPORTANT: Do NOT add "UNDONE" to logActivitySchema above — UNDONE is only created
-// internally by the undoActivity service method, never by user input.
-
-export const categorizeContactSchema = z.object({
-  contactId: z.uuid(),
-  replyCategory: z.enum([
-    'INTERESTED',
-    'NOT_NOW',
-    'NOT_INTERESTED',
-    'WRONG_PERSON',
-    'AUTO_REPLY',
-  ]),
-})
-
-export const snoozeContactSchema = z.object({
-  contactId: z.uuid(),
-  snoozedUntil: z.coerce.date(),
-})
-
-export const batchLogActivitySchema = z.object({
-  contactIds: z.array(z.uuid()).min(1).max(50),
-  activityType: z.enum(['SENT', 'SKIPPED']),
-  notes: z.string().max(1000).optional(),
-})
-
-export const undoActivitySchema = z.object({
-  contactId: z.uuid(),
-  activityId: z.uuid(),
-})
-
-// NOTE: importContactsSchema and bulkEnrollSchema are schema stubs for Plan 2 (Dashboard + Contacts).
-// Service/repository/router implementation deferred to that plan.
-export const importContactsSchema = z.object({
-  contacts: z.array(z.object({
-    firstName: z.string().min(1).max(100),
-    lastName: z.string().max(100).optional(),
-    email: z.string().email().max(200),
-    company: z.string().max(200).optional(),
-    sector: z.string().max(100).optional(),
-    notes: z.string().max(1000).optional(),
-  })).min(1).max(500),
-  sequenceId: z.uuid().optional(),
-})
-
-export const bulkEnrollSchema = z.object({
-  customerIds: z.array(z.uuid()).min(1).max(100),
-  sequenceId: z.uuid(),
-  assignedUserId: z.uuid().optional(),
-})
-
-export const getContactDetailSchema = z.object({
-  contactId: z.uuid(),
-})
-
-export const getContactActivitiesSchema = z.object({
-  contactId: z.uuid(),
-  cursor: z.uuid().optional(),
-  limit: z.number().int().min(1).max(100).default(50),
+const paginationSchema = z.object({
+  limit: z.number().int().min(1).max(200).default(50),
+  cursor: z.string().optional(),
 })
 
 // ---------------------------------------------------------------------------
-// Analytics schemas
+// Companies
 // ---------------------------------------------------------------------------
 
-export const sequenceAnalyticsSchema = z.object({
-  dateFrom: z.coerce.date().optional(),
-  dateTo: z.coerce.date().optional(),
-  sector: z.string().max(100).optional(),
+export const listCompaniesSchema = paginationSchema.extend({
+  search: z.string().optional(),
+  city: z.string().optional(),
+  doNotContact: z.boolean().optional(),
 })
 
-export const sectorAnalyticsSchema = z.object({
-  dateFrom: z.coerce.date().optional(),
-  dateTo: z.coerce.date().optional(),
+export const createCompanySchema = z.object({
+  name: z.string().min(1),
+  domain: z.string().optional().nullable(),
+  industry: z.string().optional().nullable(),
+  employeeBand: outreachEmployeeBandEnum.optional().nullable(),
+  city: z.string().optional().nullable(),
+  country: z.string().optional().nullable(),
+  ownerLed: z.boolean().optional(),
+  source: outreachCompanySourceEnum.optional(),
+  notes: z.string().optional().nullable(),
+  enrichment: z.record(z.string(), z.unknown()).optional(),
+})
+
+export const updateCompanySchema = createCompanySchema.partial().extend({
+  id: uuid,
+  doNotContact: z.boolean().optional(),
+  dncReason: z.string().optional().nullable(),
 })
 
 // ---------------------------------------------------------------------------
-// Template schemas
+// Contacts
 // ---------------------------------------------------------------------------
 
-const templateCategoryEnum = z.enum(['intro', 'follow-up', 'break-up', 'case-study', 'linkedin', 'custom'])
-const templateChannelEnum = z.enum(['EMAIL', 'LINKEDIN_REQUEST', 'LINKEDIN_MESSAGE', 'CALL'])
+export const listContactsSchema = paginationSchema.extend({
+  companyId: uuid.optional(),
+  search: z.string().optional(),
+  doNotContact: z.boolean().optional(),
+  bounced: z.boolean().optional(),
+})
 
-export const listTemplatesSchema = z.object({ category: templateCategoryEnum.optional(), isActive: z.boolean().optional() })
-export const getTemplateByIdSchema = z.object({ templateId: z.uuid() })
+export const createContactSchema = z.object({
+  companyId: uuid,
+  fullName: z.string().min(1),
+  role: z.string().optional().nullable(),
+  email: emailOptional,
+  phone: z.string().optional().nullable(),
+  linkedinUrl: z.string().url().optional().nullable(),
+  isOwner: z.boolean().optional(),
+  isDecisionMaker: z.boolean().optional(),
+})
+
+export const updateContactSchema = z.object({
+  id: uuid,
+  fullName: z.string().min(1).optional(),
+  role: z.string().optional().nullable(),
+  email: emailOptional,
+  phone: z.string().optional().nullable(),
+  linkedinUrl: z.string().url().optional().nullable(),
+  isOwner: z.boolean().optional(),
+  isDecisionMaker: z.boolean().optional(),
+  bounced: z.boolean().optional(),
+  doNotContact: z.boolean().optional(),
+})
+
+export const markContactBouncedSchema = z.object({ id: uuid })
+
+// ---------------------------------------------------------------------------
+// Campaigns
+// ---------------------------------------------------------------------------
+
+export const listCampaignsSchema = paginationSchema.extend({
+  status: outreachCampaignStatusEnum.optional(),
+  channel: outreachChannelEnum.optional(),
+})
+
+export const createCampaignSchema = z.object({
+  name: z.string().min(1),
+  channel: outreachChannelEnum,
+  city: z.string().optional().nullable(),
+  industryFocus: z.string().optional().nullable(),
+  status: outreachCampaignStatusEnum.optional(),
+  startedAt: z.date().optional().nullable(),
+  endedAt: z.date().optional().nullable(),
+})
+
+// ---------------------------------------------------------------------------
+// Templates
+// ---------------------------------------------------------------------------
+
+export const listTemplatesSchema = paginationSchema.extend({
+  channel: outreachChannelEnum.optional(),
+  active: z.boolean().optional(),
+})
+
 export const createTemplateSchema = z.object({
-  name: z.string().min(1).max(200), category: templateCategoryEnum, channel: templateChannelEnum,
-  subject: z.string().max(500).optional(), bodyMarkdown: z.string().min(1).max(10000),
-  tags: z.array(z.string().max(50)).max(20).optional(), isActive: z.boolean().optional(),
+  name: z.string().min(1),
+  channel: outreachChannelEnum,
+  subject: z.string().optional().nullable(),
+  body: z.string().min(1),
+  variables: z.record(z.string(), z.unknown()).optional(),
+  parentId: uuid.optional().nullable(),
+  active: z.boolean().optional(),
 })
-export const updateTemplateSchema = z.object({
-  templateId: z.uuid(), name: z.string().min(1).max(200).optional(), category: templateCategoryEnum.optional(),
-  channel: templateChannelEnum.optional(), subject: z.string().max(500).nullable().optional(),
-  bodyMarkdown: z.string().min(1).max(10000).optional(), tags: z.array(z.string().max(50)).max(20).nullable().optional(),
-  isActive: z.boolean().optional(),
-})
-export const deleteTemplateSchema = z.object({ templateId: z.uuid() })
 
 // ---------------------------------------------------------------------------
-// Snippet schemas
+// Touches
 // ---------------------------------------------------------------------------
 
-export const listSnippetsSchema = z.object({ category: z.string().max(100).optional(), isActive: z.boolean().optional() })
-export const getSnippetByIdSchema = z.object({ snippetId: z.uuid() })
-export const createSnippetSchema = z.object({
-  name: z.string().min(1).max(200), category: z.string().min(1).max(100),
-  bodyMarkdown: z.string().min(1).max(10000), isActive: z.boolean().optional(),
+export const listTouchesSchema = paginationSchema.extend({
+  contactId: uuid.optional(),
+  campaignId: uuid.optional(),
+  deliveryStatus: outreachDeliveryStatusEnum.optional(),
+  awaitingReplyOnly: z.boolean().optional(),
 })
-export const updateSnippetSchema = z.object({
-  snippetId: z.uuid(), name: z.string().min(1).max(200).optional(), category: z.string().min(1).max(100).optional(),
-  bodyMarkdown: z.string().min(1).max(10000).optional(), isActive: z.boolean().optional(),
+
+export const sendTouchSchema = z.object({
+  contactId: uuid,
+  templateId: uuid.optional().nullable(),
+  campaignId: uuid.optional().nullable(),
+  channel: outreachChannelEnum,
+  renderedSubject: z.string().optional().nullable(),
+  renderedBody: z.string().optional().nullable(),
+  externalMessageId: z.string().optional().nullable(),
 })
-export const deleteSnippetSchema = z.object({ snippetId: z.uuid() })
+
+// ---------------------------------------------------------------------------
+// Replies
+// ---------------------------------------------------------------------------
+
+export const listRepliesSchema = paginationSchema.extend({
+  needsReview: z.boolean().optional(),
+  handled: z.boolean().optional(),
+  contactId: uuid.optional(),
+})
+
+export const listRepliesEnrichedSchema = paginationSchema.extend({
+  needsReview: z.boolean().optional(),
+  handled: z.boolean().optional(),
+  contactId: uuid.optional(),
+  /** Filter to replies received within the last N days. */
+  sinceDays: z.number().int().min(1).max(365).optional(),
+})
+
+export const classifyReplySchema = z.object({
+  replyId: uuid,
+  classifiedAs: z.string().min(1),
+  classifiedBy: outreachClassifierEnum,
+  confidence: z.number().min(0).max(1).optional(),
+})
+
+// ---------------------------------------------------------------------------
+// DNC
+// ---------------------------------------------------------------------------
+
+export const addToDncSchema = z
+  .object({
+    email: z.string().email().optional(),
+    domain: z.string().optional(),
+    reason: z.string().optional().nullable(),
+  })
+  .refine((v) => Boolean(v.email || v.domain), {
+    message: "Either email or domain is required",
+  })
+
+export const listDncSchema = paginationSchema.extend({
+  search: z.string().optional(),
+})
+
+export const checkDncSchema = z.object({
+  email: z.string().email(),
+})
+
+// ---------------------------------------------------------------------------
+// Bulk import
+// ---------------------------------------------------------------------------
+
+const bulkImportRowSchema = z.object({
+  companyName: z.string().min(1),
+  domain: z.string().optional().nullable(),
+  industry: z.string().optional().nullable(),
+  city: z.string().optional().nullable(),
+  country: z.string().optional().nullable(),
+  employeeBand: outreachEmployeeBandEnum.optional().nullable(),
+  ownerLed: z.boolean().optional(),
+  contactName: z.string().min(1),
+  email: emailOptional,
+  phone: z.string().optional().nullable(),
+  role: z.string().optional().nullable(),
+  linkedinUrl: z.string().url().optional().nullable(),
+  isOwner: z.boolean().optional(),
+  isDecisionMaker: z.boolean().optional(),
+})
+
+export const bulkImportLeadsSchema = z.object({
+  rows: z.array(bulkImportRowSchema).min(1).max(5000),
+})

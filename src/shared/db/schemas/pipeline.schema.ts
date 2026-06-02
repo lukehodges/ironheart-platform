@@ -4,160 +4,127 @@ import {
   uuid,
   text,
   integer,
-  boolean,
   numeric,
-  timestamp,
   jsonb,
-  uniqueIndex,
+  date,
+  timestamp,
   index,
   foreignKey,
+  check,
 } from "drizzle-orm/pg-core"
 import { sql } from "drizzle-orm"
 import { tenants } from "./tenant.schema"
 import { users } from "./auth.schema"
-import { customers } from "./customer.schema"
+import { companies, contacts, touches } from "./outreach.schema"
 
 // ---------------------------------------------------------------------------
 // Enums
 // ---------------------------------------------------------------------------
 
-export const pipelineStageTypeEnum = pgEnum("pipeline_stage_type", [
-  "OPEN",
-  "WON",
-  "LOST",
+export const dealStageEnum = pgEnum("deal_stage", [
+  "qualified",
+  "demo",
+  "proposal",
+  "won",
+  "lost",
+  "dormant",
+])
+
+export const dealProductEnum = pgEnum("deal_product", [
+  "audit",
+  "build_sprint",
+  "retainer",
+  "other",
+])
+
+export const dealEventKindEnum = pgEnum("deal_event_kind", [
+  "stage_changed",
+  "note_added",
+  "meeting_booked",
+  "proposal_sent",
+  "contract_signed",
 ])
 
 // ---------------------------------------------------------------------------
 // Tables
 // ---------------------------------------------------------------------------
 
-export const pipelines = pgTable("pipelines", {
+export const deals = pgTable("deals", {
   id: uuid().primaryKey().default(sql`gen_random_uuid()`).notNull(),
   tenantId: uuid().notNull(),
+  companyId: uuid().notNull(),
+  primaryContactId: uuid(),
+  // Attribution — which touch first generated this deal.
+  originTouchId: uuid(),
   name: text().notNull(),
-  description: text(),
-  isDefault: boolean().default(false).notNull(),
-  isArchived: boolean().default(false).notNull(),
-  createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
-  updatedAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
-}, (table) => [
-  index("pipelines_tenantId_idx").on(table.tenantId),
-  uniqueIndex("pipelines_tenantId_isDefault_key")
-    .on(table.tenantId)
-    .where(sql`"isDefault" = true`),
-  foreignKey({
-    columns: [table.tenantId],
-    foreignColumns: [tenants.id],
-    name: "pipelines_tenantId_fkey",
-  }).onUpdate("cascade").onDelete("cascade"),
-])
-
-export const pipelineStages = pgTable("pipeline_stages", {
-  id: uuid().primaryKey().default(sql`gen_random_uuid()`).notNull(),
-  tenantId: uuid().notNull(),
-  pipelineId: uuid().notNull(),
-  name: text().notNull(),
-  slug: text().notNull(),
-  position: integer().notNull(),
-  color: text(),
-  type: pipelineStageTypeEnum().default("OPEN").notNull(),
-  allowedTransitions: uuid().array().notNull().default(sql`'{}'::uuid[]`),
-  createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
-  updatedAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
-}, (table) => [
-  index("pipeline_stages_pipelineId_idx").on(table.pipelineId),
-  index("pipeline_stages_tenantId_idx").on(table.tenantId),
-  uniqueIndex("pipeline_stages_pipelineId_slug_key").on(table.pipelineId, table.slug),
-  uniqueIndex("pipeline_stages_pipelineId_position_key").on(table.pipelineId, table.position),
-  foreignKey({
-    columns: [table.tenantId],
-    foreignColumns: [tenants.id],
-    name: "pipeline_stages_tenantId_fkey",
-  }).onUpdate("cascade").onDelete("cascade"),
-  foreignKey({
-    columns: [table.pipelineId],
-    foreignColumns: [pipelines.id],
-    name: "pipeline_stages_pipelineId_fkey",
-  }).onUpdate("cascade").onDelete("cascade"),
-])
-
-export const pipelineMembers = pgTable("pipeline_members", {
-  id: uuid().primaryKey().default(sql`gen_random_uuid()`).notNull(),
-  tenantId: uuid().notNull(),
-  pipelineId: uuid().notNull(),
-  customerId: uuid().notNull(),
-  stageId: uuid().notNull(),
-  dealValue: numeric({ precision: 12, scale: 2 }),
-  lostReason: text(),
-  enteredStageAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
-  addedAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
-  closedAt: timestamp({ precision: 3, mode: 'date' }),
-  metadata: jsonb().$type<Record<string, unknown>>().default({}),
-  createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
-  updatedAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
-}, (table) => [
-  uniqueIndex("pipeline_members_pipelineId_customerId_key").on(table.pipelineId, table.customerId),
-  index("pipeline_members_pipelineId_stageId_idx").on(table.pipelineId, table.stageId),
-  index("pipeline_members_customerId_idx").on(table.customerId),
-  index("pipeline_members_tenantId_idx").on(table.tenantId),
-  foreignKey({
-    columns: [table.tenantId],
-    foreignColumns: [tenants.id],
-    name: "pipeline_members_tenantId_fkey",
-  }).onUpdate("cascade").onDelete("cascade"),
-  foreignKey({
-    columns: [table.pipelineId],
-    foreignColumns: [pipelines.id],
-    name: "pipeline_members_pipelineId_fkey",
-  }).onUpdate("cascade").onDelete("cascade"),
-  foreignKey({
-    columns: [table.customerId],
-    foreignColumns: [customers.id],
-    name: "pipeline_members_customerId_fkey",
-  }).onUpdate("cascade").onDelete("cascade"),
-  foreignKey({
-    columns: [table.stageId],
-    foreignColumns: [pipelineStages.id],
-    name: "pipeline_members_stageId_fkey",
-  }).onUpdate("cascade").onDelete("cascade"),
-])
-
-export const pipelineStageHistory = pgTable("pipeline_stage_history_v2", {
-  id: uuid().primaryKey().default(sql`gen_random_uuid()`).notNull(),
-  tenantId: uuid().notNull(),
-  memberId: uuid().notNull(),
-  fromStageId: uuid(),
-  toStageId: uuid().notNull(),
-  changedAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
-  changedById: uuid(),
-  dealValue: numeric({ precision: 12, scale: 2 }),
-  lostReason: text(),
+  stage: dealStageEnum().default("qualified").notNull(),
+  product: dealProductEnum().default("other").notNull(),
+  valueEstimate: numeric({ precision: 12, scale: 2 }),
+  probability: integer(),
+  expectedClose: date(),
+  ownerUserId: uuid(),
   notes: text(),
+  closedAt: timestamp({ precision: 3, mode: 'date' }),
+  closeReason: text(),
+  createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 }, (table) => [
-  index("pipeline_stage_history_v2_memberId_idx").on(table.memberId),
-  index("pipeline_stage_history_v2_tenantId_changedAt_idx").on(table.tenantId, table.changedAt),
+  index("deals_tenantId_stage_idx").on(table.tenantId, table.stage),
+  index("deals_tenantId_ownerUserId_idx").on(table.tenantId, table.ownerUserId),
+  index("deals_companyId_idx").on(table.companyId),
+  check("deals_probability_range", sql`"probability" IS NULL OR ("probability" >= 0 AND "probability" <= 100)`),
   foreignKey({
     columns: [table.tenantId],
     foreignColumns: [tenants.id],
-    name: "pipeline_stage_history_v2_tenantId_fkey",
+    name: "deals_tenantId_fkey",
   }).onUpdate("cascade").onDelete("cascade"),
   foreignKey({
-    columns: [table.memberId],
-    foreignColumns: [pipelineMembers.id],
-    name: "pipeline_stage_history_v2_memberId_fkey",
+    columns: [table.companyId],
+    foreignColumns: [companies.id],
+    name: "deals_companyId_fkey",
   }).onUpdate("cascade").onDelete("cascade"),
   foreignKey({
-    columns: [table.changedById],
-    foreignColumns: [users.id],
-    name: "pipeline_stage_history_v2_changedById_fkey",
+    columns: [table.primaryContactId],
+    foreignColumns: [contacts.id],
+    name: "deals_primaryContactId_fkey",
   }).onUpdate("cascade").onDelete("set null"),
+  foreignKey({
+    columns: [table.originTouchId],
+    foreignColumns: [touches.id],
+    name: "deals_originTouchId_fkey",
+  }).onUpdate("cascade").onDelete("set null"),
+  foreignKey({
+    columns: [table.ownerUserId],
+    foreignColumns: [users.id],
+    name: "deals_ownerUserId_fkey",
+  }).onUpdate("cascade").onDelete("set null"),
+])
+
+export const dealEvents = pgTable("deal_events", {
+  id: uuid().primaryKey().default(sql`gen_random_uuid()`).notNull(),
+  tenantId: uuid().notNull(),
+  dealId: uuid().notNull(),
+  kind: dealEventKindEnum().notNull(),
+  payload: jsonb().$type<Record<string, unknown>>().default({}).notNull(),
+  at: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+  actor: text(),
+}, (table) => [
+  index("deal_events_dealId_at_idx").on(table.dealId, table.at.desc()),
+  foreignKey({
+    columns: [table.tenantId],
+    foreignColumns: [tenants.id],
+    name: "deal_events_tenantId_fkey",
+  }).onUpdate("cascade").onDelete("cascade"),
+  foreignKey({
+    columns: [table.dealId],
+    foreignColumns: [deals.id],
+    name: "deal_events_dealId_fkey",
+  }).onUpdate("cascade").onDelete("cascade"),
 ])
 
 // ---------------------------------------------------------------------------
 // Type aliases
 // ---------------------------------------------------------------------------
 
-export type PipelineRow = typeof pipelines.$inferSelect
-export type PipelineStageRow = typeof pipelineStages.$inferSelect
-export type PipelineMemberRow = typeof pipelineMembers.$inferSelect
-export type PipelineStageHistoryRow = typeof pipelineStageHistory.$inferSelect
+export type DealRow = typeof deals.$inferSelect
+export type DealEventRow = typeof dealEvents.$inferSelect

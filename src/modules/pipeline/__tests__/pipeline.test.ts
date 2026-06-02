@@ -1,8 +1,9 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { pipelineService } from "../pipeline.service";
-import { pipelineRepository } from "../pipeline.repository";
-import { NotFoundError, BadRequestError } from "@/shared/errors";
-import { inngest } from "@/shared/inngest";
+import { describe, it, expect, vi, beforeEach } from "vitest"
+import { pipelineService } from "../pipeline.service"
+import { pipelineRepository } from "../pipeline.repository"
+import { NotFoundError, BadRequestError } from "@/shared/errors"
+import { emitEvent } from "@/modules/jobs/event-emitter"
+import type { DealRecord, DealEventRecord } from "../pipeline.types"
 
 // ---------------------------------------------------------------------------
 // Mocks
@@ -10,752 +11,394 @@ import { inngest } from "@/shared/inngest";
 
 vi.mock("../pipeline.repository", () => ({
   pipelineRepository: {
-    list: vi.fn(),
-    findById: vi.fn(),
-    findDefault: vi.fn(),
-    create: vi.fn(),
-    update: vi.fn(),
-    archive: vi.fn(),
-    findStageById: vi.fn(),
-    addStage: vi.fn(),
-    updateStage: vi.fn(),
-    removeStage: vi.fn(),
-    reorderStages: vi.fn(),
-    findMemberById: vi.fn(),
-    addMember: vi.fn(),
-    updateMemberStage: vi.fn(),
-    removeMember: vi.fn(),
-    updateMember: vi.fn(),
-    listMembers: vi.fn(),
-    getSummary: vi.fn(),
-    countActiveMembers: vi.fn(),
-    createHistoryEntry: vi.fn(),
-    getMemberHistory: vi.fn(),
+    getDealById: vi.fn(),
+    listDeals: vi.fn(),
+    getDealsByOriginTouch: vi.fn(),
+    findDealByCompany: vi.fn(),
+    getStageCounts: vi.fn(),
+    getWeightedValue: vi.fn(),
+    createDeal: vi.fn(),
+    updateDeal: vi.fn(),
+    deleteDeal: vi.fn(),
+    listDealEvents: vi.fn(),
+    createDealEvent: vi.fn(),
   },
-}));
+}))
 
-vi.mock("@/shared/inngest", () => ({
-  inngest: { send: vi.fn().mockResolvedValue(undefined) },
-}));
+vi.mock("@/modules/jobs/event-emitter", () => ({
+  emitEvent: vi.fn().mockResolvedValue({ eventId: 1 }),
+}))
+
+vi.mock("@/shared/db", () => ({
+  db: {
+    select: vi.fn().mockReturnValue({
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockReturnValue({
+          limit: vi.fn().mockResolvedValue([
+            {
+              id: "reply-1",
+              tenantId: "tenant-1",
+              touchId: "touch-1",
+            },
+          ]),
+        }),
+      }),
+    }),
+  },
+}))
 
 // ---------------------------------------------------------------------------
-// Helpers
+// Fixtures
 // ---------------------------------------------------------------------------
 
-const TENANT_ID = "00000000-0000-0000-0000-000000000001";
-const USER_ID = "user-1";
-const PIPELINE_ID = "00000000-0000-0000-0000-000000000100";
-const STAGE_OPEN_ID = "00000000-0000-0000-0000-000000000201";
-const STAGE_WON_ID = "00000000-0000-0000-0000-000000000202";
-const STAGE_LOST_ID = "00000000-0000-0000-0000-000000000203";
-const STAGE_OPEN_2_ID = "00000000-0000-0000-0000-000000000204";
-const MEMBER_ID = "00000000-0000-0000-0000-000000000300";
-const CUSTOMER_ID = "00000000-0000-0000-0000-000000000400";
+const TENANT_ID = "00000000-0000-0000-0000-000000000001"
+const DEAL_ID = "00000000-0000-0000-0000-000000000100"
+const COMPANY_ID = "00000000-0000-0000-0000-000000000200"
+const CONTACT_ID = "00000000-0000-0000-0000-000000000300"
+const ACTOR = "user-1"
 
-const ctx = { tenantId: TENANT_ID, user: { id: USER_ID } } as any;
-
-function makeStage(overrides: Partial<any> = {}) {
+function makeDeal(overrides: Partial<DealRecord> = {}): DealRecord {
   return {
-    id: STAGE_OPEN_ID,
+    id: DEAL_ID,
     tenantId: TENANT_ID,
-    pipelineId: PIPELINE_ID,
-    name: "Lead",
-    slug: "lead",
-    position: 0,
-    color: null,
-    type: "OPEN" as const,
-    allowedTransitions: [STAGE_WON_ID, STAGE_LOST_ID, STAGE_OPEN_2_ID],
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    ...overrides,
-  };
-}
-
-function makePipeline(overrides: Partial<any> = {}) {
-  return {
-    id: PIPELINE_ID,
-    tenantId: TENANT_ID,
-    name: "Sales",
-    description: null,
-    isDefault: true,
-    isArchived: false,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    stages: [
-      makeStage({ id: STAGE_OPEN_ID, position: 0, type: "OPEN" }),
-      makeStage({ id: STAGE_OPEN_2_ID, position: 1, type: "OPEN", name: "Qualified" }),
-      makeStage({ id: STAGE_WON_ID, position: 2, type: "WON", name: "Won" }),
-      makeStage({ id: STAGE_LOST_ID, position: 3, type: "LOST", name: "Lost" }),
-    ],
-    ...overrides,
-  };
-}
-
-function makeMember(overrides: Partial<any> = {}) {
-  return {
-    id: MEMBER_ID,
-    tenantId: TENANT_ID,
-    pipelineId: PIPELINE_ID,
-    customerId: CUSTOMER_ID,
-    stageId: STAGE_OPEN_ID,
-    dealValue: 1000,
-    lostReason: null,
-    enteredStageAt: new Date(),
-    addedAt: new Date(),
+    companyId: COMPANY_ID,
+    primaryContactId: CONTACT_ID,
+    originTouchId: null,
+    name: "Sample Deal",
+    stage: "qualified",
+    product: "audit",
+    valueEstimate: 3500,
+    probability: 30,
+    expectedClose: null,
+    ownerUserId: null,
+    notes: null,
     closedAt: null,
-    metadata: {},
+    closeReason: null,
     createdAt: new Date(),
     updatedAt: new Date(),
     ...overrides,
-  };
+  }
 }
 
-const repo = pipelineRepository as unknown as Record<string, ReturnType<typeof vi.fn>>;
+function makeEvent(
+  overrides: Partial<DealEventRecord> = {},
+): DealEventRecord {
+  return {
+    id: "evt-1",
+    tenantId: TENANT_ID,
+    dealId: DEAL_ID,
+    kind: "note_added",
+    payload: {},
+    at: new Date(),
+    actor: ACTOR,
+    ...overrides,
+  }
+}
+
+const repo = pipelineRepository as unknown as Record<
+  string,
+  ReturnType<typeof vi.fn>
+>
 
 beforeEach(() => {
-  vi.clearAllMocks();
-});
+  vi.clearAllMocks()
+})
 
 // ===========================================================================
-// PIPELINE CRUD
+// Service tests
 // ===========================================================================
 
 describe("pipelineService", () => {
-  describe("listPipelines", () => {
-    it("delegates to repository", async () => {
-      const pipelines = [makePipeline()];
-      repo.list.mockResolvedValue(pipelines);
+  describe("listDeals", () => {
+    it("delegates to repository with filters", async () => {
+      const deals = [makeDeal()]
+      repo.listDeals.mockResolvedValue(deals)
 
-      const result = await pipelineService.listPipelines(ctx);
-      expect(result).toEqual(pipelines);
-      expect(repo.list).toHaveBeenCalledWith(TENANT_ID);
-    });
-  });
+      const result = await pipelineService.listDeals(TENANT_ID, {
+        stage: "qualified",
+      })
 
-  describe("getPipelineById", () => {
-    it("returns pipeline when found", async () => {
-      const pipeline = makePipeline();
-      repo.findById.mockResolvedValue(pipeline);
+      expect(result).toEqual(deals)
+      expect(repo.listDeals).toHaveBeenCalledWith(TENANT_ID, {
+        stage: "qualified",
+      })
+    })
+  })
 
-      const result = await pipelineService.getPipelineById(ctx, PIPELINE_ID);
-      expect(result).toEqual(pipeline);
-    });
+  describe("getDeal", () => {
+    it("returns deal when found", async () => {
+      const deal = makeDeal()
+      repo.getDealById.mockResolvedValue(deal)
+      const result = await pipelineService.getDeal(TENANT_ID, DEAL_ID)
+      expect(result).toEqual(deal)
+    })
 
-    it("throws NotFoundError when pipeline is null", async () => {
-      repo.findById.mockResolvedValue(null);
-
-      await expect(pipelineService.getPipelineById(ctx, PIPELINE_ID)).rejects.toThrow(
-        NotFoundError,
-      );
-    });
-  });
-
-  describe("getDefaultPipeline", () => {
-    it("returns default pipeline when found", async () => {
-      const pipeline = makePipeline();
-      repo.findDefault.mockResolvedValue(pipeline);
-
-      const result = await pipelineService.getDefaultPipeline(ctx);
-      expect(result).toEqual(pipeline);
-    });
-
-    it("throws NotFoundError when no default pipeline", async () => {
-      repo.findDefault.mockResolvedValue(null);
-
-      await expect(pipelineService.getDefaultPipeline(ctx)).rejects.toThrow(NotFoundError);
-    });
-  });
-
-  describe("createPipeline", () => {
-    it("creates and returns pipeline", async () => {
-      const pipeline = makePipeline();
-      repo.create.mockResolvedValue(pipeline);
-
-      const result = await pipelineService.createPipeline(ctx, { name: "Sales" });
-      expect(result).toEqual(pipeline);
-      expect(repo.create).toHaveBeenCalledWith(TENANT_ID, { name: "Sales" });
-    });
-  });
-
-  describe("updatePipeline", () => {
-    it("delegates to repository", async () => {
-      const pipeline = makePipeline({ name: "Updated" });
-      repo.update.mockResolvedValue(pipeline);
-
-      const result = await pipelineService.updatePipeline(ctx, PIPELINE_ID, { name: "Updated" });
-      expect(result).toEqual(pipeline);
-    });
-  });
-
-  // =========================================================================
-  // ARCHIVE PIPELINE
-  // =========================================================================
-
-  describe("archivePipeline", () => {
-    it("archives pipeline when no active members", async () => {
-      repo.findById.mockResolvedValue(makePipeline());
-      repo.countActiveMembers.mockResolvedValue(0);
-      repo.archive.mockResolvedValue(undefined);
-
-      await pipelineService.archivePipeline(ctx, PIPELINE_ID);
-
-      expect(repo.archive).toHaveBeenCalledWith(TENANT_ID, PIPELINE_ID);
-    });
-
-    it("throws BadRequestError when active members exist", async () => {
-      repo.findById.mockResolvedValue(makePipeline());
-      repo.countActiveMembers.mockResolvedValue(3);
-
-      await expect(pipelineService.archivePipeline(ctx, PIPELINE_ID)).rejects.toThrow(
-        BadRequestError,
-      );
-      expect(repo.archive).not.toHaveBeenCalled();
-    });
-  });
-
-  // =========================================================================
-  // STAGE CONFIGURATION
-  // =========================================================================
-
-  describe("addStage", () => {
-    it("delegates to repository", async () => {
-      const stage = makeStage();
-      repo.addStage.mockResolvedValue(stage);
-
-      const input = {
-        pipelineId: PIPELINE_ID,
-        name: "Lead",
-        slug: "lead",
-        position: 0,
-      };
-      const result = await pipelineService.addStage(ctx, input);
-      expect(result).toEqual(stage);
-      expect(repo.addStage).toHaveBeenCalledWith(TENANT_ID, input);
-    });
-  });
-
-  describe("updateStage", () => {
-    it("delegates to repository", async () => {
-      const stage = makeStage({ name: "Updated" });
-      repo.updateStage.mockResolvedValue(stage);
-
-      const result = await pipelineService.updateStage(ctx, STAGE_OPEN_ID, { name: "Updated" });
-      expect(result).toEqual(stage);
-    });
-  });
-
-  describe("removeStage", () => {
-    it("delegates to repository", async () => {
-      repo.removeStage.mockResolvedValue(undefined);
-
-      await pipelineService.removeStage(ctx, STAGE_OPEN_ID, STAGE_OPEN_2_ID);
-      expect(repo.removeStage).toHaveBeenCalledWith(TENANT_ID, STAGE_OPEN_ID, STAGE_OPEN_2_ID);
-    });
-  });
-
-  describe("reorderStages", () => {
-    it("delegates to repository", async () => {
-      repo.reorderStages.mockResolvedValue(undefined);
-      const ids = [STAGE_OPEN_2_ID, STAGE_OPEN_ID];
-
-      await pipelineService.reorderStages(ctx, PIPELINE_ID, ids);
-      expect(repo.reorderStages).toHaveBeenCalledWith(TENANT_ID, PIPELINE_ID, ids);
-    });
-  });
-
-  // =========================================================================
-  // ADD MEMBER
-  // =========================================================================
-
-  describe("addMember", () => {
-    it("adds member with explicit stageId", async () => {
-      const member = makeMember();
-      repo.addMember.mockResolvedValue(member);
-      repo.createHistoryEntry.mockResolvedValue({});
-
-      const result = await pipelineService.addMember(ctx, {
-        pipelineId: PIPELINE_ID,
-        customerId: CUSTOMER_ID,
-        stageId: STAGE_OPEN_ID,
-      });
-
-      expect(result).toEqual(member);
-      expect(repo.addMember).toHaveBeenCalledWith(TENANT_ID, {
-        pipelineId: PIPELINE_ID,
-        customerId: CUSTOMER_ID,
-        stageId: STAGE_OPEN_ID,
-        dealValue: undefined,
-        metadata: undefined,
-      });
-    });
-
-    it("uses first OPEN stage when no stageId provided", async () => {
-      const pipeline = makePipeline();
-      repo.findById.mockResolvedValue(pipeline);
-
-      const member = makeMember({ stageId: STAGE_OPEN_ID });
-      repo.addMember.mockResolvedValue(member);
-      repo.createHistoryEntry.mockResolvedValue({});
-
-      await pipelineService.addMember(ctx, {
-        pipelineId: PIPELINE_ID,
-        customerId: CUSTOMER_ID,
-      });
-
-      expect(repo.findById).toHaveBeenCalledWith(TENANT_ID, PIPELINE_ID);
-      expect(repo.addMember).toHaveBeenCalledWith(
-        TENANT_ID,
-        expect.objectContaining({ stageId: STAGE_OPEN_ID }),
-      );
-    });
-
-    it("throws BadRequestError when pipeline has no OPEN stages", async () => {
-      const pipeline = makePipeline({
-        stages: [
-          makeStage({ id: STAGE_WON_ID, type: "WON" }),
-          makeStage({ id: STAGE_LOST_ID, type: "LOST" }),
-        ],
-      });
-      repo.findById.mockResolvedValue(pipeline);
-
+    it("throws NotFoundError when missing", async () => {
+      repo.getDealById.mockResolvedValue(null)
       await expect(
-        pipelineService.addMember(ctx, {
-          pipelineId: PIPELINE_ID,
-          customerId: CUSTOMER_ID,
+        pipelineService.getDeal(TENANT_ID, DEAL_ID),
+      ).rejects.toThrow(NotFoundError)
+    })
+  })
+
+  describe("createDeal", () => {
+    it("inserts deal + initial stage_changed event + emits deal.created", async () => {
+      const created = makeDeal()
+      repo.createDeal.mockResolvedValue(created)
+      repo.createDealEvent.mockResolvedValue(makeEvent({ kind: "stage_changed" }))
+
+      const result = await pipelineService.createDeal({
+        tenantId: TENANT_ID,
+        actor: ACTOR,
+        companyId: COMPANY_ID,
+        name: "Sample Deal",
+      })
+
+      expect(result).toEqual(created)
+      expect(repo.createDeal).toHaveBeenCalled()
+      expect(repo.createDealEvent).toHaveBeenCalledWith(
+        TENANT_ID,
+        expect.objectContaining({
+          dealId: DEAL_ID,
+          kind: "stage_changed",
+          payload: { from: null, to: "qualified" },
         }),
-      ).rejects.toThrow(BadRequestError);
-    });
-
-    it("creates initial history entry", async () => {
-      const member = makeMember();
-      repo.addMember.mockResolvedValue(member);
-      repo.createHistoryEntry.mockResolvedValue({});
-
-      await pipelineService.addMember(ctx, {
-        pipelineId: PIPELINE_ID,
-        customerId: CUSTOMER_ID,
-        stageId: STAGE_OPEN_ID,
-      });
-
-      expect(repo.createHistoryEntry).toHaveBeenCalledWith(TENANT_ID, {
-        memberId: MEMBER_ID,
-        fromStageId: null,
-        toStageId: STAGE_OPEN_ID,
-        changedById: USER_ID,
-      });
-    });
-
-    it("emits member.added event", async () => {
-      const member = makeMember();
-      repo.addMember.mockResolvedValue(member);
-      repo.createHistoryEntry.mockResolvedValue({});
-
-      await pipelineService.addMember(ctx, {
-        pipelineId: PIPELINE_ID,
-        customerId: CUSTOMER_ID,
-        stageId: STAGE_OPEN_ID,
-      });
-
-      expect(inngest.send).toHaveBeenCalledWith({
-        name: "pipeline/member.added",
-        data: {
-          memberId: MEMBER_ID,
-          pipelineId: PIPELINE_ID,
-          customerId: CUSTOMER_ID,
-          stageId: STAGE_OPEN_ID,
+      )
+      expect(emitEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
           tenantId: TENANT_ID,
-        },
-      });
-    });
-  });
+          kind: "deal.created",
+          entityId: DEAL_ID,
+        }),
+      )
+    })
+  })
 
-  // =========================================================================
-  // MOVE MEMBER
-  // =========================================================================
+  describe("moveStage", () => {
+    it("updates stage, logs event, emits deal.stage_changed", async () => {
+      const existing = makeDeal({ stage: "qualified" })
+      const updated = makeDeal({ stage: "demo" })
+      repo.getDealById.mockResolvedValue(existing)
+      repo.updateDeal.mockResolvedValue(updated)
+      repo.createDealEvent.mockResolvedValue(makeEvent())
 
-  describe("moveMember", () => {
-    it("moves member to a valid target stage", async () => {
-      const member = makeMember();
-      const currentStage = makeStage({
-        id: STAGE_OPEN_ID,
-        allowedTransitions: [STAGE_WON_ID, STAGE_LOST_ID, STAGE_OPEN_2_ID],
-      });
-      const targetStage = makeStage({
-        id: STAGE_OPEN_2_ID,
-        type: "OPEN",
-        name: "Qualified",
-      });
-      const updatedMember = makeMember({ stageId: STAGE_OPEN_2_ID });
+      const result = await pipelineService.moveStage({
+        tenantId: TENANT_ID,
+        dealId: DEAL_ID,
+        newStage: "demo",
+        actor: ACTOR,
+      })
 
-      repo.findMemberById.mockResolvedValue(member);
-      repo.findStageById
-        .mockResolvedValueOnce(currentStage)
-        .mockResolvedValueOnce(targetStage);
-      repo.updateMemberStage.mockResolvedValue(updatedMember);
-      repo.createHistoryEntry.mockResolvedValue({});
-
-      const result = await pipelineService.moveMember(ctx, {
-        memberId: MEMBER_ID,
-        toStageId: STAGE_OPEN_2_ID,
-      });
-
-      expect(result).toEqual(updatedMember);
-      expect(repo.updateMemberStage).toHaveBeenCalledWith(
+      expect(result).toEqual(updated)
+      expect(repo.updateDeal).toHaveBeenCalledWith(
         TENANT_ID,
-        MEMBER_ID,
-        expect.objectContaining({
-          stageId: STAGE_OPEN_2_ID,
-          closedAt: null,
-        }),
-      );
-    });
+        DEAL_ID,
+        expect.objectContaining({ stage: "demo", closedAt: null }),
+      )
+      expect(emitEvent).toHaveBeenCalledWith(
+        expect.objectContaining({ kind: "deal.stage_changed" }),
+      )
+    })
 
-    it("throws BadRequestError for invalid transition", async () => {
-      const member = makeMember();
-      const currentStage = makeStage({
-        id: STAGE_OPEN_ID,
-        allowedTransitions: [STAGE_OPEN_2_ID], // WON not allowed
-      });
-      const targetStage = makeStage({
-        id: STAGE_WON_ID,
-        type: "WON",
-        name: "Won",
-      });
+    it("sets closedAt + emits deal.won when moving to won", async () => {
+      const existing = makeDeal({ stage: "proposal" })
+      const updated = makeDeal({ stage: "won", closedAt: new Date() })
+      repo.getDealById.mockResolvedValue(existing)
+      repo.updateDeal.mockResolvedValue(updated)
+      repo.createDealEvent.mockResolvedValue(makeEvent())
 
-      repo.findMemberById.mockResolvedValue(member);
-      repo.findStageById
-        .mockResolvedValueOnce(currentStage)
-        .mockResolvedValueOnce(targetStage);
+      await pipelineService.moveStage({
+        tenantId: TENANT_ID,
+        dealId: DEAL_ID,
+        newStage: "won",
+        actor: ACTOR,
+      })
 
-      await expect(
-        pipelineService.moveMember(ctx, {
-          memberId: MEMBER_ID,
-          toStageId: STAGE_WON_ID,
-        }),
-      ).rejects.toThrow(BadRequestError);
-
-      expect(repo.updateMemberStage).not.toHaveBeenCalled();
-    });
-
-    it("rejects transition when allowedTransitions is empty (terminal stage)", async () => {
-      const member = makeMember();
-      const currentStage = makeStage({
-        id: STAGE_OPEN_ID,
-        allowedTransitions: [], // Terminal — no moves allowed
-      });
-      const targetStage = makeStage({
-        id: STAGE_WON_ID,
-        type: "WON",
-        name: "Won",
-      });
-
-      repo.findMemberById.mockResolvedValue(member);
-      repo.findStageById
-        .mockResolvedValueOnce(currentStage)
-        .mockResolvedValueOnce(targetStage);
-
-      await expect(
-        pipelineService.moveMember(ctx, {
-          memberId: MEMBER_ID,
-          toStageId: STAGE_WON_ID,
-        }),
-      ).rejects.toThrow(BadRequestError);
-
-      expect(repo.updateMemberStage).not.toHaveBeenCalled();
-    });
-
-    it("creates history entry with correct from/to stage IDs", async () => {
-      const member = makeMember({ stageId: STAGE_OPEN_ID });
-      const currentStage = makeStage({ id: STAGE_OPEN_ID });
-      const targetStage = makeStage({ id: STAGE_OPEN_2_ID, type: "OPEN" });
-      const updatedMember = makeMember({ stageId: STAGE_OPEN_2_ID });
-
-      repo.findMemberById.mockResolvedValue(member);
-      repo.findStageById
-        .mockResolvedValueOnce(currentStage)
-        .mockResolvedValueOnce(targetStage);
-      repo.updateMemberStage.mockResolvedValue(updatedMember);
-      repo.createHistoryEntry.mockResolvedValue({});
-
-      await pipelineService.moveMember(ctx, {
-        memberId: MEMBER_ID,
-        toStageId: STAGE_OPEN_2_ID,
-        notes: "Progressing",
-      });
-
-      expect(repo.createHistoryEntry).toHaveBeenCalledWith(TENANT_ID, {
-        memberId: MEMBER_ID,
-        fromStageId: STAGE_OPEN_ID,
-        toStageId: STAGE_OPEN_2_ID,
-        changedById: USER_ID,
-        dealValue: undefined,
-        lostReason: undefined,
-        notes: "Progressing",
-      });
-    });
-
-    it("sets closedAt when moving to WON stage", async () => {
-      const member = makeMember();
-      const currentStage = makeStage({ id: STAGE_OPEN_ID });
-      const targetStage = makeStage({ id: STAGE_WON_ID, type: "WON", name: "Won" });
-      const updatedMember = makeMember({ stageId: STAGE_WON_ID, closedAt: new Date() });
-
-      repo.findMemberById.mockResolvedValue(member);
-      repo.findStageById
-        .mockResolvedValueOnce(currentStage)
-        .mockResolvedValueOnce(targetStage);
-      repo.updateMemberStage.mockResolvedValue(updatedMember);
-      repo.createHistoryEntry.mockResolvedValue({});
-
-      await pipelineService.moveMember(ctx, {
-        memberId: MEMBER_ID,
-        toStageId: STAGE_WON_ID,
-      });
-
-      expect(repo.updateMemberStage).toHaveBeenCalledWith(
+      expect(repo.updateDeal).toHaveBeenCalledWith(
         TENANT_ID,
-        MEMBER_ID,
+        DEAL_ID,
         expect.objectContaining({
-          stageId: STAGE_WON_ID,
+          stage: "won",
           closedAt: expect.any(Date),
         }),
-      );
-    });
+      )
+      const kinds = (emitEvent as unknown as ReturnType<typeof vi.fn>).mock.calls.map(
+        (c) => (c[0] as { kind: string }).kind,
+      )
+      expect(kinds).toContain("deal.stage_changed")
+      expect(kinds).toContain("deal.won")
+    })
 
-    it("clears closedAt when moving from WON back to OPEN", async () => {
-      const member = makeMember({ stageId: STAGE_WON_ID, closedAt: new Date() });
-      const currentStage = makeStage({
-        id: STAGE_WON_ID,
-        type: "WON",
-        allowedTransitions: [STAGE_OPEN_ID],
-      });
-      const targetStage = makeStage({ id: STAGE_OPEN_ID, type: "OPEN" });
-      const updatedMember = makeMember({ stageId: STAGE_OPEN_ID, closedAt: null });
+    it("is a no-op when stage unchanged", async () => {
+      const existing = makeDeal({ stage: "demo" })
+      repo.getDealById.mockResolvedValue(existing)
 
-      repo.findMemberById.mockResolvedValue(member);
-      repo.findStageById
-        .mockResolvedValueOnce(currentStage)
-        .mockResolvedValueOnce(targetStage);
-      repo.updateMemberStage.mockResolvedValue(updatedMember);
-      repo.createHistoryEntry.mockResolvedValue({});
+      const result = await pipelineService.moveStage({
+        tenantId: TENANT_ID,
+        dealId: DEAL_ID,
+        newStage: "demo",
+      })
 
-      await pipelineService.moveMember(ctx, {
-        memberId: MEMBER_ID,
-        toStageId: STAGE_OPEN_ID,
-      });
+      expect(result).toEqual(existing)
+      expect(repo.updateDeal).not.toHaveBeenCalled()
+      expect(emitEvent).not.toHaveBeenCalled()
+    })
+  })
 
-      expect(repo.updateMemberStage).toHaveBeenCalledWith(
+  describe("addNote", () => {
+    it("creates note event and emits deal.note_added", async () => {
+      const deal = makeDeal()
+      repo.getDealById.mockResolvedValue(deal)
+      const event = makeEvent({ kind: "note_added", payload: { body: "Hi" } })
+      repo.createDealEvent.mockResolvedValue(event)
+
+      const result = await pipelineService.addNote({
+        tenantId: TENANT_ID,
+        dealId: DEAL_ID,
+        body: "Hi",
+        actor: ACTOR,
+      })
+
+      expect(result).toEqual(event)
+      expect(repo.createDealEvent).toHaveBeenCalledWith(
         TENANT_ID,
-        MEMBER_ID,
-        expect.objectContaining({
-          stageId: STAGE_OPEN_ID,
-          closedAt: null,
-        }),
-      );
-    });
+        expect.objectContaining({ kind: "note_added", payload: { body: "Hi" } }),
+      )
+      expect(emitEvent).toHaveBeenCalledWith(
+        expect.objectContaining({ kind: "deal.note_added" }),
+      )
+    })
+  })
 
-    it("emits both moved and closed events for terminal stages", async () => {
-      const member = makeMember();
-      const currentStage = makeStage({ id: STAGE_OPEN_ID });
-      const targetStage = makeStage({ id: STAGE_WON_ID, type: "WON", name: "Won" });
-      const updatedMember = makeMember({
-        stageId: STAGE_WON_ID,
-        dealValue: 5000,
-        closedAt: new Date(),
-      });
+  describe("recordProposalSent", () => {
+    it("auto-advances stage from qualified → proposal", async () => {
+      const existing = makeDeal({ stage: "qualified" })
+      const advanced = makeDeal({ stage: "proposal" })
 
-      repo.findMemberById.mockResolvedValue(member);
-      repo.findStageById
-        .mockResolvedValueOnce(currentStage)
-        .mockResolvedValueOnce(targetStage);
-      repo.updateMemberStage.mockResolvedValue(updatedMember);
-      repo.createHistoryEntry.mockResolvedValue({});
+      // First getDealById call (recordProposalSent), then second (moveStage).
+      repo.getDealById
+        .mockResolvedValueOnce(existing)
+        .mockResolvedValueOnce(existing)
+      repo.createDealEvent.mockResolvedValue(makeEvent({ kind: "proposal_sent" }))
+      repo.updateDeal.mockResolvedValue(advanced)
 
-      await pipelineService.moveMember(ctx, {
-        memberId: MEMBER_ID,
-        toStageId: STAGE_WON_ID,
-        dealValue: 5000,
-      });
+      const result = await pipelineService.recordProposalSent({
+        tenantId: TENANT_ID,
+        dealId: DEAL_ID,
+        proposalRef: { proposalId: "p1" },
+        actor: ACTOR,
+      })
 
-      // Moved event
-      expect(inngest.send).toHaveBeenCalledWith({
-        name: "pipeline/member.moved",
-        data: expect.objectContaining({
-          memberId: MEMBER_ID,
-          fromStageId: STAGE_OPEN_ID,
-          toStageId: STAGE_WON_ID,
-        }),
-      });
-
-      // Closed event
-      expect(inngest.send).toHaveBeenCalledWith({
-        name: "pipeline/member.closed",
-        data: expect.objectContaining({
-          memberId: MEMBER_ID,
-          stageType: "WON",
-          dealValue: 5000,
-        }),
-      });
-    });
-
-    it("does not emit closed event for OPEN stage transitions", async () => {
-      const member = makeMember();
-      const currentStage = makeStage({ id: STAGE_OPEN_ID });
-      const targetStage = makeStage({ id: STAGE_OPEN_2_ID, type: "OPEN" });
-      const updatedMember = makeMember({ stageId: STAGE_OPEN_2_ID });
-
-      repo.findMemberById.mockResolvedValue(member);
-      repo.findStageById
-        .mockResolvedValueOnce(currentStage)
-        .mockResolvedValueOnce(targetStage);
-      repo.updateMemberStage.mockResolvedValue(updatedMember);
-      repo.createHistoryEntry.mockResolvedValue({});
-
-      await pipelineService.moveMember(ctx, {
-        memberId: MEMBER_ID,
-        toStageId: STAGE_OPEN_2_ID,
-      });
-
-      // Only moved event, not closed
-      expect(inngest.send).toHaveBeenCalledTimes(1);
-      expect(inngest.send).toHaveBeenCalledWith(
-        expect.objectContaining({ name: "pipeline/member.moved" }),
-      );
-    });
-
-    it("sets closedAt when moving to LOST stage", async () => {
-      const member = makeMember();
-      const currentStage = makeStage({ id: STAGE_OPEN_ID });
-      const targetStage = makeStage({ id: STAGE_LOST_ID, type: "LOST", name: "Lost" });
-      const updatedMember = makeMember({ stageId: STAGE_LOST_ID, closedAt: new Date() });
-
-      repo.findMemberById.mockResolvedValue(member);
-      repo.findStageById
-        .mockResolvedValueOnce(currentStage)
-        .mockResolvedValueOnce(targetStage);
-      repo.updateMemberStage.mockResolvedValue(updatedMember);
-      repo.createHistoryEntry.mockResolvedValue({});
-
-      await pipelineService.moveMember(ctx, {
-        memberId: MEMBER_ID,
-        toStageId: STAGE_LOST_ID,
-        lostReason: "Budget constraints",
-      });
-
-      expect(repo.updateMemberStage).toHaveBeenCalledWith(
+      expect(result.stage).toBe("proposal")
+      expect(repo.updateDeal).toHaveBeenCalledWith(
         TENANT_ID,
-        MEMBER_ID,
-        expect.objectContaining({
-          closedAt: expect.any(Date),
-          lostReason: "Budget constraints",
-        }),
-      );
+        DEAL_ID,
+        expect.objectContaining({ stage: "proposal" }),
+      )
+    })
 
-      expect(inngest.send).toHaveBeenCalledWith(
-        expect.objectContaining({
-          name: "pipeline/member.closed",
-          data: expect.objectContaining({ stageType: "LOST" }),
-        }),
-      );
-    });
-  });
+    it("does not regress when already at won", async () => {
+      const existing = makeDeal({ stage: "won" })
+      repo.getDealById.mockResolvedValue(existing)
+      repo.createDealEvent.mockResolvedValue(makeEvent({ kind: "proposal_sent" }))
 
-  // =========================================================================
-  // REMOVE MEMBER
-  // =========================================================================
+      const result = await pipelineService.recordProposalSent({
+        tenantId: TENANT_ID,
+        dealId: DEAL_ID,
+        proposalRef: {},
+      })
 
-  describe("removeMember", () => {
-    it("removes member and emits event", async () => {
-      const member = makeMember();
-      repo.findMemberById.mockResolvedValue(member);
-      repo.removeMember.mockResolvedValue(undefined);
+      expect(result).toEqual(existing)
+      expect(repo.updateDeal).not.toHaveBeenCalled()
+    })
+  })
 
-      await pipelineService.removeMember(ctx, MEMBER_ID);
+  describe("recordContractSigned", () => {
+    it("auto-moves to won", async () => {
+      const existing = makeDeal({ stage: "proposal" })
+      const won = makeDeal({ stage: "won", closedAt: new Date() })
+      repo.getDealById
+        .mockResolvedValueOnce(existing)
+        .mockResolvedValueOnce(existing)
+      repo.createDealEvent.mockResolvedValue(makeEvent({ kind: "contract_signed" }))
+      repo.updateDeal.mockResolvedValue(won)
 
-      expect(repo.removeMember).toHaveBeenCalledWith(TENANT_ID, MEMBER_ID);
-      expect(inngest.send).toHaveBeenCalledWith({
-        name: "pipeline/member.removed",
-        data: {
-          memberId: MEMBER_ID,
-          pipelineId: PIPELINE_ID,
-          customerId: CUSTOMER_ID,
-          tenantId: TENANT_ID,
+      const result = await pipelineService.recordContractSigned({
+        tenantId: TENANT_ID,
+        dealId: DEAL_ID,
+        contractRef: { contractId: "c1" },
+      })
+
+      expect(result.stage).toBe("won")
+    })
+  })
+
+  describe("convertFromReply", () => {
+    it("creates deal with origin_touch_id from reply", async () => {
+      const created = makeDeal({ originTouchId: "touch-1" })
+      repo.createDeal.mockResolvedValue(created)
+      repo.createDealEvent.mockResolvedValue(makeEvent({ kind: "stage_changed" }))
+
+      const result = await pipelineService.convertFromReply({
+        tenantId: TENANT_ID,
+        replyId: "reply-1",
+        dealInput: {
+          companyId: COMPANY_ID,
+          name: "From reply",
         },
-      });
-    });
+        actor: ACTOR,
+      })
 
-    it("throws NotFoundError for unknown member", async () => {
-      repo.findMemberById.mockRejectedValue(new NotFoundError("PipelineMember", "unknown"));
+      expect(result).toEqual(created)
+      expect(repo.createDeal).toHaveBeenCalledWith(
+        TENANT_ID,
+        expect.objectContaining({ originTouchId: "touch-1" }),
+      )
+    })
+  })
 
-      await expect(pipelineService.removeMember(ctx, "unknown")).rejects.toThrow(NotFoundError);
-      expect(repo.removeMember).not.toHaveBeenCalled();
-    });
-  });
+  describe("listDealEvents", () => {
+    it("returns events when deal exists", async () => {
+      const deal = makeDeal()
+      const events = [makeEvent()]
+      repo.getDealById.mockResolvedValue(deal)
+      repo.listDealEvents.mockResolvedValue(events)
 
-  // =========================================================================
-  // OTHER MEMBER OPERATIONS
-  // =========================================================================
+      const result = await pipelineService.listDealEvents(TENANT_ID, DEAL_ID)
+      expect(result).toEqual(events)
+    })
 
-  describe("updateMember", () => {
-    it("delegates to repository", async () => {
-      const member = makeMember({ dealValue: 2000 });
-      repo.updateMember.mockResolvedValue(member);
+    it("throws NotFoundError when deal missing", async () => {
+      repo.getDealById.mockResolvedValue(null)
+      await expect(
+        pipelineService.listDealEvents(TENANT_ID, DEAL_ID),
+      ).rejects.toThrow(NotFoundError)
+    })
+  })
 
-      const result = await pipelineService.updateMember(ctx, MEMBER_ID, { dealValue: 2000 });
-      expect(result).toEqual(member);
-    });
-  });
+  describe("aggregations", () => {
+    it("getStageCounts delegates", async () => {
+      const counts = {
+        qualified: 1,
+        demo: 2,
+        proposal: 0,
+        won: 3,
+        lost: 0,
+        dormant: 0,
+      }
+      repo.getStageCounts.mockResolvedValue(counts)
+      expect(await pipelineService.getStageCounts(TENANT_ID)).toEqual(counts)
+    })
 
-  describe("listMembers", () => {
-    it("delegates to repository", async () => {
-      const members = [makeMember()];
-      repo.listMembers.mockResolvedValue(members);
+    it("getWeightedValue delegates", async () => {
+      repo.getWeightedValue.mockResolvedValue(1234.5)
+      expect(await pipelineService.getWeightedValue(TENANT_ID)).toBe(1234.5)
+    })
+  })
 
-      const result = await pipelineService.listMembers(ctx, PIPELINE_ID);
-      expect(result).toEqual(members);
-    });
-  });
-
-  describe("getSummary", () => {
-    it("delegates to repository", async () => {
-      const summary = [{ stageId: STAGE_OPEN_ID, count: 5, totalDealValue: 10000 }];
-      repo.getSummary.mockResolvedValue(summary);
-
-      const result = await pipelineService.getSummary(ctx, PIPELINE_ID);
-      expect(result).toEqual(summary);
-    });
-  });
-
-  describe("getMemberHistory", () => {
-    it("returns history for existing member", async () => {
-      const member = makeMember();
-      const history = [
-        {
-          id: "h1",
-          tenantId: TENANT_ID,
-          memberId: MEMBER_ID,
-          fromStageId: null,
-          toStageId: STAGE_OPEN_ID,
-          changedAt: new Date(),
-          changedById: USER_ID,
-          dealValue: null,
-          lostReason: null,
-          notes: null,
-        },
-      ];
-      repo.findMemberById.mockResolvedValue(member);
-      repo.getMemberHistory.mockResolvedValue(history);
-
-      const result = await pipelineService.getMemberHistory(ctx, MEMBER_ID);
-      expect(result).toEqual(history);
-    });
-
-    it("throws NotFoundError for unknown member", async () => {
-      repo.findMemberById.mockRejectedValue(new NotFoundError("PipelineMember", "unknown"));
-
-      await expect(pipelineService.getMemberHistory(ctx, "unknown")).rejects.toThrow(
-        NotFoundError,
-      );
-    });
-  });
-});
+  // Sanity: ensure BadRequestError is importable / referenced so test file
+  // doesn't get tree-shaken weirdly under coverage.
+  it("BadRequestError exists", () => {
+    expect(BadRequestError).toBeDefined()
+  })
+})

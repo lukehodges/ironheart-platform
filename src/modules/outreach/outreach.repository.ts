@@ -1,184 +1,53 @@
-import { db } from "@/shared/db";
-import { logger } from "@/shared/logger";
-import { NotFoundError, BadRequestError, ConflictError } from "@/shared/errors";
+import { db } from "@/shared/db"
+import { logger } from "@/shared/logger"
+import { NotFoundError } from "@/shared/errors"
 import {
-  outreachSequences,
-  outreachContacts,
-  outreachActivities,
-  outreachTemplates,
-  outreachSnippets,
-  customers,
-} from "@/shared/db/schema";
+  companies,
+  contacts,
+  campaigns,
+  templates,
+  touches,
+  replies,
+  dncList,
+} from "@/shared/db/schemas/outreach.schema"
 import {
   eq,
   and,
+  or,
   desc,
   asc,
+  ilike,
   sql,
-  count,
-  gte,
-  lt,
-  lte,
-  or,
-  isNull,
-} from "drizzle-orm";
+  inArray,
+} from "drizzle-orm"
 import type {
-  OutreachSequenceRecord,
-  OutreachContactRecord,
-  OutreachContactWithDetails,
-  OutreachActivityRecord,
-  OutreachTemplateRecord,
-  OutreachSnippetRecord,
-  OutreachStep,
-  DashboardContact,
-  SequencePerformance,
-  SectorPerformance,
-} from "./outreach.types";
+  CompanyRecord,
+  ContactRecord,
+  CampaignRecord,
+  TemplateRecord,
+  TouchRecord,
+  ReplyRecord,
+  EnrichedReplyRecord,
+  DncListRecord,
+  CreateCompanyInput,
+  UpdateCompanyInput,
+  CreateContactInput,
+  UpdateContactInput,
+  CreateCampaignInput,
+  CreateTemplateInput,
+  OutreachDeliveryStatus,
+} from "./outreach.types"
 
-const log = logger.child({ module: "outreach.repository" });
-
-// ---------------------------------------------------------------------------
-// Row types
-// ---------------------------------------------------------------------------
-
-type SequenceRow = typeof outreachSequences.$inferSelect;
-type ContactRow = typeof outreachContacts.$inferSelect;
-type ActivityRow = typeof outreachActivities.$inferSelect;
+const log = logger.child({ module: "outreach.repository" })
 
 // ---------------------------------------------------------------------------
-// Row mappers
+// Helpers
 // ---------------------------------------------------------------------------
 
-function toSequenceRecord(row: SequenceRow): OutreachSequenceRecord {
-  return {
-    id: row.id,
-    tenantId: row.tenantId,
-    name: row.name,
-    description: row.description ?? null,
-    sector: row.sector,
-    targetIcp: row.targetIcp ?? null,
-    isActive: row.isActive,
-    abVariant: row.abVariant ?? null,
-    pairedSequenceId: row.pairedSequenceId ?? null,
-    steps: (row.steps as OutreachStep[]) ?? [],
-    archivedAt: row.archivedAt ?? null,
-    createdAt: row.createdAt,
-    updatedAt: row.updatedAt,
-  };
-}
-
-function toContactRecord(row: ContactRow): OutreachContactRecord {
-  return {
-    id: row.id,
-    tenantId: row.tenantId,
-    customerId: row.customerId,
-    sequenceId: row.sequenceId,
-    assignedUserId: row.assignedUserId ?? null,
-    status: row.status,
-    currentStep: row.currentStep,
-    nextDueAt: row.nextDueAt ?? null,
-    enrolledAt: row.enrolledAt,
-    completedAt: row.completedAt ?? null,
-    lastActivityAt: row.lastActivityAt ?? null,
-    pipelineMemberId: row.pipelineMemberId ?? null,
-    notes: row.notes ?? null,
-    sentiment: row.sentiment ?? null,
-    replyCategory: row.replyCategory ?? null,
-    snoozedUntil: row.snoozedUntil ?? null,
-    createdAt: row.createdAt,
-    updatedAt: row.updatedAt,
-  };
-}
-
-function toActivityRecord(row: ActivityRow): OutreachActivityRecord {
-  return {
-    id: row.id,
-    tenantId: row.tenantId,
-    contactId: row.contactId,
-    sequenceId: row.sequenceId,
-    customerId: row.customerId,
-    stepPosition: row.stepPosition,
-    channel: row.channel,
-    activityType: row.activityType,
-    deliveredTo: row.deliveredTo ?? null,
-    notes: row.notes ?? null,
-    performedByUserId: row.performedByUserId ?? null,
-    previousState: row.previousState ?? null,
-    occurredAt: row.occurredAt,
-    createdAt: row.createdAt,
-  };
-}
-
-type TemplateRow = typeof outreachTemplates.$inferSelect;
-type SnippetRow = typeof outreachSnippets.$inferSelect;
-
-function toTemplateRecord(row: TemplateRow): OutreachTemplateRecord {
-  return {
-    id: row.id,
-    tenantId: row.tenantId,
-    name: row.name,
-    category: row.category,
-    channel: row.channel,
-    subject: row.subject ?? null,
-    bodyMarkdown: row.bodyMarkdown,
-    tags: row.tags ?? null,
-    isActive: row.isActive,
-    createdAt: row.createdAt,
-    updatedAt: row.updatedAt,
-  };
-}
-
-function toSnippetRecord(row: SnippetRow): OutreachSnippetRecord {
-  return {
-    id: row.id,
-    tenantId: row.tenantId,
-    name: row.name,
-    category: row.category,
-    bodyMarkdown: row.bodyMarkdown,
-    isActive: row.isActive,
-    createdAt: row.createdAt,
-    updatedAt: row.updatedAt,
-  };
-}
-
-// ---------------------------------------------------------------------------
-// Dashboard contact mapper (shared by getDueContacts, getOverdueContacts, getRecentReplies)
-// ---------------------------------------------------------------------------
-
-function toDashboardContact(row: {
-  contact: ContactRow;
-  customerFirstName: string;
-  customerLastName: string;
-  customerEmail: string | null;
-  customerTags: string[] | null;
-  sequenceName: string;
-  sector: string;
-  steps: unknown;
-}): DashboardContact {
-  const steps = (row.steps as OutreachStep[]) ?? [];
-  const currentStepIndex = row.contact.currentStep - 1;
-  const currentStep = steps[currentStepIndex] ?? null;
-
-  const tags = row.customerTags ?? [];
-  const companyTag = tags.find((t) => t.startsWith("company:"));
-  const company = companyTag ? companyTag.slice("company:".length) : null;
-
-  return {
-    id: row.contact.id,
-    customerId: row.contact.customerId,
-    customerName: `${row.customerFirstName} ${row.customerLastName}`.trim(),
-    customerEmail: row.customerEmail ?? null,
-    company,
-    sequenceId: row.contact.sequenceId,
-    sequenceName: row.sequenceName,
-    sector: row.sector,
-    currentStep: row.contact.currentStep,
-    totalSteps: steps.length,
-    channel: currentStep?.channel ?? "EMAIL",
-    subject: currentStep?.subject ?? null,
-    nextDueAt: row.contact.nextDueAt ?? null,
-    notes: row.contact.notes ?? null,
-  };
+function domainFromEmail(email: string): string | null {
+  const at = email.lastIndexOf("@")
+  if (at < 0 || at === email.length - 1) return null
+  return email.slice(at + 1).toLowerCase()
 }
 
 // ===============================================================
@@ -187,858 +56,364 @@ function toDashboardContact(row: {
 
 export const outreachRepository = {
   // -------------------------------------------------------------------
-  // SEQUENCES
+  // COMPANIES
   // -------------------------------------------------------------------
 
-  async listSequences(
+  async listCompanies(
     tenantId: string,
-    filters?: { sector?: string; isActive?: boolean },
-  ): Promise<OutreachSequenceRecord[]> {
-    const conditions = [eq(outreachSequences.tenantId, tenantId)];
+    opts: {
+      search?: string
+      city?: string
+      doNotContact?: boolean
+      limit: number
+      cursor?: string
+    },
+  ): Promise<{ rows: CompanyRecord[]; hasMore: boolean }> {
+    const conditions = [eq(companies.tenantId, tenantId)]
 
-    if (filters?.sector) {
-      conditions.push(eq(outreachSequences.sector, filters.sector));
+    if (opts.search) {
+      const pat = `%${opts.search}%`
+      conditions.push(
+        or(ilike(companies.name, pat), ilike(companies.domain, pat))!,
+      )
     }
-    if (filters?.isActive !== undefined) {
-      conditions.push(eq(outreachSequences.isActive, filters.isActive));
-    }
+    if (opts.city) conditions.push(eq(companies.city, opts.city))
+    if (opts.doNotContact !== undefined)
+      conditions.push(eq(companies.doNotContact, opts.doNotContact))
+    if (opts.cursor)
+      conditions.push(sql`${companies.createdAt} <= ${new Date(opts.cursor)}`)
 
     const rows = await db
       .select()
-      .from(outreachSequences)
+      .from(companies)
       .where(and(...conditions))
-      .orderBy(desc(outreachSequences.createdAt));
+      .orderBy(desc(companies.createdAt))
+      .limit(opts.limit + 1)
 
-    return rows.map(toSequenceRecord);
+    const hasMore = rows.length > opts.limit
+    return {
+      rows: hasMore ? rows.slice(0, opts.limit) : rows,
+      hasMore,
+    }
   },
 
-  async findSequenceById(
+  async findCompanyById(
     tenantId: string,
-    sequenceId: string,
-  ): Promise<OutreachSequenceRecord> {
+    companyId: string,
+  ): Promise<CompanyRecord | null> {
     const [row] = await db
       .select()
-      .from(outreachSequences)
-      .where(
-        and(
-          eq(outreachSequences.id, sequenceId),
-          eq(outreachSequences.tenantId, tenantId),
-        ),
-      )
-      .limit(1);
-
-    if (!row) throw new NotFoundError("OutreachSequence", sequenceId);
-    return toSequenceRecord(row);
+      .from(companies)
+      .where(and(eq(companies.id, companyId), eq(companies.tenantId, tenantId)))
+      .limit(1)
+    return row ?? null
   },
 
-  async createSequence(
+  async findCompanyByDomain(
     tenantId: string,
-    input: {
-      name: string;
-      description?: string | null;
-      sector: string;
-      targetIcp?: string | null;
-      isActive?: boolean;
-      abVariant?: string | null;
-      pairedSequenceId?: string | null;
-      steps: OutreachStep[];
-    },
-  ): Promise<OutreachSequenceRecord> {
-    const now = new Date();
-
+    domain: string,
+  ): Promise<CompanyRecord | null> {
     const [row] = await db
-      .insert(outreachSequences)
+      .select()
+      .from(companies)
+      .where(and(eq(companies.tenantId, tenantId), eq(companies.domain, domain)))
+      .limit(1)
+    return row ?? null
+  },
+
+  async createCompany(
+    tenantId: string,
+    input: CreateCompanyInput,
+  ): Promise<CompanyRecord> {
+    const [row] = await db
+      .insert(companies)
       .values({
         tenantId,
         name: input.name,
-        description: input.description ?? null,
-        sector: input.sector,
-        targetIcp: input.targetIcp ?? null,
-        isActive: input.isActive ?? true,
-        abVariant: input.abVariant ?? null,
-        pairedSequenceId: input.pairedSequenceId ?? null,
-        steps: input.steps,
-        createdAt: now,
-        updatedAt: now,
+        domain: input.domain ?? null,
+        industry: input.industry ?? null,
+        employeeBand: input.employeeBand ?? null,
+        city: input.city ?? null,
+        country: input.country ?? null,
+        ownerLed: input.ownerLed ?? false,
+        source: input.source ?? "cold",
+        notes: input.notes ?? null,
+        enrichment: input.enrichment ?? {},
       })
-      .returning();
-
-    log.info({ tenantId, sequenceId: row!.id }, "Outreach sequence created");
-    return toSequenceRecord(row!);
+      .returning()
+    log.info({ tenantId, companyId: row!.id }, "Company created")
+    return row!
   },
 
-  async updateSequence(
+  async updateCompany(
     tenantId: string,
-    sequenceId: string,
-    input: Partial<{
-      name: string;
-      description: string | null;
-      sector: string;
-      targetIcp: string | null;
-      isActive: boolean;
-      abVariant: string | null;
-      pairedSequenceId: string | null;
-      steps: OutreachStep[];
-    }>,
-  ): Promise<OutreachSequenceRecord> {
-    const updateData: Record<string, unknown> = { updatedAt: new Date() };
-
-    if (input.name !== undefined) updateData.name = input.name;
-    if (input.description !== undefined) updateData.description = input.description;
-    if (input.sector !== undefined) updateData.sector = input.sector;
-    if (input.targetIcp !== undefined) updateData.targetIcp = input.targetIcp;
-    if (input.isActive !== undefined) updateData.isActive = input.isActive;
-    if (input.abVariant !== undefined) updateData.abVariant = input.abVariant;
-    if (input.pairedSequenceId !== undefined) updateData.pairedSequenceId = input.pairedSequenceId;
-    if (input.steps !== undefined) updateData.steps = input.steps;
+    companyId: string,
+    input: UpdateCompanyInput,
+  ): Promise<CompanyRecord> {
+    const updateData: Record<string, unknown> = { updatedAt: new Date() }
+    for (const [k, v] of Object.entries(input)) {
+      if (v !== undefined) updateData[k] = v
+    }
 
     const [updated] = await db
-      .update(outreachSequences)
-      .set(updateData as Partial<typeof outreachSequences.$inferInsert>)
-      .where(
-        and(
-          eq(outreachSequences.id, sequenceId),
-          eq(outreachSequences.tenantId, tenantId),
-        ),
-      )
-      .returning();
+      .update(companies)
+      .set(updateData as Partial<typeof companies.$inferInsert>)
+      .where(and(eq(companies.id, companyId), eq(companies.tenantId, tenantId)))
+      .returning()
 
-    if (!updated) throw new NotFoundError("OutreachSequence", sequenceId);
-    log.info({ tenantId, sequenceId }, "Outreach sequence updated");
-    return toSequenceRecord(updated);
+    if (!updated) throw new NotFoundError("Company", companyId)
+    return updated
   },
 
-  async archiveSequence(tenantId: string, sequenceId: string): Promise<void> {
-    await db.transaction(async (tx) => {
-      const now = new Date();
-
-      const [updated] = await tx
-        .update(outreachSequences)
-        .set({
-          isActive: false,
-          archivedAt: now,
-          updatedAt: now,
-        } as Partial<typeof outreachSequences.$inferInsert>)
-        .where(
-          and(
-            eq(outreachSequences.id, sequenceId),
-            eq(outreachSequences.tenantId, tenantId),
-          ),
-        )
-        .returning();
-
-      if (!updated) throw new NotFoundError("OutreachSequence", sequenceId);
-
-      // Pause all ACTIVE contacts in this sequence
-      await tx
-        .update(outreachContacts)
-        .set({
-          status: "PAUSED",
-          updatedAt: now,
-        } as Partial<typeof outreachContacts.$inferInsert>)
-        .where(
-          and(
-            eq(outreachContacts.sequenceId, sequenceId),
-            eq(outreachContacts.tenantId, tenantId),
-            eq(outreachContacts.status, "ACTIVE"),
-          ),
-        );
-
-      log.info({ tenantId, sequenceId }, "Outreach sequence archived and active contacts paused");
-    });
+  async bulkInsertCompanies(
+    tenantId: string,
+    rows: CreateCompanyInput[],
+  ): Promise<CompanyRecord[]> {
+    if (rows.length === 0) return []
+    const inserted = await db
+      .insert(companies)
+      .values(
+        rows.map((r) => ({
+          tenantId,
+          name: r.name,
+          domain: r.domain ?? null,
+          industry: r.industry ?? null,
+          employeeBand: r.employeeBand ?? null,
+          city: r.city ?? null,
+          country: r.country ?? null,
+          ownerLed: r.ownerLed ?? false,
+          source: r.source ?? "cold",
+          notes: r.notes ?? null,
+          enrichment: r.enrichment ?? {},
+        })),
+      )
+      .returning()
+    log.info({ tenantId, count: inserted.length }, "Companies bulk-inserted")
+    return inserted
   },
 
   // -------------------------------------------------------------------
   // CONTACTS
   // -------------------------------------------------------------------
 
-  async enrollContact(
+  async listContacts(
     tenantId: string,
-    input: {
-      customerId: string;
-      sequenceId: string;
-      assignedUserId?: string | null;
-      notes?: string | null;
+    opts: {
+      companyId?: string
+      search?: string
+      doNotContact?: boolean
+      bounced?: boolean
+      limit: number
+      cursor?: string
     },
-  ): Promise<OutreachContactRecord> {
-    // Get sequence to find first step's delay
-    const [sequence] = await db
-      .select()
-      .from(outreachSequences)
-      .where(
-        and(
-          eq(outreachSequences.id, input.sequenceId),
-          eq(outreachSequences.tenantId, tenantId),
-        ),
+  ): Promise<{ rows: ContactRecord[]; hasMore: boolean }> {
+    const conditions = [eq(contacts.tenantId, tenantId)]
+    if (opts.companyId) conditions.push(eq(contacts.companyId, opts.companyId))
+    if (opts.doNotContact !== undefined)
+      conditions.push(eq(contacts.doNotContact, opts.doNotContact))
+    if (opts.bounced !== undefined)
+      conditions.push(eq(contacts.bounced, opts.bounced))
+    if (opts.search) {
+      const pat = `%${opts.search}%`
+      conditions.push(
+        or(ilike(contacts.fullName, pat), ilike(contacts.email, pat))!,
       )
-      .limit(1);
+    }
+    if (opts.cursor)
+      conditions.push(sql`${contacts.createdAt} <= ${new Date(opts.cursor)}`)
 
-    if (!sequence) throw new NotFoundError("OutreachSequence", input.sequenceId);
+    const rows = await db
+      .select()
+      .from(contacts)
+      .where(and(...conditions))
+      .orderBy(desc(contacts.createdAt))
+      .limit(opts.limit + 1)
 
-    const steps = (sequence.steps as OutreachStep[]) ?? [];
-    const firstStep = steps[0];
-    const delayMs = firstStep ? firstStep.delayDays * 86400000 : 0;
-
-    const now = new Date();
-    const nextDueAt = new Date(now.getTime() + delayMs);
-
-    const [row] = await db
-      .insert(outreachContacts)
-      .values({
-        tenantId,
-        customerId: input.customerId,
-        sequenceId: input.sequenceId,
-        assignedUserId: input.assignedUserId ?? null,
-        status: "ACTIVE",
-        currentStep: 1,
-        nextDueAt,
-        enrolledAt: now,
-        notes: input.notes ?? null,
-        createdAt: now,
-        updatedAt: now,
-      })
-      .returning();
-
-    log.info(
-      { tenantId, contactId: row!.id, sequenceId: input.sequenceId, customerId: input.customerId },
-      "Contact enrolled in outreach sequence",
-    );
-    return toContactRecord(row!);
+    const hasMore = rows.length > opts.limit
+    return { rows: hasMore ? rows.slice(0, opts.limit) : rows, hasMore }
   },
 
   async findContactById(
     tenantId: string,
     contactId: string,
-  ): Promise<OutreachContactRecord> {
+  ): Promise<ContactRecord | null> {
     const [row] = await db
       .select()
-      .from(outreachContacts)
-      .where(
-        and(
-          eq(outreachContacts.id, contactId),
-          eq(outreachContacts.tenantId, tenantId),
-        ),
-      )
-      .limit(1);
-
-    if (!row) throw new NotFoundError("OutreachContact", contactId);
-    return toContactRecord(row);
+      .from(contacts)
+      .where(and(eq(contacts.id, contactId), eq(contacts.tenantId, tenantId)))
+      .limit(1)
+    return row ?? null
   },
 
-  async listContacts(
+  async findContactByEmail(
     tenantId: string,
-    filters: {
-      sequenceId?: string;
-      status?: string;
-      assignedUserId?: string;
-      search?: string;
-      cursor?: string;
-      limit?: number;
-    },
-  ): Promise<{ rows: OutreachContactWithDetails[]; hasMore: boolean }> {
-    const limit = filters.limit ?? 50;
-    const conditions = [eq(outreachContacts.tenantId, tenantId)];
-
-    if (filters.sequenceId) {
-      conditions.push(eq(outreachContacts.sequenceId, filters.sequenceId));
-    }
-    if (filters.status) {
-      conditions.push(sql`${outreachContacts.status} = ${filters.status}`);
-    }
-    if (filters.assignedUserId) {
-      conditions.push(eq(outreachContacts.assignedUserId, filters.assignedUserId));
-    }
-    if (filters.search) {
-      const pattern = `%${filters.search}%`;
-      conditions.push(
-        sql`(${customers.firstName} ILIKE ${pattern} OR ${customers.lastName} ILIKE ${pattern})`,
-      );
-    }
-    if (filters.cursor) {
-      conditions.push(sql`${outreachContacts.id} > ${filters.cursor}`);
-    }
-
-    const rows = await db
-      .select({
-        contact: outreachContacts,
-        customerFirstName: customers.firstName,
-        customerLastName: customers.lastName,
-        customerEmail: customers.email,
-        customerTags: customers.tags,
-        sequenceName: outreachSequences.name,
-        sector: outreachSequences.sector,
-        steps: outreachSequences.steps,
-      })
-      .from(outreachContacts)
-      .innerJoin(customers, eq(outreachContacts.customerId, customers.id))
-      .innerJoin(outreachSequences, eq(outreachContacts.sequenceId, outreachSequences.id))
-      .where(and(...conditions))
-      .orderBy(asc(outreachContacts.id))
-      .limit(limit + 1);
-
-    const hasMore = rows.length > limit;
-    const resultRows = hasMore ? rows.slice(0, limit) : rows;
-
-    return {
-      rows: resultRows.map((r) => {
-        const steps = (r.steps as OutreachStep[]) ?? [];
-        const currentStepIndex = r.contact.currentStep - 1;
-        const currentStepTemplate = steps[currentStepIndex] ?? null;
-
-        return {
-          ...toContactRecord(r.contact),
-          customerFirstName: r.customerFirstName,
-          customerLastName: r.customerLastName,
-          customerEmail: r.customerEmail ?? null,
-          customerTags: r.customerTags ?? [],
-          sequenceName: r.sequenceName,
-          sector: r.sector,
-          currentStepTemplate,
-        };
-      }),
-      hasMore,
-    };
-  },
-
-  async getDueContacts(tenantId: string, asOf: Date): Promise<DashboardContact[]> {
-    const rows = await db
-      .select({
-        contact: outreachContacts,
-        customerFirstName: customers.firstName,
-        customerLastName: customers.lastName,
-        customerEmail: customers.email,
-        customerTags: customers.tags,
-        sequenceName: outreachSequences.name,
-        sector: outreachSequences.sector,
-        steps: outreachSequences.steps,
-      })
-      .from(outreachContacts)
-      .innerJoin(customers, eq(outreachContacts.customerId, customers.id))
-      .innerJoin(outreachSequences, eq(outreachContacts.sequenceId, outreachSequences.id))
-      .where(
-        and(
-          eq(outreachContacts.tenantId, tenantId),
-          eq(outreachContacts.status, "ACTIVE"),
-          lte(outreachContacts.nextDueAt, asOf),
-        ),
-      )
-      .orderBy(asc(outreachContacts.nextDueAt))
-      .limit(50);
-
-    return rows.map(toDashboardContact);
-  },
-
-  async getOverdueContacts(tenantId: string, asOf: Date): Promise<DashboardContact[]> {
-    const startOfToday = new Date(asOf);
-    startOfToday.setHours(0, 0, 0, 0);
-
-    const rows = await db
-      .select({
-        contact: outreachContacts,
-        customerFirstName: customers.firstName,
-        customerLastName: customers.lastName,
-        customerEmail: customers.email,
-        customerTags: customers.tags,
-        sequenceName: outreachSequences.name,
-        sector: outreachSequences.sector,
-        steps: outreachSequences.steps,
-      })
-      .from(outreachContacts)
-      .innerJoin(customers, eq(outreachContacts.customerId, customers.id))
-      .innerJoin(outreachSequences, eq(outreachContacts.sequenceId, outreachSequences.id))
-      .where(
-        and(
-          eq(outreachContacts.tenantId, tenantId),
-          eq(outreachContacts.status, "ACTIVE"),
-          lt(outreachContacts.nextDueAt, startOfToday),
-        ),
-      )
-      .orderBy(asc(outreachContacts.nextDueAt))
-      .limit(50);
-
-    return rows.map(toDashboardContact);
-  },
-
-  async updateContactStatus(
-    tenantId: string,
-    contactId: string,
-    updates: {
-      status?: string;
-      currentStep?: number;
-      nextDueAt?: Date | null;
-      completedAt?: Date | null;
-      lastActivityAt?: Date | null;
-      pipelineMemberId?: string | null;
-    },
-  ): Promise<OutreachContactRecord> {
-    const updateData: Record<string, unknown> = { updatedAt: new Date() };
-
-    if (updates.status !== undefined) updateData.status = updates.status;
-    if (updates.currentStep !== undefined) updateData.currentStep = updates.currentStep;
-    if (updates.nextDueAt !== undefined) updateData.nextDueAt = updates.nextDueAt;
-    if (updates.completedAt !== undefined) updateData.completedAt = updates.completedAt;
-    if (updates.lastActivityAt !== undefined) updateData.lastActivityAt = updates.lastActivityAt;
-    if (updates.pipelineMemberId !== undefined) updateData.pipelineMemberId = updates.pipelineMemberId;
-
-    const [updated] = await db
-      .update(outreachContacts)
-      .set(updateData as Partial<typeof outreachContacts.$inferInsert>)
-      .where(
-        and(
-          eq(outreachContacts.id, contactId),
-          eq(outreachContacts.tenantId, tenantId),
-        ),
-      )
-      .returning();
-
-    if (!updated) throw new NotFoundError("OutreachContact", contactId);
-    return toContactRecord(updated);
-  },
-
-  async pauseContact(tenantId: string, contactId: string): Promise<OutreachContactRecord> {
-    const [updated] = await db
-      .update(outreachContacts)
-      .set({
-        status: "PAUSED",
-        updatedAt: new Date(),
-      } as Partial<typeof outreachContacts.$inferInsert>)
-      .where(
-        and(
-          eq(outreachContacts.id, contactId),
-          eq(outreachContacts.tenantId, tenantId),
-        ),
-      )
-      .returning();
-
-    if (!updated) throw new NotFoundError("OutreachContact", contactId);
-    log.info({ tenantId, contactId }, "Outreach contact paused");
-    return toContactRecord(updated);
-  },
-
-  async resumeContact(
-    tenantId: string,
-    contactId: string,
-    nextDueAt: Date,
-  ): Promise<OutreachContactRecord> {
-    const [updated] = await db
-      .update(outreachContacts)
-      .set({
-        status: "ACTIVE",
-        nextDueAt,
-        updatedAt: new Date(),
-      } as Partial<typeof outreachContacts.$inferInsert>)
-      .where(
-        and(
-          eq(outreachContacts.id, contactId),
-          eq(outreachContacts.tenantId, tenantId),
-        ),
-      )
-      .returning();
-
-    if (!updated) throw new NotFoundError("OutreachContact", contactId);
-    log.info({ tenantId, contactId }, "Outreach contact resumed");
-    return toContactRecord(updated);
-  },
-
-  // -------------------------------------------------------------------
-  // ACTIVITIES
-  // -------------------------------------------------------------------
-
-  async logActivity(
-    tenantId: string,
-    input: {
-      contactId: string;
-      sequenceId: string;
-      customerId: string;
-      stepPosition: number;
-      channel: string;
-      activityType: string;
-      deliveredTo?: string | null;
-      notes?: string | null;
-      performedByUserId?: string | null;
-      previousState?: { currentStep: number; status: string; nextDueAt: string | null } | null;
-    },
-  ): Promise<OutreachActivityRecord> {
-    const now = new Date();
-
+    email: string,
+  ): Promise<ContactRecord | null> {
     const [row] = await db
-      .insert(outreachActivities)
+      .select()
+      .from(contacts)
+      .where(and(eq(contacts.tenantId, tenantId), eq(contacts.email, email)))
+      .limit(1)
+    return row ?? null
+  },
+
+  async createContact(
+    tenantId: string,
+    input: CreateContactInput,
+  ): Promise<ContactRecord> {
+    const [row] = await db
+      .insert(contacts)
       .values({
         tenantId,
-        contactId: input.contactId,
-        sequenceId: input.sequenceId,
-        customerId: input.customerId,
-        stepPosition: input.stepPosition,
-        channel: input.channel,
-        activityType: input.activityType as "SENT" | "REPLIED" | "BOUNCED" | "OPTED_OUT" | "SKIPPED" | "CALL_COMPLETED" | "MEETING_BOOKED" | "CONVERTED" | "UNDONE",
-        deliveredTo: input.deliveredTo ?? null,
-        notes: input.notes ?? null,
-        performedByUserId: input.performedByUserId ?? null,
-        previousState: input.previousState ?? null,
-        occurredAt: now,
-        createdAt: now,
+        companyId: input.companyId,
+        fullName: input.fullName,
+        role: input.role ?? null,
+        email: input.email ?? null,
+        phone: input.phone ?? null,
+        linkedinUrl: input.linkedinUrl ?? null,
+        isOwner: input.isOwner ?? false,
+        isDecisionMaker: input.isDecisionMaker ?? false,
       })
-      .returning();
-
-    log.info(
-      { tenantId, contactId: input.contactId, activityType: input.activityType },
-      "Outreach activity logged",
-    );
-    return toActivityRecord(row!);
+      .returning()
+    log.info({ tenantId, contactId: row!.id }, "Contact created")
+    return row!
   },
 
-  async getContactActivities(
+  async updateContact(
     tenantId: string,
     contactId: string,
-  ): Promise<OutreachActivityRecord[]> {
+    input: UpdateContactInput,
+  ): Promise<ContactRecord> {
+    const updateData: Record<string, unknown> = { updatedAt: new Date() }
+    for (const [k, v] of Object.entries(input)) {
+      if (v !== undefined) updateData[k] = v
+    }
+    const [updated] = await db
+      .update(contacts)
+      .set(updateData as Partial<typeof contacts.$inferInsert>)
+      .where(and(eq(contacts.id, contactId), eq(contacts.tenantId, tenantId)))
+      .returning()
+    if (!updated) throw new NotFoundError("Contact", contactId)
+    return updated
+  },
+
+  async markContactBounced(
+    tenantId: string,
+    contactId: string,
+  ): Promise<ContactRecord> {
+    const [updated] = await db
+      .update(contacts)
+      .set({ bounced: true, updatedAt: new Date() })
+      .where(and(eq(contacts.id, contactId), eq(contacts.tenantId, tenantId)))
+      .returning()
+    if (!updated) throw new NotFoundError("Contact", contactId)
+    return updated
+  },
+
+  async bulkInsertContacts(
+    tenantId: string,
+    rows: CreateContactInput[],
+  ): Promise<ContactRecord[]> {
+    if (rows.length === 0) return []
+    const inserted = await db
+      .insert(contacts)
+      .values(
+        rows.map((r) => ({
+          tenantId,
+          companyId: r.companyId,
+          fullName: r.fullName,
+          role: r.role ?? null,
+          email: r.email ?? null,
+          phone: r.phone ?? null,
+          linkedinUrl: r.linkedinUrl ?? null,
+          isOwner: r.isOwner ?? false,
+          isDecisionMaker: r.isDecisionMaker ?? false,
+        })),
+      )
+      .returning()
+    log.info({ tenantId, count: inserted.length }, "Contacts bulk-inserted")
+    return inserted
+  },
+
+  async findContactsByEmails(
+    tenantId: string,
+    emails: string[],
+  ): Promise<ContactRecord[]> {
+    if (emails.length === 0) return []
+    return db
+      .select()
+      .from(contacts)
+      .where(
+        and(
+          eq(contacts.tenantId, tenantId),
+          inArray(contacts.email, emails),
+        ),
+      )
+  },
+
+  // -------------------------------------------------------------------
+  // CAMPAIGNS
+  // -------------------------------------------------------------------
+
+  async listCampaigns(
+    tenantId: string,
+    opts: {
+      status?: CampaignRecord["status"]
+      channel?: CampaignRecord["channel"]
+      limit: number
+      cursor?: string
+    },
+  ): Promise<{ rows: CampaignRecord[]; hasMore: boolean }> {
+    const conditions = [eq(campaigns.tenantId, tenantId)]
+    if (opts.status) conditions.push(eq(campaigns.status, opts.status))
+    if (opts.channel) conditions.push(eq(campaigns.channel, opts.channel))
+    if (opts.cursor)
+      conditions.push(sql`${campaigns.createdAt} <= ${new Date(opts.cursor)}`)
+
     const rows = await db
       .select()
-      .from(outreachActivities)
-      .where(
-        and(
-          eq(outreachActivities.tenantId, tenantId),
-          eq(outreachActivities.contactId, contactId),
-        ),
-      )
-      .orderBy(desc(outreachActivities.occurredAt));
-
-    return rows.map(toActivityRecord);
-  },
-
-  async getTodayStats(
-    tenantId: string,
-    startOfToday: Date,
-  ): Promise<{
-    sent: number;
-    replied: number;
-    bounced: number;
-    optedOut: number;
-    converted: number;
-    callsCompleted: number;
-    meetingsBooked: number;
-  }> {
-    const rows = await db
-      .select({
-        activityType: outreachActivities.activityType,
-        count: count(),
-      })
-      .from(outreachActivities)
-      .where(
-        and(
-          eq(outreachActivities.tenantId, tenantId),
-          gte(outreachActivities.occurredAt, startOfToday),
-        ),
-      )
-      .groupBy(outreachActivities.activityType);
-
-    const stats = {
-      sent: 0,
-      replied: 0,
-      bounced: 0,
-      optedOut: 0,
-      converted: 0,
-      callsCompleted: 0,
-      meetingsBooked: 0,
-    };
-
-    for (const row of rows) {
-      const c = Number(row.count);
-      switch (row.activityType) {
-        case "SENT":
-          stats.sent = c;
-          break;
-        case "REPLIED":
-          stats.replied = c;
-          break;
-        case "BOUNCED":
-          stats.bounced = c;
-          break;
-        case "OPTED_OUT":
-          stats.optedOut = c;
-          break;
-        case "CONVERTED":
-          stats.converted = c;
-          break;
-        case "CALL_COMPLETED":
-          stats.callsCompleted = c;
-          break;
-        case "MEETING_BOOKED":
-          stats.meetingsBooked = c;
-          break;
-      }
-    }
-
-    return stats;
-  },
-
-  async getRecentReplies(
-    tenantId: string,
-    limit?: number,
-  ): Promise<DashboardContact[]> {
-    const rows = await db
-      .select({
-        contact: outreachContacts,
-        customerFirstName: customers.firstName,
-        customerLastName: customers.lastName,
-        customerEmail: customers.email,
-        customerTags: customers.tags,
-        sequenceName: outreachSequences.name,
-        sector: outreachSequences.sector,
-        steps: outreachSequences.steps,
-      })
-      .from(outreachContacts)
-      .innerJoin(customers, eq(outreachContacts.customerId, customers.id))
-      .innerJoin(outreachSequences, eq(outreachContacts.sequenceId, outreachSequences.id))
-      .where(
-        and(
-          eq(outreachContacts.tenantId, tenantId),
-          eq(outreachContacts.status, "REPLIED"),
-        ),
-      )
-      .orderBy(desc(outreachContacts.lastActivityAt))
-      .limit(limit ?? 10);
-
-    return rows.map(toDashboardContact);
-  },
-
-  async getSequencePerformance(
-    tenantId: string,
-    filters?: { dateFrom?: Date; dateTo?: Date; sector?: string },
-  ): Promise<SequencePerformance[]> {
-    const conditions = [eq(outreachActivities.tenantId, tenantId)];
-
-    if (filters?.dateFrom) {
-      conditions.push(gte(outreachActivities.occurredAt, filters.dateFrom));
-    }
-    if (filters?.dateTo) {
-      conditions.push(lte(outreachActivities.occurredAt, filters.dateTo));
-    }
-    if (filters?.sector) {
-      conditions.push(eq(outreachSequences.sector, filters.sector));
-    }
-
-    const rows = await db
-      .select({
-        sequenceId: outreachActivities.sequenceId,
-        sequenceName: outreachSequences.name,
-        sector: outreachSequences.sector,
-        abVariant: outreachSequences.abVariant,
-        pairedSequenceId: outreachSequences.pairedSequenceId,
-        activityType: outreachActivities.activityType,
-        count: count(),
-      })
-      .from(outreachActivities)
-      .innerJoin(outreachSequences, eq(outreachActivities.sequenceId, outreachSequences.id))
+      .from(campaigns)
       .where(and(...conditions))
-      .groupBy(
-        outreachActivities.sequenceId,
-        outreachSequences.name,
-        outreachSequences.sector,
-        outreachSequences.abVariant,
-        outreachSequences.pairedSequenceId,
-        outreachActivities.activityType,
-      );
+      .orderBy(desc(campaigns.createdAt))
+      .limit(opts.limit + 1)
 
-    // Aggregate per-sequence
-    const sequenceMap = new Map<
-      string,
-      {
-        sequenceId: string;
-        name: string;
-        sector: string;
-        abVariant: string | null;
-        pairedSequenceId: string | null;
-        totalSent: number;
-        totalReplied: number;
-        totalConverted: number;
-      }
-    >();
-
-    for (const row of rows) {
-      let entry = sequenceMap.get(row.sequenceId);
-      if (!entry) {
-        entry = {
-          sequenceId: row.sequenceId,
-          name: row.sequenceName,
-          sector: row.sector,
-          abVariant: row.abVariant ?? null,
-          pairedSequenceId: row.pairedSequenceId ?? null,
-          totalSent: 0,
-          totalReplied: 0,
-          totalConverted: 0,
-        };
-        sequenceMap.set(row.sequenceId, entry);
-      }
-
-      const c = Number(row.count);
-      if (row.activityType === "SENT") entry.totalSent += c;
-      if (row.activityType === "REPLIED") entry.totalReplied += c;
-      if (row.activityType === "CONVERTED") entry.totalConverted += c;
-    }
-
-    return Array.from(sequenceMap.values()).map((e) => ({
-      sequenceId: e.sequenceId,
-      name: e.name,
-      sector: e.sector,
-      abVariant: e.abVariant,
-      pairedSequenceId: e.pairedSequenceId,
-      totalSent: e.totalSent,
-      totalReplied: e.totalReplied,
-      replyRate: e.totalSent > 0 ? e.totalReplied / e.totalSent : 0,
-      totalConverted: e.totalConverted,
-      conversionRate: e.totalSent > 0 ? e.totalConverted / e.totalSent : 0,
-    }));
+    const hasMore = rows.length > opts.limit
+    return { rows: hasMore ? rows.slice(0, opts.limit) : rows, hasMore }
   },
 
-  async getSectorPerformance(
+  async findCampaignById(
     tenantId: string,
-    filters?: { dateFrom?: Date; dateTo?: Date },
-  ): Promise<SectorPerformance[]> {
-    const conditions = [eq(outreachActivities.tenantId, tenantId)];
-
-    if (filters?.dateFrom) {
-      conditions.push(gte(outreachActivities.occurredAt, filters.dateFrom));
-    }
-    if (filters?.dateTo) {
-      conditions.push(lte(outreachActivities.occurredAt, filters.dateTo));
-    }
-
-    const rows = await db
-      .select({
-        sector: outreachSequences.sector,
-        activityType: outreachActivities.activityType,
-        count: count(),
-      })
-      .from(outreachActivities)
-      .innerJoin(outreachSequences, eq(outreachActivities.sequenceId, outreachSequences.id))
-      .where(and(...conditions))
-      .groupBy(outreachSequences.sector, outreachActivities.activityType);
-
-    // Aggregate per-sector
-    const sectorMap = new Map<
-      string,
-      { sector: string; totalSent: number; totalReplied: number; totalConverted: number }
-    >();
-
-    for (const row of rows) {
-      let entry = sectorMap.get(row.sector);
-      if (!entry) {
-        entry = { sector: row.sector, totalSent: 0, totalReplied: 0, totalConverted: 0 };
-        sectorMap.set(row.sector, entry);
-      }
-
-      const c = Number(row.count);
-      if (row.activityType === "SENT") entry.totalSent += c;
-      if (row.activityType === "REPLIED") entry.totalReplied += c;
-      if (row.activityType === "CONVERTED") entry.totalConverted += c;
-    }
-
-    return Array.from(sectorMap.values()).map((e) => ({
-      sector: e.sector,
-      totalSent: e.totalSent,
-      totalReplied: e.totalReplied,
-      replyRate: e.totalSent > 0 ? e.totalReplied / e.totalSent : 0,
-      totalConverted: e.totalConverted,
-    }));
-  },
-
-  async categorizeContact(
-    tenantId: string,
-    contactId: string,
-    replyCategory: string,
-    sentiment: string,
-  ): Promise<OutreachContactRecord> {
-    const [updated] = await db
-      .update(outreachContacts)
-      .set({
-        replyCategory: replyCategory as "INTERESTED" | "NOT_NOW" | "NOT_INTERESTED" | "WRONG_PERSON" | "AUTO_REPLY",
-        sentiment: sentiment as "POSITIVE" | "NEUTRAL" | "NEGATIVE" | "NOT_NOW",
-        updatedAt: new Date(),
-      })
-      .where(
-        and(
-          eq(outreachContacts.tenantId, tenantId),
-          eq(outreachContacts.id, contactId),
-        ),
-      )
-      .returning();
-
-    if (!updated) throw new NotFoundError("OutreachContact", contactId);
-    return toContactRecord(updated);
-  },
-
-  async snoozeContact(
-    tenantId: string,
-    contactId: string,
-    snoozedUntil: Date,
-  ): Promise<OutreachContactRecord> {
-    const [updated] = await db
-      .update(outreachContacts)
-      .set({
-        snoozedUntil,
-        updatedAt: new Date(),
-      })
-      .where(
-        and(
-          eq(outreachContacts.tenantId, tenantId),
-          eq(outreachContacts.id, contactId),
-        ),
-      )
-      .returning();
-
-    if (!updated) throw new NotFoundError("OutreachContact", contactId);
-    return toContactRecord(updated);
-  },
-
-  async reactivateSnoozedContacts(): Promise<number> {
-    const now = new Date();
-
-    // Find all snoozed contacts ready for reactivation
-    const snoozedContacts = await db
-      .select()
-      .from(outreachContacts)
-      .where(
-        and(
-          eq(outreachContacts.status, "REPLIED"),
-          lte(outreachContacts.snoozedUntil, now),
-        ),
-      );
-
-    // Reactivate each with nextDueAt = now (so they appear in the due queue immediately)
-    for (const row of snoozedContacts) {
-      await db
-        .update(outreachContacts)
-        .set({
-          status: "ACTIVE",
-          snoozedUntil: null,
-          nextDueAt: now,
-          updatedAt: now,
-        })
-        .where(eq(outreachContacts.id, row.id));
-
-      log.info({ tenantId: row.tenantId, contactId: row.id }, "Snoozed contact reactivated");
-    }
-
-    return snoozedContacts.length;
-  },
-
-  async findActivityById(
-    tenantId: string,
-    activityId: string,
-  ): Promise<OutreachActivityRecord> {
+    campaignId: string,
+  ): Promise<CampaignRecord | null> {
     const [row] = await db
       .select()
-      .from(outreachActivities)
+      .from(campaigns)
       .where(
-        and(
-          eq(outreachActivities.tenantId, tenantId),
-          eq(outreachActivities.id, activityId),
-        ),
+        and(eq(campaigns.id, campaignId), eq(campaigns.tenantId, tenantId)),
       )
-      .limit(1);
+      .limit(1)
+    return row ?? null
+  },
 
-    if (!row) throw new NotFoundError("OutreachActivity", activityId);
-    return toActivityRecord(row);
+  async createCampaign(
+    tenantId: string,
+    input: CreateCampaignInput,
+  ): Promise<CampaignRecord> {
+    const [row] = await db
+      .insert(campaigns)
+      .values({
+        tenantId,
+        name: input.name,
+        channel: input.channel,
+        city: input.city ?? null,
+        industryFocus: input.industryFocus ?? null,
+        status: input.status ?? "draft",
+        startedAt: input.startedAt ?? null,
+        endedAt: input.endedAt ?? null,
+      })
+      .returning()
+    log.info({ tenantId, campaignId: row!.id }, "Campaign created")
+    return row!
   },
 
   // -------------------------------------------------------------------
@@ -1047,259 +422,534 @@ export const outreachRepository = {
 
   async listTemplates(
     tenantId: string,
-    filters?: { category?: string; isActive?: boolean },
-  ): Promise<OutreachTemplateRecord[]> {
-    const conditions = [eq(outreachTemplates.tenantId, tenantId)];
-
-    if (filters?.category) {
-      conditions.push(eq(outreachTemplates.category, filters.category));
-    }
-    if (filters?.isActive !== undefined) {
-      conditions.push(eq(outreachTemplates.isActive, filters.isActive));
-    }
+    opts: {
+      channel?: TemplateRecord["channel"]
+      active?: boolean
+      limit: number
+      cursor?: string
+    },
+  ): Promise<{ rows: TemplateRecord[]; hasMore: boolean }> {
+    const conditions = [eq(templates.tenantId, tenantId)]
+    if (opts.channel) conditions.push(eq(templates.channel, opts.channel))
+    if (opts.active !== undefined)
+      conditions.push(eq(templates.active, opts.active))
+    if (opts.cursor)
+      conditions.push(sql`${templates.createdAt} <= ${new Date(opts.cursor)}`)
 
     const rows = await db
       .select()
-      .from(outreachTemplates)
+      .from(templates)
       .where(and(...conditions))
-      .orderBy(desc(outreachTemplates.createdAt));
+      .orderBy(desc(templates.createdAt))
+      .limit(opts.limit + 1)
 
-    return rows.map(toTemplateRecord);
+    const hasMore = rows.length > opts.limit
+    return { rows: hasMore ? rows.slice(0, opts.limit) : rows, hasMore }
   },
 
   async findTemplateById(
     tenantId: string,
     templateId: string,
-  ): Promise<OutreachTemplateRecord> {
+  ): Promise<TemplateRecord | null> {
     const [row] = await db
       .select()
-      .from(outreachTemplates)
+      .from(templates)
       .where(
-        and(
-          eq(outreachTemplates.id, templateId),
-          eq(outreachTemplates.tenantId, tenantId),
-        ),
+        and(eq(templates.id, templateId), eq(templates.tenantId, tenantId)),
       )
-      .limit(1);
-
-    if (!row) throw new NotFoundError("OutreachTemplate", templateId);
-    return toTemplateRecord(row);
+      .limit(1)
+    return row ?? null
   },
 
   async createTemplate(
     tenantId: string,
-    input: {
-      name: string;
-      category: string;
-      channel: string;
-      subject?: string | null;
-      bodyMarkdown: string;
-      tags?: string[] | null;
-      isActive?: boolean;
-    },
-  ): Promise<OutreachTemplateRecord> {
-    const now = new Date();
-
+    input: CreateTemplateInput,
+  ): Promise<TemplateRecord> {
     const [row] = await db
-      .insert(outreachTemplates)
+      .insert(templates)
       .values({
         tenantId,
         name: input.name,
-        category: input.category,
         channel: input.channel,
         subject: input.subject ?? null,
-        bodyMarkdown: input.bodyMarkdown,
-        tags: input.tags ?? null,
-        isActive: input.isActive ?? true,
-        createdAt: now,
-        updatedAt: now,
+        body: input.body,
+        variables: input.variables ?? {},
+        parentId: input.parentId ?? null,
+        active: input.active ?? true,
       })
-      .returning();
-
-    log.info({ tenantId, templateId: row!.id }, "Outreach template created");
-    return toTemplateRecord(row!);
-  },
-
-  async updateTemplate(
-    tenantId: string,
-    templateId: string,
-    input: Partial<{
-      name: string;
-      category: string;
-      channel: string;
-      subject: string | null;
-      bodyMarkdown: string;
-      tags: string[] | null;
-      isActive: boolean;
-    }>,
-  ): Promise<OutreachTemplateRecord> {
-    const updateData: Record<string, unknown> = { updatedAt: new Date() };
-
-    if (input.name !== undefined) updateData.name = input.name;
-    if (input.category !== undefined) updateData.category = input.category;
-    if (input.channel !== undefined) updateData.channel = input.channel;
-    if (input.subject !== undefined) updateData.subject = input.subject;
-    if (input.bodyMarkdown !== undefined) updateData.bodyMarkdown = input.bodyMarkdown;
-    if (input.tags !== undefined) updateData.tags = input.tags;
-    if (input.isActive !== undefined) updateData.isActive = input.isActive;
-
-    const [updated] = await db
-      .update(outreachTemplates)
-      .set(updateData as Partial<typeof outreachTemplates.$inferInsert>)
-      .where(
-        and(
-          eq(outreachTemplates.id, templateId),
-          eq(outreachTemplates.tenantId, tenantId),
-        ),
-      )
-      .returning();
-
-    if (!updated) throw new NotFoundError("OutreachTemplate", templateId);
-    log.info({ tenantId, templateId }, "Outreach template updated");
-    return toTemplateRecord(updated);
-  },
-
-  async deleteTemplate(
-    tenantId: string,
-    templateId: string,
-  ): Promise<OutreachTemplateRecord> {
-    const [deleted] = await db
-      .delete(outreachTemplates)
-      .where(
-        and(
-          eq(outreachTemplates.id, templateId),
-          eq(outreachTemplates.tenantId, tenantId),
-        ),
-      )
-      .returning();
-
-    if (!deleted) throw new NotFoundError("OutreachTemplate", templateId);
-    log.info({ tenantId, templateId }, "Outreach template deleted");
-    return toTemplateRecord(deleted);
+      .returning()
+    log.info({ tenantId, templateId: row!.id }, "Template created")
+    return row!
   },
 
   // -------------------------------------------------------------------
-  // SNIPPETS
+  // TOUCHES
   // -------------------------------------------------------------------
 
-  async listSnippets(
+  async listTouches(
     tenantId: string,
-    filters?: { category?: string; isActive?: boolean },
-  ): Promise<OutreachSnippetRecord[]> {
-    const conditions = [eq(outreachSnippets.tenantId, tenantId)];
-
-    if (filters?.category) {
-      conditions.push(eq(outreachSnippets.category, filters.category));
-    }
-    if (filters?.isActive !== undefined) {
-      conditions.push(eq(outreachSnippets.isActive, filters.isActive));
-    }
+    opts: {
+      contactId?: string
+      campaignId?: string
+      deliveryStatus?: OutreachDeliveryStatus
+      awaitingReplyOnly?: boolean
+      limit: number
+      cursor?: string
+    },
+  ): Promise<{ rows: TouchRecord[]; hasMore: boolean }> {
+    const conditions = [eq(touches.tenantId, tenantId)]
+    if (opts.contactId) conditions.push(eq(touches.contactId, opts.contactId))
+    if (opts.campaignId)
+      conditions.push(eq(touches.campaignId, opts.campaignId))
+    if (opts.deliveryStatus)
+      conditions.push(eq(touches.deliveryStatus, opts.deliveryStatus))
+    if (opts.awaitingReplyOnly)
+      conditions.push(eq(touches.replyStatus, "none"))
+    if (opts.cursor)
+      conditions.push(sql`${touches.createdAt} <= ${new Date(opts.cursor)}`)
 
     const rows = await db
       .select()
-      .from(outreachSnippets)
+      .from(touches)
       .where(and(...conditions))
-      .orderBy(desc(outreachSnippets.createdAt));
+      .orderBy(desc(touches.createdAt))
+      .limit(opts.limit + 1)
 
-    return rows.map(toSnippetRecord);
+    const hasMore = rows.length > opts.limit
+    return { rows: hasMore ? rows.slice(0, opts.limit) : rows, hasMore }
   },
 
-  async findSnippetById(
+  async findTouchById(
     tenantId: string,
-    snippetId: string,
-  ): Promise<OutreachSnippetRecord> {
+    touchId: string,
+  ): Promise<TouchRecord | null> {
     const [row] = await db
       .select()
-      .from(outreachSnippets)
-      .where(
-        and(
-          eq(outreachSnippets.id, snippetId),
-          eq(outreachSnippets.tenantId, tenantId),
-        ),
-      )
-      .limit(1);
-
-    if (!row) throw new NotFoundError("OutreachSnippet", snippetId);
-    return toSnippetRecord(row);
+      .from(touches)
+      .where(and(eq(touches.id, touchId), eq(touches.tenantId, tenantId)))
+      .limit(1)
+    return row ?? null
   },
 
-  async createSnippet(
+  async listOpenTouches(
+    tenantId: string,
+    contactId: string,
+  ): Promise<TouchRecord[]> {
+    return db
+      .select()
+      .from(touches)
+      .where(
+        and(
+          eq(touches.tenantId, tenantId),
+          eq(touches.contactId, contactId),
+          eq(touches.replyStatus, "none"),
+        ),
+      )
+      .orderBy(desc(touches.sentAt))
+  },
+
+  async findTouchByExternalMessageId(
+    externalMessageId: string,
+  ): Promise<TouchRecord | null> {
+    const [row] = await db
+      .select()
+      .from(touches)
+      .where(eq(touches.externalMessageId, externalMessageId))
+      .limit(1)
+    return row ?? null
+  },
+
+  async insertTouch(
     tenantId: string,
     input: {
-      name: string;
-      category: string;
-      bodyMarkdown: string;
-      isActive?: boolean;
+      contactId: string
+      campaignId?: string | null
+      templateId?: string | null
+      channel: TouchRecord["channel"]
+      subjectRendered?: string | null
+      bodyRendered?: string | null
+      externalMessageId?: string | null
+      deliveryStatus?: OutreachDeliveryStatus
     },
-  ): Promise<OutreachSnippetRecord> {
-    const now = new Date();
-
+  ): Promise<TouchRecord> {
     const [row] = await db
-      .insert(outreachSnippets)
+      .insert(touches)
       .values({
         tenantId,
-        name: input.name,
-        category: input.category,
-        bodyMarkdown: input.bodyMarkdown,
-        isActive: input.isActive ?? true,
-        createdAt: now,
-        updatedAt: now,
+        contactId: input.contactId,
+        campaignId: input.campaignId ?? null,
+        templateId: input.templateId ?? null,
+        channel: input.channel,
+        subjectRendered: input.subjectRendered ?? null,
+        bodyRendered: input.bodyRendered ?? null,
+        externalMessageId: input.externalMessageId ?? null,
+        deliveryStatus: input.deliveryStatus ?? "queued",
       })
-      .returning();
-
-    log.info({ tenantId, snippetId: row!.id }, "Outreach snippet created");
-    return toSnippetRecord(row!);
+      .returning()
+    return row!
   },
 
-  async updateSnippet(
+  async updateTouch(
     tenantId: string,
-    snippetId: string,
-    input: Partial<{
-      name: string;
-      category: string;
-      bodyMarkdown: string;
-      isActive: boolean;
-    }>,
-  ): Promise<OutreachSnippetRecord> {
-    const updateData: Record<string, unknown> = { updatedAt: new Date() };
-
-    if (input.name !== undefined) updateData.name = input.name;
-    if (input.category !== undefined) updateData.category = input.category;
-    if (input.bodyMarkdown !== undefined) updateData.bodyMarkdown = input.bodyMarkdown;
-    if (input.isActive !== undefined) updateData.isActive = input.isActive;
-
+    touchId: string,
+    patch: Partial<typeof touches.$inferInsert>,
+  ): Promise<TouchRecord> {
     const [updated] = await db
-      .update(outreachSnippets)
-      .set(updateData as Partial<typeof outreachSnippets.$inferInsert>)
-      .where(
-        and(
-          eq(outreachSnippets.id, snippetId),
-          eq(outreachSnippets.tenantId, tenantId),
-        ),
-      )
-      .returning();
-
-    if (!updated) throw new NotFoundError("OutreachSnippet", snippetId);
-    log.info({ tenantId, snippetId }, "Outreach snippet updated");
-    return toSnippetRecord(updated);
+      .update(touches)
+      .set({ ...patch, updatedAt: new Date() })
+      .where(and(eq(touches.id, touchId), eq(touches.tenantId, tenantId)))
+      .returning()
+    if (!updated) throw new NotFoundError("Touch", touchId)
+    return updated
   },
 
-  async deleteSnippet(
+  // -------------------------------------------------------------------
+  // REPLIES
+  // -------------------------------------------------------------------
+
+  async listReplies(
     tenantId: string,
-    snippetId: string,
-  ): Promise<OutreachSnippetRecord> {
-    const [deleted] = await db
-      .delete(outreachSnippets)
-      .where(
-        and(
-          eq(outreachSnippets.id, snippetId),
-          eq(outreachSnippets.tenantId, tenantId),
-        ),
-      )
-      .returning();
+    opts: {
+      needsReview?: boolean
+      handled?: boolean
+      contactId?: string
+      limit: number
+      cursor?: string
+    },
+  ): Promise<{ rows: ReplyRecord[]; hasMore: boolean }> {
+    const conditions = [eq(replies.tenantId, tenantId)]
+    if (opts.needsReview !== undefined)
+      conditions.push(eq(replies.needsReview, opts.needsReview))
+    if (opts.handled !== undefined)
+      conditions.push(eq(replies.handled, opts.handled))
+    if (opts.contactId) conditions.push(eq(replies.contactId, opts.contactId))
+    if (opts.cursor)
+      conditions.push(sql`${replies.createdAt} <= ${new Date(opts.cursor)}`)
 
-    if (!deleted) throw new NotFoundError("OutreachSnippet", snippetId);
-    log.info({ tenantId, snippetId }, "Outreach snippet deleted");
-    return toSnippetRecord(deleted);
+    const rows = await db
+      .select()
+      .from(replies)
+      .where(and(...conditions))
+      .orderBy(desc(replies.receivedAt))
+      .limit(opts.limit + 1)
+
+    const hasMore = rows.length > opts.limit
+    return { rows: hasMore ? rows.slice(0, opts.limit) : rows, hasMore }
   },
-};
+
+  /**
+   * Enriched listing of replies with embedded contact, company, and originating
+   * touch context — for the triage inbox UI.
+   */
+  async listRepliesEnriched(
+    tenantId: string,
+    opts: {
+      needsReview?: boolean
+      handled?: boolean
+      contactId?: string
+      sinceDays?: number
+      limit: number
+      cursor?: string
+    },
+  ): Promise<{ rows: EnrichedReplyRecord[]; hasMore: boolean }> {
+    const conditions = [eq(replies.tenantId, tenantId)]
+    if (opts.needsReview !== undefined)
+      conditions.push(eq(replies.needsReview, opts.needsReview))
+    if (opts.handled !== undefined)
+      conditions.push(eq(replies.handled, opts.handled))
+    if (opts.contactId) conditions.push(eq(replies.contactId, opts.contactId))
+    if (opts.sinceDays && opts.sinceDays > 0) {
+      const cutoff = new Date(Date.now() - opts.sinceDays * 24 * 60 * 60 * 1000)
+      conditions.push(sql`${replies.receivedAt} >= ${cutoff}`)
+    }
+    if (opts.cursor)
+      conditions.push(sql`${replies.receivedAt} <= ${new Date(opts.cursor)}`)
+
+    const rows = await db
+      .select({
+        reply: replies,
+        contact: contacts,
+        company: companies,
+        touch: touches,
+      })
+      .from(replies)
+      .innerJoin(contacts, eq(contacts.id, replies.contactId))
+      .innerJoin(companies, eq(companies.id, contacts.companyId))
+      .leftJoin(touches, eq(touches.id, replies.touchId))
+      .where(and(...conditions))
+      .orderBy(desc(replies.receivedAt))
+      .limit(opts.limit + 1)
+
+    const hasMore = rows.length > opts.limit
+    const sliced = hasMore ? rows.slice(0, opts.limit) : rows
+
+    const enriched: EnrichedReplyRecord[] = sliced.map((r) => ({
+      ...r.reply,
+      contact: {
+        id: r.contact.id,
+        fullName: r.contact.fullName,
+        role: r.contact.role,
+        email: r.contact.email,
+      },
+      company: {
+        id: r.company.id,
+        name: r.company.name,
+        domain: r.company.domain,
+      },
+      touch: r.touch
+        ? {
+            id: r.touch.id,
+            sentAt: r.touch.sentAt,
+            subjectRendered: r.touch.subjectRendered,
+            channel: r.touch.channel,
+          }
+        : null,
+    }))
+
+    return { rows: enriched, hasMore }
+  },
+
+  async findReplyById(
+    tenantId: string,
+    replyId: string,
+  ): Promise<ReplyRecord | null> {
+    const [row] = await db
+      .select()
+      .from(replies)
+      .where(and(eq(replies.id, replyId), eq(replies.tenantId, tenantId)))
+      .limit(1)
+    return row ?? null
+  },
+
+  async listRepliesNeedingReview(
+    tenantId: string,
+    limit = 50,
+  ): Promise<ReplyRecord[]> {
+    return db
+      .select()
+      .from(replies)
+      .where(
+        and(eq(replies.tenantId, tenantId), eq(replies.needsReview, true)),
+      )
+      .orderBy(asc(replies.receivedAt))
+      .limit(limit)
+  },
+
+  async insertReply(
+    tenantId: string,
+    input: {
+      contactId: string
+      touchId?: string | null
+      receivedAt?: Date
+      subject?: string | null
+      body?: string | null
+      classifiedAs?: string | null
+      classifiedBy?: ReplyRecord["classifiedBy"]
+      classificationConfidence?: number | null
+      rawEventId?: string | null
+      needsReview?: boolean
+    },
+  ): Promise<ReplyRecord> {
+    const [row] = await db
+      .insert(replies)
+      .values({
+        tenantId,
+        contactId: input.contactId,
+        touchId: input.touchId ?? null,
+        receivedAt: input.receivedAt ?? new Date(),
+        subject: input.subject ?? null,
+        body: input.body ?? null,
+        classifiedAs: input.classifiedAs ?? null,
+        classifiedBy: input.classifiedBy ?? null,
+        classificationConfidence:
+          input.classificationConfidence != null
+            ? String(input.classificationConfidence)
+            : null,
+        rawEventId: input.rawEventId ?? null,
+        needsReview: input.needsReview ?? true,
+      })
+      .returning()
+    return row!
+  },
+
+  async updateReply(
+    tenantId: string,
+    replyId: string,
+    patch: Partial<typeof replies.$inferInsert>,
+  ): Promise<ReplyRecord> {
+    const [updated] = await db
+      .update(replies)
+      .set(patch)
+      .where(and(eq(replies.id, replyId), eq(replies.tenantId, tenantId)))
+      .returning()
+    if (!updated) throw new NotFoundError("Reply", replyId)
+    return updated
+  },
+
+  async markReplyHandled(
+    tenantId: string,
+    replyId: string,
+  ): Promise<ReplyRecord> {
+    const [updated] = await db
+      .update(replies)
+      .set({ handled: true, handledAt: new Date(), needsReview: false })
+      .where(and(eq(replies.id, replyId), eq(replies.tenantId, tenantId)))
+      .returning()
+    if (!updated) throw new NotFoundError("Reply", replyId)
+    return updated
+  },
+
+  // -------------------------------------------------------------------
+  // DNC
+  // -------------------------------------------------------------------
+
+  async listDnc(
+    tenantId: string,
+    opts: { search?: string; limit: number; cursor?: string },
+  ): Promise<{ rows: DncListRecord[]; hasMore: boolean }> {
+    const conditions = [eq(dncList.tenantId, tenantId)]
+    if (opts.search) {
+      const pat = `%${opts.search}%`
+      conditions.push(or(ilike(dncList.email, pat), ilike(dncList.domain, pat))!)
+    }
+    if (opts.cursor)
+      conditions.push(sql`${dncList.addedAt} <= ${new Date(opts.cursor)}`)
+
+    const rows = await db
+      .select()
+      .from(dncList)
+      .where(and(...conditions))
+      .orderBy(desc(dncList.addedAt))
+      .limit(opts.limit + 1)
+
+    const hasMore = rows.length > opts.limit
+    return { rows: hasMore ? rows.slice(0, opts.limit) : rows, hasMore }
+  },
+
+  async insertDnc(
+    tenantId: string,
+    input: {
+      email?: string | null
+      domain?: string | null
+      reason?: string | null
+      addedBy?: string | null
+    },
+  ): Promise<DncListRecord> {
+    const [row] = await db
+      .insert(dncList)
+      .values({
+        tenantId,
+        email: input.email ?? null,
+        domain: input.domain ?? null,
+        reason: input.reason ?? null,
+        addedBy: input.addedBy ?? null,
+      })
+      .returning()
+    return row!
+  },
+
+  async flipMatchingContactsDnc(
+    tenantId: string,
+    opts: { email?: string | null; domain?: string | null },
+  ): Promise<number> {
+    if (!opts.email && !opts.domain) return 0
+
+    if (opts.email) {
+      const r = await db
+        .update(contacts)
+        .set({ doNotContact: true, updatedAt: new Date() })
+        .where(
+          and(
+            eq(contacts.tenantId, tenantId),
+            eq(contacts.email, opts.email),
+          ),
+        )
+        .returning({ id: contacts.id })
+      return r.length
+    }
+
+    // Domain: match contacts whose email ends with @domain
+    const pat = `%@${opts.domain}`
+    const r = await db
+      .update(contacts)
+      .set({ doNotContact: true, updatedAt: new Date() })
+      .where(
+        and(eq(contacts.tenantId, tenantId), ilike(contacts.email, pat)),
+      )
+      .returning({ id: contacts.id })
+    return r.length
+  },
+
+  async flipMatchingCompaniesDnc(
+    tenantId: string,
+    domain: string,
+    reason?: string | null,
+  ): Promise<number> {
+    const r = await db
+      .update(companies)
+      .set({
+        doNotContact: true,
+        dncReason: reason ?? null,
+        dncAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(
+        and(eq(companies.tenantId, tenantId), eq(companies.domain, domain)),
+      )
+      .returning({ id: companies.id })
+    return r.length
+  },
+
+  /**
+   * True if the email is on the DNC list (by email or domain), OR if the
+   * matching contact is do_not_contact, OR if the contact's company is
+   * do_not_contact.
+   */
+  async isDoNotContact(tenantId: string, email: string): Promise<boolean> {
+    const lower = email.toLowerCase()
+    const domain = domainFromEmail(lower)
+
+    // 1. dnc_list by email or domain
+    const dncConds = [eq(dncList.tenantId, tenantId)]
+    const dncMatch = domain
+      ? or(eq(dncList.email, lower), eq(dncList.domain, domain))!
+      : eq(dncList.email, lower)
+    const [dnc] = await db
+      .select({ id: dncList.id })
+      .from(dncList)
+      .where(and(...dncConds, dncMatch))
+      .limit(1)
+    if (dnc) return true
+
+    // 2. contact flag
+    const [c] = await db
+      .select({ doNotContact: contacts.doNotContact, companyId: contacts.companyId })
+      .from(contacts)
+      .where(and(eq(contacts.tenantId, tenantId), eq(contacts.email, lower)))
+      .limit(1)
+    if (c?.doNotContact) return true
+
+    // 3. company flag (either via the contact's company OR by matching domain)
+    if (c?.companyId) {
+      const [co] = await db
+        .select({ doNotContact: companies.doNotContact })
+        .from(companies)
+        .where(
+          and(eq(companies.tenantId, tenantId), eq(companies.id, c.companyId)),
+        )
+        .limit(1)
+      if (co?.doNotContact) return true
+    } else if (domain) {
+      const [co] = await db
+        .select({ doNotContact: companies.doNotContact })
+        .from(companies)
+        .where(
+          and(eq(companies.tenantId, tenantId), eq(companies.domain, domain)),
+        )
+        .limit(1)
+      if (co?.doNotContact) return true
+    }
+
+    return false
+  },
+}

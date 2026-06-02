@@ -1,246 +1,205 @@
-// ---------------------------------------------------------------------------
-// Enum types
-// ---------------------------------------------------------------------------
+/**
+ * Outreach module — domain types
+ *
+ * The DB row types live in `@/shared/db/schemas/outreach.schema` as
+ * CompanyRow / ContactRow / CampaignRow / TemplateRow / TouchRow / ReplyRow / DncListRow.
+ *
+ * This file re-exports them as the module's public record types and adds
+ * input shapes the service layer accepts.
+ */
 
-export type OutreachContactStatus =
-  | "ACTIVE"
-  | "REPLIED"
-  | "BOUNCED"
-  | "OPTED_OUT"
-  | "CONVERTED"
-  | "PAUSED"
-  | "COMPLETED"
-
-export type OutreachActivityType =
-  | "SENT"
-  | "REPLIED"
-  | "BOUNCED"
-  | "OPTED_OUT"
-  | "SKIPPED"
-  | "CALL_COMPLETED"
-  | "MEETING_BOOKED"
-  | "CONVERTED"
-  | "UNDONE"
-
-export type OutreachChannel =
-  | "EMAIL"
-  | "LINKEDIN_REQUEST"
-  | "LINKEDIN_MESSAGE"
-  | "CALL"
-
-export type OutreachSentiment = "POSITIVE" | "NEUTRAL" | "NEGATIVE" | "NOT_NOW"
-
-export type OutreachReplyCategory =
-  | "INTERESTED"
-  | "NOT_NOW"
-  | "NOT_INTERESTED"
-  | "WRONG_PERSON"
-  | "AUTO_REPLY"
-
-export type OutreachTemplateCategory =
-  | "intro"
-  | "follow-up"
-  | "break-up"
-  | "case-study"
-  | "linkedin"
-  | "custom"
+import type {
+  CompanyRow,
+  ContactRow,
+  CampaignRow,
+  TemplateRow,
+  TouchRow,
+  ReplyRow,
+  DncListRow,
+} from "@/shared/db/schemas/outreach.schema"
 
 // ---------------------------------------------------------------------------
-// JSONB step shape
+// Re-exported record types (DB rows as our domain records)
 // ---------------------------------------------------------------------------
 
-export interface OutreachStep {
-  position: number
-  channel: OutreachChannel
-  delayDays: number
-  subject?: string
-  bodyMarkdown: string
-  notes?: string
-}
+export type CompanyRecord = CompanyRow
+export type ContactRecord = ContactRow
+export type CampaignRecord = CampaignRow
+export type TemplateRecord = TemplateRow
+export type TouchRecord = TouchRow
+export type ReplyRecord = ReplyRow
+export type DncListRecord = DncListRow
 
-// ---------------------------------------------------------------------------
-// Table records
-// ---------------------------------------------------------------------------
-
-export interface OutreachSequenceRecord {
-  id: string
-  tenantId: string
-  name: string
-  description: string | null
-  sector: string
-  targetIcp: string | null
-  isActive: boolean
-  abVariant: string | null
-  pairedSequenceId: string | null
-  steps: OutreachStep[]
-  archivedAt: Date | null
-  createdAt: Date
-  updatedAt: Date
-}
-
-export interface OutreachContactRecord {
-  id: string
-  tenantId: string
-  customerId: string
-  sequenceId: string
-  assignedUserId: string | null
-  status: OutreachContactStatus
-  currentStep: number
-  nextDueAt: Date | null
-  enrolledAt: Date
-  completedAt: Date | null
-  lastActivityAt: Date | null
-  pipelineMemberId: string | null
-  notes: string | null
-  sentiment: OutreachSentiment | null
-  replyCategory: OutreachReplyCategory | null
-  snoozedUntil: Date | null
-  createdAt: Date
-  updatedAt: Date
-}
-
-export interface OutreachActivityRecord {
-  id: string
-  tenantId: string
-  contactId: string
-  sequenceId: string
-  customerId: string
-  stepPosition: number
-  channel: string
-  activityType: OutreachActivityType
-  deliveredTo: string | null
-  notes: string | null
-  performedByUserId: string | null
-  previousState: { currentStep: number; status: string; nextDueAt: string | null } | null
-  occurredAt: Date
-  createdAt: Date
-}
-
-// ---------------------------------------------------------------------------
-// Template & Snippet records
-// ---------------------------------------------------------------------------
-
-export interface OutreachTemplateRecord {
-  id: string
-  tenantId: string
-  name: string
-  category: string
-  channel: string
-  subject: string | null
-  bodyMarkdown: string
-  tags: string[] | null
-  isActive: boolean
-  createdAt: Date
-  updatedAt: Date
-}
-
-export interface OutreachSnippetRecord {
-  id: string
-  tenantId: string
-  name: string
-  category: string
-  bodyMarkdown: string
-  isActive: boolean
-  createdAt: Date
-  updatedAt: Date
-}
-
-// ---------------------------------------------------------------------------
-// Derived types
-// ---------------------------------------------------------------------------
-
-export interface OutreachContactWithDetails extends OutreachContactRecord {
-  customerFirstName: string
-  customerLastName: string
-  customerEmail: string | null
-  customerTags: string[]
-  sequenceName: string
-  sector: string
-  currentStepTemplate: OutreachStep | null
-}
-
-export interface DashboardContact {
-  id: string
-  customerId: string
-  customerName: string
-  customerEmail: string | null
-  company: string | null
-  sequenceId: string
-  sequenceName: string
-  sector: string
-  currentStep: number
-  totalSteps: number
-  channel: OutreachChannel
-  subject: string | null
-  nextDueAt: Date | null
-  notes: string | null
-}
-
-export interface DailyDashboard {
-  dueNow: DashboardContact[]
-  overdue: DashboardContact[]
-  recentReplies: DashboardContact[]
-  todayStats: {
-    sent: number
-    replied: number
-    bounced: number
-    optedOut: number
-    converted: number
-    callsCompleted: number
-    meetingsBooked: number
+/**
+ * Reply enriched with the embedded contact, company, and originating touch
+ * context — surfaced to the triage inbox UI.
+ */
+export interface EnrichedReplyRecord extends ReplyRow {
+  contact: {
+    id: string
+    fullName: string
+    role: string | null
+    email: string | null
   }
+  company: {
+    id: string
+    name: string
+    domain: string | null
+  }
+  touch: {
+    id: string
+    sentAt: Date | null
+    subjectRendered: string | null
+    channel: string
+  } | null
 }
 
-export interface SequencePerformance {
-  sequenceId: string
+// ---------------------------------------------------------------------------
+// Enum string unions (mirror the pg enums)
+// ---------------------------------------------------------------------------
+
+export type OutreachChannel = "email" | "linkedin" | "phone"
+export type OutreachEmployeeBand = "1-2" | "3-15" | "15-50" | "50+"
+export type OutreachCompanySource = "cold" | "referral" | "inbound" | "manual"
+export type OutreachCampaignStatus = "draft" | "active" | "paused" | "complete"
+export type OutreachDeliveryStatus =
+  | "queued"
+  | "sent"
+  | "delivered"
+  | "bounced"
+  | "failed"
+export type OutreachReplyStatus =
+  | "none"
+  | "positive"
+  | "negative"
+  | "ooo"
+  | "converter"
+  | "wrong_person"
+  | "auto_reply"
+export type OutreachClassifier = "claude" | "luke" | "rule"
+
+// ---------------------------------------------------------------------------
+// Input shapes
+// ---------------------------------------------------------------------------
+
+export interface CreateCompanyInput {
   name: string
-  sector: string
-  abVariant: string | null
-  pairedSequenceId: string | null
-  totalSent: number
-  totalReplied: number
-  replyRate: number
-  totalConverted: number
-  conversionRate: number
+  domain?: string | null
+  industry?: string | null
+  employeeBand?: OutreachEmployeeBand | null
+  city?: string | null
+  country?: string | null
+  ownerLed?: boolean
+  source?: OutreachCompanySource
+  notes?: string | null
+  enrichment?: Record<string, unknown>
 }
 
-export interface SectorPerformance {
-  sector: string
-  totalSent: number
-  totalReplied: number
-  replyRate: number
-  totalConverted: number
+export interface UpdateCompanyInput {
+  name?: string
+  domain?: string | null
+  industry?: string | null
+  employeeBand?: OutreachEmployeeBand | null
+  city?: string | null
+  country?: string | null
+  ownerLed?: boolean
+  source?: OutreachCompanySource
+  notes?: string | null
+  enrichment?: Record<string, unknown>
+  doNotContact?: boolean
+  dncReason?: string | null
 }
 
-export interface RenderedTemplate {
-  subject: string | null
-  body: string
+export interface CreateContactInput {
+  companyId: string
+  fullName: string
+  role?: string | null
+  email?: string | null
+  phone?: string | null
+  linkedinUrl?: string | null
+  isOwner?: boolean
+  isDecisionMaker?: boolean
+}
+
+export interface UpdateContactInput {
+  fullName?: string
+  role?: string | null
+  email?: string | null
+  phone?: string | null
+  linkedinUrl?: string | null
+  isOwner?: boolean
+  isDecisionMaker?: boolean
+  bounced?: boolean
+  doNotContact?: boolean
+}
+
+export interface CreateCampaignInput {
+  name: string
   channel: OutreachChannel
-  stepNotes: string | null
+  city?: string | null
+  industryFocus?: string | null
+  status?: OutreachCampaignStatus
+  startedAt?: Date | null
+  endedAt?: Date | null
 }
 
-// ---------------------------------------------------------------------------
-// Sentiment derivation
-// ---------------------------------------------------------------------------
-
-const CATEGORY_TO_SENTIMENT: Record<OutreachReplyCategory, OutreachSentiment> = {
-  INTERESTED: "POSITIVE",
-  NOT_NOW: "NOT_NOW",
-  NOT_INTERESTED: "NEGATIVE",
-  WRONG_PERSON: "NEUTRAL",
-  AUTO_REPLY: "NEUTRAL",
+export interface CreateTemplateInput {
+  name: string
+  channel: OutreachChannel
+  subject?: string | null
+  body: string
+  variables?: Record<string, unknown>
+  parentId?: string | null
+  active?: boolean
 }
 
-export function deriveSentiment(category: OutreachReplyCategory): OutreachSentiment {
-  return CATEGORY_TO_SENTIMENT[category]
+export interface SendTouchInput {
+  contactId: string
+  templateId?: string | null
+  campaignId?: string | null
+  channel: OutreachChannel
+  renderedSubject?: string | null
+  renderedBody?: string | null
+  externalMessageId?: string | null
 }
 
-// ---------------------------------------------------------------------------
-// Import result
-// ---------------------------------------------------------------------------
+export interface RecordReplyInput {
+  contactId: string
+  touchId?: string | null
+  receivedAt?: Date
+  subject?: string | null
+  body?: string | null
+  classifiedAs?: string | null
+  classifiedBy?: OutreachClassifier | null
+  classificationConfidence?: number | null
+  rawEventId?: string | null
+}
 
-export interface ImportResult {
-  imported: number
+export interface AddDncInput {
+  email?: string | null
+  domain?: string | null
+  reason?: string | null
+}
+
+export interface BulkImportLeadRow {
+  companyName: string
+  domain?: string | null
+  industry?: string | null
+  city?: string | null
+  country?: string | null
+  employeeBand?: OutreachEmployeeBand | null
+  ownerLed?: boolean
+  contactName: string
+  email?: string | null
+  phone?: string | null
+  role?: string | null
+  linkedinUrl?: string | null
+  isOwner?: boolean
+  isDecisionMaker?: boolean
+}
+
+export interface BulkImportResult {
+  companiesCreated: number
+  contactsCreated: number
   skipped: number
-  skippedEmails: string[]
 }

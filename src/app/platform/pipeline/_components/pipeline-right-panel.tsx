@@ -1,159 +1,176 @@
 "use client"
 
-import { Card, CardContent } from "@/components/ui/card"
+import { useState } from "react"
+import { api } from "@/lib/trpc/react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
-import { stageVelocity, recentActivity } from "../_mock-data"
-import type { PipelineStageSummary } from "@/modules/pipeline/pipeline.types"
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
+// Stub-quality detail panel for a single deal. Two actions:
+//   - "Move to next stage" calls pipeline.moveStage
+//   - "Add note"           calls pipeline.addNote
+// Stage transitions are deliberately linear here — the service enforces
+// real transition rules; this UI just suggests the obvious next step.
 
-interface RightPanelProps {
-  summaryMap: Map<string, PipelineStageSummary>
-  stages: { id: string; name: string; color: string | null; type: string; position: number }[]
+const STAGE_ORDER = [
+  "qualified",
+  "demo",
+  "proposal",
+  "won",
+] as const
+
+type Stage = (typeof STAGE_ORDER)[number] | "lost" | "dormant"
+
+function nextStage(current: string): Stage | null {
+  const idx = STAGE_ORDER.indexOf(current as (typeof STAGE_ORDER)[number])
+  if (idx < 0 || idx >= STAGE_ORDER.length - 1) return null
+  return STAGE_ORDER[idx + 1]
 }
 
-// ---------------------------------------------------------------------------
-// Component
-// ---------------------------------------------------------------------------
+export interface PipelineRightPanelProps {
+  dealId: string | null
+}
 
-export function PipelineRightPanel({ summaryMap, stages }: RightPanelProps) {
-  // Build funnel data from real summary
-  const openStages = stages
-    .filter((s) => s.type === "OPEN")
-    .sort((a, b) => a.position - b.position)
+export function PipelineRightPanel({ dealId }: PipelineRightPanelProps) {
+  const utils = api.useUtils()
+  const [noteBody, setNoteBody] = useState("")
 
-  const funnelData = openStages.map((stage) => {
-    const summary = summaryMap.get(stage.id)
-    return {
-      name: stage.name,
-      count: summary?.count ?? 0,
-      color: stage.color ?? "#94a3b8",
-    }
+  const dealQuery = api.pipeline.getDeal.useQuery(
+    { dealId: dealId ?? "" },
+    { enabled: !!dealId },
+  )
+  const eventsQuery = api.pipeline.listDealEvents.useQuery(
+    { dealId: dealId ?? "" },
+    { enabled: !!dealId },
+  )
+
+  const moveStage = api.pipeline.moveStage.useMutation({
+    onSuccess: async () => {
+      await utils.pipeline.listDeals.invalidate()
+      await utils.pipeline.getDeal.invalidate()
+      await utils.pipeline.listDealEvents.invalidate()
+    },
   })
 
-  const maxFunnelCount = Math.max(...funnelData.map((f) => f.count), 1)
-  const firstCount = funnelData[0]?.count ?? 1
+  const addNote = api.pipeline.addNote.useMutation({
+    onSuccess: async () => {
+      setNoteBody("")
+      await utils.pipeline.listDealEvents.invalidate()
+    },
+  })
 
-  // Stage velocity max for bar widths
-  const maxVelocity = Math.max(...stageVelocity.map((v) => v.avgDays), 1)
+  if (!dealId) {
+    return (
+      <Card>
+        <CardContent className="p-6 text-sm text-muted-foreground">
+          Select a deal to see details.
+        </CardContent>
+      </Card>
+    )
+  }
+  if (dealQuery.isLoading) {
+    return (
+      <Card>
+        <CardContent className="p-6 text-sm text-muted-foreground">
+          Loading deal…
+        </CardContent>
+      </Card>
+    )
+  }
+  if (dealQuery.error || !dealQuery.data) {
+    return (
+      <Card>
+        <CardContent className="p-6 text-sm text-red-500">
+          {dealQuery.error?.message ?? "Deal not found"}
+        </CardContent>
+      </Card>
+    )
+  }
+
+  const deal = dealQuery.data as {
+    id: string
+    name: string
+    stage: string
+    valueEstimate?: number | null
+    companyName?: string | null
+  }
+
+  const events = (eventsQuery.data ?? []) as unknown as Array<{
+    id: string
+    kind: string
+    createdAt: string | Date
+    payload?: unknown
+  }>
+
+  const next = nextStage(deal.stage)
 
   return (
-    <div className="space-y-4">
-      {/* Conversion Funnel */}
+    <div className="flex flex-col gap-4">
       <Card>
-        <CardContent className="p-4">
-          <h3 className="text-xs font-semibold text-foreground uppercase tracking-wider mb-3">
-            Conversion Funnel
-          </h3>
-          <div className="space-y-2">
-            {funnelData.map((step, i) => {
-              const barWidth = maxFunnelCount > 0
-                ? Math.max(20, (step.count / maxFunnelCount) * 100)
-                : 20
-              const percentage = firstCount > 0
-                ? Math.round((step.count / firstCount) * 100)
-                : 0
-
-              return (
-                <div key={step.name} className="space-y-0.5">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">{step.name}</span>
-                    <span className="font-mono text-muted-foreground">
-                      {i === 0 ? "" : `${percentage}%`}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div
-                      className="h-5 rounded transition-all"
-                      style={{
-                        width: `${barWidth}%`,
-                        backgroundColor: step.color,
-                        opacity: 0.8,
-                      }}
-                    />
-                    <span className="text-xs font-mono font-medium text-foreground shrink-0">
-                      {step.count}
-                    </span>
-                  </div>
-                </div>
-              )
-            })}
+        <CardHeader>
+          <CardTitle className="text-lg">{deal.name}</CardTitle>
+          <div className="text-xs text-muted-foreground">
+            Stage: {deal.stage}
+            {deal.companyName ? ` · ${deal.companyName}` : ""}
+            {typeof deal.valueEstimate === "number"
+              ? ` · £${deal.valueEstimate.toLocaleString()}`
+              : ""}
+          </div>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-2">
+          <Button
+            size="sm"
+            disabled={!next || moveStage.isPending}
+            onClick={() => {
+              if (!next) return
+              moveStage.mutate({ dealId: deal.id, newStage: next })
+            }}
+          >
+            {next ? `Move to ${next}` : "No next stage"}
+          </Button>
+          <Separator />
+          <div className="flex flex-col gap-2">
+            <Input
+              placeholder="Add a note…"
+              value={noteBody}
+              onChange={(e) => setNoteBody(e.target.value)}
+            />
+            <Button
+              size="sm"
+              variant="secondary"
+              disabled={!noteBody.trim() || addNote.isPending}
+              onClick={() =>
+                addNote.mutate({ dealId: deal.id, body: noteBody.trim() })
+              }
+            >
+              Add note
+            </Button>
           </div>
         </CardContent>
       </Card>
 
-      {/* Stage Velocity */}
       <Card>
-        <CardContent className="p-4">
-          <h3 className="text-xs font-semibold text-foreground uppercase tracking-wider mb-3">
-            Stage Velocity
-          </h3>
-          <div className="space-y-2.5">
-            {stageVelocity.map((item) => {
-              const barWidth = Math.max(15, (item.avgDays / maxVelocity) * 100)
-
-              return (
-                <div key={item.stage} className="space-y-0.5">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground truncate">{item.stage}</span>
-                    <span className="font-mono text-foreground font-medium shrink-0">
-                      {item.avgDays}d
-                    </span>
-                  </div>
-                  <div
-                    className="h-2 rounded-full transition-all"
-                    style={{
-                      width: `${barWidth}%`,
-                      backgroundColor: item.color,
-                      opacity: 0.7,
-                    }}
-                  />
-                </div>
-              )
-            })}
-          </div>
-          <div className="mt-3 pt-2 border-t border-border">
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-muted-foreground">Avg. total cycle</span>
-              <span className="font-mono font-semibold text-foreground">
-                {stageVelocity.reduce((sum, v) => sum + v.avgDays, 0)}d
-              </span>
+        <CardHeader>
+          <CardTitle className="text-sm">Activity</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {events.length === 0 ? (
+            <div className="text-xs text-muted-foreground">
+              No events yet.
             </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Recent Activity */}
-      <Card>
-        <CardContent className="p-4">
-          <h3 className="text-xs font-semibold text-foreground uppercase tracking-wider mb-3">
-            Recent Activity
-          </h3>
-          <div className="space-y-0">
-            {recentActivity.map((item, i) => (
-              <div key={item.id}>
-                <div className="flex items-start gap-2.5 py-2">
-                  <div
-                    className="h-2 w-2 rounded-full mt-1.5 shrink-0"
-                    style={{ backgroundColor: item.color }}
-                  />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs text-foreground leading-relaxed">
-                      {item.text}
-                    </p>
-                    <p className="text-[10px] text-muted-foreground mt-0.5">
-                      {item.timestamp}
-                    </p>
-                  </div>
-                </div>
-                {i < recentActivity.length - 1 && (
-                  <Separator className="ml-4" />
-                )}
-              </div>
-            ))}
-          </div>
+          ) : (
+            <ul className="flex flex-col gap-2 text-xs">
+              {events.map((ev) => (
+                <li key={ev.id} className="border-b pb-1 last:border-b-0">
+                  <span className="font-medium">{ev.kind}</span>
+                  <span className="ml-2 text-muted-foreground">
+                    {new Date(ev.createdAt).toLocaleString()}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
         </CardContent>
       </Card>
     </div>
