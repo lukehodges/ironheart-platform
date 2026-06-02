@@ -13,6 +13,8 @@ import { redirect } from "next/navigation"
 import { withAuth } from "@workos-inc/authkit-nextjs"
 import { resolveAuthRedirect } from "@/lib/auth/resolve-redirect"
 
+export const dynamic = "force-dynamic"
+
 export default async function AuthResolvePage() {
   const { user: workosUser } = await withAuth({ ensureSignedIn: true })
 
