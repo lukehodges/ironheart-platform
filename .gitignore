@@ -60,3 +60,9 @@ uk-b2b-*.md
 .worktrees/
 .superpowers/
 .reference-design/
+
+# local data (never commit)
+store/
+*.db
+*.sqlite
+*.sqlite3
