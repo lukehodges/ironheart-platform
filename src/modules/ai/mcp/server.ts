@@ -310,9 +310,17 @@ async function resolveApiKey(apiKey: string): Promise<ApiKeyContext | null> {
     return resolveDevApiKey()
   }
 
-  // TODO: Integrate with developer module's API key validation
-  // The developer module should have: developerRepository.validateApiKey(key) -> { tenantId, userId, scopes }
-  return null
+  // Production: validate against the developer module's api_keys store.
+  // `scopes` are module names the key may call; a "*" scope means all modules.
+  const { validateApiKey } = await import("@/modules/developer/lib/api-keys")
+  const valid = await validateApiKey(apiKey)
+  if (!valid) return null
+  const allowedModules = valid.scopes.includes("*") ? [] : valid.scopes
+  return buildApiKeyContext(valid.tenantId, {
+    allowedModules,
+    rateLimit: valid.rateLimit,
+    permissions: [],
+  })
 }
 
 /**
@@ -326,18 +334,39 @@ async function resolveApiKey(apiKey: string): Promise<ApiKeyContext | null> {
  */
 async function resolveDevApiKey(): Promise<ApiKeyContext | null> {
   const { db } = await import("@/shared/db")
-  const { tenants, users } = await import("@/shared/db/schema")
+  const { tenants } = await import("@/shared/db/schema")
   const { eq } = await import("drizzle-orm")
 
   const tenantSlug = process.env.DEFAULT_TENANT_SLUG ?? "demo"
-  const adminEmail = process.env.PLATFORM_ADMIN_EMAILS?.split(",")[0]?.trim()
-
-  // Resolve tenant
   const [tenant] = await db.select().from(tenants).where(eq(tenants.slug, tenantSlug)).limit(1)
   if (!tenant) {
     log.warn({ tenantSlug }, "Dev MCP key: tenant not found")
     return null
   }
+  // Dev key = full access to every module.
+  return buildApiKeyContext(tenant.id, { allowedModules: [], rateLimit: 600, permissions: [] })
+}
+
+/**
+ * Build an ApiKeyContext for a tenant: resolves the tenant + a representative
+ * user (platform admin if configured, else first tenant member) with the full
+ * role/permission graph, so ctx.user behaves exactly as under tenantProcedure.
+ * Shared by the dev key (full access) and production API keys (scoped).
+ */
+async function buildApiKeyContext(
+  tenantId: string,
+  opts: { allowedModules: string[]; rateLimit: number; permissions: string[] },
+): Promise<ApiKeyContext | null> {
+  const { db } = await import("@/shared/db")
+  const { tenants, users } = await import("@/shared/db/schema")
+  const { eq } = await import("drizzle-orm")
+
+  const [tenant] = await db.select().from(tenants).where(eq(tenants.id, tenantId)).limit(1)
+  if (!tenant) {
+    log.warn({ tenantId }, "API key: tenant not found")
+    return null
+  }
+  const adminEmail = process.env.PLATFORM_ADMIN_EMAILS?.split(",")[0]?.trim()
 
   // Load user with full role/permission graph — same shape as tenantProcedure
   const userWithRolesQuery = {
@@ -376,7 +405,7 @@ async function resolveDevApiKey(): Promise<ApiKeyContext | null> {
     })
   }
   if (!rawUser) {
-    log.warn({ tenantSlug }, "Dev MCP key: no user found for tenant")
+    log.warn({ tenantId }, "API key: no user found for tenant")
     return null
   }
 
@@ -394,8 +423,8 @@ async function resolveDevApiKey(): Promise<ApiKeyContext | null> {
   }
 
   log.info(
-    { tenantSlug, userId: user.id, email: user.email, isPlatformAdmin: user.isPlatformAdmin },
-    "Dev MCP key resolved"
+    { tenantId, userId: user.id, email: user.email, allowedModules: opts.allowedModules },
+    "API key context built"
   )
 
   return {
@@ -409,8 +438,8 @@ async function resolveDevApiKey(): Promise<ApiKeyContext | null> {
       lastName: user.lastName,
     },
     user,
-    permissions: [], // empty = no RBAC filtering in MCP layer
-    allowedModules: [], // empty = all modules
-    rateLimit: 600, // generous for dev
+    permissions: opts.permissions,
+    allowedModules: opts.allowedModules,
+    rateLimit: opts.rateLimit,
   }
 }
