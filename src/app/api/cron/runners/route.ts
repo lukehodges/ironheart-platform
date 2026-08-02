@@ -22,6 +22,7 @@ import { logger } from "@/shared/logger";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 60; // set here (App Router) instead of vercel.json functions
 
 const log = logger.child({ module: "api.cron.runners" });
 
