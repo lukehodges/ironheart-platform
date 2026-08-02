@@ -34,6 +34,10 @@ export function extractTenantSlugFromRequest(req: Request): {
 export function extractSubdomainFromHostname(hostname: string): string | null {
   const host = hostname.split(":")[0];
   if (/^\d+\.\d+\.\d+\.\d+$/.test(host)) return null;
+  // Vercel deployment URLs (e.g. ironheart-platform.vercel.app, and preview
+  // URLs) are the platform's OWN domain, not a tenant subdomain — never treat
+  // their leading label as a tenant slug (it would resolve nothing and throw).
+  if (host.endsWith(".vercel.app")) return null;
   const parts = host.split(".");
   if (parts.length < 3) return null;
   const subdomain = parts[0];
