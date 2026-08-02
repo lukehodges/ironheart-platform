@@ -550,7 +550,7 @@ export default function OutreachObservatoryPage() {
   const [dncTarget, setDncTarget] = useState<{ id: string; name: string; company: string; email: string | null } | null>(null)
   const [dailyEdit, setDailyEdit] = useState<DailyActivityRecord | null>(null)
   const [dailyAddOpen, setDailyAddOpen] = useState(false)
-  const [topTab, setTopTab] = useState<TopTab>("today")
+  const [topTab, setTopTab] = useState<TopTab>("leads")
 
   // URL ?tab= round-trip — read on mount + popstate; write via replaceState to
   // keep refresh stable without triggering Next's static-bailout warning.
@@ -719,40 +719,6 @@ export default function OutreachObservatoryPage() {
   }
 
   // ─── Render ──────────────────────────────────────────────────────────────
-  if (!active) {
-    const lastClosed = hyposList[0] ?? null
-    return (
-      <div className="obs" style={{ padding: 40 }}>
-        <style>{OBSERVATORY_CSS}</style>
-        <h1 className="h1">Outreach Observatory</h1>
-        <p style={{ marginTop: 12, color: "var(--obs-ink-65)", maxWidth: 640, lineHeight: 1.6 }}>
-          {lastClosed
-            ? <>The week of <b>{lastClosed.week}</b> is closed (verdict: <b>{lastClosed.verdict}</b>). Start the next 7-day cycle to bring the dashboard back online.</>
-            : <>No active hypothesis yet. Each week you set a hypothesis to test (what changes this week vs last week?) with a sample size and target reply rate.</>}
-        </p>
-        <button
-          className="btn btn-primary"
-          style={{ marginTop: 18 }}
-          onClick={() => setCreateHypoOpen(true)}
-        >
-          ⊕ {lastClosed ? "Start next week" : "Create first hypothesis"}
-        </button>
-        {createHypoOpen && (
-          <CreateHypothesisModal
-            prevWeek={lastClosed}
-            onClose={() => setCreateHypoOpen(false)}
-            onConfirm={(input) => createHypoMutation.mutate(input)}
-            isPending={createHypoMutation.isPending}
-          />
-        )}
-        <div className="toast-wrap">
-          {toasts.map((t) => (
-            <div key={t.id} className={`toast ${t.tone || ""}`}>{t.msg}</div>
-          ))}
-        </div>
-      </div>
-    )
-  }
   return (
     <div className="obs">
       <style>{OBSERVATORY_CSS}</style>
@@ -795,11 +761,16 @@ export default function OutreachObservatoryPage() {
           <span className="mono">{fmtDate(range.start)} → {fmtDate(range.end)}</span>
         </div>
         <button className="btn btn-ghost" onClick={exportDaily}>⤓ Export</button>
-        <button className="btn btn-primary" onClick={() => setEndWeekOpen(true)}>✦ End {active.week}</button>
+        {active && (
+          <button className="btn btn-primary" onClick={() => setEndWeekOpen(true)}>✦ End {active.week}</button>
+        )}
       </div>
 
       <div className="page">
-        <span className="eyebrow">Outreach · observatory · <span style={{ color: "var(--obs-accent)" }}>★</span> {active.week} live</span>
+        <span className="eyebrow">
+          Outreach · observatory
+          {active && <> · <span style={{ color: "var(--obs-accent)" }}>★</span> {active.week} live</>}
+        </span>
         <h1 className="h1">
           The <span className="italic-red">{funnelSum.sent}</span> sends story.{" "}
           <span style={{ color: "var(--obs-ink-50)", fontStyle: "italic" }}>
@@ -832,14 +803,32 @@ export default function OutreachObservatoryPage() {
 
         {topTab === "hypothesis" && (
         <>
-        {/* ─── Hypothesis banner ─── */}
-        <HypothesisBanner
-          hypothesis={active}
-          liveSum={liveSum}
-          prev={prevWeek}
-          prevSum={prevSum}
-          onOpenPrev={() => prevWeek && setHypoDetailWeek(prevWeek)}
-        />
+        {/* ─── Hypothesis banner or empty state ─── */}
+        {active ? (
+          <HypothesisBanner
+            hypothesis={active}
+            liveSum={liveSum}
+            prev={prevWeek}
+            prevSum={prevSum}
+            onOpenPrev={() => prevWeek && setHypoDetailWeek(prevWeek)}
+          />
+        ) : (
+          <div className="today-stub">
+            <h4>No active hypothesis yet</h4>
+            <p>
+              {hyposList[0]
+                ? <>The week of <b>{hyposList[0].week}</b> is closed (verdict: <b>{hyposList[0].verdict}</b>). Start the next 7-day cycle to track targets.</>
+                : <>Each week you set a hypothesis to test (what changes this week vs last?) with a sample size and target reply rate.</>}
+            </p>
+            <button
+              className="btn btn-primary"
+              style={{ marginTop: 14 }}
+              onClick={() => setCreateHypoOpen(true)}
+            >
+              ⊕ {hyposList[0] ? "Start next week" : "Create first hypothesis"}
+            </button>
+          </div>
+        )}
         </>
         )}
 
@@ -978,7 +967,7 @@ export default function OutreachObservatoryPage() {
                 </button>
               </div>
               {(showAllWeeks ? hyposList : hyposList.slice(0, 4)).map((wk) => {
-                const isLive = wk.id === active.id
+                const isLive = active ? wk.id === active.id : false
                 const sum = weekRowsSum(wk)
                 const rp = pct(sum.replies, sum.sent)
                 const pp = pct(sum.positive, sum.sent)
@@ -1246,7 +1235,7 @@ export default function OutreachObservatoryPage() {
       )}
 
       {/* ─── End-week modal ─── */}
-      {endWeekOpen && (
+      {endWeekOpen && active && (
         <EndWeekModal
           hypothesis={active}
           prev={prevWeek}
@@ -1305,7 +1294,7 @@ export default function OutreachObservatoryPage() {
           open={sendListOpen}
           owner={rosterOwner === "all" ? "luke" : rosterOwner}
           count={25}
-          hypothesisId={active.id}
+          hypothesisId={active?.id}
           onClose={() => setSendListOpen(false)}
         />
       )}
