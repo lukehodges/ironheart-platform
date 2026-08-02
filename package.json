@@ -31,7 +31,10 @@
     "import:dnc": "tsx --tsconfig tsconfig.json scripts/import-dnc.ts",
     "import:send-list": "tsx --tsconfig tsconfig.json scripts/import-send-list.ts",
     "import:apollo": "tsx --tsconfig tsconfig.json scripts/import-apollo.ts",
-    "import:all": "npm run import:dnc && npm run import:apollo && npm run import:send-list"
+    "import:all": "npm run import:dnc && npm run import:apollo && npm run import:send-list",
+    "prepare": "git config core.hooksPath .githooks || true",
+    "verify": "next build",
+    "verify:vercel": "vercel build"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.78.0",
@@ -149,5 +152,8 @@
     "typescript": "^5",
     "vite-tsconfig-paths": "^6.1.1",
     "vitest": "^4.0.18"
+  },
+  "engines": {
+    "node": "22.x"
   }
 }

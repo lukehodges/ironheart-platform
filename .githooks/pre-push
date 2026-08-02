@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+#
+# Pre-push gate: reproduce Vercel's production build LOCALLY before anything
+# leaves your machine. A build that passes here passes on Vercel — so you never
+# spend Vercel build minutes (or diagnosis time) on a build you could have
+# caught for free.
+#
+# Bypass for docs-only or emergency pushes:   SKIP_BUILD=1 git push
+#
+if [ "$SKIP_BUILD" = "1" ]; then
+  echo "⏭  SKIP_BUILD=1 set — skipping the pre-push build gate."
+  exit 0
+fi
+
+cd "$(git rev-parse --show-toplevel)" || exit 1
+
+echo "🔒 Pre-push gate — building the way Vercel will, before pushing…"
+
+# Build on Vercel's Node version (.nvmrc), so "works locally" == "works on Vercel".
+# Your machine runs Node 24, but Vercel builds on 22 — a real source of failures.
+if [ -s "$HOME/.nvm/nvm.sh" ]; then
+  . "$HOME/.nvm/nvm.sh"
+  nvm use >/dev/null 2>&1 || { echo "   installing Node $(cat .nvmrc)…"; nvm install >/dev/null 2>&1 && nvm use >/dev/null 2>&1; }
+  echo "   using node $(node -v) (Vercel target: v$(cat .nvmrc))"
+fi
+
+if npm run build; then
+  echo "✅ Production build passed — safe to push."
+  exit 0
+fi
+
+echo ""
+echo "❌ Build FAILED — push blocked so it can't fail on Vercel."
+echo "   Fix the errors above, then push again."
+echo "   (To bypass on purpose — e.g. a docs-only change — run:  SKIP_BUILD=1 git push )"
+exit 1
