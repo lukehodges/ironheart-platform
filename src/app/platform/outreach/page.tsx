@@ -586,8 +586,8 @@ export default function OutreachObservatoryPage() {
     startDate: isoDate(range.start),
     endDate: isoDate(range.end),
     owner: ownerArg,
-  })
-  const hyposQ = api.outreach.listHypotheses.useQuery({ limit: 20 })
+  }, { enabled: topTab === "funnel" || topTab === "hypothesis" })
+  const hyposQ = api.outreach.listHypotheses.useQuery({ limit: 20 }, { enabled: topTab === "hypothesis" })
   const activeQ = api.outreach.getActiveHypothesis.useQuery()
   const tabCountsQ = api.outreach.tabCounts.useQuery()
   const rosterQ = api.outreach.listLeads.useQuery({
