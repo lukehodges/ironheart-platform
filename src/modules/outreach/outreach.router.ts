@@ -16,6 +16,8 @@ import {
   createModuleMiddleware,
 } from "@/shared/trpc"
 import { outreachService } from "./outreach.service"
+import { crossProviderOverlap, replyRateByTag } from "./intelligence.service"
+import { promoteLeadToTwenty, dueForFollowUp } from "./twenty-bridge.service"
 import {
   // leads
   listLeadsSchema,
@@ -161,6 +163,22 @@ export const outreachRouter = router({
   checkDnc: moduleProcedure
     .input(checkDncSchema)
     .query(({ ctx, input }) => outreachService.isOnDnc(ctx, input.email)),
+
+  // ─── Intelligence (Phase 2) ─────────────────────────────────────
+  crossProviderOverlap: moduleProcedure
+    .query(({ ctx }) => crossProviderOverlap(ctx.tenantId)),
+
+  replyRateByTag: moduleProcedure
+    .input(z.object({ namespace: z.string().min(1) }))
+    .query(({ ctx, input }) => replyRateByTag(ctx.tenantId, input.namespace)),
+
+  // ─── Twenty CRM bridge (Phase 3) ────────────────────────────────
+  promoteToTwenty: moduleProcedure
+    .input(z.object({ leadId: uuid }))
+    .mutation(({ ctx, input }) => promoteLeadToTwenty(ctx.tenantId, input.leadId)),
+
+  dueForFollowUp: moduleProcedure
+    .query(({ ctx }) => dueForFollowUp(ctx.tenantId)),
 })
 
 export type OutreachRouter = typeof outreachRouter

@@ -219,7 +219,10 @@ async function findOrCreateCompany(
       method: "POST",
       body: JSON.stringify({
         name: lead.company,
-        ...(domain ? { domainName: domain } : {}),
+        // domainName is a LINKS composite in Twenty, not a flat string.
+        ...(domain ? { domainName: { primaryLinkUrl: `https://${domain}` } } : {}),
+        idealCustomerProfile: false, // required by Twenty's create schema
+        position: "first", // required by Twenty's create schema
       }),
     },
   )
@@ -258,6 +261,7 @@ async function findOrCreatePerson(
         name: { firstName, lastName },
         emails: { primaryEmail: lead.email },
         companyId,
+        position: "first", // required by Twenty's create schema
       }),
     },
   )
@@ -311,6 +315,7 @@ export async function promoteLeadToTwenty(
         stage: "NEW",
         companyId: company.id,
         ...(person ? { pointOfContactId: person.id } : {}),
+        position: "first", // required by Twenty's create schema
       }),
     },
   )
