@@ -506,6 +506,8 @@ export const outreachRepository = {
       body?: string | null
       sentiment?: OutreachReplySentiment | null
       classifiedBy?: OutreachClassifier | null
+      needsReview?: boolean
+      handled?: boolean
       rawEventId?: string | null
     },
   ): Promise<ReplyRecord> {
@@ -521,6 +523,9 @@ export const outreachRepository = {
         sentiment: input.sentiment ?? null,
         classifiedBy: input.classifiedBy ?? null,
         rawEventId: input.rawEventId ?? null,
+        // Only set when provided so the column defaults still apply otherwise.
+        ...(input.needsReview !== undefined ? { needsReview: input.needsReview } : {}),
+        ...(input.handled !== undefined ? { handled: input.handled } : {}),
       })
       .returning()
     return row

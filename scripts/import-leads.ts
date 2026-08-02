@@ -210,6 +210,13 @@ async function main() {
   await sql.begin(async (tx) => {
     await tx`delete from outreach_replies where "tenantId" = ${TENANT_ID}`
     await tx`delete from outreach_touches where "tenantId" = ${TENANT_ID}`
+
+    // ── NEW: wipe intelligence tables before re-import (idempotent) ──────────
+    await tx`delete from outreach_lead_tags        where "tenantId" = ${TENANT_ID}`
+    await tx`delete from outreach_lead_provenance  where "tenantId" = ${TENANT_ID}`
+    await tx`delete from outreach_lead_source_records where "tenantId" = ${TENANT_ID}`
+    // ─────────────────────────────────────────────────────────────────────────
+
     await tx`delete from outreach_leads   where "tenantId" = ${TENANT_ID}`
     await tx`delete from outreach_dnc_list where "tenantId" = ${TENANT_ID}`
 
@@ -221,11 +228,155 @@ async function main() {
       const dncRows = dnc.map((d) => ({ tenantId: TENANT_ID, email: d.email, domain: d.domain, reason: d.reason, addedAt: d.addedAt ?? now, addedBy: d.addedBy }))
       await tx`insert into outreach_dnc_list ${tx(dncRows, "tenantId","email","domain","reason","addedAt","addedBy")}`
     }
+
+    // ── NEW STEP 1: populate outreach_lead_source_records ────────────────────
+    // One row per lead: source = "master-xlsx", raw = the full mapped object.
+    // We build source records in the same 500-row batches as leads.
+    const sourceRecordRows = leads.map((lead) => ({
+      tenantId: TENANT_ID,
+      source: "master-xlsx",
+      email: lead.email as string | null,
+      raw: JSON.stringify({
+        number: lead.number,
+        owner: lead.owner,
+        status: lead.status,
+        name: lead.name,
+        company: lead.company,
+        category: lead.category,
+        email: lead.email,
+        website: lead.website,
+        source: lead.source,
+        researched: lead.researched,
+        followUpFlag: lead.followUpFlag,
+        lastContactedAt: lead.lastContactedAt,
+        nextFollowUpAt: lead.nextFollowUpAt,
+        reply: lead.reply,
+        replySentiment: lead.replySentiment,
+        researchNotes: lead.researchNotes,
+        notes: lead.notes,
+      }),
+      importedAt: now,
+      createdAt: now,
+    }))
+
+    for (let i = 0; i < sourceRecordRows.length; i += 500) {
+      await tx`
+        insert into outreach_lead_source_records ${tx(
+          sourceRecordRows.slice(i, i + 500),
+          "tenantId", "source", "email", "raw", "importedAt", "createdAt"
+        )}
+      `
+    }
+
+    // ── NEW STEP 2: populate outreach_lead_provenance ─────────────────────────
+    // Fetch the just-inserted lead ids and source record ids in email order
+    // so we can zip them. Both tables are keyed by (tenantId, email) for the
+    // subset with emails; for email-less rows we match by insert sequence
+    // (number column).
+    //
+    // Strategy: join on email where available, fall back to number-order join.
+    const provenanceRows = await tx<{ leadId: string; sourceRecordId: string }[]>`
+      with l as (
+        select id as "leadId", email, number
+        from outreach_leads
+        where "tenantId" = ${TENANT_ID}
+      ),
+      s as (
+        select id as "sourceRecordId", email,
+               row_number() over (order by "importedAt", id) as rn
+        from outreach_lead_source_records
+        where "tenantId" = ${TENANT_ID} and source = 'master-xlsx'
+      ),
+      l_rn as (
+        select "leadId", email, row_number() over (order by number) as rn
+        from l
+      )
+      select
+        l_rn."leadId",
+        s."sourceRecordId"
+      from l_rn
+      join s on (
+        case
+          when l_rn.email is not null and s.email is not null
+            then l_rn.email = s.email
+          else l_rn.rn = s.rn
+        end
+      )
+    `
+
+    if (provenanceRows.length) {
+      const provRows = provenanceRows.map((r) => ({
+        tenantId: TENANT_ID,
+        leadId: r.leadId,
+        sourceRecordId: r.sourceRecordId,
+        createdAt: now,
+      }))
+      for (let i = 0; i < provRows.length; i += 500) {
+        await tx`
+          insert into outreach_lead_provenance ${tx(
+            provRows.slice(i, i + 500),
+            "tenantId", "leadId", "sourceRecordId", "createdAt"
+          )}
+        `
+      }
+    }
+
+    // ── NEW STEP 3: populate outreach_lead_tags ───────────────────────────────
+    // Per lead: emit a "category" tag (when category present) + a "tier" tag
+    // (when notes contains "tier: ..."). origin = "ironheart".
+    const insertedLeads = await tx<{ id: string; category: string | null; notes: string | null }[]>`
+      select id, category, notes
+      from outreach_leads
+      where "tenantId" = ${TENANT_ID}
+    `
+    const tierNoteRe = /^tier:\s*(.+)$/i
+    const tagRows: Record<string, unknown>[] = []
+    for (const l of insertedLeads) {
+      if (l.category) {
+        tagRows.push({
+          tenantId: TENANT_ID,
+          leadId: l.id,
+          namespace: "category",
+          value: l.category.trim().toLowerCase(),
+          origin: "ironheart",
+          confidence: null,
+          createdAt: now,
+        })
+      }
+      if (l.notes) {
+        const m = l.notes.match(tierNoteRe)
+        if (m) {
+          tagRows.push({
+            tenantId: TENANT_ID,
+            leadId: l.id,
+            namespace: "tier",
+            value: m[1].trim().toLowerCase(),
+            origin: "ironheart",
+            confidence: null,
+            createdAt: now,
+          })
+        }
+      }
+    }
+    if (tagRows.length) {
+      for (let i = 0; i < tagRows.length; i += 500) {
+        await tx`
+          insert into outreach_lead_tags ${tx(
+            tagRows.slice(i, i + 500),
+            "tenantId", "leadId", "namespace", "value", "origin", "confidence", "createdAt"
+          )}
+        `
+      }
+    }
+    // ─────────────────────────────────────────────────────────────────────────
   })
 
   const [{ lc }] = await sql`select count(*)::int lc from outreach_leads where "tenantId" = ${TENANT_ID}`
   const [{ dc }] = await sql`select count(*)::int dc from outreach_dnc_list where "tenantId" = ${TENANT_ID}`
-  console.log(`\n✅ COMMITTED — outreach_leads: ${lc}, outreach_dnc_list: ${dc}`)
+  const [{ src }] = await sql`select count(*)::int src from outreach_lead_source_records where "tenantId" = ${TENANT_ID}`
+  const [{ prov }] = await sql`select count(*)::int prov from outreach_lead_provenance where "tenantId" = ${TENANT_ID}`
+  const [{ tags }] = await sql`select count(*)::int tags from outreach_lead_tags where "tenantId" = ${TENANT_ID}`
+  console.log(`\n✅ COMMITTED — outreach_leads: ${lc}, outreach_dnc_list: ${dc}, source_records: ${src}, provenance: ${prov}, tags: ${tags}`)
   await sql.end()
 }
 

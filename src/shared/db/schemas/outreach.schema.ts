@@ -28,6 +28,7 @@ import {
   uniqueIndex,
   index,
   foreignKey,
+  jsonb,
 } from "drizzle-orm/pg-core"
 import { sql } from "drizzle-orm"
 import { tenants } from "./tenant.schema"
@@ -154,6 +155,8 @@ export const leads = pgTable("outreach_leads", {
   researchNotes: text(),
   notes: text(),
   hypothesisWeekId: uuid(),
+  // Cross-workstream: Twenty CRM opportunity link
+  twentyOppId: text(),
   createdAt: timestamp({ precision: 3, mode: "date" }).default(sql`CURRENT_TIMESTAMP`).notNull(),
   updatedAt: timestamp({ precision: 3, mode: "date" }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 }, (table) => [
@@ -331,6 +334,95 @@ export const dncList = pgTable("outreach_dnc_list", {
 ])
 
 // ---------------------------------------------------------------------------
+// lead_source_records — raw row from every provider, stored verbatim as JSONB
+//   source: e.g. "master-xlsx" | "apollo" | "instantly"
+//   email:  lowercased copy for overlap detection without unpacking the JSONB
+// ---------------------------------------------------------------------------
+
+export const leadSourceRecords = pgTable("outreach_lead_source_records", {
+  id: uuid().primaryKey().default(sql`gen_random_uuid()`).notNull(),
+  tenantId: uuid().notNull(),
+  source: text().notNull(),
+  email: text(),
+  raw: jsonb().notNull(),
+  importedAt: timestamp({ precision: 3, mode: "date" }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+  createdAt: timestamp({ precision: 3, mode: "date" }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+}, (table) => [
+  index("lead_source_records_tenantId_source_idx").on(table.tenantId, table.source),
+  index("lead_source_records_tenantId_email_idx").on(table.tenantId, table.email),
+  foreignKey({
+    columns: [table.tenantId],
+    foreignColumns: [tenants.id],
+    name: "lead_source_records_tenantId_fkey",
+  }).onUpdate("cascade").onDelete("cascade"),
+])
+
+// ---------------------------------------------------------------------------
+// lead_provenance — join table: canonical lead ↔ source record
+//   Unique (leadId, sourceRecordId) — duplicate pair = overlap detected.
+//   Query leads with ≥2 provenance rows from DIFFERENT sources to find
+//   cross-provider duplicates.
+// ---------------------------------------------------------------------------
+
+export const leadProvenance = pgTable("outreach_lead_provenance", {
+  id: uuid().primaryKey().default(sql`gen_random_uuid()`).notNull(),
+  tenantId: uuid().notNull(),
+  leadId: uuid().notNull(),
+  sourceRecordId: uuid().notNull(),
+  createdAt: timestamp({ precision: 3, mode: "date" }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+}, (table) => [
+  uniqueIndex("lead_provenance_leadId_sourceRecordId_key").on(table.leadId, table.sourceRecordId),
+  index("lead_provenance_tenantId_leadId_idx").on(table.tenantId, table.leadId),
+  index("lead_provenance_tenantId_sourceRecordId_idx").on(table.tenantId, table.sourceRecordId),
+  foreignKey({
+    columns: [table.tenantId],
+    foreignColumns: [tenants.id],
+    name: "lead_provenance_tenantId_fkey",
+  }).onUpdate("cascade").onDelete("cascade"),
+  foreignKey({
+    columns: [table.leadId],
+    foreignColumns: [leads.id],
+    name: "lead_provenance_leadId_fkey",
+  }).onUpdate("cascade").onDelete("cascade"),
+  foreignKey({
+    columns: [table.sourceRecordId],
+    foreignColumns: [leadSourceRecords.id],
+    name: "lead_provenance_sourceRecordId_fkey",
+  }).onUpdate("cascade").onDelete("cascade"),
+])
+
+// ---------------------------------------------------------------------------
+// lead_tags — origin-tagged metadata for A/B analytics
+//   namespace: e.g. "industry" | "category" | "tier"
+//   origin:    provider name, "ironheart", or "claude"
+//   confidence: nullable 0–1 float (omit when certain)
+// ---------------------------------------------------------------------------
+
+export const leadTags = pgTable("outreach_lead_tags", {
+  id: uuid().primaryKey().default(sql`gen_random_uuid()`).notNull(),
+  tenantId: uuid().notNull(),
+  leadId: uuid().notNull(),
+  namespace: text().notNull(),
+  value: text().notNull(),
+  origin: text().notNull(),
+  confidence: numeric({ precision: 5, scale: 4 }),
+  createdAt: timestamp({ precision: 3, mode: "date" }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+}, (table) => [
+  index("lead_tags_tenantId_namespace_value_idx").on(table.tenantId, table.namespace, table.value),
+  index("lead_tags_tenantId_leadId_idx").on(table.tenantId, table.leadId),
+  foreignKey({
+    columns: [table.tenantId],
+    foreignColumns: [tenants.id],
+    name: "lead_tags_tenantId_fkey",
+  }).onUpdate("cascade").onDelete("cascade"),
+  foreignKey({
+    columns: [table.leadId],
+    foreignColumns: [leads.id],
+    name: "lead_tags_leadId_fkey",
+  }).onUpdate("cascade").onDelete("cascade"),
+])
+
+// ---------------------------------------------------------------------------
 // Type aliases
 // ---------------------------------------------------------------------------
 
@@ -346,3 +438,9 @@ export type ReplyRow = typeof replies.$inferSelect
 export type ReplyInsert = typeof replies.$inferInsert
 export type DncListRow = typeof dncList.$inferSelect
 export type DncListInsert = typeof dncList.$inferInsert
+export type LeadSourceRecordRow = typeof leadSourceRecords.$inferSelect
+export type LeadSourceRecordInsert = typeof leadSourceRecords.$inferInsert
+export type LeadProvenanceRow = typeof leadProvenance.$inferSelect
+export type LeadProvenanceInsert = typeof leadProvenance.$inferInsert
+export type LeadTagRow = typeof leadTags.$inferSelect
+export type LeadTagInsert = typeof leadTags.$inferInsert
