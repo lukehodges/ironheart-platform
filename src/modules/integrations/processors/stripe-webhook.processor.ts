@@ -38,31 +38,26 @@ registerProcessor({
     }
 
     const customerExternalId = typeof obj.customer === 'string' ? obj.customer : null
-    let contactId: string | undefined
-    let companyId: string | undefined
+    let leadId: string | undefined
 
     if (customerExternalId) {
-      const resolved = await ctx.resolveContact({
+      const resolved = await ctx.resolveLead({
         source: 'stripe',
         externalId: customerExternalId,
         autoCreate: false,
       })
-      if (resolved) {
-        contactId = resolved.contactId
-        companyId = resolved.companyId
-      }
+      if (resolved) leadId = resolved.leadId
     }
 
     await ctx.emit({
       kind: 'payment.received',
-      entityType: contactId ? 'contact' : undefined,
-      entityId: contactId,
+      entityType: leadId ? 'lead' : undefined,
+      entityId: leadId,
       payload: {
         amount: typeof obj.amount === 'number' ? obj.amount : 0,
         currency: typeof obj.currency === 'string' ? obj.currency : 'usd',
         customerId: customerExternalId,
-        contactId,
-        companyId,
+        leadId,
         paymentIntentId: typeof obj.id === 'string' ? obj.id : null,
       },
       actor: 'stripe-webhook',
@@ -85,21 +80,21 @@ registerProcessor({
     }
 
     const customerExternalId = typeof obj.customer === 'string' ? obj.customer : null
-    let contactId: string | undefined
+    let leadId: string | undefined
 
     if (customerExternalId) {
-      const resolved = await ctx.resolveContact({
+      const resolved = await ctx.resolveLead({
         source: 'stripe',
         externalId: customerExternalId,
         autoCreate: false,
       })
-      contactId = resolved?.contactId
+      leadId = resolved?.leadId
     }
 
     await ctx.emit({
       kind: 'invoice.paid',
-      entityType: contactId ? 'contact' : undefined,
-      entityId: contactId,
+      entityType: leadId ? 'lead' : undefined,
+      entityId: leadId,
       payload: {
         amount: typeof obj.amount_paid === 'number' ? obj.amount_paid : 0,
         currency: typeof obj.currency === 'string' ? obj.currency : 'usd',

@@ -15,7 +15,7 @@ import {
 import { sql } from "drizzle-orm"
 import { tenants } from "./tenant.schema"
 import { users } from "./auth.schema"
-import { companies, contacts, touches } from "./outreach.schema"
+import { leads, touches } from "./outreach.schema"
 
 // ---------------------------------------------------------------------------
 // Enums
@@ -52,8 +52,7 @@ export const dealEventKindEnum = pgEnum("deal_event_kind", [
 export const deals = pgTable("deals", {
   id: uuid().primaryKey().default(sql`gen_random_uuid()`).notNull(),
   tenantId: uuid().notNull(),
-  companyId: uuid().notNull(),
-  primaryContactId: uuid(),
+  leadId: uuid().notNull(),
   // Attribution — which touch first generated this deal.
   originTouchId: uuid(),
   name: text().notNull(),
@@ -71,7 +70,7 @@ export const deals = pgTable("deals", {
 }, (table) => [
   index("deals_tenantId_stage_idx").on(table.tenantId, table.stage),
   index("deals_tenantId_ownerUserId_idx").on(table.tenantId, table.ownerUserId),
-  index("deals_companyId_idx").on(table.companyId),
+  index("deals_leadId_idx").on(table.leadId),
   check("deals_probability_range", sql`"probability" IS NULL OR ("probability" >= 0 AND "probability" <= 100)`),
   foreignKey({
     columns: [table.tenantId],
@@ -79,15 +78,10 @@ export const deals = pgTable("deals", {
     name: "deals_tenantId_fkey",
   }).onUpdate("cascade").onDelete("cascade"),
   foreignKey({
-    columns: [table.companyId],
-    foreignColumns: [companies.id],
-    name: "deals_companyId_fkey",
+    columns: [table.leadId],
+    foreignColumns: [leads.id],
+    name: "deals_leadId_fkey",
   }).onUpdate("cascade").onDelete("cascade"),
-  foreignKey({
-    columns: [table.primaryContactId],
-    foreignColumns: [contacts.id],
-    name: "deals_primaryContactId_fkey",
-  }).onUpdate("cascade").onDelete("set null"),
   foreignKey({
     columns: [table.originTouchId],
     foreignColumns: [touches.id],

@@ -1,4 +1,3 @@
-// src/modules/integrations/__tests__/gmail-email-received.processor.test.ts
 /**
  * Smoke test for the Gmail email-received processor. Mocks outreach service
  * + repository so we can assert recordReply is called with the right shape.
@@ -26,21 +25,20 @@ vi.mock("@/shared/logger", () => ({
 import { gmailEmailReceivedProcessor } from "../processors/gmail-email-received.processor"
 import type {
   ProcessorContext,
-  ResolveContactInput,
-  ResolvedContact,
+  ResolveLeadInput,
+  ResolvedLead,
 } from "@/modules/jobs/processors/processor.types"
 import type { GmailEmailPayload } from "../providers/gmail.provider"
 
 const TENANT_ID = "00000000-0000-0000-0000-000000000001"
-const CONTACT_ID = "00000000-0000-0000-0000-000000000002"
-const COMPANY_ID = "00000000-0000-0000-0000-000000000003"
+const LEAD_ID = "00000000-0000-0000-0000-000000000002"
 
 function makeCtx(opts: {
-  resolve?: ResolvedContact | null
+  resolve?: ResolvedLead | null
 } = {}): ProcessorContext {
-  const resolveContact = vi.fn(async (_: ResolveContactInput) =>
+  const resolveLead = vi.fn(async (_: ResolveLeadInput) =>
     opts.resolve === undefined
-      ? { contactId: CONTACT_ID, companyId: COMPANY_ID }
+      ? { leadId: LEAD_ID }
       : opts.resolve,
   )
   return {
@@ -51,7 +49,7 @@ function makeCtx(opts: {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     db: undefined as any,
     emit: vi.fn(),
-    resolveContact,
+    resolveLead,
   }
 }
 
@@ -93,11 +91,14 @@ describe("gmailEmailReceivedProcessor", () => {
     const ctx = makeCtx()
     await gmailEmailReceivedProcessor.handle(ctx, makePayload())
 
-    expect(findTouchByExternalMessageId).toHaveBeenCalledWith("outbound-msg-id-1")
+    expect(findTouchByExternalMessageId).toHaveBeenCalledWith(
+      TENANT_ID,
+      "outbound-msg-id-1",
+    )
     expect(recordReply).toHaveBeenCalledOnce()
     const [, input] = recordReply.mock.calls[0]
     expect(input).toMatchObject({
-      contactId: CONTACT_ID,
+      leadId: LEAD_ID,
       touchId: "touch-1",
       subject: "Re: chandelier hire",
       rawEventId: "raw-1",
@@ -118,42 +119,43 @@ describe("gmailEmailReceivedProcessor", () => {
     expect(input.touchId).toBeNull()
   })
 
-  it("rule-classifies OOO subjects as ooo via 'rule' classifier", async () => {
+  it("leaves sentiment null on OOO subject (no rule fires for OOO)", async () => {
     const ctx = makeCtx()
     await gmailEmailReceivedProcessor.handle(
       ctx,
       makePayload({ subject: "Out of office — back Monday" }),
     )
     const [, input] = recordReply.mock.calls[0]
-    expect(input.classifiedAs).toBe("ooo")
-    expect(input.classifiedBy).toBe("rule")
+    expect(input.sentiment).toBeNull()
+    expect(input.classifiedBy).toBeNull()
   })
 
-  it("rule-classifies noreply senders as auto_reply", async () => {
+  it("leaves sentiment null on noreply sender", async () => {
     const ctx = makeCtx()
     await gmailEmailReceivedProcessor.handle(
       ctx,
       makePayload({ from: { name: null, email: "noreply@bigco.com" } }),
     )
     const [, input] = recordReply.mock.calls[0]
-    expect(input.classifiedAs).toBe("auto_reply")
+    expect(input.sentiment).toBeNull()
   })
 
-  it("rule-classifies unsubscribe body text as negative", async () => {
+  it("classifies unsubscribe body text as negative via 'rule' classifier", async () => {
     const ctx = makeCtx()
     await gmailEmailReceivedProcessor.handle(
       ctx,
       makePayload({ body: "please unsubscribe me from this list" }),
     )
     const [, input] = recordReply.mock.calls[0]
-    expect(input.classifiedAs).toBe("negative")
+    expect(input.sentiment).toBe("negative")
+    expect(input.classifiedBy).toBe("rule")
   })
 
-  it("leaves classifiedAs null when no rule fires", async () => {
+  it("leaves sentiment null when no rule fires", async () => {
     const ctx = makeCtx()
     await gmailEmailReceivedProcessor.handle(ctx, makePayload())
     const [, input] = recordReply.mock.calls[0]
-    expect(input.classifiedAs).toBeNull()
+    expect(input.sentiment).toBeNull()
     expect(input.classifiedBy).toBeNull()
   })
 

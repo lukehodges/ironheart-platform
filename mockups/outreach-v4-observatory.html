@@ -1,0 +1,1707 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Outreach Observatory — The Ironheart</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ih-bg:#FAFAF7; --ih-surface:#FFFFFF; --ih-surface-2:#F4F2EC; --ih-surface-3:#EDEAE0;
+    --ih-ink:#0E1013; --ih-ink-65:rgba(14,16,19,0.65); --ih-ink-50:rgba(14,16,19,0.50);
+    --ih-ink-40:rgba(14,16,19,0.40); --ih-ink-30:rgba(14,16,19,0.30); --ih-ink-15:rgba(14,16,19,0.15);
+    --ih-line:rgba(14,16,19,0.08); --ih-line-2:rgba(14,16,19,0.14);
+    --ih-accent:#D13A1F; --ih-accent-soft:rgba(209,58,31,0.10);
+    --ih-ok:#2F6F5C; --ih-ok-soft:rgba(47,111,92,0.10);
+    --ih-warn:#B8860B; --ih-warn-soft:rgba(184,134,11,0.12);
+    --ih-info:#2A5DBF; --ih-info-soft:rgba(42,93,191,0.10);
+    --ih-danger:#C0392B; --ih-danger-soft:rgba(192,57,43,0.10);
+    --ih-serif:"Instrument Serif",Georgia,serif;
+    --ih-sans:"Inter",-apple-system,system-ui,sans-serif;
+    --ih-mono:"JetBrains Mono",ui-monospace,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--ih-bg);color:var(--ih-ink);font-family:var(--ih-sans);font-size:13.5px;line-height:1.5;-webkit-font-smoothing:antialiased}
+  .serif{font-family:var(--ih-serif);font-weight:400;letter-spacing:-0.005em}
+  .italic-red{font-family:var(--ih-serif);font-style:italic;color:var(--ih-accent)}
+  .mono{font-family:var(--ih-mono)}
+  .eyebrow{font-family:var(--ih-mono);font-size:9.5px;letter-spacing:0.16em;text-transform:uppercase;color:var(--ih-ink-50);font-weight:500}
+
+  /* Layout shell */
+  .shell{display:grid;grid-template-columns:232px 1fr;min-height:100vh}
+  .sidebar{background:var(--ih-surface);border-right:1px solid var(--ih-line);padding:18px 14px;position:sticky;top:0;height:100vh}
+  .brand{display:flex;align-items:center;gap:8px;margin-bottom:24px;padding:0 6px}
+  .brand-mark{width:22px;height:22px;background:var(--ih-ink);border-radius:5px;display:grid;place-items:center;color:#FAFAF7;font-family:var(--ih-serif);font-size:14px;font-style:italic}
+  .brand-name{font-family:var(--ih-serif);font-size:18px;letter-spacing:-0.01em}
+  .brand-name em{font-style:italic;color:var(--ih-accent);font-weight:400}
+  .nav-section{margin-bottom:18px}
+  .nav-label{font-family:var(--ih-mono);font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--ih-ink-40);padding:0 8px 6px}
+  .nav a{display:flex;align-items:center;gap:9px;padding:6px 8px;color:var(--ih-ink-65);text-decoration:none;border-radius:6px;font-size:12.5px;font-weight:500;margin-bottom:1px}
+  .nav a:hover{background:var(--ih-surface-2);color:var(--ih-ink)}
+  .nav a.active{background:var(--ih-accent-soft);color:var(--ih-accent)}
+  .nav a .glyph{width:14px;text-align:center;font-size:12px;opacity:.8}
+  .nav a .count{margin-left:auto;font-family:var(--ih-mono);font-size:10px;color:var(--ih-ink-40)}
+  .nav a.active .count{color:var(--ih-accent)}
+
+  /* Topbar */
+  .main{min-width:0}
+  .topbar{display:flex;align-items:center;gap:14px;padding:12px 28px;background:var(--ih-surface);border-bottom:1px solid var(--ih-line);position:sticky;top:0;z-index:50;flex-wrap:wrap}
+  .crumb{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ih-ink-50)}
+  .crumb a{color:var(--ih-ink-50);text-decoration:none}
+  .crumb b{color:var(--ih-ink);font-weight:500}
+  .topbar .spacer{flex:1}
+  .seg{display:inline-flex;background:var(--ih-surface-2);border:1px solid var(--ih-line);border-radius:7px;padding:2px;font-size:11.5px;font-family:var(--ih-mono)}
+  .seg button{background:none;border:0;padding:5px 10px;color:var(--ih-ink-65);border-radius:5px;cursor:pointer;font-family:inherit;font-size:inherit}
+  .seg button.on{background:var(--ih-surface);box-shadow:0 1px 1px rgba(14,16,19,0.04);color:var(--ih-ink)}
+  .seg button:hover:not(.on){color:var(--ih-ink)}
+  .pill-pick{display:inline-flex;align-items:center;gap:6px;background:var(--ih-surface-2);border:1px solid var(--ih-line);border-radius:999px;padding:5px 10px 5px 12px;font-size:11.5px;color:var(--ih-ink);cursor:pointer;position:relative;font-family:var(--ih-sans)}
+  .pill-pick:hover{border-color:var(--ih-ink-30)}
+  .pill-pick .lab{font-family:var(--ih-mono);font-size:9.5px;letter-spacing:0.1em;text-transform:uppercase;color:var(--ih-ink-50)}
+  .pill-pick .arrow{color:var(--ih-ink-40);font-size:10px}
+  .pill-menu{position:absolute;top:calc(100% + 6px);left:0;background:var(--ih-surface);border:1px solid var(--ih-line);border-radius:9px;box-shadow:0 12px 40px rgba(14,16,19,0.10);padding:4px;min-width:160px;z-index:60;display:none}
+  .pill-menu.open{display:block}
+  .pill-menu button{display:block;width:100%;text-align:left;padding:7px 12px;font:inherit;font-size:12px;color:var(--ih-ink);background:none;border:0;border-radius:6px;cursor:pointer}
+  .pill-menu button:hover{background:var(--ih-surface-2)}
+  .pill-menu button.on{background:var(--ih-accent-soft);color:var(--ih-accent)}
+  .btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--ih-line-2);background:var(--ih-surface);color:var(--ih-ink);font:inherit;font-size:12px;padding:6px 12px;border-radius:7px;cursor:pointer;font-weight:500;font-family:var(--ih-sans)}
+  .btn:hover{border-color:var(--ih-ink-30)}
+  .btn-primary{background:var(--ih-accent);border-color:var(--ih-accent);color:#fff}
+  .btn-primary:hover{background:#b22f17;border-color:#b22f17}
+  .btn-ghost{background:transparent;border-color:transparent;color:var(--ih-ink-65)}
+  .btn-ghost:hover{background:var(--ih-surface-2);color:var(--ih-ink)}
+
+  .page{padding:22px 28px 80px;max-width:1480px;margin:0 auto}
+  .h1{font-family:var(--ih-serif);font-size:34px;line-height:1.02;letter-spacing:-0.01em;margin:2px 0 4px}
+
+  /* Hypothesis banner */
+  .hypo{background:var(--ih-surface);border:1px solid var(--ih-line);border-radius:14px;overflow:hidden;margin:14px 0 22px;box-shadow:0 1px 2px rgba(14,16,19,0.03)}
+  .hypo .strip{background:linear-gradient(90deg,var(--ih-accent-soft) 0%,transparent 100%);padding:14px 22px;display:flex;align-items:center;gap:14px;border-bottom:1px solid var(--ih-line)}
+  .hypo .week-tag{font-family:var(--ih-mono);font-size:10.5px;letter-spacing:0.14em;text-transform:uppercase;color:var(--ih-accent);background:var(--ih-surface);padding:4px 9px;border-radius:5px;border:1px solid var(--ih-line)}
+  .hypo .label{font-family:var(--ih-mono);font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--ih-ink-50)}
+  .hypo .days-left{font-family:var(--ih-mono);font-size:11.5px;color:var(--ih-ink-65);margin-left:auto;display:flex;align-items:center;gap:6px}
+  .hypo .days-left b{color:var(--ih-accent);font-weight:600}
+  .hypo .body{display:grid;grid-template-columns:1.3fr 1fr;gap:0}
+  .hypo .left{padding:18px 22px;border-right:1px solid var(--ih-line)}
+  .hypo .right{padding:18px 22px;background:var(--ih-surface-2)}
+  .hypo h2{font-family:var(--ih-serif);font-size:22px;line-height:1.18;margin-bottom:8px;letter-spacing:-0.005em}
+  .hypo h2 em{font-style:italic;color:var(--ih-accent);font-weight:400}
+  .hypo .quote{color:var(--ih-ink-65);font-size:13px;line-height:1.55;margin-bottom:14px}
+  .hypo .meta-row{display:flex;gap:18px;font-size:11.5px;color:var(--ih-ink-50);font-family:var(--ih-mono);flex-wrap:wrap}
+  .hypo .meta-row b{color:var(--ih-ink);font-weight:500}
+  .targets{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:4px}
+  .target{background:var(--ih-surface);border:1px solid var(--ih-line);border-radius:9px;padding:11px 13px}
+  .target .lab{font-family:var(--ih-mono);font-size:9.5px;letter-spacing:0.12em;text-transform:uppercase;color:var(--ih-ink-50);margin-bottom:4px}
+  .target .actual{font-family:var(--ih-serif);font-size:24px;line-height:1}
+  .target .actual small{font-size:13px;color:var(--ih-ink-40);font-family:var(--ih-mono);margin-left:6px}
+  .target .vs{margin-top:4px;display:flex;align-items:baseline;gap:6px;font-size:11px;color:var(--ih-ink-50);font-family:var(--ih-mono)}
+  .target .vs .delta{font-weight:600}
+  .delta.down{color:var(--ih-danger)}
+  .delta.up{color:var(--ih-ok)}
+  .delta.flat{color:var(--ih-ink-50)}
+  .target .bar{margin-top:8px;height:5px;background:var(--ih-surface-3);border-radius:3px;overflow:hidden;position:relative}
+  .target .bar i{display:block;height:100%;background:var(--ih-accent);border-radius:3px}
+  .target .bar i.ok{background:var(--ih-ok)}
+  .target .bar .marker{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--ih-ink);opacity:.55}
+  .prev-week{margin-top:14px;background:var(--ih-surface);border:1px dashed var(--ih-line-2);border-radius:9px;padding:11px 13px;cursor:pointer}
+  .prev-week:hover{border-color:var(--ih-ink-30)}
+  .prev-week .head{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+  .prev-week .head .tag{font-family:var(--ih-mono);font-size:9.5px;letter-spacing:0.12em;text-transform:uppercase;color:var(--ih-ink-50);background:var(--ih-surface-2);padding:2px 7px;border-radius:4px}
+  .prev-week .vsrow{display:flex;gap:18px;font-size:11.5px;color:var(--ih-ink-65);font-family:var(--ih-mono);flex-wrap:wrap}
+  .prev-week .vsrow b{color:var(--ih-ink);font-weight:500}
+
+  /* Section heading */
+  .section{margin:24px 0 14px;display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+  .section h3{font-family:var(--ih-serif);font-size:22px;letter-spacing:-0.01em;font-weight:400}
+  .section .sub{font-family:var(--ih-mono);font-size:10.5px;color:var(--ih-ink-40);letter-spacing:0.04em}
+
+  /* Funnel cards (8-step) */
+  .funnel{display:grid;grid-template-columns:repeat(8,1fr);gap:8px;align-items:stretch}
+  .fcard{background:var(--ih-surface);border:1px solid var(--ih-line);border-radius:11px;padding:13px 13px 11px;position:relative;display:flex;flex-direction:column;min-height:112px;transition:border-color 0.15s ease,transform 0.15s ease;cursor:pointer}
+  .fcard:hover{border-color:var(--ih-ink-30);transform:translateY(-1px)}
+  .fcard .lab{font-family:var(--ih-mono);font-size:9.5px;letter-spacing:0.12em;text-transform:uppercase;color:var(--ih-ink-50);display:flex;align-items:center;gap:5px}
+  .fcard .lab .glyph{font-size:10px;opacity:.6}
+  .fcard .n{font-family:var(--ih-serif);font-size:34px;line-height:1;margin-top:5px;letter-spacing:-0.01em}
+  .fcard .conv{font-family:var(--ih-mono);font-size:10.5px;color:var(--ih-ink-50);margin-top:3px}
+  .fcard .delta-row{margin-top:auto;display:flex;align-items:center;gap:5px;font-family:var(--ih-mono);font-size:10px;color:var(--ih-ink-50);padding-top:8px;border-top:1px dashed var(--ih-line)}
+  .fcard .src{font-family:var(--ih-mono);font-size:8.5px;letter-spacing:0.05em;text-transform:uppercase;color:var(--ih-ink-30);position:absolute;top:11px;right:12px}
+  .fcard.accent{background:var(--ih-accent);border-color:var(--ih-accent);color:#FAFAF7}
+  .fcard.accent .lab,.fcard.accent .conv,.fcard.accent .delta-row,.fcard.accent .src{color:rgba(250,250,247,0.75)}
+  .fcard.accent .delta-row{border-top-color:rgba(250,250,247,0.25)}
+  .fcard.money{background:var(--ih-ink);color:#FAFAF7;border-color:var(--ih-ink)}
+  .fcard.money .lab,.fcard.money .conv,.fcard.money .delta-row,.fcard.money .src{color:rgba(250,250,247,0.6)}
+  .fcard.money .delta-row{border-top-color:rgba(250,250,247,0.18)}
+  .fcard .arrow{position:absolute;right:-12px;top:50%;transform:translateY(-50%);width:18px;height:18px;background:var(--ih-bg);border:1px solid var(--ih-line);border-radius:50%;display:grid;place-items:center;font-size:10px;color:var(--ih-ink-50);z-index:1}
+  .fcard:last-child .arrow{display:none}
+
+  /* Two-column layout */
+  .duo{display:grid;grid-template-columns:1.55fr 1fr;gap:18px;margin-top:22px;align-items:start}
+
+  /* Card primitive */
+  .card{background:var(--ih-surface);border:1px solid var(--ih-line);border-radius:12px;overflow:hidden}
+  .card .head{padding:13px 18px;border-bottom:1px solid var(--ih-line);display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .card .head h4{font-family:var(--ih-serif);font-size:18px;font-weight:400;letter-spacing:-0.005em}
+  .card .head .sub{font-family:var(--ih-mono);font-size:10.5px;color:var(--ih-ink-40);letter-spacing:0.04em;margin-top:1px}
+  .card .head .right{display:flex;align-items:center;gap:8px}
+  .card .filters{padding:9px 18px;border-bottom:1px solid var(--ih-line);background:var(--ih-surface-2);display:flex;align-items:center;gap:8px;font-size:11.5px;flex-wrap:wrap}
+
+  /* Table */
+  .tbl-wrap{overflow-x:auto;max-height:520px;overflow-y:auto}
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  thead th{background:var(--ih-surface-2);font-family:var(--ih-mono);font-size:9.5px;letter-spacing:0.1em;text-transform:uppercase;color:var(--ih-ink-50);font-weight:500;text-align:left;padding:8px 10px;border-bottom:1px solid var(--ih-line);position:sticky;top:0;z-index:2;cursor:default;white-space:nowrap}
+  thead th.r{text-align:right}
+  thead th.sortable{cursor:pointer;user-select:none}
+  thead th.sortable:hover{color:var(--ih-ink)}
+  thead th.sortable .sort-ind{margin-left:3px;color:var(--ih-ink-40);font-size:10px}
+  thead th.sortable.active .sort-ind{color:var(--ih-accent)}
+  tbody td{padding:9px 10px;border-bottom:1px solid var(--ih-line);font-size:12px;vertical-align:middle;white-space:nowrap}
+  tbody td.r{text-align:right;font-family:var(--ih-mono);font-size:11.5px}
+  tbody tr:hover{background:var(--ih-surface-2)}
+  tbody tr.clickable{cursor:pointer}
+  tbody tr.divider td{background:rgba(209,58,31,0.04);font-family:var(--ih-mono);font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--ih-accent);padding:6px 10px;text-align:center}
+  tbody tr.foot td{background:var(--ih-surface-3);font-weight:600;border-top:2px solid var(--ih-line-2);border-bottom:0}
+  tbody tr.foot td.r{font-family:var(--ih-mono);font-size:12px}
+  tbody tr.empty td{text-align:center;color:var(--ih-ink-40);padding:24px 10px;font-style:italic;font-family:var(--ih-serif);font-size:14px}
+
+  .owner-chip{display:inline-flex;align-items:center;gap:5px;font-family:var(--ih-mono);font-size:10px;padding:2px 7px;border-radius:4px;background:var(--ih-surface-2);color:var(--ih-ink-65)}
+  .owner-chip.luke{background:rgba(42,93,191,0.10);color:var(--ih-info)}
+  .owner-chip.alex{background:rgba(184,134,11,0.12);color:var(--ih-warn)}
+  .rate-bar{display:inline-flex;align-items:center;gap:6px;font-family:var(--ih-mono);font-size:11.5px}
+  .rate-bar .pip{width:34px;height:5px;background:var(--ih-surface-3);border-radius:3px;overflow:hidden}
+  .rate-bar .pip i{display:block;height:100%;background:var(--ih-ok);border-radius:3px}
+  .rate-bar .pip i.warn{background:var(--ih-warn)}
+  .rate-bar .pip i.danger{background:var(--ih-danger)}
+  .rate-bar .pip i.flat{background:var(--ih-ink-30)}
+  .dash{color:var(--ih-ink-30)}
+
+  /* Hypothesis log */
+  .hlog{display:flex;flex-direction:column}
+  .hlog .row{padding:14px 18px;border-bottom:1px solid var(--ih-line);position:relative;cursor:pointer}
+  .hlog .row:last-child{border-bottom:0}
+  .hlog .row:hover{background:var(--ih-surface-2)}
+  .hlog .row.live{background:linear-gradient(90deg,var(--ih-accent-soft) 0%,transparent 60%)}
+  .hlog .row.live:hover{background:linear-gradient(90deg,rgba(209,58,31,0.16) 0%,var(--ih-surface-2) 60%)}
+  .hlog .row .toprow{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+  .hlog .wtag{font-family:var(--ih-mono);font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--ih-ink-50);background:var(--ih-surface-2);padding:2px 7px;border-radius:4px}
+  .hlog .wtag.live{background:var(--ih-accent);color:#fff}
+  .hlog .verdict{margin-left:auto;font-family:var(--ih-mono);font-size:9.5px;letter-spacing:0.12em;text-transform:uppercase;padding:2px 7px;border-radius:4px}
+  .verdict.keep{background:var(--ih-ok-soft);color:var(--ih-ok)}
+  .verdict.kill{background:var(--ih-danger-soft);color:var(--ih-danger)}
+  .verdict.mutate{background:var(--ih-warn-soft);color:var(--ih-warn)}
+  .verdict.pending{background:var(--ih-surface-3);color:var(--ih-ink-50)}
+  .verdict.baseline{background:var(--ih-info-soft);color:var(--ih-info)}
+  .hlog .h{font-family:var(--ih-serif);font-size:16px;line-height:1.3;margin-bottom:6px}
+  .hlog .metrics{display:flex;gap:12px;font-family:var(--ih-mono);font-size:11px;color:var(--ih-ink-65);flex-wrap:wrap}
+  .hlog .metrics b{color:var(--ih-ink);font-weight:500}
+  .hlog .metrics .delta{margin-left:3px;font-size:10px}
+
+  /* Integrations */
+  .integrations{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:14px 18px}
+  .intg{background:var(--ih-surface-2);border:1px solid var(--ih-line);border-radius:9px;padding:11px 13px;display:flex;flex-direction:column;gap:4px;position:relative;cursor:pointer;transition:transform 0.12s ease}
+  .intg:hover{transform:translateY(-1px);border-color:var(--ih-ink-30)}
+  .intg .src{font-family:var(--ih-mono);font-size:9.5px;letter-spacing:0.1em;text-transform:uppercase;color:var(--ih-ink-50)}
+  .intg .desc{font-size:12px;color:var(--ih-ink)}
+  .intg .meta{font-family:var(--ih-mono);font-size:10.5px;color:var(--ih-ink-50);margin-top:2px}
+  .intg .dot{position:absolute;top:11px;right:11px;width:7px;height:7px;border-radius:50%}
+  .intg .dot.ok{background:var(--ih-ok);box-shadow:0 0 0 3px var(--ih-ok-soft)}
+  .intg .dot.warn{background:var(--ih-warn);box-shadow:0 0 0 3px var(--ih-warn-soft)}
+  .intg .dot.sync{animation:pulse 1s ease infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+
+  /* Roster */
+  .roster .tabs{display:flex;align-items:center;gap:0;padding:6px 14px;border-bottom:1px solid var(--ih-line);background:var(--ih-surface-2);flex-wrap:wrap}
+  .roster .tabs button{background:none;border:0;font:inherit;font-size:12px;padding:9px 13px;color:var(--ih-ink-65);cursor:pointer;position:relative;font-weight:500;font-family:var(--ih-sans)}
+  .roster .tabs button:hover{color:var(--ih-ink)}
+  .roster .tabs button.on{color:var(--ih-ink)}
+  .roster .tabs button.on::after{content:"";position:absolute;left:13px;right:13px;bottom:-1px;height:2px;background:var(--ih-accent)}
+  .roster .tabs button .ct{font-family:var(--ih-mono);font-size:10px;color:var(--ih-ink-40);margin-left:5px}
+  .roster .tabs button.on .ct{color:var(--ih-accent)}
+  .roster .tabs .total{margin-left:auto;font-family:var(--ih-mono);font-size:10px;color:var(--ih-ink-40);padding-right:8px}
+  .roster .search-row{padding:10px 18px;border-bottom:1px solid var(--ih-line);background:var(--ih-surface);display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+  .roster input[type=text]{flex:1;min-width:200px;border:1px solid var(--ih-line);background:var(--ih-surface-2);padding:7px 11px;border-radius:7px;font:inherit;font-size:12px;color:var(--ih-ink);outline:none;font-family:var(--ih-sans)}
+  .roster input[type=text]:focus{border-color:var(--ih-accent)}
+  .status-pill{display:inline-flex;align-items:center;gap:5px;font-family:var(--ih-mono);font-size:10px;letter-spacing:0.06em;text-transform:uppercase;padding:3px 8px;border-radius:999px;border:1px solid var(--ih-line);background:var(--ih-surface-2);color:var(--ih-ink-65)}
+  .status-pill .dot{width:6px;height:6px;border-radius:50%;background:var(--ih-ink-30)}
+  .status-pill.sent{background:var(--ih-ok-soft);color:var(--ih-ok);border-color:transparent}
+  .status-pill.sent .dot{background:var(--ih-ok)}
+  .status-pill.ready{background:var(--ih-accent-soft);color:var(--ih-accent);border-color:transparent}
+  .status-pill.ready .dot{background:var(--ih-accent)}
+  .status-pill.draft{background:var(--ih-warn-soft);color:var(--ih-warn);border-color:transparent}
+  .status-pill.draft .dot{background:var(--ih-warn)}
+  .status-pill.skipped{background:var(--ih-surface-3);color:var(--ih-ink-65);border-color:transparent}
+  .status-pill.skipped .dot{background:var(--ih-ink-40)}
+  .status-pill.dnc{background:var(--ih-danger-soft);color:var(--ih-danger);border-color:transparent}
+  .status-pill.dnc .dot{background:var(--ih-danger)}
+  .star{color:var(--ih-warn);font-size:12px;cursor:pointer}
+  .star.off{color:var(--ih-ink-30)}
+  .star:hover{transform:scale(1.15)}
+  .check{color:var(--ih-ok);font-weight:600;font-family:var(--ih-mono);font-size:13px}
+  .x{color:var(--ih-ink-30);font-family:var(--ih-mono);font-size:13px}
+  .sentiment-chip{display:inline-flex;align-items:center;gap:4px;font-family:var(--ih-mono);font-size:9.5px;letter-spacing:0.06em;text-transform:uppercase;padding:2px 7px;border-radius:4px}
+  .sentiment-chip.pos{background:var(--ih-ok-soft);color:var(--ih-ok)}
+  .sentiment-chip.neg{background:var(--ih-danger-soft);color:var(--ih-danger)}
+  .sentiment-chip.neu{background:var(--ih-surface-3);color:var(--ih-ink-65)}
+  .source-tag{font-family:var(--ih-mono);font-size:9.5px;color:var(--ih-ink-40);background:var(--ih-surface-2);padding:1px 6px;border-radius:3px;letter-spacing:0.02em}
+
+  /* Pager */
+  .pager{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;border-top:1px solid var(--ih-line);background:var(--ih-surface-2);font-family:var(--ih-mono);font-size:11px;color:var(--ih-ink-65);flex-wrap:wrap;gap:8px}
+  .pager .ctrl{display:flex;gap:6px;align-items:center}
+  .pager .ctrl button{padding:4px 10px}
+  .pager .ctrl button:disabled{opacity:0.4;cursor:not-allowed}
+
+  /* Modal */
+  .modal-bg{position:fixed;inset:0;background:rgba(14,16,19,0.45);display:none;align-items:center;justify-content:center;z-index:200;padding:20px}
+  .modal-bg.open{display:flex}
+  .modal{background:var(--ih-surface);border-radius:14px;width:min(640px,100%);max-height:90vh;overflow:auto;box-shadow:0 24px 64px rgba(14,16,19,0.25)}
+  .modal .mhead{padding:18px 22px;border-bottom:1px solid var(--ih-line);display:flex;align-items:center;justify-content:space-between}
+  .modal .mhead h3{font-family:var(--ih-serif);font-size:22px;font-weight:400;letter-spacing:-0.005em}
+  .modal .mhead .close{background:none;border:0;font-size:18px;color:var(--ih-ink-50);cursor:pointer;padding:4px 8px;border-radius:5px}
+  .modal .mhead .close:hover{background:var(--ih-surface-2);color:var(--ih-ink)}
+  .modal .mbody{padding:20px 22px}
+  .modal .mbody label{display:block;font-family:var(--ih-mono);font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--ih-ink-50);margin:14px 0 6px;font-weight:500}
+  .modal .mbody label:first-child{margin-top:0}
+  .modal .mbody input,.modal .mbody select,.modal .mbody textarea{width:100%;border:1px solid var(--ih-line);background:var(--ih-surface-2);padding:9px 12px;border-radius:7px;font:inherit;font-size:13px;color:var(--ih-ink);outline:none;font-family:var(--ih-sans)}
+  .modal .mbody input:focus,.modal .mbody select:focus,.modal .mbody textarea:focus{border-color:var(--ih-accent)}
+  .modal .mbody textarea{min-height:80px;resize:vertical;line-height:1.5}
+  .modal .mbody .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .modal .mfoot{padding:14px 22px;border-top:1px solid var(--ih-line);display:flex;justify-content:flex-end;gap:8px;background:var(--ih-surface-2)}
+
+  /* Toast */
+  .toast-wrap{position:fixed;bottom:24px;right:24px;display:flex;flex-direction:column;gap:8px;z-index:300;max-width:360px}
+  .toast{background:var(--ih-ink);color:#FAFAF7;padding:11px 16px;border-radius:9px;font-size:12.5px;font-family:var(--ih-sans);box-shadow:0 12px 32px rgba(14,16,19,0.25);animation:slideIn 0.2s ease;display:flex;align-items:center;gap:9px}
+  .toast.ok{background:var(--ih-ok)}
+  .toast.warn{background:var(--ih-warn)}
+  .toast.danger{background:var(--ih-danger)}
+  .toast .glyph{font-size:14px}
+  @keyframes slideIn{from{transform:translateX(20px);opacity:0}to{transform:translateX(0);opacity:1}}
+
+  /* Drawer */
+  .drawer-bg{position:fixed;inset:0;background:rgba(14,16,19,0.35);display:none;z-index:150}
+  .drawer-bg.open{display:block}
+  .drawer{position:fixed;top:0;right:0;bottom:0;width:min(540px,100%);background:var(--ih-surface);transform:translateX(100%);transition:transform 0.25s ease;z-index:160;display:flex;flex-direction:column;box-shadow:-12px 0 32px rgba(14,16,19,0.20)}
+  .drawer.open{transform:translateX(0)}
+  .drawer .dhead{padding:18px 22px;border-bottom:1px solid var(--ih-line);display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+  .drawer .dhead .info h3{font-family:var(--ih-serif);font-size:22px;font-weight:400;letter-spacing:-0.005em;margin-bottom:4px}
+  .drawer .dhead .info p{font-family:var(--ih-mono);font-size:11.5px;color:var(--ih-ink-50)}
+  .drawer .dbody{padding:18px 22px;overflow-y:auto;flex:1}
+  .drawer .dbody section{margin-bottom:18px}
+  .drawer .dbody h4{font-family:var(--ih-mono);font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--ih-ink-50);margin-bottom:6px;font-weight:500}
+  .drawer .dbody .field{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--ih-line);font-size:12.5px}
+  .drawer .dbody .field span:first-child{color:var(--ih-ink-65);font-family:var(--ih-mono);font-size:11px}
+  .drawer .dbody .field span:last-child{font-weight:500}
+  .drawer .dbody .notes{background:var(--ih-surface-2);border-radius:8px;padding:12px 14px;font-size:12.5px;line-height:1.55;color:var(--ih-ink);white-space:pre-line}
+  .drawer .dfoot{padding:14px 22px;border-top:1px solid var(--ih-line);display:flex;gap:8px;background:var(--ih-surface-2);justify-content:flex-end}
+
+  /* Legend */
+  .legend{margin-top:32px;padding:18px 20px;background:var(--ih-surface);border:1px solid var(--ih-line);border-radius:12px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+  .legend h5{font-family:var(--ih-mono);font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:var(--ih-ink-50);margin-bottom:6px;font-weight:500}
+  .legend p{font-size:12px;color:var(--ih-ink-65);line-height:1.55}
+  .legend code{font-family:var(--ih-mono);font-size:11px;background:var(--ih-surface-2);padding:1px 5px;border-radius:3px;color:var(--ih-ink)}
+
+  @media(max-width:1280px){
+    .funnel{grid-template-columns:repeat(4,1fr)}
+    .duo{grid-template-columns:1fr}
+    .legend{grid-template-columns:1fr}
+  }
+  @media(max-width:780px){
+    .shell{grid-template-columns:1fr}
+    .sidebar{display:none}
+    .funnel{grid-template-columns:repeat(2,1fr)}
+  }
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">I</div>
+      <div class="brand-name">The <em>Ironheart</em></div>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">Operating</div>
+      <nav class="nav">
+        <a href="#" data-toast="Today's dashboard"><span class="glyph">◐</span> Today</a>
+        <a href="#" data-toast="Pipeline"><span class="glyph">✦</span> Pipeline <span class="count">7</span></a>
+        <a href="#" class="active"><span class="glyph">◉</span> Outreach <span class="count">144</span></a>
+        <a href="#" data-toast="Reply inbox"><span class="glyph">✉</span> Inbox <span class="count">3</span></a>
+        <a href="#" data-toast="Clients"><span class="glyph">⊕</span> Clients <span class="count">2</span></a>
+      </nav>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">Studio</div>
+      <nav class="nav">
+        <a href="#" data-toast="Forms"><span class="glyph">◇</span> Forms</a>
+        <a href="#" data-toast="Calendar"><span class="glyph">⊞</span> Calendar</a>
+        <a href="#" data-toast="Workflows"><span class="glyph">⏵</span> Workflows</a>
+        <a href="#" data-toast="Reports"><span class="glyph">∎</span> Reports</a>
+        <a href="#" data-toast="Finance"><span class="glyph">£</span> Finance</a>
+      </nav>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">Admin</div>
+      <nav class="nav">
+        <a href="#" data-toast="Settings"><span class="glyph">⚙</span> Settings</a>
+        <a href="#" data-toast="Integrations"><span class="glyph">◈</span> Integrations</a>
+      </nav>
+    </div>
+  </aside>
+
+  <main class="main">
+
+    <div class="topbar">
+      <div class="crumb">
+        <a href="#">Outreach</a>
+        <span>/</span>
+        <b>Observatory</b>
+      </div>
+
+      <div class="spacer"></div>
+
+      <div class="pill-pick" id="strategyPick">
+        <span class="lab">Strategy</span>
+        <span id="strategyLabel">All</span>
+        <span class="arrow">▾</span>
+        <div class="pill-menu" id="strategyMenu">
+          <button data-strategy="all" class="on">All owners</button>
+          <button data-strategy="luke">Luke</button>
+          <button data-strategy="alex">Alex</button>
+        </div>
+      </div>
+
+      <div class="seg" id="timeframeSeg">
+        <button data-tf="7d">7d</button>
+        <button data-tf="14d">14d</button>
+        <button data-tf="30d" class="on">30d</button>
+        <button data-tf="q2">Q2</button>
+        <button data-tf="ytd">YTD</button>
+        <button data-tf="all">All</button>
+      </div>
+
+      <div class="pill-pick" style="cursor:default" id="rangeDisplay">
+        <span class="lab">Range</span>
+        <span class="mono" id="rangeText">13 May → 12 Jun</span>
+      </div>
+
+      <button class="btn btn-ghost" id="exportBtn">⤓ Export</button>
+      <button class="btn" id="newSendBtn">⊕ New send</button>
+      <button class="btn btn-primary" id="endWeekBtn">✦ End Week 24</button>
+    </div>
+
+    <div class="page">
+
+      <span class="eyebrow">Outreach · observatory · <span style="color:var(--ih-accent)">★</span> Week 24 live</span>
+      <h1 class="h1" id="pageTitle">The <span class="italic-red">263</span> sends story. <span style="color:var(--ih-ink-50);font-style:italic">6 positive replies. 4 booked.</span></h1>
+
+      <!-- Hypothesis banner -->
+      <div class="hypo" id="hypoBanner"></div>
+
+      <!-- Funnel -->
+      <div class="section">
+        <h3>Cold email funnel <span id="funnelRange" style="color:var(--ih-ink-40);font-style:italic;font-family:var(--ih-serif);font-size:18px">last 30 days</span></h3>
+        <span class="sub">SOURCES: PLATFORM DB · CAL MCP · TWENTY MCP</span>
+      </div>
+
+      <div class="funnel" id="funnel"></div>
+
+      <!-- Two-column -->
+      <div class="duo">
+
+        <div class="card">
+          <div class="head">
+            <div>
+              <h4>Daily activity log</h4>
+              <div class="sub" id="dailySub">SHEETS PARITY · ONE ROW = ONE SEND-BATCH</div>
+            </div>
+            <div class="right">
+              <button class="btn btn-ghost" id="addRowBtn">⊕ Add row</button>
+            </div>
+          </div>
+          <div class="filters">
+            <span class="eyebrow">Filter</span>
+            <span id="dailyOwnerLabel" class="status-pill">Both owners</span>
+            <span class="status-pill ready" style="background:var(--ih-info-soft);color:var(--ih-info)"><span class="dot" style="background:var(--ih-info)"></span>Cold Email</span>
+            <span style="margin-left:auto;font-family:var(--ih-mono);font-size:10.5px;color:var(--ih-ink-40)" id="dailyRange">— rows · — → —</span>
+          </div>
+
+          <div class="tbl-wrap">
+            <table id="dailyTable">
+              <thead>
+                <tr>
+                  <th class="sortable" data-sort="date">Date <span class="sort-ind">↓</span></th>
+                  <th>Owner</th>
+                  <th class="r sortable" data-sort="sent">Sent <span class="sort-ind"></span></th>
+                  <th class="r sortable" data-sort="replies">Reply <span class="sort-ind"></span></th>
+                  <th class="r">Reply %</th>
+                  <th class="r sortable" data-sort="positive">Pos <span class="sort-ind"></span></th>
+                  <th class="r">Pos %</th>
+                  <th class="r">Bk</th>
+                  <th class="r">Tk</th>
+                  <th class="r">Int</th>
+                  <th class="r">£</th>
+                </tr>
+              </thead>
+              <tbody id="dailyTbody"></tbody>
+            </table>
+          </div>
+          <div class="pager">
+            <span id="dailyPagerInfo">Showing 0 / 0</span>
+            <span>Sent column derived from <code style="background:transparent;color:var(--ih-info)">leads.last_contacted</code></span>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:18px">
+
+          <div class="card hlog">
+            <div class="head">
+              <div>
+                <h4>Hypothesis log</h4>
+                <div class="sub">7-DAY LOOP · KEEP / KILL / MUTATE</div>
+              </div>
+              <button class="btn btn-ghost" id="allWeeksBtn">⊞ All weeks</button>
+            </div>
+            <div id="hypoLog"></div>
+          </div>
+
+          <div class="card">
+            <div class="head">
+              <div>
+                <h4>Data sources</h4>
+                <div class="sub">WHICH MCP FILLED WHICH COLUMN</div>
+              </div>
+              <button class="btn btn-ghost" id="resyncBtn">⟳ Resync</button>
+            </div>
+            <div class="integrations" id="integrations"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Leads roster -->
+      <div class="section">
+        <h3>Leads roster <span style="color:var(--ih-ink-40);font-style:italic;font-family:var(--ih-serif);font-size:18px">the spreadsheet</span></h3>
+        <span class="sub">SOURCE: PLATFORM.DB · 1:1 PARITY WITH MASTER LIST XLSX</span>
+      </div>
+
+      <div class="card roster">
+        <div class="tabs" id="rosterTabs"></div>
+
+        <div class="search-row">
+          <input type="text" id="rosterSearch" placeholder="Search name, company, domain, category, research notes…">
+          <div class="pill-pick" id="ownerPick">
+            <span class="lab">Owner</span>
+            <span id="ownerLabel">Both</span>
+            <span class="arrow">▾</span>
+            <div class="pill-menu" id="ownerMenu">
+              <button data-owner="both" class="on">Both</button>
+              <button data-owner="luke">Luke</button>
+              <button data-owner="alex">Alex</button>
+            </div>
+          </div>
+          <div class="pill-pick" id="categoryPick">
+            <span class="lab">Category</span>
+            <span id="categoryLabel">All</span>
+            <span class="arrow">▾</span>
+            <div class="pill-menu" id="categoryMenu"></div>
+          </div>
+          <div class="pill-pick" id="researchedPick">
+            <span class="lab">Researched</span>
+            <span id="researchedLabel">Any</span>
+            <span class="arrow">▾</span>
+            <div class="pill-menu" id="researchedMenu">
+              <button data-r="any" class="on">Any</button>
+              <button data-r="yes">Yes</button>
+              <button data-r="no">No</button>
+            </div>
+          </div>
+          <button class="btn btn-ghost" id="pull25Btn">⊕ Pull 25 → batch</button>
+        </div>
+
+        <div class="tbl-wrap" style="max-height:600px">
+          <table id="rosterTable">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Status</th>
+                <th>★</th>
+                <th>R</th>
+                <th class="sortable" data-rsort="name">Name <span class="sort-ind"></span></th>
+                <th class="sortable" data-rsort="company">Company <span class="sort-ind"></span></th>
+                <th>Category</th>
+                <th>Email</th>
+                <th>Website</th>
+                <th class="sortable" data-rsort="last">Last cont. <span class="sort-ind"></span></th>
+                <th>Next FU</th>
+                <th>Reply</th>
+                <th>Sentiment</th>
+                <th>Owner</th>
+                <th>Source</th>
+              </tr>
+            </thead>
+            <tbody id="rosterTbody"></tbody>
+          </table>
+        </div>
+        <div class="pager">
+          <span id="rosterPagerInfo">Showing 0 / 0</span>
+          <span>Click row → drawer with research notes</span>
+          <div class="ctrl">
+            <button class="btn btn-ghost" id="rosterPrev">◀</button>
+            <span id="rosterPageInd" style="padding:4px 8px">1 / 1</span>
+            <button class="btn btn-ghost" id="rosterNext">▶</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="legend">
+        <div>
+          <h5>Data spine</h5>
+          <p>The roster (one row per prospect) lives in <code>outreach.leads</code>. The daily-activity log derives directly from it — no manual upkeep for Sent / Reply / Positive. <code>outreach.weekly_hypothesis</code> stamps each lead with the week it belongs to.</p>
+        </div>
+        <div>
+          <h5>Integrations</h5>
+          <p>Downstream funnel columns join from MCPs: <code>mcp__cal</code> for Booked / Taken, <code>mcp__twenty</code> for Interested / Closed / £. No duplicate manual entry — the dashboard <em>is</em> the integration.</p>
+        </div>
+        <div>
+          <h5>The 7-day loop</h5>
+          <p>Mon: set hypothesis + targets. Run sends all week. Sun: hit <code>End Week</code> → write result_summary → verdict <em>Keep · Kill · Mutate</em>. Next week's hypothesis pre-fills from the verdict.</p>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<!-- Modals + drawer + toast -->
+<div class="modal-bg" id="modalBg">
+  <div class="modal" id="modal"></div>
+</div>
+<div class="drawer-bg" id="drawerBg"></div>
+<div class="drawer" id="drawer"></div>
+<div class="toast-wrap" id="toastWrap"></div>
+
+<script>
+/* ──────────────────────────────────────────────────────────
+   SEED DATA — would come from Platform DB + Cal + Twenty MCPs
+   ────────────────────────────────────────────────────────── */
+
+const TODAY = new Date(2026, 5, 14);  // 14 Jun 2026
+const TODAY_MS = TODAY.getTime();
+const DAY = 86400000;
+
+const HYPOTHESES = [
+  { week: 24, label: "Wk 24", start: "2026-06-08", end: "2026-06-14", live: true, status: "testing",
+    title: "Observation-first, no template scaffold",
+    body: "Drop identity-line + proof-line scaffold. Lead with a verbatim operational artefact you found on their site (hardcoded promo code, placeholder href, \"New Form\" Squarespace block). Cap at 8 sends/day. If 10 min of forensic research surfaces nothing real → skip the lead, don't soft-template.",
+    target_sample: 175, target_reply: 11, target_positive: 4, target_booked: 4,
+    replaces: "Wk 23 template+offer", verdict: "pending" },
+  { week: 23, label: "Wk 23", start: "2026-06-01", end: "2026-06-07", live: false, status: "complete",
+    title: "Template + £200 audit offer · Bath / Bristol",
+    body: "Standard rotation template, £200 audit setup-fee floor. Local-first targeting (Bath / Bristol owners under 50 staff).",
+    target_sample: 130, target_reply: 11, target_positive: 4, target_booked: 2,
+    verdict: "baseline" },
+  { week: 22, label: "Wk 22", start: "2026-05-25", end: "2026-05-31", live: false, status: "complete",
+    title: "Cold mailto + meme follow-up · non-local",
+    body: "First-touch standard template, follow-up uses meme image pattern-break. Mixed UK targets, not Bath-only.",
+    target_sample: 50, target_reply: 8, target_positive: 3, target_booked: 1,
+    verdict: "mutate" },
+  { week: 21, label: "Wk 21", start: "2026-05-18", end: "2026-05-24", live: false, status: "complete",
+    title: "Identity-first opener, \"I'm curious\" pivot",
+    body: "Lead with identity (Bath student), pivot via \"I'm curious\" question about their workflow. Subject lines rotated 3 ways.",
+    target_sample: 60, target_reply: 8, target_positive: 3, target_booked: 1,
+    verdict: "kill" },
+  { week: 20, label: "Wk 20", start: "2026-05-11", end: "2026-05-17", live: false, status: "complete",
+    title: "25-send/day discipline · founder-led ICP",
+    body: "Hard cap 25/day per operator. Strict ICP filter: 3-15 employees, owner-led, founder still in business.",
+    target_sample: 55, target_reply: 11, target_positive: 4, target_booked: 1,
+    verdict: "keep" },
+  { week: 19, label: "Wk 19", start: "2026-05-04", end: "2026-05-10", live: false, status: "complete",
+    title: "Industry-cluster targeting · medical clinics",
+    body: "Single-vertical week (medical clinics in SW England). One proof point, one offer line, one CTA.",
+    target_sample: 40, target_reply: 9, target_positive: 4, target_booked: 1,
+    verdict: "keep" },
+];
+
+const DAILY = [
+  { d: "2026-06-11", owner: "ALEX", sent: 32, replies: 2, positive: 1, booked: 0, taken: 0, interested: 0, closed: 0, money: 0 },
+  { d: "2026-06-11", owner: "LUKE", sent: 2, replies: 0, positive: 0, booked: 0, taken: 0, interested: 0, closed: 0, money: 0 },
+  { d: "2026-06-10", owner: "LUKE", sent: 11, replies: 0, positive: 0, booked: 0, taken: 0, interested: 0, closed: 0, money: 0 },
+  { d: "2026-06-09", owner: "LUKE", sent: 19, replies: 1, positive: 1, booked: 1, taken: 1, interested: 1, closed: 0, money: 0 },
+  { d: "2026-06-08", owner: "ALEX", sent: 25, replies: 0, positive: 0, booked: 0, taken: 0, interested: 0, closed: 0, money: 0 },
+  { d: "2026-06-08", owner: "LUKE", sent: 18, replies: 1, positive: 0, booked: 0, taken: 0, interested: 0, closed: 0, money: 0 },
+  { d: "2026-06-04", owner: "ALEX", sent: 15, replies: 0, positive: 0, booked: 0, taken: 0, interested: 0, closed: 0, money: 0 },
+  { d: "2026-06-03", owner: "ALEX", sent: 24, replies: 1, positive: 0, booked: 0, taken: 0, interested: 0, closed: 0, money: 0 },
+  { d: "2026-06-03", owner: "LUKE", sent: 11, replies: 0, positive: 0, booked: 0, taken: 0, interested: 0, closed: 0, money: 0 },
+  { d: "2026-06-02", owner: "ALEX", sent: 4, replies: 1, positive: 0, booked: 0, taken: 0, interested: 0, closed: 0, money: 0 },
+  { d: "2026-05-27", owner: "ALEX", sent: 20, replies: 3, positive: 0, booked: 0, taken: 0, interested: 0, closed: 0, money: 0 },
+  { d: "2026-05-26", owner: "ALEX", sent: 6, replies: 0, positive: 0, booked: 0, taken: 0, interested: 0, closed: 0, money: 0 },
+  { d: "2026-05-25", owner: "ALEX", sent: 1, replies: 0, positive: 0, booked: 0, taken: 0, interested: 0, closed: 0, money: 0 },
+  { d: "2026-05-25", owner: "LUKE", sent: 18, replies: 0, positive: 0, booked: 0, taken: 0, interested: 0, closed: 0, money: 0 },
+  { d: "2026-05-18", owner: "LUKE", sent: 14, replies: 1, positive: 0, booked: 0, taken: 0, interested: 0, closed: 0, money: 0 },
+  { d: "2026-05-14", owner: "LUKE", sent: 14, replies: 2, positive: 2, booked: 1, taken: 1, interested: 1, closed: 0, money: 0 },
+  { d: "2026-05-13", owner: "LUKE", sent: 18, replies: 2, positive: 2, booked: 1, taken: 1, interested: 1, closed: 0, money: 0 },
+  { d: "2026-05-13", owner: "LUKE", sent: 11, replies: 1, positive: 0, booked: 1, taken: 0, interested: 0, closed: 0, money: 0 },
+  { d: "2026-05-12", owner: "LUKE", sent: 6, replies: 0, positive: 0, booked: 0, taken: 0, interested: 0, closed: 0, money: 0 },
+  { d: "2026-05-11", owner: "LUKE", sent: 8, replies: 2, positive: 1, booked: 0, taken: 0, interested: 0, closed: 0, money: 0 },
+  /* Pre-30d historical (for Q2/YTD/All views) */
+  { d: "2026-05-04", owner: "LUKE", sent: 12, replies: 1, positive: 1, booked: 0, taken: 0, interested: 0, closed: 0, money: 0 },
+  { d: "2026-04-29", owner: "ALEX", sent: 9, replies: 0, positive: 0, booked: 0, taken: 0, interested: 0, closed: 0, money: 0 },
+  { d: "2026-04-22", owner: "LUKE", sent: 15, replies: 2, positive: 1, booked: 0, taken: 0, interested: 0, closed: 0, money: 0 },
+  { d: "2026-04-15", owner: "ALEX", sent: 10, replies: 1, positive: 0, booked: 0, taken: 0, interested: 0, closed: 0, money: 0 },
+  { d: "2026-04-08", owner: "LUKE", sent: 18, replies: 3, positive: 1, booked: 1, taken: 1, interested: 0, closed: 0, money: 0 },
+  { d: "2026-03-28", owner: "LUKE", sent: 22, replies: 2, positive: 1, booked: 0, taken: 0, interested: 0, closed: 0, money: 0 },
+  { d: "2026-03-14", owner: "ALEX", sent: 14, replies: 1, positive: 0, booked: 0, taken: 0, interested: 0, closed: 0, money: 0 },
+  { d: "2026-02-28", owner: "LUKE", sent: 20, replies: 2, positive: 1, booked: 1, taken: 1, interested: 1, closed: 1, money: 4500 },
+];
+
+const CATEGORIES = ["Digital agency","Photography","Architecture","Events / breakfast","Recruitment","Manufacturing","SaaS","Design","Pharma","Property","Hospitality","Veterinary","Logistics","Health & wellness","Construction"];
+
+const RESEARCH_NOTES = {
+  "rupert@wearechicken.co.uk": "Four client logo links on the homepage client showcase are hardcoded to http://google.com as placeholder destinations. Newcastle, North Devon, Ricardo, SEC — all displayed as clickable logos in the \"our clients\" section. Live for ~9 months. No content QA step between CMS publish and live.",
+  "khris@wearehereandnow.net": "The /bookings page hosts two separate Squarespace forms side by side. The second form's internal name is literally \"New Form\" (Squarespace template default). 4 generic fields vs the first form's 6 service-specific fields. Two notification threads, easy to miss.",
+  "marcus@ccarch.co.uk": "Our Work page advertises sample QQ Inspection reports as available \"upon request\" with no form, no email link, and no download. Request must go through generic contact page. Every lead-qualifying step is a manual round-trip.",
+  "sally.hunt@florescomedia.com": "Two hidden event RSVP pages (sitemap-only) collect attendee dietary preferences through a bespoke WordPress form. Primary CTA reads \"Reserve My Pastry\". Someone manually reconciles responses against the attendee list before each breakfast.",
+  "jonas@bowerymills.com": "Reply 9-Jun: \"Love this — we're heads down on phase 1 of the portal rebuild, can we revisit week of 16-Jun?\". Positive. Booked discovery 16-Jun via Cal.",
+  "dave@halcyon.app": "Reply 8-Jun: \"Not now — heads down on migration until Q3. Circle back in August?\". Soft no, revisit scheduled.",
+  "mira@seaglassstudio.co.uk": "Forensic note: bespoke client onboarding doc lives as a Notion link emailed manually. \"View permission\" required acceptance step. Likely 5-10 min per onboard. Draft pending — Luke to send Mon.",
+};
+
+const seedLeads = () => {
+  const baseRoster = [
+    /* Ready — researched forensic batch */
+    { n: 298, status: "ready", star: true,  r: true,  name: "Rupert Mason",          company: "Chicken",                              cat: "Digital agency",       email: "rupert@wearechicken.co.uk",        site: "wearechicken.co.uk",          last: null, fu: null,        reply: false, sentiment: null, owner: "ALEX", source: "Forensic 12-Jun" },
+    { n: 299, status: "ready", star: false, r: true,  name: "Khris Watanabe",        company: "Here & Now Creative",                  cat: "Photography",          email: "khris@wearehereandnow.net",        site: "wearehereandnow.net",         last: null, fu: null,        reply: false, sentiment: null, owner: "LUKE", source: "Forensic 12-Jun" },
+    { n: 300, status: "ready", star: true,  r: true,  name: "Marcus Wilson",         company: "Chantrey Conservation Architects",     cat: "Architecture",         email: "marcus@ccarch.co.uk",              site: "ccarch.co.uk",                last: null, fu: null,        reply: false, sentiment: null, owner: "ALEX", source: "Forensic 12-Jun" },
+    { n: 301, status: "ready", star: false, r: true,  name: "Sally Hunt",            company: "Floresco Media",                       cat: "Events / breakfast",   email: "sally.hunt@florescomedia.com",     site: "florescomedia.com",           last: null, fu: null,        reply: false, sentiment: null, owner: "LUKE", source: "Forensic 12-Jun" },
+    { n: 302, status: "ready", star: false, r: false, name: "Jamie Cole",            company: "Westfield Studios",                    cat: "Recruitment",          email: "jamie@westfield.co",               site: "westfield.co",                last: null, fu: null,        reply: false, sentiment: null, owner: "ALEX", source: "Apollo 10-Jun" },
+    { n: 303, status: "ready", star: true,  r: true,  name: "Eleanor Brigham",       company: "Brigham & Co",                         cat: "Veterinary",           email: "eleanor@brighamvet.co.uk",         site: "brighamvet.co.uk",            last: null, fu: null,        reply: false, sentiment: null, owner: "LUKE", source: "Forensic 11-Jun" },
+    { n: 304, status: "ready", star: false, r: true,  name: "Asha Pebble",           company: "Pebble & Pine",                        cat: "Hospitality",          email: "asha@pebblepine.co.uk",            site: "pebblepine.co.uk",            last: null, fu: null,        reply: false, sentiment: null, owner: "ALEX", source: "Forensic 11-Jun" },
+    { n: 305, status: "ready", star: false, r: false, name: "Tom Reeves",            company: "Vellum & Co",                          cat: "Manufacturing",        email: "tom@vellumco.com",                 site: "vellumco.com",                last: null, fu: null,        reply: false, sentiment: null, owner: "ALEX", source: "Apollo 10-Jun" },
+    { n: 306, status: "ready", star: false, r: true,  name: "Nina Torres",           company: "Beacon Digital",                       cat: "Digital agency",       email: "nina@beacondigital.io",            site: "beacondigital.io",            last: null, fu: null,        reply: false, sentiment: null, owner: "LUKE", source: "Forensic 11-Jun" },
+    { n: 307, status: "ready", star: false, r: false, name: "Hugo Bentley",          company: "Bentley Builders",                     cat: "Construction",         email: "hugo@bentleybuilders.co.uk",       site: "bentleybuilders.co.uk",       last: null, fu: null,        reply: false, sentiment: null, owner: "ALEX", source: "Apollo 9-Jun" },
+    /* Sent — recent batch */
+    { n: 142, status: "sent",  star: true,  r: true,  name: "Jonas Hale",            company: "Bowery Mills",                         cat: "Manufacturing",        email: "jonas@bowerymills.com",            site: "bowerymills.com",             last: "2026-06-09", fu: "2026-06-16", reply: true, sentiment: "pos", owner: "LUKE", source: "Forensic 9-Jun" },
+    { n: 128, status: "sent",  star: false, r: true,  name: "Dave Chen",             company: "Halcyon Corp",                         cat: "SaaS",                 email: "dave@halcyon.app",                 site: "halcyon.app",                 last: "2026-06-08", fu: "2026-08-04", reply: true, sentiment: "neu", owner: "ALEX", source: "Apollo 1-Jun" },
+    { n: 137, status: "sent",  star: false, r: true,  name: "Sarah Vellum",          company: "Vellum & Co",                          cat: "Manufacturing",        email: "sarah@vellumco.com",               site: "vellumco.com",                last: "2026-06-11", fu: "2026-06-18", reply: false, sentiment: null, owner: "LUKE", source: "Forensic 10-Jun" },
+    { n: 121, status: "sent",  star: true,  r: true,  name: "Mark Heneghan Mnaea",   company: "Bespoke Estate Agents",                cat: "Property",             email: "mark@mybespokeagent.com",          site: "mybespokeagent.com",          last: "2026-06-08", fu: "2026-06-15", reply: false, sentiment: null, owner: "ALEX", source: "Master List (Alex)" },
+    { n: 102, status: "sent",  star: false, r: true,  name: "Adrian Bowyer",         company: "Live Forever Club",                    cat: "Health & wellness",    email: "adrian@liveforever.club",          site: "liveforever.club",            last: "2026-05-27", fu: "2026-06-03", reply: false, sentiment: null, owner: "ALEX", source: "Master List (Alex)" },
+    { n: 098, status: "sent",  star: false, r: true,  name: "Petra Halverson",       company: "Halverson Logistics",                  cat: "Logistics",            email: "petra@halversonltd.com",           site: "halversonltd.com",            last: "2026-05-25", fu: "2026-06-01", reply: false, sentiment: null, owner: "LUKE", source: "Forensic 24-May" },
+    { n: 087, status: "sent",  star: false, r: true,  name: "Rupal Mehta",           company: "Sea Glass Studio",                     cat: "Design",               email: "rupal@seaglassstudio.co.uk",       site: "seaglassstudio.co.uk",        last: "2026-05-18", fu: null,         reply: true, sentiment: "neu", owner: "LUKE", source: "Forensic 17-May" },
+    { n: 075, status: "sent",  star: false, r: true,  name: "Anderson Reid",         company: "Reid & Crowe",                         cat: "Recruitment",          email: "anderson@reidcrowe.com",           site: "reidcrowe.com",               last: "2026-05-14", fu: null,         reply: true, sentiment: "neg", owner: "LUKE", source: "Forensic 13-May" },
+    { n: 042, status: "sent",  star: true,  r: true,  name: "Pizzarova",             company: "Pizzarova",                            cat: "Hospitality",          email: "hello@pizzarova.co.uk",            site: "pizzarova.co.uk",             last: "2026-05-11", fu: null,         reply: true, sentiment: "pos", owner: "LUKE", source: "Forensic 10-May" },
+    { n: 089, status: "draft", star: false, r: true,  name: "Mira Patel",            company: "Sea Glass Studio",                     cat: "Design",               email: "mira@seaglassstudio.co.uk",        site: "seaglassstudio.co.uk",        last: null, fu: null,        reply: false, sentiment: null, owner: "LUKE", source: "Forensic 11-Jun" },
+    /* Skipped */
+    { n: 211, status: "skipped", star: false, r: true,  name: "Simon Estcourt",      company: "Tmc Pharma Services",                  cat: "Pharma",               email: "simon.estcourt@tmcpharma.com",     site: "tmcpharma.com",               last: null, fu: null,        reply: false, sentiment: null, owner: "ALEX", source: "Master List (Alex)" },
+    { n: 199, status: "skipped", star: false, r: true,  name: "Olivia Thatcher",     company: "Thatcher & Sons Plumbing",             cat: "Construction",         email: "olivia@thatcherplumbing.co.uk",    site: "thatcherplumbing.co.uk",      last: null, fu: null,        reply: false, sentiment: null, owner: "ALEX", source: "Apollo 5-Jun" },
+    { n: 185, status: "skipped", star: false, r: false, name: "Pavel Kuznetsov",     company: "Kuznetsov Engineering",                cat: "Manufacturing",        email: "pavel@kuzeng.com",                 site: "kuzeng.com",                  last: null, fu: null,        reply: false, sentiment: null, owner: "LUKE", source: "Apollo 4-Jun" },
+    { n: 167, status: "skipped", star: false, r: true,  name: "Tabitha Wren",        company: "Wren Veterinary Group",                cat: "Veterinary",           email: "tabitha@wrenvet.co.uk",            site: "wrenvet.co.uk",               last: null, fu: null,        reply: false, sentiment: null, owner: "ALEX", source: "Master List (Alex)" },
+    { n: 156, status: "skipped", star: false, r: false, name: "Brock Hennessy",      company: "Hennessy Audit Partners",              cat: "SaaS",                 email: "brock@hennessyaudit.com",          site: "hennessyaudit.com",           last: null, fu: null,        reply: false, sentiment: null, owner: "LUKE", source: "Apollo 3-Jun" },
+    /* DNC */
+    { n: 001, status: "dnc",     star: false, r: false, name: "Johan van der Poel",  company: "Infina",                               cat: "SaaS",                 email: "johan@infina.financial",           site: "infina.financial",            last: "2026-05-31", fu: null,        reply: true, sentiment: "neg", owner: "ALEX", source: "Unsubscribe req." },
+  ];
+  return baseRoster;
+};
+
+const LEADS = seedLeads();
+
+const TAB_COUNTS = { ready: 144, sent: 297, draft: 1, skipped: 106, dnc: 1 };
+
+const INTEGRATIONS = [
+  { src: "PLATFORM DB",       desc: "Sent · Replied · Positive",    meta: "443 leads · 297 sent · 15 replied · synced live",          dot: "ok",   syncing: false },
+  { src: "CAL · MCP",         desc: "Booked · Taken (attended)",     meta: "4 bookings · 3 attended · last sync 2m ago",                dot: "ok",   syncing: false },
+  { src: "TWENTY · MCP",      desc: "Interested · Closed · £",       meta: "3 in proposal · £28,250 open · last sync 4m ago",           dot: "ok",   syncing: false },
+  { src: "MASTER LIST .XLSX", desc: "Read-only mirror (deprecated)", meta: "last import 12 Jun · 0 drift detected",                     dot: "warn", syncing: false },
+];
+
+/* ──────────────────────────────────────────────────────────
+   STATE
+   ────────────────────────────────────────────────────────── */
+
+const STATE = {
+  strategy: "all",         // all | luke | alex
+  timeframe: "30d",        // 7d | 14d | 30d | q2 | ytd | all
+  rosterTab: "ready",      // ready | sent | draft | skipped | dnc
+  rosterSearch: "",
+  rosterOwner: "both",     // both | luke | alex
+  rosterCategory: "all",
+  rosterResearched: "any", // any | yes | no
+  rosterSort: { col: "n", dir: "asc" },
+  rosterPage: 1,
+  rosterPageSize: 10,
+  daySort: { col: "date", dir: "desc" },
+  showAllWeeks: false,
+};
+
+/* ──────────────────────────────────────────────────────────
+   HELPERS
+   ────────────────────────────────────────────────────────── */
+
+const $ = sel => document.querySelector(sel);
+const $$ = sel => Array.from(document.querySelectorAll(sel));
+
+function fmtDate(s){
+  if(!s) return "—";
+  const d = new Date(s);
+  const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  return `${d.getDate()} ${months[d.getMonth()]}`;
+}
+function fmtDateLong(s){
+  if(!s) return "—";
+  const d = new Date(s);
+  const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+}
+function pct(n,d){ return d ? (100*n/d) : 0; }
+function pctStr(n,d){ return d ? (100*n/d).toFixed(1)+"%" : "—"; }
+
+function rangeFromTF(tf){
+  const today = new Date(TODAY);
+  let start, end = new Date(today);
+  if(tf==="7d")  start = new Date(today.getTime() - 6*DAY);
+  else if(tf==="14d") start = new Date(today.getTime() - 13*DAY);
+  else if(tf==="30d") start = new Date(today.getTime() - 29*DAY);
+  else if(tf==="q2")  start = new Date(2026,3,1);
+  else if(tf==="ytd") start = new Date(2026,0,1);
+  else start = new Date(2019,0,1);
+  return { start, end };
+}
+
+function filterDaily(){
+  const { start, end } = rangeFromTF(STATE.timeframe);
+  const startMs = start.getTime(), endMs = end.getTime() + DAY;
+  let rows = DAILY.filter(r => {
+    const t = new Date(r.d).getTime();
+    return t >= startMs && t < endMs;
+  });
+  if(STATE.strategy!=="all"){
+    rows = rows.filter(r => r.owner.toLowerCase() === STATE.strategy);
+  }
+  // Sort
+  const { col, dir } = STATE.daySort;
+  rows.sort((a,b) => {
+    const av = a[col] === "date" ? a.d : a[col];
+    const bv = b[col] === "date" ? b.d : b[col];
+    let cmp;
+    if(col === "date") cmp = a.d.localeCompare(b.d);
+    else cmp = (a[col] || 0) - (b[col] || 0);
+    return dir === "asc" ? cmp : -cmp;
+  });
+  return rows;
+}
+
+function sumFunnel(rows){
+  return rows.reduce((acc,r)=>{
+    acc.sent += r.sent; acc.replies += r.replies; acc.positive += r.positive;
+    acc.booked += r.booked; acc.taken += r.taken; acc.interested += r.interested;
+    acc.closed += r.closed; acc.money += r.money;
+    return acc;
+  }, {sent:0,replies:0,positive:0,booked:0,taken:0,interested:0,closed:0,money:0});
+}
+
+function tfLabel(tf){
+  return { "7d":"last 7 days","14d":"last 14 days","30d":"last 30 days","q2":"this Q2","ytd":"year to date","all":"all time" }[tf];
+}
+
+function tfRangeText(tf){
+  const { start, end } = rangeFromTF(tf);
+  return `${fmtDate(start.toISOString().slice(0,10))} → ${fmtDate(end.toISOString().slice(0,10))}`;
+}
+
+function activeWeek(){ return HYPOTHESES.find(h=>h.live); }
+function prevWeek(){ const a = activeWeek(); return HYPOTHESES[HYPOTHESES.indexOf(a)+1]; }
+
+function weekRows(week){
+  const start = new Date(week.start).getTime();
+  const end = new Date(week.end).getTime() + DAY;
+  return DAILY.filter(r => {
+    const t = new Date(r.d).getTime();
+    return t >= start && t < end;
+  });
+}
+
+function daysLeftInWeek(week){
+  const end = new Date(week.end).getTime();
+  const diff = Math.ceil((end - TODAY_MS)/DAY);
+  return Math.max(0, diff);
+}
+
+/* ──────────────────────────────────────────────────────────
+   RENDER — BANNER
+   ────────────────────────────────────────────────────────── */
+
+function renderBanner(){
+  const wk = activeWeek();
+  const prev = prevWeek();
+  const liveRows = weekRows(wk);
+  const live = sumFunnel(liveRows);
+  const prevRows = prev ? weekRows(prev) : [];
+  const prevSum = sumFunnel(prevRows);
+  const replyPct = pct(live.replies, live.sent);
+  const posPct = pct(live.positive, live.sent);
+  const prevReplyPct = pct(prevSum.replies, prevSum.sent);
+  const prevPosPct = pct(prevSum.positive, prevSum.sent);
+  const daysLeft = daysLeftInWeek(wk);
+  const sentPctOfTarget = Math.min(100, Math.round(100 * live.sent / wk.target_sample));
+  const replyPctVsTarget = Math.min(100, Math.round(100 * replyPct / wk.target_reply));
+  const posPctVsTarget = Math.min(100, Math.round(100 * posPct / wk.target_positive));
+
+  const deltaClass = (a,t)=>a>=t?"up":(a<t*0.85?"down":"flat");
+  const deltaSign = (a,t)=>{
+    const d = a - t;
+    if(Math.abs(d) < 0.1) return "— flat";
+    const sym = d > 0 ? "▲" : "▼";
+    return `${sym} ${Math.abs(d).toFixed(1)}pp`;
+  };
+
+  $("#hypoBanner").innerHTML = `
+    <div class="strip">
+      <span class="week-tag">${wk.label} · ${fmtDate(wk.start)} → ${fmtDate(wk.end)}</span>
+      <span class="label">Active hypothesis</span>
+      <span class="days-left"><span>Ends Sun · </span><b>${daysLeft === 0 ? "today" : daysLeft + (daysLeft===1?" day left":" days left")}</b></span>
+    </div>
+    <div class="body">
+      <div class="left">
+        <h2>${wk.title.split(",").map((s,i)=>i===0?s:`<em>${s}</em>`).join(",")}</h2>
+        <p class="quote">${wk.body}</p>
+        <div class="meta-row">
+          <span>Owner: <b>Luke + Alex</b></span>
+          <span>Sample: <b>${wk.target_sample} sends</b></span>
+          <span>Replaces: <b>${wk.replaces || prev?.label || "—"}</b></span>
+          <span>Linked: <b>${liveRows.length} daily rows</b></span>
+        </div>
+      </div>
+      <div class="right">
+        <div class="targets">
+          <div class="target">
+            <div class="lab">Sent</div>
+            <div class="actual">${live.sent}<small>/ ${wk.target_sample}</small></div>
+            <div class="vs"><span>target ${wk.target_sample}</span> <span class="delta ${live.sent>=wk.target_sample?"up":(sentPctOfTarget>70?"flat":"down")}">${live.sent>=wk.target_sample?"on target":sentPctOfTarget>70?"on pace":"behind"}</span></div>
+            <div class="bar"><i class="${live.sent>=wk.target_sample?"ok":""}" style="width:${sentPctOfTarget}%"></i></div>
+          </div>
+          <div class="target">
+            <div class="lab">Reply %</div>
+            <div class="actual">${replyPct.toFixed(1)}%</div>
+            <div class="vs"><span>target ${wk.target_reply}%</span> <span class="delta ${deltaClass(replyPct,wk.target_reply)}">${deltaSign(replyPct,wk.target_reply)}</span></div>
+            <div class="bar"><i class="${replyPct>=wk.target_reply?"ok":""}" style="width:${replyPctVsTarget}%"></i><span class="marker" style="left:100%"></span></div>
+          </div>
+          <div class="target">
+            <div class="lab">Positive %</div>
+            <div class="actual">${posPct.toFixed(1)}%</div>
+            <div class="vs"><span>target ${wk.target_positive}%</span> <span class="delta ${deltaClass(posPct,wk.target_positive)}">${deltaSign(posPct,wk.target_positive)}</span></div>
+            <div class="bar"><i class="${posPct>=wk.target_positive?"ok":""}" style="width:${posPctVsTarget}%"></i><span class="marker" style="left:100%"></span></div>
+          </div>
+        </div>
+        ${prev ? `
+        <div class="prev-week" data-action="open-prev">
+          <div class="head">
+            <span class="tag">vs ${prev.label}</span>
+            <span style="font-family:var(--ih-serif);font-size:14px;color:var(--ih-ink-65)">${prev.title}</span>
+          </div>
+          <div class="vsrow">
+            <span>Sent <b>${prevSum.sent}</b></span>
+            <span>Reply <b>${prevReplyPct.toFixed(1)}%</b> <span class="delta ${replyPct>=prevReplyPct?"up":"down"}">${replyPct>=prevReplyPct?"▲":"▼"}</span></span>
+            <span>Positive <b>${prevPosPct.toFixed(1)}%</b> <span class="delta ${posPct>=prevPosPct?"up":"down"}">${posPct>=prevPosPct?"▲":"▼"}</span></span>
+            <span>Booked <b>${prevSum.booked}</b></span>
+          </div>
+        </div>` : ""}
+      </div>
+    </div>`;
+
+  // Wire prev-week click
+  const pw = $("#hypoBanner [data-action='open-prev']");
+  if(pw) pw.onclick = () => openWeekDetail(prev);
+}
+
+/* ──────────────────────────────────────────────────────────
+   RENDER — FUNNEL
+   ────────────────────────────────────────────────────────── */
+
+function renderFunnel(){
+  const rows = filterDaily();
+  const s = sumFunnel(rows);
+
+  // Compare against previous-period of same length for delta
+  const { start, end } = rangeFromTF(STATE.timeframe);
+  const span = end.getTime() - start.getTime();
+  const prevStart = new Date(start.getTime() - span - DAY);
+  const prevEnd = new Date(start.getTime() - DAY);
+  const prevRows = DAILY.filter(r => {
+    const t = new Date(r.d).getTime();
+    return t >= prevStart.getTime() && t <= prevEnd.getTime() && (STATE.strategy==="all" || r.owner.toLowerCase()===STATE.strategy);
+  });
+  const prevS = sumFunnel(prevRows);
+
+  const delta = (cur, prev, kind="abs") => {
+    if(prev === 0 && cur === 0) return { txt: "— flat", cls: "flat" };
+    if(prev === 0) return { txt: `▲ +${cur}`, cls: "up" };
+    const diff = cur - prev;
+    if(diff === 0) return { txt: "— flat", cls: "flat" };
+    return { txt: `${diff>0?"▲":"▼"} ${diff>0?"+":""}${diff}`, cls: diff > 0 ? "up" : "down" };
+  };
+
+  const dRep = delta(s.replies, prevS.replies);
+  const dPos = delta(s.positive, prevS.positive);
+  const dSent = delta(s.sent, prevS.sent);
+  const dBk = delta(s.booked, prevS.booked);
+  const dTk = delta(s.taken, prevS.taken);
+  const dInt = delta(s.interested, prevS.interested);
+
+  $("#funnel").innerHTML = `
+    <div class="fcard accent" data-src="db">
+      <div class="src">DB</div>
+      <div class="lab">⤴ Outreach sent</div>
+      <div class="n">${s.sent}</div>
+      <div class="conv">${s.sent} prospects emailed</div>
+      <div class="delta-row"><span class="delta ${dSent.cls}">${dSent.txt}</span><span>vs prev period</span></div>
+      <div class="arrow">→</div>
+    </div>
+    <div class="fcard" data-src="db">
+      <div class="src">DB</div>
+      <div class="lab">↩ Replied</div>
+      <div class="n">${s.replies}</div>
+      <div class="conv">${pctStr(s.replies,s.sent)} of sent</div>
+      <div class="delta-row"><span class="delta ${pct(s.replies,s.sent)>=11?"up":"down"}">${pct(s.replies,s.sent)>=11?"▲":"▼"} ${(pct(s.replies,s.sent)-11).toFixed(1)}pp</span><span>vs Bath floor 11%</span></div>
+      <div class="arrow">→</div>
+    </div>
+    <div class="fcard" data-src="db">
+      <div class="src">DB</div>
+      <div class="lab">✓ Positive</div>
+      <div class="n">${s.positive}</div>
+      <div class="conv">${pctStr(s.positive,s.sent)} of sent · ${pctStr(s.positive,s.replies)} of replies</div>
+      <div class="delta-row"><span class="delta ${pct(s.positive,s.sent)>=4?"up":"down"}">${pct(s.positive,s.sent)>=4?"▲":"▼"} ${(pct(s.positive,s.sent)-4).toFixed(1)}pp</span><span>vs floor 4%</span></div>
+      <div class="arrow">→</div>
+    </div>
+    <div class="fcard" data-src="cal">
+      <div class="src">CAL</div>
+      <div class="lab">⊞ Booked</div>
+      <div class="n">${s.booked}</div>
+      <div class="conv">${pctStr(s.booked,s.positive)} of positive</div>
+      <div class="delta-row"><span class="delta ${dBk.cls}">${dBk.txt}</span><span>vs prev period</span></div>
+      <div class="arrow">→</div>
+    </div>
+    <div class="fcard" data-src="cal">
+      <div class="src">CAL</div>
+      <div class="lab">⌗ Taken</div>
+      <div class="n">${s.taken}</div>
+      <div class="conv">${pctStr(s.taken,s.booked)} turnup</div>
+      <div class="delta-row"><span class="delta ${dTk.cls}">${dTk.txt}</span><span>vs prev period</span></div>
+      <div class="arrow">→</div>
+    </div>
+    <div class="fcard" data-src="twenty">
+      <div class="src">20</div>
+      <div class="lab">★ Interested</div>
+      <div class="n">${s.interested}</div>
+      <div class="conv">${pctStr(s.interested,s.taken)} of taken</div>
+      <div class="delta-row"><span class="delta ${dInt.cls}">${dInt.txt}</span><span>vs prev period</span></div>
+      <div class="arrow">→</div>
+    </div>
+    <div class="fcard" data-src="twenty">
+      <div class="src">20</div>
+      <div class="lab">⊕ Closed</div>
+      <div class="n">${s.closed}</div>
+      <div class="conv">${pctStr(s.closed,s.interested)} of interested</div>
+      <div class="delta-row"><span class="delta flat">— still in proposal</span></div>
+      <div class="arrow">→</div>
+    </div>
+    <div class="fcard money" data-src="twenty">
+      <div class="src">20</div>
+      <div class="lab">£ Generated</div>
+      <div class="n">£${s.money.toLocaleString()}</div>
+      <div class="conv">£25,250 in proposal (Crescent Moon)</div>
+      <div class="delta-row"><span style="color:rgba(250,250,247,0.55)">↺ pending Jul 1</span></div>
+    </div>
+  `;
+
+  // Title
+  $("#pageTitle").innerHTML = `The <span class="italic-red">${s.sent}</span> sends story. <span style="color:var(--ih-ink-50);font-style:italic">${s.positive} positive replies. ${s.booked} booked.</span>`;
+  $("#funnelRange").textContent = tfLabel(STATE.timeframe);
+  $("#rangeText").textContent = tfRangeText(STATE.timeframe);
+
+  // Wire source filter on funnel card click
+  $$("#funnel .fcard").forEach(c => {
+    c.onclick = () => toast(`Source: ${c.dataset.src.toUpperCase()} — would deep-link to ${c.dataset.src} sync log`);
+  });
+}
+
+/* ──────────────────────────────────────────────────────────
+   RENDER — DAILY ACTIVITY
+   ────────────────────────────────────────────────────────── */
+
+function renderDaily(){
+  const rows = filterDaily();
+  const tbody = $("#dailyTbody");
+
+  if(rows.length === 0){
+    tbody.innerHTML = `<tr class="empty"><td colspan="11">No activity in the selected window. Try widening the timeframe.</td></tr>`;
+  } else {
+    let html = "";
+    let lastWeek = null;
+    rows.forEach(r => {
+      const t = new Date(r.d).getTime();
+      const wk = HYPOTHESES.find(h => {
+        const ws = new Date(h.start).getTime();
+        const we = new Date(h.end).getTime() + DAY;
+        return t >= ws && t < we;
+      });
+      const wkLabel = wk ? wk.label : "pre-Wk19";
+      if(lastWeek && lastWeek !== wkLabel){
+        html += `<tr class="divider"><td colspan="11">— ${lastWeek} ↑ · ${wkLabel} boundary —</td></tr>`;
+      }
+      lastWeek = wkLabel;
+      const rPct = pct(r.replies, r.sent);
+      const pPct = pct(r.positive, r.sent);
+      const barClass = rPct >= 11 ? "" : rPct >= 5 ? "warn" : rPct > 0 ? "danger" : "flat";
+      const barW = Math.min(100, rPct * 4.5);
+      html += `<tr class="clickable" data-day="${r.d}-${r.owner}">
+        <td class="mono">${fmtDate(r.d)}</td>
+        <td><span class="owner-chip ${r.owner.toLowerCase()}">${r.owner}</span></td>
+        <td class="r">${r.sent}</td>
+        <td class="r">${r.replies}</td>
+        <td class="r"><span class="rate-bar"><span class="pip"><i class="${barClass}" style="width:${barW}%"></i></span>${rPct ? rPct.toFixed(1)+"%" : "0%"}</span></td>
+        <td class="r">${r.positive}</td>
+        <td class="r">${pPct ? pPct.toFixed(1)+"%" : "—"}</td>
+        <td class="r ${r.booked?"":"dash"}">${r.booked||"—"}</td>
+        <td class="r ${r.taken?"":"dash"}">${r.taken||"—"}</td>
+        <td class="r ${r.interested?"":"dash"}">${r.interested||"—"}</td>
+        <td class="r ${r.money?"":"dash"}">${r.money?"£"+r.money.toLocaleString():"—"}</td>
+      </tr>`;
+    });
+    // Footer totals
+    const t = sumFunnel(rows);
+    html += `<tr class="foot">
+      <td colspan="2">TOTAL · ${tfLabel(STATE.timeframe)}</td>
+      <td class="r">${t.sent}</td>
+      <td class="r">${t.replies}</td>
+      <td class="r">${pctStr(t.replies, t.sent)}</td>
+      <td class="r">${t.positive}</td>
+      <td class="r">${pctStr(t.positive, t.sent)}</td>
+      <td class="r">${t.booked||"—"}</td>
+      <td class="r">${t.taken||"—"}</td>
+      <td class="r">${t.interested||"—"}</td>
+      <td class="r">£${t.money.toLocaleString()}</td>
+    </tr>`;
+    tbody.innerHTML = html;
+
+    // Day click → toast
+    $$("#dailyTbody tr.clickable").forEach(tr => {
+      tr.onclick = () => {
+        const [d,owner] = tr.dataset.day.split("-").reduce((acc,x,i)=>i<3?[acc[0]+(i>0?"-":"")+x,acc[1]]:[acc[0],x],["",""]);
+        const parts = tr.dataset.day.split("-");
+        const day = `${parts[0]}-${parts[1]}-${parts[2]}`;
+        const own = parts[3];
+        toast(`${day} · ${own} — would open day-batch view`);
+      };
+    });
+  }
+
+  // Sub + range
+  const { start, end } = rangeFromTF(STATE.timeframe);
+  $("#dailyRange").textContent = `${rows.length} rows · ${fmtDate(start.toISOString().slice(0,10))} → ${fmtDate(end.toISOString().slice(0,10))}`;
+  $("#dailySub").textContent = `SHEETS PARITY · ${rows.length} ROWS · ${tfLabel(STATE.timeframe).toUpperCase()}`;
+  $("#dailyPagerInfo").textContent = `Showing ${rows.length} / ${rows.length}`;
+
+  // Update sort indicators
+  $$("#dailyTable thead th.sortable").forEach(th => {
+    const isOn = th.dataset.sort === STATE.daySort.col;
+    th.classList.toggle("active", isOn);
+    const ind = th.querySelector(".sort-ind");
+    ind.textContent = isOn ? (STATE.daySort.dir === "asc" ? "↑" : "↓") : "";
+  });
+
+  // Owner filter label in subheader
+  const ownerLab = STATE.strategy === "all" ? "Both owners" : (STATE.strategy === "luke" ? "Luke only" : "Alex only");
+  $("#dailyOwnerLabel").textContent = ownerLab;
+}
+
+/* ──────────────────────────────────────────────────────────
+   RENDER — HYPOTHESIS LOG
+   ────────────────────────────────────────────────────────── */
+
+function renderHypothesisLog(){
+  const list = STATE.showAllWeeks ? HYPOTHESES : HYPOTHESES.slice(0, 4);
+  const html = list.map(wk => {
+    const rows = weekRows(wk);
+    const s = sumFunnel(rows);
+    const rp = pct(s.replies, s.sent);
+    const pp = pct(s.positive, s.sent);
+    return `
+    <div class="row ${wk.live?"live":""}" data-week="${wk.week}">
+      <div class="toprow">
+        <span class="wtag ${wk.live?"live":""}">${wk.label} ${wk.live?"· live":""}</span>
+        <span style="font-family:var(--ih-mono);font-size:10.5px;color:var(--ih-ink-50)">${fmtDate(wk.start)} → ${fmtDate(wk.end)}</span>
+        <span class="verdict ${wk.verdict}">${wk.verdict}</span>
+      </div>
+      <div class="h">${wk.title}</div>
+      <div class="metrics">
+        <span>Sent <b>${s.sent}</b></span>
+        <span>Reply <b>${rp.toFixed(1)}%</b>${rp >= wk.target_reply ? '<span class="delta up">▲</span>' : '<span class="delta down">▼</span>'}</span>
+        <span>Pos <b>${pp.toFixed(1)}%</b>${pp >= wk.target_positive ? '<span class="delta up">▲</span>' : '<span class="delta down">▼</span>'}</span>
+        <span>Booked <b>${s.booked}</b></span>
+      </div>
+    </div>`;
+  }).join("");
+  $("#hypoLog").innerHTML = html;
+  $$("#hypoLog .row").forEach(row => {
+    row.onclick = () => {
+      const wk = HYPOTHESES.find(h => h.week == row.dataset.week);
+      openWeekDetail(wk);
+    };
+  });
+  $("#allWeeksBtn").innerHTML = STATE.showAllWeeks ? "⊟ Recent only" : "⊞ All weeks";
+}
+
+/* ──────────────────────────────────────────────────────────
+   RENDER — INTEGRATIONS
+   ────────────────────────────────────────────────────────── */
+
+function renderIntegrations(){
+  $("#integrations").innerHTML = INTEGRATIONS.map((it,i)=>`
+    <div class="intg" data-i="${i}">
+      <span class="dot ${it.dot} ${it.syncing?"sync":""}"></span>
+      <span class="src">${it.src}</span>
+      <span class="desc">${it.desc}</span>
+      <span class="meta">${it.meta}</span>
+    </div>
+  `).join("");
+  $$("#integrations .intg").forEach(el => {
+    el.onclick = () => {
+      const it = INTEGRATIONS[+el.dataset.i];
+      toast(`${it.src} — would open sync log (last sync detail)`);
+    };
+  });
+}
+
+/* ──────────────────────────────────────────────────────────
+   RENDER — ROSTER
+   ────────────────────────────────────────────────────────── */
+
+function renderRosterTabs(){
+  const tabs = [
+    { id: "ready",   label: "Ready",            ct: TAB_COUNTS.ready },
+    { id: "sent",    label: "Sent",             ct: TAB_COUNTS.sent },
+    { id: "draft",   label: "Drafts",           ct: TAB_COUNTS.draft },
+    { id: "skipped", label: "Skipped",          ct: TAB_COUNTS.skipped },
+    { id: "dnc",     label: "Do not contact",   ct: TAB_COUNTS.dnc },
+  ];
+  $("#rosterTabs").innerHTML = tabs.map(t =>
+    `<button data-roster-tab="${t.id}" class="${STATE.rosterTab===t.id?"on":""}">${t.label} <span class="ct">${t.ct}</span></button>`
+  ).join("") + `<span class="total">443 total · 245 Alex · 197 Luke</span>`;
+
+  $$("#rosterTabs button").forEach(b => {
+    b.onclick = () => { STATE.rosterTab = b.dataset.rosterTab; STATE.rosterPage = 1; renderRoster(); };
+  });
+}
+
+function filterRoster(){
+  let rows = LEADS.filter(l => l.status === STATE.rosterTab);
+  if(STATE.rosterSearch){
+    const q = STATE.rosterSearch.toLowerCase();
+    rows = rows.filter(l =>
+      l.name.toLowerCase().includes(q) ||
+      l.company.toLowerCase().includes(q) ||
+      l.email.toLowerCase().includes(q) ||
+      l.site.toLowerCase().includes(q) ||
+      (l.cat||"").toLowerCase().includes(q)
+    );
+  }
+  if(STATE.rosterOwner !== "both"){
+    rows = rows.filter(l => l.owner.toLowerCase() === STATE.rosterOwner);
+  }
+  if(STATE.rosterCategory !== "all"){
+    rows = rows.filter(l => l.cat === STATE.rosterCategory);
+  }
+  if(STATE.rosterResearched !== "any"){
+    const want = STATE.rosterResearched === "yes";
+    rows = rows.filter(l => !!l.r === want);
+  }
+  const { col, dir } = STATE.rosterSort;
+  rows.sort((a,b) => {
+    let av, bv;
+    if(col === "name") { av = a.name; bv = b.name; }
+    else if(col === "company") { av = a.company; bv = b.company; }
+    else if(col === "last") { av = a.last || ""; bv = b.last || ""; }
+    else { av = a.n; bv = b.n; }
+    const cmp = (av < bv ? -1 : av > bv ? 1 : 0);
+    return dir === "asc" ? cmp : -cmp;
+  });
+  return rows;
+}
+
+function renderRoster(){
+  const all = filterRoster();
+  const pages = Math.max(1, Math.ceil(all.length / STATE.rosterPageSize));
+  if(STATE.rosterPage > pages) STATE.rosterPage = pages;
+  const start = (STATE.rosterPage - 1) * STATE.rosterPageSize;
+  const rows = all.slice(start, start + STATE.rosterPageSize);
+
+  if(rows.length === 0){
+    $("#rosterTbody").innerHTML = `<tr class="empty"><td colspan="15">No leads match. Clear a filter or try a different tab.</td></tr>`;
+  } else {
+    $("#rosterTbody").innerHTML = rows.map(l => `
+      <tr class="clickable" data-email="${l.email}">
+        <td class="mono" style="color:var(--ih-ink-40)">${String(l.n).padStart(3,"0")}</td>
+        <td><span class="status-pill ${l.status}"><span class="dot"></span>${l.status === "dnc" ? "DNC" : l.status[0].toUpperCase()+l.status.slice(1)}</span></td>
+        <td><span class="star ${l.star?"":"off"}" data-act="star" data-email="${l.email}">★</span></td>
+        <td>${l.r ? '<span class="check">✓</span>' : '<span class="x">·</span>'}</td>
+        <td>${l.name}</td>
+        <td>${l.company}</td>
+        <td><span class="source-tag">${l.cat||"—"}</span></td>
+        <td class="mono" style="font-size:11px">${l.email}</td>
+        <td class="mono" style="font-size:11px;color:var(--ih-info)">${l.site} ↗</td>
+        <td class="mono" style="font-size:11px">${fmtDate(l.last)}</td>
+        <td class="mono" style="font-size:11px;${l.fu && new Date(l.fu) <= new Date(TODAY.getTime()+5*DAY) ? "color:var(--ih-accent)" : "color:var(--ih-ink-50)"}">${fmtDate(l.fu)}</td>
+        <td>${l.reply ? '<span class="check">✓</span>' : '<span class="dash">—</span>'}</td>
+        <td>${l.sentiment ? `<span class="sentiment-chip ${l.sentiment}">${l.sentiment==="pos"?"positive":l.sentiment==="neg"?"negative":"not now"}</span>` : '<span class="dash">—</span>'}</td>
+        <td><span class="owner-chip ${l.owner.toLowerCase()}">${l.owner}</span></td>
+        <td><span class="source-tag">${l.source}</span></td>
+      </tr>
+    `).join("");
+
+    // Click → drawer
+    $$("#rosterTbody tr.clickable").forEach(tr => {
+      tr.onclick = (e) => {
+        if(e.target.closest("[data-act='star']")) return;
+        const l = LEADS.find(x => x.email === tr.dataset.email);
+        openLeadDrawer(l);
+      };
+    });
+
+    // Star toggle
+    $$("#rosterTbody .star[data-act='star']").forEach(s => {
+      s.onclick = (e) => {
+        e.stopPropagation();
+        const l = LEADS.find(x => x.email === s.dataset.email);
+        l.star = !l.star;
+        s.classList.toggle("off", !l.star);
+        toast(`${l.name} ${l.star ? "★ flagged for follow-up" : "unstarred"}`, l.star ? "ok" : "");
+      };
+    });
+  }
+
+  $("#rosterPagerInfo").textContent = `Showing ${rows.length ? start+1 : 0}–${start+rows.length} / ${all.length} ${STATE.rosterTab}`;
+  $("#rosterPageInd").textContent = `${STATE.rosterPage} / ${pages}`;
+  $("#rosterPrev").disabled = STATE.rosterPage <= 1;
+  $("#rosterNext").disabled = STATE.rosterPage >= pages;
+
+  // Sort indicators
+  $$("#rosterTable thead th.sortable").forEach(th => {
+    const isOn = th.dataset.rsort === STATE.rosterSort.col;
+    th.classList.toggle("active", isOn);
+    const ind = th.querySelector(".sort-ind");
+    ind.textContent = isOn ? (STATE.rosterSort.dir === "asc" ? "↑" : "↓") : "";
+  });
+}
+
+function populateCategoryMenu(){
+  const cats = ["all", ...new Set(LEADS.map(l => l.cat).filter(Boolean))];
+  $("#categoryMenu").innerHTML = cats.map(c =>
+    `<button data-cat="${c}" class="${STATE.rosterCategory===c?"on":""}">${c==="all"?"All categories":c}</button>`
+  ).join("");
+  $$("#categoryMenu button").forEach(b => {
+    b.onclick = () => {
+      STATE.rosterCategory = b.dataset.cat;
+      $("#categoryLabel").textContent = b.dataset.cat === "all" ? "All" : b.dataset.cat;
+      $$("#categoryMenu button").forEach(x => x.classList.toggle("on", x === b));
+      $("#categoryMenu").classList.remove("open");
+      STATE.rosterPage = 1;
+      renderRoster();
+    };
+  });
+}
+
+/* ──────────────────────────────────────────────────────────
+   MODALS / DRAWER / TOAST
+   ────────────────────────────────────────────────────────── */
+
+function openModal(html){
+  $("#modal").innerHTML = html;
+  $("#modalBg").classList.add("open");
+  $$("#modal [data-close]").forEach(b => b.onclick = closeModal);
+}
+function closeModal(){ $("#modalBg").classList.remove("open"); }
+
+$("#modalBg").onclick = e => { if(e.target.id === "modalBg") closeModal(); };
+
+function openWeekDetail(wk){
+  if(!wk) return;
+  const rows = weekRows(wk);
+  const s = sumFunnel(rows);
+  openModal(`
+    <div class="mhead">
+      <h3>${wk.label} — ${wk.title}</h3>
+      <button class="close" data-close>×</button>
+    </div>
+    <div class="mbody">
+      <p style="color:var(--ih-ink-65);line-height:1.55;margin-bottom:14px">${wk.body}</p>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px">
+        <div style="background:var(--ih-surface-2);padding:10px 12px;border-radius:8px"><div class="eyebrow">Sent</div><div style="font-family:var(--ih-serif);font-size:22px">${s.sent}</div></div>
+        <div style="background:var(--ih-surface-2);padding:10px 12px;border-radius:8px"><div class="eyebrow">Reply %</div><div style="font-family:var(--ih-serif);font-size:22px">${pctStr(s.replies,s.sent)}</div></div>
+        <div style="background:var(--ih-surface-2);padding:10px 12px;border-radius:8px"><div class="eyebrow">Pos %</div><div style="font-family:var(--ih-serif);font-size:22px">${pctStr(s.positive,s.sent)}</div></div>
+        <div style="background:var(--ih-surface-2);padding:10px 12px;border-radius:8px"><div class="eyebrow">Booked</div><div style="font-family:var(--ih-serif);font-size:22px">${s.booked}</div></div>
+      </div>
+      <label>Target sample</label>
+      <input type="number" value="${wk.target_sample}" disabled>
+      <label>Target reply %</label>
+      <input type="number" value="${wk.target_reply}" disabled>
+      <label>Result summary</label>
+      <textarea placeholder="${wk.live ? 'Pending — week still live' : 'Filled at week close'}">${wk.live ? "" : "Captured at end-of-week. Editable retrospectively."}</textarea>
+      <label>Verdict</label>
+      <select disabled>
+        <option>${wk.verdict}</option>
+      </select>
+    </div>
+    <div class="mfoot">
+      <button class="btn" data-close>Close</button>
+      <button class="btn btn-primary" data-close>${wk.live ? "Update hypothesis" : "Edit verdict"}</button>
+    </div>
+  `);
+}
+
+function openEndWeek(){
+  const wk = activeWeek();
+  const rows = weekRows(wk);
+  const s = sumFunnel(rows);
+  const replyPct = pct(s.replies, s.sent);
+  const posPct = pct(s.positive, s.sent);
+  const prev = prevWeek();
+  const prevS = prev ? sumFunnel(weekRows(prev)) : null;
+  const prevReplyPct = prevS ? pct(prevS.replies, prevS.sent) : null;
+
+  openModal(`
+    <div class="mhead">
+      <h3>End ${wk.label} · ${fmtDate(wk.start)} → ${fmtDate(wk.end)}</h3>
+      <button class="close" data-close>×</button>
+    </div>
+    <div class="mbody">
+      <p style="color:var(--ih-ink-65);margin-bottom:16px">Lock the week's result and seed next week's hypothesis. Numbers below are live from the daily activity log.</p>
+
+      <div style="background:var(--ih-surface-2);border-radius:9px;padding:13px 14px;margin-bottom:16px">
+        <div class="eyebrow" style="margin-bottom:8px">Outcome vs target</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;font-family:var(--ih-mono);font-size:12px">
+          <div><div style="color:var(--ih-ink-50)">Sent</div><b>${s.sent} <span style="color:var(--ih-ink-40);font-size:10px">/ ${wk.target_sample}</span></b></div>
+          <div><div style="color:var(--ih-ink-50)">Reply %</div><b>${replyPct.toFixed(1)}% <span style="color:${replyPct>=wk.target_reply?'var(--ih-ok)':'var(--ih-danger)'};font-size:10px">vs ${wk.target_reply}%</span></b></div>
+          <div><div style="color:var(--ih-ink-50)">Positive %</div><b>${posPct.toFixed(1)}% <span style="color:${posPct>=wk.target_positive?'var(--ih-ok)':'var(--ih-danger)'};font-size:10px">vs ${wk.target_positive}%</span></b></div>
+        </div>
+        ${prev ? `<div style="margin-top:8px;padding-top:8px;border-top:1px dashed var(--ih-line-2);font-family:var(--ih-mono);font-size:11px;color:var(--ih-ink-65)">vs ${prev.label}: reply ${prevReplyPct.toFixed(1)}% → ${replyPct.toFixed(1)}% (${replyPct>=prevReplyPct?'▲':'▼'} ${Math.abs(replyPct-prevReplyPct).toFixed(1)}pp)</div>` : ""}
+      </div>
+
+      <label>Result summary</label>
+      <textarea placeholder="What did Week ${wk.week} actually show? Was the hypothesis confirmed?">${replyPct < wk.target_reply ? "Hypothesis underperformed baseline. Wk 23 (template+offer) held 11.1% reply / 4.0% positive. Observation-first dropped to " + replyPct.toFixed(1) + "% / " + posPct.toFixed(1) + "%. The single-artefact research bar appears too tight at 8 sends/day — total volume cut by 30% vs Wk 23." : "On-target — proceed with hypothesis."}</textarea>
+
+      <label>Verdict</label>
+      <select>
+        <option value="keep">Keep — same hypothesis next week</option>
+        <option value="mutate" selected>Mutate — adjust one variable, retest</option>
+        <option value="kill">Kill — revert to Wk ${prev?.week} baseline</option>
+      </select>
+
+      <label>Next week's hypothesis (Week ${wk.week + 1})</label>
+      <textarea placeholder="Mutated version, baseline revert, or new test...">Mutate: keep observation-first for researched leads, but raise cap to 15/day and reintroduce the ${prev?.label} offer line as a soft CTA. Target: 9% reply / 3% positive on 175 sends.</textarea>
+    </div>
+    <div class="mfoot">
+      <button class="btn" data-close>Cancel</button>
+      <button class="btn btn-primary" data-close id="confirmEndWeek">✦ Lock week + start Wk ${wk.week + 1}</button>
+    </div>
+  `);
+  setTimeout(()=>{
+    const btn = document.getElementById("confirmEndWeek");
+    if(btn) btn.addEventListener("click", () => toast(`Week ${wk.week} locked. Hypothesis Wk ${wk.week+1} drafted.`, "ok"));
+  },0);
+}
+
+function openNewSend(){
+  openModal(`
+    <div class="mhead">
+      <h3>Log a send</h3>
+      <button class="close" data-close>×</button>
+    </div>
+    <div class="mbody">
+      <p style="color:var(--ih-ink-65);margin-bottom:14px">Add a new send-batch row. In production this'd be triggered when you click "Mark Sent" on a lead card — the row would update automatically.</p>
+      <div class="grid">
+        <div>
+          <label>Date</label>
+          <input type="date" value="2026-06-14">
+        </div>
+        <div>
+          <label>Owner</label>
+          <select><option>LUKE</option><option>ALEX</option></select>
+        </div>
+      </div>
+      <label>Strategy / Hypothesis</label>
+      <select><option>Wk 24 — Observation-first</option></select>
+      <div class="grid">
+        <div><label>Sent</label><input type="number" placeholder="8"></div>
+        <div><label>Replies</label><input type="number" placeholder="0"></div>
+        <div><label>Positive</label><input type="number" placeholder="0"></div>
+        <div><label>Booked</label><input type="number" placeholder="0"></div>
+      </div>
+      <label>Notes (optional)</label>
+      <textarea placeholder="Which leads, anything unusual..."></textarea>
+    </div>
+    <div class="mfoot">
+      <button class="btn" data-close>Cancel</button>
+      <button class="btn btn-primary" id="confirmSend">⊕ Log batch</button>
+    </div>
+  `);
+  document.getElementById("confirmSend").onclick = () => { toast("Send-batch logged — daily activity updated", "ok"); closeModal(); };
+}
+
+function openAddRow(){
+  openNewSend(); // Same modal
+}
+
+function openPull25(){
+  const ready = LEADS.filter(l => l.status === "ready" && (STATE.rosterOwner === "both" || l.owner.toLowerCase() === STATE.rosterOwner));
+  const take = ready.slice(0, 10); // mockup: 10 sample, msg says 25
+  openModal(`
+    <div class="mhead">
+      <h3>Pull 25 → today's batch</h3>
+      <button class="close" data-close>×</button>
+    </div>
+    <div class="mbody">
+      <p style="color:var(--ih-ink-65);margin-bottom:12px">Top ${take.length} of ${ready.length} ready leads, sorted by research date. Pushes to <code style="font-family:var(--ih-mono);background:var(--ih-surface-2);padding:1px 5px;border-radius:3px">daily_activity</code> as a draft batch.</p>
+      <div style="background:var(--ih-surface-2);border-radius:9px;padding:8px;max-height:280px;overflow-y:auto">
+        ${take.map(l => `<div style="display:flex;align-items:center;gap:10px;padding:7px 10px;font-size:12px;border-bottom:1px solid var(--ih-line)">
+          <span class="mono" style="color:var(--ih-ink-40);width:30px">#${String(l.n).padStart(3,"0")}</span>
+          <span style="flex:1"><b>${l.name}</b> · <span style="color:var(--ih-ink-65)">${l.company}</span></span>
+          <span class="owner-chip ${l.owner.toLowerCase()}">${l.owner}</span>
+          ${l.r ? '<span class="check">✓</span>' : '<span class="x">·</span>'}
+        </div>`).join("")}
+      </div>
+    </div>
+    <div class="mfoot">
+      <button class="btn" data-close>Cancel</button>
+      <button class="btn btn-primary" id="confirmPull">⊕ Create batch · ${take.length} leads</button>
+    </div>
+  `);
+  document.getElementById("confirmPull").onclick = () => { toast(`Batch of ${take.length} created — drafted as today's send`, "ok"); closeModal(); };
+}
+
+function openLeadDrawer(lead){
+  $("#drawer").innerHTML = `
+    <div class="dhead">
+      <div class="info">
+        <h3>${lead.name}</h3>
+        <p>${lead.company} · #${String(lead.n).padStart(3,"0")} · ${lead.email}</p>
+      </div>
+      <button class="close btn btn-ghost" id="closeDrawer">×</button>
+    </div>
+    <div class="dbody">
+      <section>
+        <h4>Status</h4>
+        <div class="field"><span>Status</span><span><span class="status-pill ${lead.status}"><span class="dot"></span>${lead.status === "dnc" ? "DNC" : lead.status[0].toUpperCase()+lead.status.slice(1)}</span></span></div>
+        <div class="field"><span>Owner</span><span><span class="owner-chip ${lead.owner.toLowerCase()}">${lead.owner}</span></span></div>
+        <div class="field"><span>Category</span><span>${lead.cat || "—"}</span></div>
+        <div class="field"><span>Researched</span><span>${lead.r ? '<span class="check">✓ Yes</span>' : '<span class="x">No</span>'}</span></div>
+        <div class="field"><span>Follow-up flagged</span><span>${lead.star ? '<span class="star">★</span> Yes' : "No"}</span></div>
+      </section>
+
+      <section>
+        <h4>Touch history</h4>
+        <div class="field"><span>Last contacted</span><span>${fmtDateLong(lead.last)}</span></div>
+        <div class="field"><span>Next follow-up</span><span>${fmtDateLong(lead.fu)}</span></div>
+        <div class="field"><span>Reply received</span><span>${lead.reply ? "Yes" : "No"}</span></div>
+        ${lead.sentiment ? `<div class="field"><span>Sentiment</span><span><span class="sentiment-chip ${lead.sentiment}">${lead.sentiment === "pos" ? "positive" : lead.sentiment === "neg" ? "negative" : "not now"}</span></span></div>` : ""}
+        <div class="field"><span>Source</span><span><span class="source-tag">${lead.source}</span></span></div>
+      </section>
+
+      <section>
+        <h4>Research notes</h4>
+        <div class="notes">${RESEARCH_NOTES[lead.email] || "No research notes yet. Forensic deep-research not run on this lead."}</div>
+      </section>
+
+      <section>
+        <h4>Web</h4>
+        <div class="field"><span>Website</span><span style="color:var(--ih-info);font-family:var(--ih-mono);font-size:11.5px">${lead.site} ↗</span></div>
+      </section>
+    </div>
+    <div class="dfoot">
+      <button class="btn">⤓ Export</button>
+      <button class="btn">↩ Reply</button>
+      <button class="btn btn-primary" id="markSent">✓ Mark sent</button>
+    </div>
+  `;
+  $("#drawerBg").classList.add("open");
+  $("#drawer").classList.add("open");
+
+  document.getElementById("closeDrawer").onclick = closeDrawer;
+  document.getElementById("markSent").onclick = () => {
+    lead.status = "sent";
+    lead.last = "2026-06-14";
+    closeDrawer();
+    renderRoster();
+    renderRosterTabs();
+    toast(`${lead.name} marked sent — activity log updated`, "ok");
+  };
+}
+function closeDrawer(){ $("#drawerBg").classList.remove("open"); $("#drawer").classList.remove("open"); }
+$("#drawerBg").onclick = closeDrawer;
+
+function toast(msg, tone=""){
+  const w = $("#toastWrap");
+  const el = document.createElement("div");
+  el.className = "toast" + (tone ? " "+tone : "");
+  el.innerHTML = `<span class="glyph">${tone==="ok"?"✓":tone==="warn"?"⚠":tone==="danger"?"!":"◉"}</span>${msg}`;
+  w.appendChild(el);
+  setTimeout(()=> { el.style.opacity = "0"; el.style.transform = "translateX(20px)"; setTimeout(()=>el.remove(), 250); }, 3200);
+}
+
+/* ──────────────────────────────────────────────────────────
+   EVENT WIRING
+   ────────────────────────────────────────────────────────── */
+
+// Timeframe
+$$("#timeframeSeg button").forEach(b => {
+  b.onclick = () => {
+    $$("#timeframeSeg button").forEach(x => x.classList.toggle("on", x === b));
+    STATE.timeframe = b.dataset.tf;
+    renderFunnel();
+    renderDaily();
+  };
+});
+
+// Strategy
+$("#strategyPick").onclick = (e) => { if(e.target.closest(".pill-menu")) return; e.stopPropagation(); $("#strategyMenu").classList.toggle("open"); closeOtherMenus("#strategyMenu"); };
+$$("#strategyMenu button").forEach(b => {
+  b.onclick = () => {
+    STATE.strategy = b.dataset.strategy;
+    $("#strategyLabel").textContent = b.dataset.strategy === "all" ? "All" : b.dataset.strategy.charAt(0).toUpperCase()+b.dataset.strategy.slice(1);
+    $$("#strategyMenu button").forEach(x => x.classList.toggle("on", x === b));
+    $("#strategyMenu").classList.remove("open");
+    renderFunnel();
+    renderDaily();
+  };
+});
+
+// Owner pick
+$("#ownerPick").onclick = (e) => { if(e.target.closest(".pill-menu")) return; e.stopPropagation(); $("#ownerMenu").classList.toggle("open"); closeOtherMenus("#ownerMenu"); };
+$$("#ownerMenu button").forEach(b => {
+  b.onclick = () => {
+    STATE.rosterOwner = b.dataset.owner;
+    $("#ownerLabel").textContent = b.dataset.owner === "both" ? "Both" : b.dataset.owner.charAt(0).toUpperCase()+b.dataset.owner.slice(1);
+    $$("#ownerMenu button").forEach(x => x.classList.toggle("on", x === b));
+    $("#ownerMenu").classList.remove("open");
+    STATE.rosterPage = 1;
+    renderRoster();
+  };
+});
+
+// Category pick
+$("#categoryPick").onclick = (e) => { if(e.target.closest(".pill-menu")) return; e.stopPropagation(); $("#categoryMenu").classList.toggle("open"); closeOtherMenus("#categoryMenu"); };
+
+// Researched pick
+$("#researchedPick").onclick = (e) => { if(e.target.closest(".pill-menu")) return; e.stopPropagation(); $("#researchedMenu").classList.toggle("open"); closeOtherMenus("#researchedMenu"); };
+$$("#researchedMenu button").forEach(b => {
+  b.onclick = () => {
+    STATE.rosterResearched = b.dataset.r;
+    $("#researchedLabel").textContent = b.dataset.r === "any" ? "Any" : b.dataset.r === "yes" ? "Yes" : "No";
+    $$("#researchedMenu button").forEach(x => x.classList.toggle("on", x === b));
+    $("#researchedMenu").classList.remove("open");
+    STATE.rosterPage = 1;
+    renderRoster();
+  };
+});
+
+function closeOtherMenus(except){
+  $$(".pill-menu").forEach(m => { if("#"+m.id !== except) m.classList.remove("open"); });
+}
+document.addEventListener("click", (e) => {
+  if(!e.target.closest(".pill-pick")) $$(".pill-menu").forEach(m => m.classList.remove("open"));
+});
+
+// Search
+$("#rosterSearch").oninput = (e) => {
+  STATE.rosterSearch = e.target.value;
+  STATE.rosterPage = 1;
+  renderRoster();
+};
+
+// Sort headers — daily
+$$("#dailyTable thead th.sortable").forEach(th => {
+  th.onclick = () => {
+    const col = th.dataset.sort;
+    if(STATE.daySort.col === col) STATE.daySort.dir = STATE.daySort.dir === "asc" ? "desc" : "asc";
+    else { STATE.daySort.col = col; STATE.daySort.dir = "desc"; }
+    renderDaily();
+  };
+});
+
+// Sort headers — roster
+$$("#rosterTable thead th.sortable").forEach(th => {
+  th.onclick = () => {
+    const col = th.dataset.rsort;
+    if(STATE.rosterSort.col === col) STATE.rosterSort.dir = STATE.rosterSort.dir === "asc" ? "desc" : "asc";
+    else { STATE.rosterSort.col = col; STATE.rosterSort.dir = "asc"; }
+    renderRoster();
+  };
+});
+
+// Roster paging
+$("#rosterPrev").onclick = () => { if(STATE.rosterPage>1){ STATE.rosterPage--; renderRoster(); } };
+$("#rosterNext").onclick = () => { STATE.rosterPage++; renderRoster(); };
+
+// Buttons
+$("#endWeekBtn").onclick = openEndWeek;
+$("#newSendBtn").onclick = openNewSend;
+$("#addRowBtn").onclick = openAddRow;
+$("#pull25Btn").onclick = openPull25;
+$("#exportBtn").onclick = () => {
+  const rows = filterDaily();
+  const csv = ["Date,Owner,Sent,Replies,Positive,Booked,Taken,Interested,Closed,Money"];
+  rows.forEach(r => csv.push(`${r.d},${r.owner},${r.sent},${r.replies},${r.positive},${r.booked},${r.taken},${r.interested},${r.closed},${r.money}`));
+  const blob = new Blob([csv.join("\n")], {type:"text/csv"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = `outreach-${STATE.timeframe}-${STATE.strategy}.csv`;
+  a.click(); URL.revokeObjectURL(url);
+  toast(`Exported ${rows.length} rows to CSV`, "ok");
+};
+$("#allWeeksBtn").onclick = () => { STATE.showAllWeeks = !STATE.showAllWeeks; renderHypothesisLog(); };
+$("#resyncBtn").onclick = () => {
+  INTEGRATIONS.forEach(it => it.syncing = true);
+  renderIntegrations();
+  toast("Resyncing all sources...");
+  setTimeout(() => {
+    INTEGRATIONS.forEach(it => { it.syncing = false; it.meta = it.meta.replace(/last sync [0-9]+m ago/, "last sync 0m ago"); });
+    renderIntegrations();
+    toast("All sources synced", "ok");
+  }, 1400);
+};
+
+// Sidebar nav
+$$(".sidebar .nav a").forEach(a => {
+  a.onclick = (e) => {
+    if(a.classList.contains("active")) return;
+    e.preventDefault();
+    if(a.dataset.toast) toast(`→ ${a.dataset.toast} (would route)`);
+  };
+});
+
+// Escape closes modal/drawer
+document.addEventListener("keydown", e => {
+  if(e.key === "Escape"){ closeModal(); closeDrawer(); }
+});
+
+/* ──────────────────────────────────────────────────────────
+   INIT
+   ────────────────────────────────────────────────────────── */
+
+function renderAll(){
+  renderBanner();
+  renderFunnel();
+  renderDaily();
+  renderHypothesisLog();
+  renderIntegrations();
+  renderRosterTabs();
+  renderRoster();
+}
+
+populateCategoryMenu();
+renderAll();
+</script>
+
+</body>
+</html>

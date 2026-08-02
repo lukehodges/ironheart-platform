@@ -5,15 +5,14 @@ import { logger } from "@/shared/logger"
 const log = logger.child({ module: "pipeline.seed" })
 
 export interface SeedPipelineDealsInput {
-  companyIds: string[]
-  contactIds: string[]
+  leadIds: string[]
   touchIds: string[]
 }
 
 export interface SeededDeal {
   id: string
   stage: "qualified" | "demo" | "proposal" | "won" | "lost"
-  companyId: string
+  leadId: string
 }
 
 /**
@@ -25,10 +24,10 @@ export interface SeededDeal {
  */
 export async function seedPipelineDeals(
   tenantId: string,
-  { companyIds, contactIds, touchIds }: SeedPipelineDealsInput,
+  { leadIds, touchIds }: SeedPipelineDealsInput,
 ): Promise<SeededDeal[]> {
-  if (companyIds.length === 0) {
-    log.warn({ tenantId }, "no companies provided — skipping deal seed")
+  if (leadIds.length === 0) {
+    log.warn({ tenantId }, "no leads provided — skipping deal seed")
     return []
   }
 
@@ -167,8 +166,7 @@ export async function seedPipelineDeals(
   await db.transaction(async (tx) => {
     for (let i = 0; i < dealDefs.length; i++) {
       const d = dealDefs[i]!
-      const companyId = companyIds[i % companyIds.length]!
-      const primaryContactId = contactIds.length > 0 ? contactIds[i % contactIds.length]! : null
+      const leadId = leadIds[i % leadIds.length]!
       const originTouchId = touchIds.length > 0 ? touchIds[i % touchIds.length]! : null
 
       const createdAt = new Date(now)
@@ -194,8 +192,7 @@ export async function seedPipelineDeals(
         .insert(deals)
         .values({
           tenantId,
-          companyId,
-          primaryContactId,
+          leadId,
           originTouchId,
           name: d.name,
           stage: d.stage,
@@ -212,7 +209,7 @@ export async function seedPipelineDeals(
         .returning({ id: deals.id })
 
       const dealId = inserted!.id
-      seeded.push({ id: dealId, stage: d.stage, companyId })
+      seeded.push({ id: dealId, stage: d.stage, leadId })
 
       for (const ev of d.events) {
         const at = new Date(now)

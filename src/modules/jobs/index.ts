@@ -18,8 +18,8 @@ export type {
   ProcessorContext,
   ProcessorResult,
   ProcessorEmitInput,
-  ResolveContactInput as ProcessorResolveContactInput,
-  ResolvedContact,
+  ResolveLeadInput as ProcessorResolveLeadInput,
+  ResolvedLead,
 } from "./processors/processor.types";
 
 export { emitEvent } from "./event-emitter";
@@ -40,10 +40,8 @@ export type {
   RunOutboxDispatchBatchResult,
 } from "./outbox-dispatcher";
 
-export { resolveContact, resolveCompany } from "./identity-resolver.service";
+export { resolveLead } from "./identity-resolver.service";
 export type {
-  ResolveContactInput,
-  ResolveContactResult,
-  ResolveCompanyInput,
-  ResolveCompanyResult,
+  ResolveLeadInput,
+  ResolveLeadResult,
 } from "./identity-resolver.service";

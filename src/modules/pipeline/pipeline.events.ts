@@ -16,8 +16,8 @@ const onDealCreated = inngest.createFunction(
   { id: "pipeline-deal-created", retries: 3 },
   { event: "pipeline/deal.created" },
   async ({ event }) => {
-    const { dealId, tenantId, companyId, stage } = event.data
-    log.info({ dealId, tenantId, companyId, stage }, "Deal created")
+    const { dealId, tenantId, leadId, stage } = event.data
+    log.info({ dealId, tenantId, leadId, stage }, "Deal created")
   },
 )
 
@@ -34,9 +34,9 @@ const onDealWon = inngest.createFunction(
   { id: "pipeline-deal-won", retries: 3 },
   { event: "pipeline/deal.won" },
   async ({ event }) => {
-    const { dealId, tenantId, companyId } = event.data
+    const { dealId, tenantId, leadId } = event.data
     log.info(
-      { dealId, tenantId, companyId },
+      { dealId, tenantId, leadId },
       "Deal won — downstream should trigger client onboarding",
     )
   },

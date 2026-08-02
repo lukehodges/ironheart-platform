@@ -60,3 +60,4 @@ uk-b2b-*.md
 .worktrees/
 .superpowers/
 .reference-design/
+.env*.local

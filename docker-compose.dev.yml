@@ -1,0 +1,36 @@
+# Local development database — isolated Postgres for ironheart-platform.
+# This exists so `next dev`, drizzle-kit, and seed scripts run against a
+# throwaway local DB, never the live Prisma/Neon production database.
+#
+# Usage:
+#   docker compose -f docker-compose.dev.yml up -d     # start
+#   docker compose -f docker-compose.dev.yml down      # stop (keeps data)
+#   docker compose -f docker-compose.dev.yml down -v   # stop + wipe data
+#
+# Local DATABASE_URL (already set in .env.local):
+#   postgres://dev:dev@localhost:5433/ironheart_platform_dev
+#
+# Port 5433 (not the default 5432) so it never clashes with another local
+# Postgres or the booking-software dev DB.
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: ironheart_platform_dev_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: dev
+      POSTGRES_PASSWORD: dev
+      POSTGRES_DB: ironheart_platform_dev
+    ports:
+      - "5433:5432"
+    volumes:
+      - ironheart_platform_dev_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dev -d ironheart_platform_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  ironheart_platform_dev_data:

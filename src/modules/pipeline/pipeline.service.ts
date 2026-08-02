@@ -97,7 +97,7 @@ export const pipelineService = {
       entityId: deal.id,
       payload: {
         dealId: deal.id,
-        companyId: deal.companyId,
+        leadId: deal.leadId,
         stage: deal.stage,
         product: deal.product,
         originTouchId: deal.originTouchId,
@@ -160,7 +160,7 @@ export const pipelineService = {
         entityId: dealId,
         payload: {
           dealId,
-          companyId: updated.companyId,
+          leadId: updated.leadId,
           product: updated.product,
           valueEstimate: updated.valueEstimate,
         },

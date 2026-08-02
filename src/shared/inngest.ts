@@ -111,7 +111,7 @@ type IronheartEvents = {
     data: {
       dealId: string;
       tenantId: string;
-      companyId: string | null;
+      leadId: string | null;
       stage: string;
     };
   };
@@ -127,7 +127,7 @@ type IronheartEvents = {
     data: {
       dealId: string;
       tenantId: string;
-      companyId: string | null;
+      leadId: string | null;
     };
   };
   "pipeline/member.added": {

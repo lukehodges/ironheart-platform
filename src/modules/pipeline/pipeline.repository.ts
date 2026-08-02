@@ -92,14 +92,14 @@ export const pipelineRepository = {
     return rows.map(toDealRecord)
   },
 
-  async findDealByCompany(
+  async findDealByLead(
     tenantId: string,
-    companyId: string,
+    leadId: string,
   ): Promise<DealRecord | null> {
     const rows = await db
       .select()
       .from(deals)
-      .where(and(eq(deals.tenantId, tenantId), eq(deals.companyId, companyId)))
+      .where(and(eq(deals.tenantId, tenantId), eq(deals.leadId, leadId)))
       .orderBy(desc(deals.createdAt))
       .limit(1)
     return rows[0] ? toDealRecord(rows[0]) : null
@@ -158,8 +158,7 @@ export const pipelineRepository = {
   ): Promise<DealRecord> {
     const values: DealInsert = {
       tenantId,
-      companyId: input.companyId,
-      primaryContactId: input.primaryContactId ?? null,
+      leadId: input.leadId,
       originTouchId: input.originTouchId ?? null,
       name: input.name,
       stage: input.stage ?? "qualified",

@@ -14,7 +14,7 @@ vi.mock("../pipeline.repository", () => ({
     getDealById: vi.fn(),
     listDeals: vi.fn(),
     getDealsByOriginTouch: vi.fn(),
-    findDealByCompany: vi.fn(),
+    findDealByLead: vi.fn(),
     getStageCounts: vi.fn(),
     getWeightedValue: vi.fn(),
     createDeal: vi.fn(),
@@ -53,16 +53,14 @@ vi.mock("@/shared/db", () => ({
 
 const TENANT_ID = "00000000-0000-0000-0000-000000000001"
 const DEAL_ID = "00000000-0000-0000-0000-000000000100"
-const COMPANY_ID = "00000000-0000-0000-0000-000000000200"
-const CONTACT_ID = "00000000-0000-0000-0000-000000000300"
+const LEAD_ID = "00000000-0000-0000-0000-000000000200"
 const ACTOR = "user-1"
 
 function makeDeal(overrides: Partial<DealRecord> = {}): DealRecord {
   return {
     id: DEAL_ID,
     tenantId: TENANT_ID,
-    companyId: COMPANY_ID,
-    primaryContactId: CONTACT_ID,
+    leadId: LEAD_ID,
     originTouchId: null,
     name: "Sample Deal",
     stage: "qualified",
@@ -150,7 +148,7 @@ describe("pipelineService", () => {
       const result = await pipelineService.createDeal({
         tenantId: TENANT_ID,
         actor: ACTOR,
-        companyId: COMPANY_ID,
+        leadId: LEAD_ID,
         name: "Sample Deal",
       })
 
@@ -343,7 +341,7 @@ describe("pipelineService", () => {
         tenantId: TENANT_ID,
         replyId: "reply-1",
         dealInput: {
-          companyId: COMPANY_ID,
+          leadId: LEAD_ID,
           name: "From reply",
         },
         actor: ACTOR,

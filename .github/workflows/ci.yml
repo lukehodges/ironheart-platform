@@ -1,0 +1,50 @@
+name: CI
+
+# Runs on every PR and on pushes to main. Needs no secrets and no database.
+# The production *build* is gated separately by Vercel's preview deploy on each PR.
+#
+# v1 = NON-BLOCKING (continue-on-error on every check). The codebase carries
+# pre-existing lint/type/test debt, so the checks RUN and REPORT (red step +
+# inline annotations) but don't fail the job yet. As the debt is burned down,
+# flip continue-on-error → remove it, check by check, until CI is a true gate
+# and branch protection can require it. Burn-down order: tests → typecheck → lint.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# Cancel an in-progress run when new commits are pushed to the same PR/branch.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: typecheck · lint · test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24.x"   # matches Vercel's Node version
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+        continue-on-error: true   # v1: ~25 errors (test files + one-off scripts; app code is clean)
+
+      - name: Lint
+        run: npm run lint
+        continue-on-error: true   # v1: pre-existing repo-wide lint debt
+
+      - name: Unit tests
+        run: npm run test
+        continue-on-error: true   # v1: 3147 pass / 11 fail (some from a stale worktree being scanned)

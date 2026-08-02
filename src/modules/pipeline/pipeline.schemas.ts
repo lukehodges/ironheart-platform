@@ -47,8 +47,7 @@ export const getDealSchema = z.object({
 })
 
 export const createDealSchema = z.object({
-  companyId: uuid,
-  primaryContactId: uuid.nullish(),
+  leadId: uuid,
   originTouchId: uuid.nullish(),
   name: z.string().min(1).max(200),
   stage: dealStageSchema.optional(),
@@ -118,8 +117,7 @@ export const recordContractSchema = z.object({
 export const convertFromReplySchema = z.object({
   replyId: uuid,
   dealInput: z.object({
-    companyId: uuid,
-    primaryContactId: uuid.nullish(),
+    leadId: uuid,
     name: z.string().min(1).max(200),
     stage: dealStageSchema.optional(),
     product: dealProductSchema.optional(),

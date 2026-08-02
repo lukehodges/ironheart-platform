@@ -23,15 +23,14 @@ export interface ProcessorEmitInput {
 }
 
 // ---------------------------------------------------------------------------
-// Identity resolver shape — returned by ctx.resolveContact()
+// Identity resolver shape — returned by ctx.resolveLead()
 // ---------------------------------------------------------------------------
 
-export interface ResolvedContact {
-  contactId: string;
-  companyId: string;
+export interface ResolvedLead {
+  leadId: string;
 }
 
-export interface ResolveContactInput {
+export interface ResolveLeadInput {
   email?: string;
   externalId?: string;
   source: string;
@@ -51,8 +50,8 @@ export interface ProcessorContext {
   db: DB;
   /** Append a domain event to the outbox. tenantId is taken from ctx. */
   emit(event: ProcessorEmitInput): Promise<void>;
-  /** Identity resolver — find or create a contact for a (source, externalId|email) */
-  resolveContact(input: ResolveContactInput): Promise<ResolvedContact | null>;
+  /** Identity resolver — find or create a lead for a (source, externalId|email) */
+  resolveLead(input: ResolveLeadInput): Promise<ResolvedLead | null>;
 }
 
 // ---------------------------------------------------------------------------

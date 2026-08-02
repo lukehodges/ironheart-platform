@@ -54,8 +54,7 @@ export const STAGE_ORDER: Record<DealStage, number> = {
 export interface DealRecord {
   id: string
   tenantId: string
-  companyId: string
-  primaryContactId: string | null
+  leadId: string
   originTouchId: string | null
   name: string
   stage: DealStage
@@ -86,8 +85,7 @@ export interface DealEventRecord {
 // ---------------------------------------------------------------------------
 
 export interface CreateDealInput {
-  companyId: string
-  primaryContactId?: string | null
+  leadId: string
   originTouchId?: string | null
   name: string
   stage?: DealStage
@@ -134,8 +132,7 @@ export function toDealRecord(row: DealRow): DealRecord {
   return {
     id: row.id,
     tenantId: row.tenantId,
-    companyId: row.companyId,
-    primaryContactId: row.primaryContactId ?? null,
+    leadId: row.leadId,
     originTouchId: row.originTouchId ?? null,
     name: row.name,
     stage: row.stage as DealStage,

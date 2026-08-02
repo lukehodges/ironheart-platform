@@ -1,14 +1,12 @@
-// src/modules/integrations/processors/gmail-email-received.processor.ts
 /**
  * Processor for raw_events of (source='gmail', kind='email.received').
  *
- *   1. Resolve sender → contact via identities/email
+ *   1. Resolve sender → lead via identity resolver (email match)
  *   2. If matched, correlate to an outbound touch via In-Reply-To / References
- *   3. Apply a fast rule classifier (OOO / auto-reply / unsubscribe)
+ *   3. Apply a fast rule classifier → sentiment
  *   4. Call outreachService.recordReply
  *
- * Unmatched senders are silently dropped (idempotent {ok:true}) so we don't
- * fill the dead-letter queue with random inbox noise.
+ * Unmatched senders are silently dropped (idempotent {ok:true}).
  */
 import { registerProcessor } from "@/modules/jobs/processors/processor.registry"
 import type {
@@ -20,36 +18,23 @@ import { outreachRepository } from "@/modules/outreach/outreach.repository"
 import type { Context } from "@/shared/trpc"
 import { logger } from "@/shared/logger"
 import type { GmailEmailPayload } from "../providers/gmail.provider"
+import type { OutreachReplySentiment } from "@/modules/outreach/outreach.types"
 
 const log = logger.child({ module: "gmail-email-received.processor" })
 
-type RuleClass =
-  | "ooo"
-  | "auto_reply"
-  | "negative"
-  | null
-
-function ruleClassify(payload: GmailEmailPayload): RuleClass {
+function ruleClassify(payload: GmailEmailPayload): OutreachReplySentiment | null {
   const subject = (payload.subject ?? "").toLowerCase()
   const body = (payload.body ?? "").toLowerCase()
   const from = (payload.from?.email ?? "").toLowerCase()
 
-  if (/out of office|automatic reply|auto-reply|autoreply|on leave/.test(subject)) {
-    return "ooo"
-  }
-  if (/noreply|no-reply|mailer-daemon|postmaster|donotreply/.test(from)) {
-    return "auto_reply"
-  }
-  if (/\bunsubscribe\b|remove me|take me off/.test(body)) {
-    return "negative"
-  }
+  // Unsubscribes are explicit negatives
+  if (/\bunsubscribe\b|remove me|take me off/.test(body)) return "negative"
+  // OOO + noreply senders are unclassified (caller decides if relevant)
+  if (/out of office|automatic reply|auto-reply|autoreply|on leave/.test(subject)) return null
+  if (/noreply|no-reply|mailer-daemon|postmaster|donotreply/.test(from)) return null
   return null
 }
 
-/**
- * Build a minimal tRPC-compatible Context so we can reuse outreachService.
- * The service only reads tenantId + user.id from ctx.
- */
 function buildContext(tenantId: string): Context {
   return {
     tenantId,
@@ -71,7 +56,6 @@ async function handle(
   const payload = payloadRaw as GmailEmailPayload
 
   if (!ctx.tenantId) {
-    // Gmail events are always tenant-scoped — refuse without it.
     return { ok: false, error: "Missing tenantId", retryable: false }
   }
 
@@ -81,8 +65,7 @@ async function handle(
     return { ok: true }
   }
 
-  // 1. Resolve contact (no autoCreate — unknown senders are ignored).
-  const resolved = await ctx.resolveContact({
+  const resolved = await ctx.resolveLead({
     email: fromEmail,
     source: "gmail",
     externalId: payload.messageId || undefined,
@@ -91,12 +74,11 @@ async function handle(
   if (!resolved) {
     log.debug(
       { rawEventId: ctx.rawEventId, from: fromEmail },
-      "No matching contact — dropping",
+      "No matching lead — dropping",
     )
     return { ok: true }
   }
 
-  // 2. Correlate to outbound touch via In-Reply-To / References headers.
   const correlationIds = [
     payload.inReplyTo,
     ...(payload.references ?? []),
@@ -104,27 +86,27 @@ async function handle(
 
   let touchId: string | null = null
   for (const id of correlationIds) {
-    const touch = await outreachRepository.findTouchByExternalMessageId(id)
-    if (touch && touch.tenantId === ctx.tenantId) {
+    const touch = await outreachRepository.findTouchByExternalMessageId(
+      ctx.tenantId,
+      id,
+    )
+    if (touch) {
       touchId = touch.id
       break
     }
   }
 
-  // 3. Rule classifier.
-  const ruleClass = ruleClassify(payload)
-
-  // 4. Record reply.
+  const sentiment = ruleClassify(payload)
   const receivedAt = payload.date ? new Date(payload.date) : ctx.receivedAt
 
   await outreachService.recordReply(buildContext(ctx.tenantId), {
-    contactId: resolved.contactId,
+    leadId: resolved.leadId,
     touchId: touchId ?? null,
     receivedAt,
     subject: payload.subject ?? null,
     body: payload.body ?? null,
-    classifiedAs: ruleClass,
-    classifiedBy: ruleClass ? "rule" : null,
+    sentiment,
+    classifiedBy: sentiment ? "rule" : null,
     rawEventId: ctx.rawEventId,
   })
 
@@ -138,8 +120,6 @@ registerProcessor({
   handle,
 })
 
-// Re-exported for unit tests so they can call handle() without driving the
-// in-memory registry.
 export const gmailEmailReceivedProcessor = {
   source: "gmail" as const,
   kind: "email.received" as const,

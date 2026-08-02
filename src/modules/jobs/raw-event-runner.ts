@@ -21,7 +21,7 @@ import type {
   RawEventProcessor,
 } from "./processors/processor.types";
 import { emitEvent } from "./event-emitter";
-import { resolveContact } from "./identity-resolver.service";
+import { resolveLead } from "./identity-resolver.service";
 
 const log = logger.child({ module: "jobs.raw-event-runner" });
 
@@ -161,13 +161,11 @@ async function runOne(
         actor: event.actor,
       });
     },
-    async resolveContact(input) {
+    async resolveLead(input) {
       if (!claim.tenantId) {
-        // Cross-tenant raw event — identity resolver is tenant-scoped, so we
-        // can't help here. Processors are expected to handle this case.
         return null;
       }
-      return resolveContact({
+      return resolveLead({
         tenantId: claim.tenantId,
         email: input.email,
         externalId: input.externalId,
