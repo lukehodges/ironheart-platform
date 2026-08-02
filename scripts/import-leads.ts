@@ -55,7 +55,11 @@ const bool = (v: unknown): boolean => {
   return s === "yes" || s === "true" || s === "1" || s === "y" || s === "x"
 }
 const excelDate = (v: unknown): string | null => {
-  if (v instanceof Date) return v.toISOString().slice(0, 10)
+  // Format from LOCAL components, not toISOString() — with cellDates:true XLSX
+  // yields dates at local midnight, and toISOString() shifts to UTC, rolling the
+  // date back a day in any timezone ahead of UTC (e.g. BST). That was the −1-day bug.
+  if (v instanceof Date)
+    return `${v.getFullYear()}-${String(v.getMonth() + 1).padStart(2, "0")}-${String(v.getDate()).padStart(2, "0")}`
   if (typeof v === "number") {
     const d = XLSX.SSF?.parse_date_code?.(v)
     if (d) return `${d.y}-${String(d.m).padStart(2, "0")}-${String(d.d).padStart(2, "0")}`
