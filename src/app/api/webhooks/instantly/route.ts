@@ -50,37 +50,44 @@ const log = logger.child({ module: "webhooks.instantly" })
  *
  * Returns false if the header is missing or the signature does not match.
  */
-function verifySignature(rawBody: string, headers: Headers): boolean {
+function verifyAuth(rawBody: string, request: NextRequest): boolean {
   const secret = process.env["INSTANTLY_WEBHOOK_SECRET"]
 
   if (!secret) {
     log.warn(
-      "INSTANTLY_WEBHOOK_SECRET not set — skipping signature verification (set it for production)",
+      "INSTANTLY_WEBHOOK_SECRET not set — skipping auth (set it for production)",
     )
     return true
   }
 
-  const signature = headers.get("x-instantly-signature")
-  if (!signature) {
-    log.warn("Instantly webhook missing X-Instantly-Signature header")
-    return false
+  // Option A — shared-secret token in the URL (?token=…). Instantly's webhook UI
+  // has no signing-secret field, so the token in the URL is how it authenticates.
+  const token = request.nextUrl.searchParams.get("token")
+  if (token && token.length === secret.length) {
+    try {
+      if (timingSafeEqual(Buffer.from(token), Buffer.from(secret))) return true
+    } catch {
+      /* fall through */
+    }
   }
 
-  const expected = createHmac("sha256", secret)
-    .update(rawBody, "utf8")
-    .digest("hex")
-
-  // timingSafeEqual requires equal-length buffers
-  try {
-    const expectedBuf = Buffer.from(expected, "hex")
-    // Strip any "sha256=" prefix Instantly might prepend
-    const incomingHex = signature.replace(/^sha256=/, "")
-    const incomingBuf = Buffer.from(incomingHex, "hex")
-    if (expectedBuf.length !== incomingBuf.length) return false
-    return timingSafeEqual(expectedBuf, incomingBuf)
-  } catch {
-    return false
+  // Option B — HMAC-SHA256 signature, for callers that can sign the body.
+  const signature = request.headers.get("x-instantly-signature")
+  if (signature) {
+    const expected = createHmac("sha256", secret).update(rawBody, "utf8").digest("hex")
+    try {
+      const expectedBuf = Buffer.from(expected, "hex")
+      const incomingBuf = Buffer.from(signature.replace(/^sha256=/, ""), "hex")
+      if (expectedBuf.length === incomingBuf.length && timingSafeEqual(expectedBuf, incomingBuf)) {
+        return true
+      }
+    } catch {
+      /* fall through */
+    }
   }
+
+  log.warn("Instantly webhook: no valid ?token= or X-Instantly-Signature")
+  return false
 }
 
 // ---------------------------------------------------------------------------
@@ -90,9 +97,9 @@ function verifySignature(rawBody: string, headers: Headers): boolean {
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const rawBody = await request.text()
 
-  // ── 1. Signature check ──────────────────────────────────────────────────
-  if (!verifySignature(rawBody, request.headers)) {
-    return NextResponse.json({ error: "Invalid signature" }, { status: 401 })
+  // ── 1. Auth check (URL token or HMAC signature) ─────────────────────────
+  if (!verifyAuth(rawBody, request)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
   // ── 2. Parse body ───────────────────────────────────────────────────────
