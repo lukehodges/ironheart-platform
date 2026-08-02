@@ -6,6 +6,10 @@
     {
       "path": "/api/cron/runners",
       "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/outreach-sync",
+      "schedule": "0 * * * *"
     }
   ]
 }
