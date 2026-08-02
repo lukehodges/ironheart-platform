@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState } from "react"
 import { api } from "@/lib/trpc/react"
 import type { OutreachLeadOwner } from "@/modules/outreach"
 
@@ -12,6 +12,19 @@ interface SendListModalProps {
   onClose: () => void
 }
 
+interface Draft {
+  subject: string
+  body: string
+}
+
+/** Build a mailto: link from whatever the user has typed (spaces → %20). */
+function buildMailto(to: string, subject: string, body: string): string {
+  const qs = new URLSearchParams({ subject, body })
+    .toString()
+    .replace(/\+/g, "%20")
+  return `mailto:${to}${qs ? `?${qs}` : ""}`
+}
+
 export default function SendListModal({
   open,
   owner,
@@ -20,34 +33,32 @@ export default function SendListModal({
   onClose,
 }: SendListModalProps) {
   const utils = api.useUtils()
-  const batchQ = api.outreach.composeBatch.useQuery(
+  // Raw leads — no frozen template. You write the email on top of the research.
+  const batchQ = api.outreach.pullBatch.useQuery(
     { owner, count, hypothesisId },
     { enabled: open },
   )
+  const invalidate = () => {
+    utils.outreach.listLeads.invalidate()
+    utils.outreach.tabCounts.invalidate()
+    utils.outreach.listDailyActivity.invalidate()
+  }
   const markBatchSent = api.outreach.markBatchSent.useMutation({
     onSuccess: () => {
-      utils.outreach.listLeads.invalidate()
-      utils.outreach.tabCounts.invalidate()
-      utils.outreach.listDailyActivity.invalidate()
+      invalidate()
       onClose()
     },
   })
-  const markSent = api.outreach.markLeadSent.useMutation({
-    onSuccess: () => {
-      utils.outreach.listLeads.invalidate()
-      utils.outreach.tabCounts.invalidate()
-      utils.outreach.listDailyActivity.invalidate()
-    },
-  })
+  const markSent = api.outreach.markLeadSent.useMutation({ onSuccess: invalidate })
 
   const [sentIds, setSentIds] = useState<Set<string>>(new Set())
+  const [drafts, setDrafts] = useState<Record<string, Draft>>({})
+  const draftFor = (id: string): Draft => drafts[id] ?? { subject: "", body: "" }
+  const setDraft = (id: string, patch: Partial<Draft>) =>
+    setDrafts((prev) => ({ ...prev, [id]: { ...draftFor(id), ...patch } }))
 
   const batch = batchQ.data ?? []
-  const remaining = batch.filter((item) => !sentIds.has(item.lead.id))
-  const allHaveObservations = useMemo(
-    () => batch.every((b) => b.lead.researched && b.lead.researchNotes),
-    [batch],
-  )
+  const remaining = batch.filter((lead) => !sentIds.has(lead.id))
 
   if (!open) return null
 
@@ -57,7 +68,7 @@ export default function SendListModal({
   }
 
   function handleBulkSent() {
-    const ids = batch.map((b) => b.lead.id).filter((id) => !sentIds.has(id))
+    const ids = batch.map((l) => l.id).filter((id) => !sentIds.has(id))
     if (ids.length === 0) return
     markBatchSent.mutate({ leadIds: ids })
   }
@@ -76,30 +87,31 @@ export default function SendListModal({
             <button className="close" onClick={onClose}>×</button>
           </div>
 
-          {!allHaveObservations && batch.length > 0 && (
-            <div style={{
-              padding: "10px 22px",
-              background: "var(--obs-warn-soft)",
-              color: "var(--obs-warn)",
-              fontSize: 12.5,
-              borderBottom: "1px solid var(--obs-line)",
-            }}>
-              ⚠ Some leads lack research notes. The email will contain a [NO OBSERVATION] placeholder — fill in before clicking the mailto link.
-            </div>
-          )}
+          <div style={{
+            padding: "10px 22px",
+            background: "var(--obs-surface-2)",
+            color: "var(--obs-ink-65)",
+            fontSize: 12.5,
+            borderBottom: "1px solid var(--obs-line)",
+          }}>
+            Raw leads + research. Write the email on top — the research box is a
+            reference, not something to paste. Typing fills the mailto link.
+          </div>
 
           <div className="mbody" style={{ padding: 0, maxHeight: "65vh", overflowY: "auto" }}>
             {batchQ.isLoading && (
-              <div style={{ padding: 40, textAlign: "center", color: "var(--obs-ink-40)" }}>Loading batch…</div>
+              <div style={{ padding: 40, textAlign: "center", color: "var(--obs-ink-40)" }}>Loading leads…</div>
             )}
             {!batchQ.isLoading && batch.length === 0 && (
               <div style={{ padding: 40, textAlign: "center", color: "var(--obs-ink-50)", fontStyle: "italic", fontFamily: "var(--obs-serif)", fontSize: 16 }}>
-                No ready + researched leads for {owner}. Add some via the New Lead button or run the forensic research workflow.
+                No ready + researched leads for {owner}. Add some via the New Lead button or run the research workflow.
               </div>
             )}
-            {!batchQ.isLoading && batch.map(({ lead, composed }, i) => {
+            {!batchQ.isLoading && batch.map((lead, i) => {
               const isSent = sentIds.has(lead.id)
               const isPending = markSent.isPending && markSent.variables?.id === lead.id
+              const draft = draftFor(lead.id)
+              const canSend = !!lead.email && (draft.subject.trim() !== "" || draft.body.trim() !== "")
               return (
                 <div
                   key={lead.id}
@@ -128,39 +140,65 @@ export default function SendListModal({
                     </span>
                   </div>
 
-                  <div style={{
-                    background: "var(--obs-surface)",
-                    border: "1px solid var(--obs-line)",
-                    borderRadius: 8,
-                    padding: "10px 14px",
-                    marginBottom: 8,
-                  }}>
-                    <div style={{ fontFamily: "var(--obs-mono)", fontSize: 10, color: "var(--obs-ink-40)", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 4 }}>
-                      Subject
-                    </div>
-                    <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 8 }}>{composed.subject}</div>
-                    <div style={{ fontFamily: "var(--obs-mono)", fontSize: 10, color: "var(--obs-ink-40)", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 4 }}>
-                      Body
-                    </div>
-                    <pre style={{
-                      fontFamily: "inherit",
-                      fontSize: 12.5,
-                      whiteSpace: "pre-wrap",
-                      color: "var(--obs-ink)",
-                      lineHeight: 1.5,
-                      margin: 0,
-                    }}>{composed.body}</pre>
-                    {composed.warnings.length > 0 && (
-                      <div style={{ marginTop: 6, fontSize: 10.5, color: "var(--obs-warn)", fontFamily: "var(--obs-mono)" }}>
-                        {composed.warnings.join("; ")}
-                      </div>
-                    )}
+                  {lead.researchNotes && (
+                    <details style={{ marginBottom: 8 }}>
+                      <summary style={{ fontFamily: "var(--obs-mono)", fontSize: 10, color: "var(--obs-ink-40)", letterSpacing: "0.1em", textTransform: "uppercase", cursor: "pointer" }}>
+                        Research (reference — don't paste)
+                      </summary>
+                      <div style={{
+                        marginTop: 6,
+                        background: "var(--obs-surface)",
+                        border: "1px solid var(--obs-line)",
+                        borderRadius: 8,
+                        padding: "10px 14px",
+                        fontSize: 12,
+                        color: "var(--obs-ink-65)",
+                        lineHeight: 1.5,
+                        whiteSpace: "pre-wrap",
+                      }}>{lead.researchNotes}</div>
+                    </details>
+                  )}
+
+                  <div style={{ display: "grid", gap: 6, marginBottom: 8 }}>
+                    <input
+                      value={draft.subject}
+                      onChange={(e) => setDraft(lead.id, { subject: e.target.value })}
+                      placeholder="Subject…"
+                      disabled={isSent}
+                      style={{
+                        fontSize: 13,
+                        fontWeight: 500,
+                        padding: "8px 12px",
+                        border: "1px solid var(--obs-line)",
+                        borderRadius: 8,
+                        background: "var(--obs-surface)",
+                        color: "var(--obs-ink)",
+                      }}
+                    />
+                    <textarea
+                      value={draft.body}
+                      onChange={(e) => setDraft(lead.id, { body: e.target.value })}
+                      placeholder="Write the email…"
+                      rows={5}
+                      disabled={isSent}
+                      style={{
+                        fontSize: 12.5,
+                        lineHeight: 1.5,
+                        padding: "8px 12px",
+                        border: "1px solid var(--obs-line)",
+                        borderRadius: 8,
+                        background: "var(--obs-surface)",
+                        color: "var(--obs-ink)",
+                        resize: "vertical",
+                        fontFamily: "inherit",
+                      }}
+                    />
                   </div>
 
                   <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                    {!isSent && composed.mailto && (
+                    {!isSent && canSend && (
                       <a
-                        href={composed.mailto}
+                        href={buildMailto(lead.email ?? "", draft.subject, draft.body)}
                         className="btn btn-primary"
                         target="_blank"
                         rel="noopener noreferrer"
@@ -169,7 +207,7 @@ export default function SendListModal({
                         ✉ Open in mail client + mark sent
                       </a>
                     )}
-                    {!isSent && !composed.mailto && (
+                    {!isSent && !lead.email && (
                       <span style={{ fontSize: 11.5, color: "var(--obs-warn)" }}>No email address — can't send</span>
                     )}
                     {!isSent && (
@@ -177,8 +215,9 @@ export default function SendListModal({
                         className="btn"
                         onClick={() => handleSendOne(lead.id)}
                         disabled={isPending}
+                        title="Mark sent without opening the mail client (e.g. sent from Instantly / externally)"
                       >
-                        {isPending ? "…" : "✓ Mark sent (no email)"}
+                        {isPending ? "…" : "✓ Mark sent"}
                       </button>
                     )}
                     {isSent && (
@@ -187,13 +226,9 @@ export default function SendListModal({
                       </span>
                     )}
                     <div style={{ flex: 1 }} />
-                    <a
-                      href={`/platform/outreach?leadId=${lead.id}`}
-                      style={{ fontFamily: "var(--obs-mono)", fontSize: 10.5, color: "var(--obs-ink-50)" }}
-                      onClick={(e) => e.preventDefault()}
-                    >
+                    <span style={{ fontFamily: "var(--obs-mono)", fontSize: 10.5, color: "var(--obs-ink-50)" }}>
                       lead #{String(lead.number).padStart(3, "0")}
-                    </a>
+                    </span>
                   </div>
                 </div>
               )
@@ -202,7 +237,7 @@ export default function SendListModal({
 
           <div className="mfoot">
             <div style={{ marginRight: "auto", fontFamily: "var(--obs-mono)", fontSize: 11, color: "var(--obs-ink-50)" }}>
-              Clicking a mailto link opens your default email client. The lead is auto-marked sent.
+              Clicking a mailto link opens your default email client with what you typed. The lead is auto-marked sent.
             </div>
             <button className="btn" onClick={onClose}>Close</button>
             {remaining.length > 0 && (

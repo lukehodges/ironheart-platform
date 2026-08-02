@@ -412,28 +412,6 @@ export const outreachService = {
     })
   },
 
-  /**
-   * Pull a batch AND render each lead's email (subject + body + mailto).
-   * Returns an array of (lead, composed) pairs the UI can iterate.
-   */
-  async composeBatch(
-    ctx: Context,
-    input: { owner: OutreachLeadOwner; count: number; hypothesisId?: string },
-  ): Promise<Array<{ lead: LeadRecord; composed: import("./copy/rotations").ComposedEmail }>> {
-    const { composeEmail } = await import("./copy/rotations")
-    const leads = await this.pullBatch(ctx, input)
-    const sender = input.owner === "alex" ? "Alex" : "Luke"
-    return leads.map((lead, i) => ({
-      lead,
-      composed: composeEmail(lead, {
-        index: i,
-        sender,
-        proofVariant: "auto",
-        local: /\b(Bath|Bristol|Wells|Frome)\b/i.test(lead.company + " " + (lead.notes ?? "")),
-      }),
-    }))
-  },
-
   /** Mark a list of leads sent in one shot — used by the send-list modal. */
   async markBatchSent(
     ctx: Context,

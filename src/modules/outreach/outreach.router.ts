@@ -79,13 +79,12 @@ export const outreachRouter = router({
       outreachService.markLeadSent(ctx, input.id, input.date),
     ),
 
+  // pullBatch is the raw-lead primitive: N ready + researched leads, DNC-excluded.
+  // The email is written on top (by Claude / the send modal), not frozen in a
+  // template — so the approach can change any time without a code edit.
   pullBatch: moduleProcedure
     .input(pullBatchSchema)
     .query(({ ctx, input }) => outreachService.pullBatch(ctx, input)),
-
-  composeBatch: moduleProcedure
-    .input(pullBatchSchema)
-    .query(({ ctx, input }) => outreachService.composeBatch(ctx, input)),
 
   markBatchSent: moduleProcedure
     .input(
