@@ -1,208 +1,178 @@
+/**
+ * Outreach module — zod schemas for the tRPC router.
+ *
+ * Mirrors the input shapes in outreach.types.ts. Kept thin: only the inputs
+ * the router exposes, no SaaS-style helpers.
+ */
+
 import { z } from "zod"
 
 // ---------------------------------------------------------------------------
-// Enums (mirror outreach.schema.ts pg enums)
+// Enums (mirror the pg enums)
 // ---------------------------------------------------------------------------
 
 export const outreachChannelEnum = z.enum(["email", "linkedin", "phone"])
-export const outreachEmployeeBandEnum = z.enum(["1-2", "3-15", "15-50", "50+"])
-export const outreachCompanySourceEnum = z.enum([
-  "cold",
-  "referral",
-  "inbound",
-  "manual",
-])
-export const outreachCampaignStatusEnum = z.enum([
+export const outreachLeadStatusEnum = z.enum([
+  "ready",
   "draft",
-  "active",
-  "paused",
-  "complete",
-])
-export const outreachDeliveryStatusEnum = z.enum([
-  "queued",
   "sent",
-  "delivered",
-  "bounced",
-  "failed",
+  "skipped",
+  "dnc",
 ])
-export const outreachReplyStatusEnum = z.enum([
-  "none",
+export const outreachLeadOwnerEnum = z.enum(["luke", "alex"])
+export const outreachReplySentimentEnum = z.enum([
   "positive",
+  "neutral",
   "negative",
-  "ooo",
-  "converter",
-  "wrong_person",
-  "auto_reply",
+])
+export const outreachHypothesisVerdictEnum = z.enum([
+  "pending",
+  "testing",
+  "keep",
+  "mutate",
+  "kill",
+  "baseline",
 ])
 export const outreachClassifierEnum = z.enum(["claude", "luke", "rule"])
 
 // ---------------------------------------------------------------------------
-// Common
+// Shared
 // ---------------------------------------------------------------------------
 
 const uuid = z.string().uuid()
-const emailOptional = z.string().email().optional().nullable()
-
-const paginationSchema = z.object({
-  limit: z.number().int().min(1).max(200).default(50),
-  cursor: z.string().optional(),
-})
+const dateStr = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Expected YYYY-MM-DD")
 
 // ---------------------------------------------------------------------------
-// Companies
+// Leads
 // ---------------------------------------------------------------------------
 
-export const listCompaniesSchema = paginationSchema.extend({
+export const listLeadsSchema = z.object({
+  status: outreachLeadStatusEnum.optional(),
+  owner: outreachLeadOwnerEnum.optional(),
+  category: z.string().optional(),
+  researched: z.boolean().optional(),
   search: z.string().optional(),
-  city: z.string().optional(),
-  doNotContact: z.boolean().optional(),
+  hypothesisWeekId: uuid.optional(),
+  limit: z.number().int().min(1).max(500).default(50),
+  offset: z.number().int().min(0).default(0),
 })
 
-export const createCompanySchema = z.object({
+export const createLeadSchema = z.object({
+  owner: outreachLeadOwnerEnum,
   name: z.string().min(1),
-  domain: z.string().optional().nullable(),
-  industry: z.string().optional().nullable(),
-  employeeBand: outreachEmployeeBandEnum.optional().nullable(),
-  city: z.string().optional().nullable(),
-  country: z.string().optional().nullable(),
-  ownerLed: z.boolean().optional(),
-  source: outreachCompanySourceEnum.optional(),
+  company: z.string().min(1),
+  category: z.string().optional().nullable(),
+  email: z.string().email().optional().nullable(),
+  website: z.string().optional().nullable(),
+  source: z.string().optional().nullable(),
+  status: outreachLeadStatusEnum.optional(),
+  researched: z.boolean().optional(),
+  followUpFlag: z.boolean().optional(),
+  researchNotes: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
-  enrichment: z.record(z.string(), z.unknown()).optional(),
+  hypothesisWeekId: uuid.optional().nullable(),
 })
 
-export const updateCompanySchema = createCompanySchema.partial().extend({
+export const updateLeadSchema = z.object({
   id: uuid,
-  doNotContact: z.boolean().optional(),
-  dncReason: z.string().optional().nullable(),
+  owner: outreachLeadOwnerEnum.optional(),
+  status: outreachLeadStatusEnum.optional(),
+  name: z.string().min(1).optional(),
+  company: z.string().min(1).optional(),
+  category: z.string().optional().nullable(),
+  email: z.string().email().optional().nullable(),
+  website: z.string().optional().nullable(),
+  source: z.string().optional().nullable(),
+  researched: z.boolean().optional(),
+  followUpFlag: z.boolean().optional(),
+  lastContactedAt: dateStr.optional().nullable(),
+  nextFollowUpAt: dateStr.optional().nullable(),
+  reply: z.boolean().optional(),
+  replySentiment: outreachReplySentimentEnum.optional().nullable(),
+  researchNotes: z.string().optional().nullable(),
+  notes: z.string().optional().nullable(),
+  hypothesisWeekId: uuid.optional().nullable(),
 })
 
-// ---------------------------------------------------------------------------
-// Contacts
-// ---------------------------------------------------------------------------
-
-export const listContactsSchema = paginationSchema.extend({
-  companyId: uuid.optional(),
-  search: z.string().optional(),
-  doNotContact: z.boolean().optional(),
-  bounced: z.boolean().optional(),
-})
-
-export const createContactSchema = z.object({
-  companyId: uuid,
-  fullName: z.string().min(1),
-  role: z.string().optional().nullable(),
-  email: emailOptional,
-  phone: z.string().optional().nullable(),
-  linkedinUrl: z.string().url().optional().nullable(),
-  isOwner: z.boolean().optional(),
-  isDecisionMaker: z.boolean().optional(),
-})
-
-export const updateContactSchema = z.object({
+export const markLeadSentSchema = z.object({
   id: uuid,
-  fullName: z.string().min(1).optional(),
-  role: z.string().optional().nullable(),
-  email: emailOptional,
-  phone: z.string().optional().nullable(),
-  linkedinUrl: z.string().url().optional().nullable(),
-  isOwner: z.boolean().optional(),
-  isDecisionMaker: z.boolean().optional(),
-  bounced: z.boolean().optional(),
-  doNotContact: z.boolean().optional(),
+  date: dateStr.optional(), // defaults to today
 })
 
-export const markContactBouncedSchema = z.object({ id: uuid })
+export const getLeadSchema = z.object({ id: uuid })
 
 // ---------------------------------------------------------------------------
-// Campaigns
+// Daily activity
 // ---------------------------------------------------------------------------
 
-export const listCampaignsSchema = paginationSchema.extend({
-  status: outreachCampaignStatusEnum.optional(),
+export const listDailyActivitySchema = z.object({
+  startDate: dateStr,
+  endDate: dateStr,
+  owner: outreachLeadOwnerEnum.optional(),
+})
+
+export const upsertDailyActivitySchema = z.object({
+  date: dateStr,
+  owner: outreachLeadOwnerEnum,
   channel: outreachChannelEnum.optional(),
-})
-
-export const createCampaignSchema = z.object({
-  name: z.string().min(1),
-  channel: outreachChannelEnum,
-  city: z.string().optional().nullable(),
-  industryFocus: z.string().optional().nullable(),
-  status: outreachCampaignStatusEnum.optional(),
-  startedAt: z.date().optional().nullable(),
-  endedAt: z.date().optional().nullable(),
+  hypothesisWeekId: uuid.optional().nullable(),
+  sent: z.number().int().min(0).optional(),
+  replies: z.number().int().min(0).optional(),
+  positive: z.number().int().min(0).optional(),
+  meetingsBooked: z.number().int().min(0).optional(),
+  meetingsTaken: z.number().int().min(0).optional(),
+  interested: z.number().int().min(0).optional(),
+  closed: z.number().int().min(0).optional(),
+  newUpfront: z.number().min(0).optional(),
+  newRetainer: z.number().min(0).optional(),
+  notes: z.string().optional().nullable(),
 })
 
 // ---------------------------------------------------------------------------
-// Templates
+// Weekly hypothesis
 // ---------------------------------------------------------------------------
 
-export const listTemplatesSchema = paginationSchema.extend({
-  channel: outreachChannelEnum.optional(),
-  active: z.boolean().optional(),
+export const listHypothesesSchema = z.object({
+  status: z.enum(["active", "complete"]).optional(),
+  limit: z.number().int().min(1).max(100).default(20),
 })
 
-export const createTemplateSchema = z.object({
-  name: z.string().min(1),
-  channel: outreachChannelEnum,
-  subject: z.string().optional().nullable(),
+export const createHypothesisSchema = z.object({
+  week: z.string().regex(/^\d{4}-W\d{2}$/, "Expected YYYY-Www"),
+  startDate: dateStr,
+  endDate: dateStr,
+  title: z.string().min(1),
   body: z.string().min(1),
-  variables: z.record(z.string(), z.unknown()).optional(),
-  parentId: uuid.optional().nullable(),
-  active: z.boolean().optional(),
+  targetSample: z.number().int().min(1),
+  targetReplyPct: z.number().min(0).max(100),
+  targetPositivePct: z.number().min(0).max(100),
+  targetBooked: z.number().int().min(0).optional(),
+  replaces: z.string().optional().nullable(),
+  prevWeekId: uuid.optional().nullable(),
+})
+
+export const endWeekSchema = z.object({
+  hypothesisId: uuid,
+  resultSummary: z.string().min(1),
+  verdict: outreachHypothesisVerdictEnum,
+  nextHypothesis: createHypothesisSchema.omit({ prevWeekId: true }).optional(),
 })
 
 // ---------------------------------------------------------------------------
-// Touches
+// Pull batch (Pull 25 → today's send list)
 // ---------------------------------------------------------------------------
 
-export const listTouchesSchema = paginationSchema.extend({
-  contactId: uuid.optional(),
-  campaignId: uuid.optional(),
-  deliveryStatus: outreachDeliveryStatusEnum.optional(),
-  awaitingReplyOnly: z.boolean().optional(),
-})
-
-export const sendTouchSchema = z.object({
-  contactId: uuid,
-  templateId: uuid.optional().nullable(),
-  campaignId: uuid.optional().nullable(),
-  channel: outreachChannelEnum,
-  renderedSubject: z.string().optional().nullable(),
-  renderedBody: z.string().optional().nullable(),
-  externalMessageId: z.string().optional().nullable(),
-})
-
-// ---------------------------------------------------------------------------
-// Replies
-// ---------------------------------------------------------------------------
-
-export const listRepliesSchema = paginationSchema.extend({
-  needsReview: z.boolean().optional(),
-  handled: z.boolean().optional(),
-  contactId: uuid.optional(),
-})
-
-export const listRepliesEnrichedSchema = paginationSchema.extend({
-  needsReview: z.boolean().optional(),
-  handled: z.boolean().optional(),
-  contactId: uuid.optional(),
-  /** Filter to replies received within the last N days. */
-  sinceDays: z.number().int().min(1).max(365).optional(),
-})
-
-export const classifyReplySchema = z.object({
-  replyId: uuid,
-  classifiedAs: z.string().min(1),
-  classifiedBy: outreachClassifierEnum,
-  confidence: z.number().min(0).max(1).optional(),
+export const pullBatchSchema = z.object({
+  owner: outreachLeadOwnerEnum,
+  count: z.number().int().min(1).max(100).default(25),
+  hypothesisId: uuid.optional(),
 })
 
 // ---------------------------------------------------------------------------
 // DNC
 // ---------------------------------------------------------------------------
 
-export const addToDncSchema = z
+export const addDncSchema = z
   .object({
     email: z.string().email().optional(),
     domain: z.string().optional(),
@@ -212,35 +182,42 @@ export const addToDncSchema = z
     message: "Either email or domain is required",
   })
 
-export const listDncSchema = paginationSchema.extend({
+export const listDncSchema = z.object({
   search: z.string().optional(),
+  limit: z.number().int().min(1).max(200).default(50),
 })
 
-export const checkDncSchema = z.object({
-  email: z.string().email(),
+export const checkDncSchema = z.object({ email: z.string().email() })
+
+// ---------------------------------------------------------------------------
+// Gmail processor: recordReply
+// ---------------------------------------------------------------------------
+
+export const recordReplySchema = z.object({
+  leadId: uuid,
+  touchId: uuid.optional().nullable(),
+  receivedAt: z.date().optional(),
+  subject: z.string().optional().nullable(),
+  body: z.string().optional().nullable(),
+  sentiment: outreachReplySentimentEnum.optional().nullable(),
+  classifiedBy: outreachClassifierEnum.optional().nullable(),
+  rawEventId: uuid.optional().nullable(),
 })
 
 // ---------------------------------------------------------------------------
-// Bulk import
+// Replies (inbox triage)
 // ---------------------------------------------------------------------------
 
-const bulkImportRowSchema = z.object({
-  companyName: z.string().min(1),
-  domain: z.string().optional().nullable(),
-  industry: z.string().optional().nullable(),
-  city: z.string().optional().nullable(),
-  country: z.string().optional().nullable(),
-  employeeBand: outreachEmployeeBandEnum.optional().nullable(),
-  ownerLed: z.boolean().optional(),
-  contactName: z.string().min(1),
-  email: emailOptional,
-  phone: z.string().optional().nullable(),
-  role: z.string().optional().nullable(),
-  linkedinUrl: z.string().url().optional().nullable(),
-  isOwner: z.boolean().optional(),
-  isDecisionMaker: z.boolean().optional(),
+export const listRepliesSchema = z.object({
+  needsReview: z.boolean().optional(),
+  handled: z.boolean().optional(),
+  leadId: uuid.optional(),
+  sinceDays: z.number().int().min(1).max(365).optional(),
+  limit: z.number().int().min(1).max(200).default(50),
 })
 
-export const bulkImportLeadsSchema = z.object({
-  rows: z.array(bulkImportRowSchema).min(1).max(5000),
+export const classifyReplySchema = z.object({
+  replyId: uuid,
+  sentiment: outreachReplySentimentEnum,
+  classifiedBy: outreachClassifierEnum,
 })

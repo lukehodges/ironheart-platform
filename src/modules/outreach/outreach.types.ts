@@ -1,205 +1,213 @@
 /**
- * Outreach module — domain types
+ * Outreach module — domain types.
  *
- * The DB row types live in `@/shared/db/schemas/outreach.schema` as
- * CompanyRow / ContactRow / CampaignRow / TemplateRow / TouchRow / ReplyRow / DncListRow.
+ * Three operational records mirror the spreadsheet:
+ *   - LeadRecord            (the roster)
+ *   - DailyActivityRecord   (one row per owner per day)
+ *   - WeeklyHypothesisRecord(the 7-day loop spine)
  *
- * This file re-exports them as the module's public record types and adds
- * input shapes the service layer accepts.
+ * Plus supporting:
+ *   - TouchRecord    (send audit log)
+ *   - ReplyRecord    (Gmail processor writes here)
+ *   - DncRecord      (suppression)
  */
 
 import type {
-  CompanyRow,
-  ContactRow,
-  CampaignRow,
-  TemplateRow,
+  LeadRow,
+  DailyActivityRow,
+  WeeklyHypothesisRow,
   TouchRow,
   ReplyRow,
   DncListRow,
 } from "@/shared/db/schemas/outreach.schema"
 
 // ---------------------------------------------------------------------------
-// Re-exported record types (DB rows as our domain records)
+// Records (DB rows as domain types)
 // ---------------------------------------------------------------------------
 
-export type CompanyRecord = CompanyRow
-export type ContactRecord = ContactRow
-export type CampaignRecord = CampaignRow
-export type TemplateRecord = TemplateRow
+export type LeadRecord = LeadRow
+export type DailyActivityRecord = DailyActivityRow
+export type WeeklyHypothesisRecord = WeeklyHypothesisRow
 export type TouchRecord = TouchRow
 export type ReplyRecord = ReplyRow
-export type DncListRecord = DncListRow
+export type DncRecord = DncListRow
 
 /**
- * Reply enriched with the embedded contact, company, and originating touch
- * context — surfaced to the triage inbox UI.
+ * Reply with the embedded lead context — surfaced to the triage inbox UI.
  */
 export interface EnrichedReplyRecord extends ReplyRow {
-  contact: {
-    id: string
-    fullName: string
-    role: string | null
-    email: string | null
-  }
-  company: {
+  lead: {
     id: string
     name: string
-    domain: string | null
+    company: string
+    email: string | null
+    owner: OutreachLeadOwner
   }
   touch: {
     id: string
     sentAt: Date | null
     subjectRendered: string | null
-    channel: string
+    channel: OutreachChannel
   } | null
 }
 
 // ---------------------------------------------------------------------------
-// Enum string unions (mirror the pg enums)
+// Enum string unions
 // ---------------------------------------------------------------------------
 
 export type OutreachChannel = "email" | "linkedin" | "phone"
-export type OutreachEmployeeBand = "1-2" | "3-15" | "15-50" | "50+"
-export type OutreachCompanySource = "cold" | "referral" | "inbound" | "manual"
-export type OutreachCampaignStatus = "draft" | "active" | "paused" | "complete"
+export type OutreachLeadStatus = "ready" | "draft" | "sent" | "skipped" | "dnc"
+export type OutreachLeadOwner = "luke" | "alex"
+export type OutreachReplySentiment = "positive" | "neutral" | "negative"
+export type OutreachHypothesisStatus = "active" | "complete"
+export type OutreachHypothesisVerdict =
+  | "pending"
+  | "testing"
+  | "keep"
+  | "mutate"
+  | "kill"
+  | "baseline"
 export type OutreachDeliveryStatus =
   | "queued"
   | "sent"
   | "delivered"
   | "bounced"
   | "failed"
-export type OutreachReplyStatus =
-  | "none"
-  | "positive"
-  | "negative"
-  | "ooo"
-  | "converter"
-  | "wrong_person"
-  | "auto_reply"
 export type OutreachClassifier = "claude" | "luke" | "rule"
 
 // ---------------------------------------------------------------------------
-// Input shapes
+// Lead inputs
 // ---------------------------------------------------------------------------
 
-export interface CreateCompanyInput {
+export interface CreateLeadInput {
+  owner: OutreachLeadOwner
   name: string
-  domain?: string | null
-  industry?: string | null
-  employeeBand?: OutreachEmployeeBand | null
-  city?: string | null
-  country?: string | null
-  ownerLed?: boolean
-  source?: OutreachCompanySource
+  company: string
+  category?: string | null
+  email?: string | null
+  website?: string | null
+  source?: string | null
+  status?: OutreachLeadStatus
+  researched?: boolean
+  followUpFlag?: boolean
+  researchNotes?: string | null
   notes?: string | null
-  enrichment?: Record<string, unknown>
+  hypothesisWeekId?: string | null
 }
 
-export interface UpdateCompanyInput {
+export interface UpdateLeadInput {
+  id: string
+  owner?: OutreachLeadOwner
+  status?: OutreachLeadStatus
   name?: string
-  domain?: string | null
-  industry?: string | null
-  employeeBand?: OutreachEmployeeBand | null
-  city?: string | null
-  country?: string | null
-  ownerLed?: boolean
-  source?: OutreachCompanySource
+  company?: string
+  category?: string | null
+  email?: string | null
+  website?: string | null
+  source?: string | null
+  researched?: boolean
+  followUpFlag?: boolean
+  lastContactedAt?: string | null
+  nextFollowUpAt?: string | null
+  reply?: boolean
+  replySentiment?: OutreachReplySentiment | null
+  researchNotes?: string | null
   notes?: string | null
-  enrichment?: Record<string, unknown>
-  doNotContact?: boolean
-  dncReason?: string | null
+  hypothesisWeekId?: string | null
 }
 
-export interface CreateContactInput {
-  companyId: string
-  fullName: string
-  role?: string | null
-  email?: string | null
-  phone?: string | null
-  linkedinUrl?: string | null
-  isOwner?: boolean
-  isDecisionMaker?: boolean
+export interface ListLeadsInput {
+  status?: OutreachLeadStatus
+  owner?: OutreachLeadOwner
+  category?: string
+  researched?: boolean
+  search?: string
+  hypothesisWeekId?: string
+  limit?: number
+  offset?: number
+  /**
+   * When true, exclude any lead whose email (or email-domain) is on the DNC
+   * list — a hard suppression gate applied at the query layer. Set on the
+   * send path (pullBatch) so a suppressed lead can NEVER be pulled, even if a
+   * status field drifted out of sync with the DNC table.
+   */
+  excludeDnc?: boolean
 }
 
-export interface UpdateContactInput {
-  fullName?: string
-  role?: string | null
-  email?: string | null
-  phone?: string | null
-  linkedinUrl?: string | null
-  isOwner?: boolean
-  isDecisionMaker?: boolean
-  bounced?: boolean
-  doNotContact?: boolean
+// ---------------------------------------------------------------------------
+// Daily activity inputs
+// ---------------------------------------------------------------------------
+
+export interface UpsertDailyActivityInput {
+  date: string
+  owner: OutreachLeadOwner
+  channel?: OutreachChannel
+  hypothesisWeekId?: string | null
+  sent?: number
+  replies?: number
+  positive?: number
+  meetingsBooked?: number
+  meetingsTaken?: number
+  interested?: number
+  closed?: number
+  newUpfront?: number
+  newRetainer?: number
+  notes?: string | null
 }
 
-export interface CreateCampaignInput {
-  name: string
-  channel: OutreachChannel
-  city?: string | null
-  industryFocus?: string | null
-  status?: OutreachCampaignStatus
-  startedAt?: Date | null
-  endedAt?: Date | null
+export interface ListDailyActivityInput {
+  startDate: string
+  endDate: string
+  owner?: OutreachLeadOwner
 }
 
-export interface CreateTemplateInput {
-  name: string
-  channel: OutreachChannel
-  subject?: string | null
+// ---------------------------------------------------------------------------
+// Weekly hypothesis inputs
+// ---------------------------------------------------------------------------
+
+export interface CreateHypothesisInput {
+  week: string // "2026-W24"
+  startDate: string
+  endDate: string
+  title: string
   body: string
-  variables?: Record<string, unknown>
-  parentId?: string | null
-  active?: boolean
+  targetSample: number
+  targetReplyPct: number
+  targetPositivePct: number
+  targetBooked?: number
+  replaces?: string | null
+  prevWeekId?: string | null
 }
 
-export interface SendTouchInput {
-  contactId: string
-  templateId?: string | null
-  campaignId?: string | null
-  channel: OutreachChannel
-  renderedSubject?: string | null
-  renderedBody?: string | null
-  externalMessageId?: string | null
+export interface EndWeekInput {
+  hypothesisId: string
+  resultSummary: string
+  verdict: OutreachHypothesisVerdict
+  // Optional: pre-draft next week's hypothesis at the same time
+  nextHypothesis?: Omit<CreateHypothesisInput, "prevWeekId">
 }
+
+// ---------------------------------------------------------------------------
+// Gmail processor compatibility (recordReply)
+// ---------------------------------------------------------------------------
 
 export interface RecordReplyInput {
-  contactId: string
+  leadId: string
   touchId?: string | null
   receivedAt?: Date
   subject?: string | null
   body?: string | null
-  classifiedAs?: string | null
+  sentiment?: OutreachReplySentiment | null
   classifiedBy?: OutreachClassifier | null
-  classificationConfidence?: number | null
   rawEventId?: string | null
 }
+
+// ---------------------------------------------------------------------------
+// DNC
+// ---------------------------------------------------------------------------
 
 export interface AddDncInput {
   email?: string | null
   domain?: string | null
   reason?: string | null
-}
-
-export interface BulkImportLeadRow {
-  companyName: string
-  domain?: string | null
-  industry?: string | null
-  city?: string | null
-  country?: string | null
-  employeeBand?: OutreachEmployeeBand | null
-  ownerLed?: boolean
-  contactName: string
-  email?: string | null
-  phone?: string | null
-  role?: string | null
-  linkedinUrl?: string | null
-  isOwner?: boolean
-  isDecisionMaker?: boolean
-}
-
-export interface BulkImportResult {
-  companiesCreated: number
-  contactsCreated: number
-  skipped: number
 }

@@ -12,15 +12,13 @@
 import { inngest } from "@/shared/inngest"
 
 export const OUTREACH_EVENT_KINDS = [
-  "touch.queued",
+  "lead.created",
+  "lead.updated",
   "touch.sent",
-  "touch.delivered",
-  "touch.bounced",
   "reply.received",
   "reply.classified",
+  "reply.handled",
   "dnc.added",
-  "company.created",
-  "contact.created",
   "leads.imported",
 ] as const
 

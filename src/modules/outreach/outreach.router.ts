@@ -1,153 +1,158 @@
+/**
+ * Outreach module — tRPC router.
+ *
+ * Three feature areas mirror the spreadsheet model:
+ *   - leads
+ *   - dailyActivity
+ *   - hypothesis (7-day loop)
+ *
+ * Plus replies (inbox) and dnc (suppression).
+ */
+
 import { z } from "zod"
 import {
   router,
   tenantProcedure,
-  permissionProcedure,
   createModuleMiddleware,
 } from "@/shared/trpc"
 import { outreachService } from "./outreach.service"
 import {
-  // companies
-  listCompaniesSchema,
-  createCompanySchema,
-  updateCompanySchema,
-  // contacts
-  listContactsSchema,
-  createContactSchema,
-  updateContactSchema,
-  markContactBouncedSchema,
-  // campaigns
-  listCampaignsSchema,
-  createCampaignSchema,
-  // templates
-  listTemplatesSchema,
-  createTemplateSchema,
-  // touches
-  listTouchesSchema,
-  sendTouchSchema,
+  // leads
+  listLeadsSchema,
+  createLeadSchema,
+  updateLeadSchema,
+  markLeadSentSchema,
+  getLeadSchema,
+  // daily activity
+  listDailyActivitySchema,
+  upsertDailyActivitySchema,
+  // hypothesis
+  listHypothesesSchema,
+  createHypothesisSchema,
+  endWeekSchema,
+  // pull batch
+  pullBatchSchema,
   // replies
   listRepliesSchema,
-  listRepliesEnrichedSchema,
   classifyReplySchema,
   // dnc
-  addToDncSchema,
+  addDncSchema,
   listDncSchema,
   checkDncSchema,
-  // bulk
-  bulkImportLeadsSchema,
 } from "./outreach.schemas"
 
 const moduleGate = createModuleMiddleware("outreach")
 const moduleProcedure = tenantProcedure.use(moduleGate)
-const modulePermission = (perm: string) =>
-  permissionProcedure(perm).use(moduleGate)
 
 const uuid = z.string().uuid()
 
 export const outreachRouter = router({
-  // ----------------------------------------------------------- COMPANIES
-  listCompanies: moduleProcedure
-    .input(listCompaniesSchema)
-    .query(({ ctx, input }) => outreachService.listCompanies(ctx, input)),
+  // ─── Leads ──────────────────────────────────────────────────────
+  listLeads: moduleProcedure
+    .input(listLeadsSchema)
+    .query(({ ctx, input }) => outreachService.listLeads(ctx, input)),
 
-  getCompany: moduleProcedure
-    .input(z.object({ id: uuid }))
-    .query(({ ctx, input }) => outreachService.getCompany(ctx, input.id)),
+  countLeads: moduleProcedure
+    .input(listLeadsSchema.omit({ limit: true, offset: true }))
+    .query(({ ctx, input }) => outreachService.countLeads(ctx, input)),
 
-  createCompany: modulePermission("outreach:write")
-    .input(createCompanySchema)
-    .mutation(({ ctx, input }) => outreachService.createCompany(ctx, input)),
+  tabCounts: moduleProcedure
+    .query(({ ctx }) => outreachService.tabCounts(ctx)),
 
-  updateCompany: modulePermission("outreach:write")
-    .input(updateCompanySchema)
-    .mutation(({ ctx, input }) => {
-      const { id, ...rest } = input
-      return outreachService.updateCompany(ctx, id, rest)
-    }),
+  getLead: moduleProcedure
+    .input(getLeadSchema)
+    .query(({ ctx, input }) => outreachService.getLead(ctx, input.id)),
 
-  // ----------------------------------------------------------- CONTACTS
-  listContacts: moduleProcedure
-    .input(listContactsSchema)
-    .query(({ ctx, input }) => outreachService.listContacts(ctx, input)),
+  createLead: moduleProcedure
+    .input(createLeadSchema)
+    .mutation(({ ctx, input }) => outreachService.createLead(ctx, input)),
 
-  createContact: modulePermission("outreach:write")
-    .input(createContactSchema)
-    .mutation(({ ctx, input }) => outreachService.createContact(ctx, input)),
+  updateLead: moduleProcedure
+    .input(updateLeadSchema)
+    .mutation(({ ctx, input }) => outreachService.updateLead(ctx, input)),
 
-  updateContact: modulePermission("outreach:write")
-    .input(updateContactSchema)
-    .mutation(({ ctx, input }) => {
-      const { id, ...rest } = input
-      return outreachService.updateContact(ctx, id, rest)
-    }),
-
-  markBounced: modulePermission("outreach:write")
-    .input(markContactBouncedSchema)
+  markLeadSent: moduleProcedure
+    .input(markLeadSentSchema)
     .mutation(({ ctx, input }) =>
-      outreachService.markContactBounced(ctx, input.id),
+      outreachService.markLeadSent(ctx, input.id, input.date),
     ),
 
-  // ---------------------------------------------------------- CAMPAIGNS
-  listCampaigns: moduleProcedure
-    .input(listCampaignsSchema)
-    .query(({ ctx, input }) => outreachService.listCampaigns(ctx, input)),
+  pullBatch: moduleProcedure
+    .input(pullBatchSchema)
+    .query(({ ctx, input }) => outreachService.pullBatch(ctx, input)),
 
-  createCampaign: modulePermission("outreach:write")
-    .input(createCampaignSchema)
-    .mutation(({ ctx, input }) => outreachService.createCampaign(ctx, input)),
+  composeBatch: moduleProcedure
+    .input(pullBatchSchema)
+    .query(({ ctx, input }) => outreachService.composeBatch(ctx, input)),
 
-  // ---------------------------------------------------------- TEMPLATES
-  listTemplates: moduleProcedure
-    .input(listTemplatesSchema)
-    .query(({ ctx, input }) => outreachService.listTemplates(ctx, input)),
+  markBatchSent: moduleProcedure
+    .input(
+      z.object({
+        leadIds: z.array(uuid).min(1).max(100),
+        date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+      }),
+    )
+    .mutation(({ ctx, input }) => outreachService.markBatchSent(ctx, input)),
 
-  createTemplate: modulePermission("outreach:write")
-    .input(createTemplateSchema)
-    .mutation(({ ctx, input }) => outreachService.createTemplate(ctx, input)),
+  // ─── Daily activity ─────────────────────────────────────────────
+  listDailyActivity: moduleProcedure
+    .input(listDailyActivitySchema)
+    .query(({ ctx, input }) => outreachService.listDailyActivity(ctx, input)),
 
-  // ----------------------------------------------------------- TOUCHES
-  listTouches: moduleProcedure
-    .input(listTouchesSchema)
-    .query(({ ctx, input }) => outreachService.listTouches(ctx, input)),
+  upsertDailyActivity: moduleProcedure
+    .input(upsertDailyActivitySchema)
+    .mutation(({ ctx, input }) =>
+      outreachService.upsertDailyActivity(ctx, input),
+    ),
 
-  sendTouch: modulePermission("outreach:write")
-    .input(sendTouchSchema)
-    .mutation(({ ctx, input }) => outreachService.sendTouch(ctx, input)),
+  // ─── Weekly hypothesis ──────────────────────────────────────────
+  listHypotheses: moduleProcedure
+    .input(listHypothesesSchema)
+    .query(({ ctx, input }) => outreachService.listHypotheses(ctx, input)),
 
-  // ----------------------------------------------------------- REPLIES
+  getActiveHypothesis: moduleProcedure
+    .query(({ ctx }) => outreachService.getActiveHypothesis(ctx)),
+
+  createHypothesis: moduleProcedure
+    .input(createHypothesisSchema)
+    .mutation(({ ctx, input }) =>
+      outreachService.createHypothesis(ctx, input),
+    ),
+
+  endWeek: moduleProcedure
+    .input(endWeekSchema)
+    .mutation(({ ctx, input }) => outreachService.endWeek(ctx, input)),
+
+  // ─── Replies ────────────────────────────────────────────────────
   listReplies: moduleProcedure
     .input(listRepliesSchema)
     .query(({ ctx, input }) => outreachService.listReplies(ctx, input)),
 
   listRepliesEnriched: moduleProcedure
-    .input(listRepliesEnrichedSchema)
+    .input(listRepliesSchema)
     .query(({ ctx, input }) =>
       outreachService.listRepliesEnriched(ctx, input),
     ),
 
-  classifyReply: modulePermission("outreach:write")
+  classifyReply: moduleProcedure
     .input(classifyReplySchema)
+    .mutation(({ ctx, input }) => outreachService.classifyReply(ctx, input)),
+
+  markReplyHandled: moduleProcedure
+    .input(
+      z.object({
+        id: uuid,
+        sentiment: z.enum(["positive", "neutral", "negative"]).optional(),
+      }),
+    )
     .mutation(({ ctx, input }) =>
-      outreachService.classifyReply(
-        ctx,
-        input.replyId,
-        input.classifiedAs,
-        input.classifiedBy,
-        input.confidence,
-      ),
+      outreachService.markReplyHandled(ctx, input.id, input.sentiment),
     ),
 
-  // ---------------------------------------------------------- BULK IMPORT
-  bulkImportLeads: modulePermission("outreach:write")
-    .input(bulkImportLeadsSchema)
-    .mutation(({ ctx, input }) =>
-      outreachService.bulkImportLeads(ctx, input.rows),
-    ),
-
-  // ---------------------------------------------------------- DNC
-  addToDnc: modulePermission("outreach:write")
-    .input(addToDncSchema)
-    .mutation(({ ctx, input }) => outreachService.addToDnc(ctx, input)),
+  // ─── DNC ────────────────────────────────────────────────────────
+  addDnc: moduleProcedure
+    .input(addDncSchema)
+    .mutation(({ ctx, input }) => outreachService.addDnc(ctx, input)),
 
   listDnc: moduleProcedure
     .input(listDncSchema)
@@ -155,7 +160,7 @@ export const outreachRouter = router({
 
   checkDnc: moduleProcedure
     .input(checkDncSchema)
-    .query(({ ctx, input }) => outreachService.checkDnc(ctx, input.email)),
+    .query(({ ctx, input }) => outreachService.isOnDnc(ctx, input.email)),
 })
 
 export type OutreachRouter = typeof outreachRouter

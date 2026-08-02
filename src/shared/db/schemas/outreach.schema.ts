@@ -1,11 +1,29 @@
+/**
+ * Outreach module — DB schema.
+ *
+ * Three operational tables match the spreadsheet model:
+ *   - leads               : one row per prospect (Master Lead List xlsx parity)
+ *   - daily_activity      : one row per owner per day (Google Sheet dashboard parity)
+ *   - weekly_hypothesis   : the 7-day iteration loop spine
+ *
+ * Plus two supporting tables retained from the previous module:
+ *   - touches             : historical send audit log (Gmail correlation needs externalMessageId)
+ *   - replies             : inbox triage; Gmail processor writes here
+ *   - dnc_list            : suppression list
+ *
+ * Removed (overbuilt for current need): companies, contacts (collapsed into leads),
+ * campaigns (replaced by weekly_hypothesis), templates (locked copy lives in service).
+ */
+
 import {
   pgTable,
   pgEnum,
   uuid,
   text,
   boolean,
+  integer,
   numeric,
-  jsonb,
+  date,
   timestamp,
   uniqueIndex,
   index,
@@ -13,25 +31,12 @@ import {
 } from "drizzle-orm/pg-core"
 import { sql } from "drizzle-orm"
 import { tenants } from "./tenant.schema"
-import { rawEvents } from "./event-framework.schema"
+// raw_events is in an unapplied migration — replies.rawEventId is a free uuid
+// for now; FK will be added when event-framework lands.
 
 // ---------------------------------------------------------------------------
 // Enums
 // ---------------------------------------------------------------------------
-
-export const outreachEmployeeBandEnum = pgEnum("outreach_employee_band", [
-  "1-2",
-  "3-15",
-  "15-50",
-  "50+",
-])
-
-export const outreachCompanySourceEnum = pgEnum("outreach_company_source", [
-  "cold",
-  "referral",
-  "inbound",
-  "manual",
-])
 
 export const outreachChannelEnum = pgEnum("outreach_channel", [
   "email",
@@ -39,12 +44,34 @@ export const outreachChannelEnum = pgEnum("outreach_channel", [
   "phone",
 ])
 
-export const outreachCampaignStatusEnum = pgEnum("outreach_campaign_status", [
+export const outreachLeadStatusEnum = pgEnum("outreach_lead_status", [
+  "ready",
   "draft",
+  "sent",
+  "skipped",
+  "dnc",
+])
+
+export const outreachLeadOwnerEnum = pgEnum("outreach_lead_owner", [
+  "luke",
+  "alex",
+])
+
+export const outreachReplySentimentEnum = pgEnum("outreach_reply_sentiment", [
+  "positive",
+  "neutral",
+  "negative",
+])
+
+export const outreachHypothesisStatusEnum = pgEnum("outreach_hypothesis_status", [
   "active",
-  "paused",
   "complete",
 ])
+
+export const outreachHypothesisVerdictEnum = pgEnum(
+  "outreach_hypothesis_verdict",
+  ["pending", "testing", "keep", "mutate", "kill", "baseline"],
+)
 
 export const outreachDeliveryStatusEnum = pgEnum("outreach_delivery_status", [
   "queued",
@@ -54,16 +81,6 @@ export const outreachDeliveryStatusEnum = pgEnum("outreach_delivery_status", [
   "failed",
 ])
 
-export const outreachReplyStatusEnum = pgEnum("outreach_reply_status", [
-  "none",
-  "positive",
-  "negative",
-  "ooo",
-  "converter",
-  "wrong_person",
-  "auto_reply",
-])
-
 export const outreachClassifierEnum = pgEnum("outreach_classifier", [
   "claude",
   "luke",
@@ -71,190 +88,205 @@ export const outreachClassifierEnum = pgEnum("outreach_classifier", [
 ])
 
 // ---------------------------------------------------------------------------
-// Tables
+// weekly_hypothesis — the 7-day loop spine
 // ---------------------------------------------------------------------------
 
-export const companies = pgTable("companies", {
+export const weeklyHypothesis = pgTable("outreach_weekly_hypothesis", {
   id: uuid().primaryKey().default(sql`gen_random_uuid()`).notNull(),
   tenantId: uuid().notNull(),
-  name: text().notNull(),
-  domain: text(),
-  industry: text(),
-  employeeBand: outreachEmployeeBandEnum(),
-  city: text(),
-  country: text(),
-  ownerLed: boolean().default(false).notNull(),
-  source: outreachCompanySourceEnum().default("cold").notNull(),
-  doNotContact: boolean().default(false).notNull(),
-  dncReason: text(),
-  dncAt: timestamp({ precision: 3, mode: 'date' }),
-  enrichment: jsonb().$type<Record<string, unknown>>().default({}).notNull(),
-  notes: text(),
-  createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
-  updatedAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
-}, (table) => [
-  index("companies_tenantId_domain_idx").on(table.tenantId, table.domain),
-  index("companies_tenantId_city_idx").on(table.tenantId, table.city),
-  index("companies_tenantId_doNotContact_idx").on(table.tenantId, table.doNotContact),
-  foreignKey({
-    columns: [table.tenantId],
-    foreignColumns: [tenants.id],
-    name: "companies_tenantId_fkey",
-  }).onUpdate("cascade").onDelete("cascade"),
-])
-
-export const contacts = pgTable("contacts", {
-  id: uuid().primaryKey().default(sql`gen_random_uuid()`).notNull(),
-  tenantId: uuid().notNull(),
-  companyId: uuid().notNull(),
-  fullName: text().notNull(),
-  role: text(),
-  email: text(),
-  phone: text(),
-  linkedinUrl: text(),
-  isOwner: boolean().default(false).notNull(),
-  isDecisionMaker: boolean().default(false).notNull(),
-  bounced: boolean().default(false).notNull(),
-  doNotContact: boolean().default(false).notNull(),
-  createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
-  updatedAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
-}, (table) => [
-  uniqueIndex("contacts_tenantId_email_key")
-    .on(table.tenantId, table.email)
-    .where(sql`"email" IS NOT NULL`),
-  index("contacts_companyId_idx").on(table.companyId),
-  index("contacts_tenantId_email_idx").on(table.tenantId, table.email),
-  foreignKey({
-    columns: [table.tenantId],
-    foreignColumns: [tenants.id],
-    name: "contacts_tenantId_fkey",
-  }).onUpdate("cascade").onDelete("cascade"),
-  foreignKey({
-    columns: [table.companyId],
-    foreignColumns: [companies.id],
-    name: "contacts_companyId_fkey",
-  }).onUpdate("cascade").onDelete("cascade"),
-])
-
-export const campaigns = pgTable("campaigns", {
-  id: uuid().primaryKey().default(sql`gen_random_uuid()`).notNull(),
-  tenantId: uuid().notNull(),
-  name: text().notNull(),
-  channel: outreachChannelEnum().notNull(),
-  city: text(),
-  industryFocus: text(),
-  status: outreachCampaignStatusEnum().default("draft").notNull(),
-  startedAt: timestamp({ precision: 3, mode: 'date' }),
-  endedAt: timestamp({ precision: 3, mode: 'date' }),
-  createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
-}, (table) => [
-  index("campaigns_tenantId_status_idx").on(table.tenantId, table.status),
-  foreignKey({
-    columns: [table.tenantId],
-    foreignColumns: [tenants.id],
-    name: "campaigns_tenantId_fkey",
-  }).onUpdate("cascade").onDelete("cascade"),
-])
-
-export const templates = pgTable("templates", {
-  id: uuid().primaryKey().default(sql`gen_random_uuid()`).notNull(),
-  tenantId: uuid().notNull(),
-  name: text().notNull(),
-  channel: outreachChannelEnum().notNull(),
-  subject: text(),
+  // ISO week label, e.g. "2026-W24"
+  week: text().notNull(),
+  startDate: date({ mode: "string" }).notNull(),
+  endDate: date({ mode: "string" }).notNull(),
+  title: text().notNull(),
   body: text().notNull(),
-  variables: jsonb().$type<Record<string, unknown>>().default({}).notNull(),
-  parentId: uuid(),
-  active: boolean().default(true).notNull(),
-  createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
-  updatedAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+  // Targets locked at week start
+  targetSample: integer().notNull(),
+  targetReplyPct: numeric({ precision: 5, scale: 2 }).notNull(),
+  targetPositivePct: numeric({ precision: 5, scale: 2 }).notNull(),
+  targetBooked: integer().default(0).notNull(),
+  // Outcome at week close
+  status: outreachHypothesisStatusEnum().default("active").notNull(),
+  verdict: outreachHypothesisVerdictEnum().default("pending").notNull(),
+  resultSummary: text(),
+  replaces: text(),
+  prevWeekId: uuid(),
+  createdAt: timestamp({ precision: 3, mode: "date" }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp({ precision: 3, mode: "date" }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 }, (table) => [
-  index("templates_tenantId_active_idx").on(table.tenantId, table.active),
+  uniqueIndex("weekly_hypothesis_tenantId_week_key").on(table.tenantId, table.week),
+  index("weekly_hypothesis_tenantId_status_idx").on(table.tenantId, table.status),
   foreignKey({
     columns: [table.tenantId],
     foreignColumns: [tenants.id],
-    name: "templates_tenantId_fkey",
+    name: "weekly_hypothesis_tenantId_fkey",
   }).onUpdate("cascade").onDelete("cascade"),
   foreignKey({
-    columns: [table.parentId],
+    columns: [table.prevWeekId],
     foreignColumns: [table.id],
-    name: "templates_parentId_fkey",
+    name: "weekly_hypothesis_prevWeekId_fkey",
   }).onUpdate("cascade").onDelete("set null"),
 ])
 
-export const touches = pgTable("touches", {
+// ---------------------------------------------------------------------------
+// leads — the roster (1:1 with Master Lead List xlsx)
+// ---------------------------------------------------------------------------
+
+export const leads = pgTable("outreach_leads", {
   id: uuid().primaryKey().default(sql`gen_random_uuid()`).notNull(),
   tenantId: uuid().notNull(),
-  campaignId: uuid(),
-  contactId: uuid().notNull(),
-  templateId: uuid(),
+  // Per-tenant sequence (matches the # column in the xlsx)
+  number: integer().notNull(),
+  owner: outreachLeadOwnerEnum().notNull(),
+  status: outreachLeadStatusEnum().default("ready").notNull(),
+  name: text().notNull(),
+  company: text().notNull(),
+  category: text(),
+  email: text(),
+  website: text(),
+  source: text(),
+  researched: boolean().default(false).notNull(),
+  followUpFlag: boolean().default(false).notNull(),
+  lastContactedAt: date({ mode: "string" }),
+  nextFollowUpAt: date({ mode: "string" }),
+  reply: boolean().default(false).notNull(),
+  replySentiment: outreachReplySentimentEnum(),
+  researchNotes: text(),
+  notes: text(),
+  hypothesisWeekId: uuid(),
+  createdAt: timestamp({ precision: 3, mode: "date" }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp({ precision: 3, mode: "date" }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+}, (table) => [
+  uniqueIndex("leads_tenantId_email_key")
+    .on(table.tenantId, table.email)
+    .where(sql`"email" IS NOT NULL`),
+  uniqueIndex("leads_tenantId_number_key").on(table.tenantId, table.number),
+  index("leads_tenantId_status_idx").on(table.tenantId, table.status),
+  index("leads_tenantId_owner_idx").on(table.tenantId, table.owner),
+  index("leads_tenantId_lastContactedAt_idx")
+    .on(table.tenantId, table.lastContactedAt.desc()),
+  index("leads_tenantId_hypothesisWeekId_idx")
+    .on(table.tenantId, table.hypothesisWeekId),
+  foreignKey({
+    columns: [table.tenantId],
+    foreignColumns: [tenants.id],
+    name: "leads_tenantId_fkey",
+  }).onUpdate("cascade").onDelete("cascade"),
+  foreignKey({
+    columns: [table.hypothesisWeekId],
+    foreignColumns: [weeklyHypothesis.id],
+    name: "leads_hypothesisWeekId_fkey",
+  }).onUpdate("cascade").onDelete("set null"),
+])
+
+// ---------------------------------------------------------------------------
+// daily_activity — the dashboard spine (Google Sheet parity)
+//   One row per (date, owner) — Sent / Replies / Positive derive from leads
+//   for live views, but cached here so the dashboard is cheap to query.
+//   Meetings & deal counts pulled from Cal + Twenty MCPs and stamped here.
+// ---------------------------------------------------------------------------
+
+export const dailyActivity = pgTable("outreach_daily_activity", {
+  id: uuid().primaryKey().default(sql`gen_random_uuid()`).notNull(),
+  tenantId: uuid().notNull(),
+  date: date({ mode: "string" }).notNull(),
+  owner: outreachLeadOwnerEnum().notNull(),
+  channel: outreachChannelEnum().default("email").notNull(),
+  hypothesisWeekId: uuid(),
+  // Top-of-funnel (derived from leads)
+  sent: integer().default(0).notNull(),
+  replies: integer().default(0).notNull(),
+  positive: integer().default(0).notNull(),
+  // Mid-funnel (Cal MCP)
+  meetingsBooked: integer().default(0).notNull(),
+  meetingsTaken: integer().default(0).notNull(),
+  // Bottom-funnel (Twenty MCP)
+  interested: integer().default(0).notNull(),
+  closed: integer().default(0).notNull(),
+  newUpfront: numeric({ precision: 10, scale: 2 }).default("0").notNull(),
+  newRetainer: numeric({ precision: 10, scale: 2 }).default("0").notNull(),
+  notes: text(),
+  createdAt: timestamp({ precision: 3, mode: "date" }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp({ precision: 3, mode: "date" }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+}, (table) => [
+  uniqueIndex("daily_activity_tenantId_date_owner_key")
+    .on(table.tenantId, table.date, table.owner),
+  index("daily_activity_tenantId_date_idx")
+    .on(table.tenantId, table.date.desc()),
+  index("daily_activity_tenantId_hypothesisWeekId_idx")
+    .on(table.tenantId, table.hypothesisWeekId),
+  foreignKey({
+    columns: [table.tenantId],
+    foreignColumns: [tenants.id],
+    name: "daily_activity_tenantId_fkey",
+  }).onUpdate("cascade").onDelete("cascade"),
+  foreignKey({
+    columns: [table.hypothesisWeekId],
+    foreignColumns: [weeklyHypothesis.id],
+    name: "daily_activity_hypothesisWeekId_fkey",
+  }).onUpdate("cascade").onDelete("set null"),
+])
+
+// ---------------------------------------------------------------------------
+// touches — historical send audit log (slim). Required by Gmail processor
+// for In-Reply-To correlation via externalMessageId.
+// ---------------------------------------------------------------------------
+
+export const touches = pgTable("outreach_touches", {
+  id: uuid().primaryKey().default(sql`gen_random_uuid()`).notNull(),
+  tenantId: uuid().notNull(),
+  leadId: uuid().notNull(),
   channel: outreachChannelEnum().notNull(),
-  sentAt: timestamp({ precision: 3, mode: 'date' }),
+  sentAt: timestamp({ precision: 3, mode: "date" }),
   subjectRendered: text(),
   bodyRendered: text(),
   deliveryStatus: outreachDeliveryStatusEnum().default("queued").notNull(),
-  openAt: timestamp({ precision: 3, mode: 'date' }),
-  clickAt: timestamp({ precision: 3, mode: 'date' }),
-  replyStatus: outreachReplyStatusEnum().default("none").notNull(),
-  replyAt: timestamp({ precision: 3, mode: 'date' }),
-  replySummary: text(),
-  nextAction: text(),
-  nextActionAt: timestamp({ precision: 3, mode: 'date' }),
   externalMessageId: text(),
-  createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
-  updatedAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+  createdAt: timestamp({ precision: 3, mode: "date" }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp({ precision: 3, mode: "date" }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 }, (table) => [
-  index("touches_tenantId_contactId_sentAt_idx")
-    .on(table.tenantId, table.contactId, table.sentAt.desc()),
-  index("touches_campaignId_idx").on(table.campaignId),
-  index("touches_awaiting_reply_idx")
-    .on(table.deliveryStatus)
-    .where(sql`"replyStatus" = 'none'`),
+  index("touches_tenantId_leadId_sentAt_idx")
+    .on(table.tenantId, table.leadId, table.sentAt.desc()),
+  index("touches_tenantId_externalMessageId_idx")
+    .on(table.tenantId, table.externalMessageId),
   foreignKey({
     columns: [table.tenantId],
     foreignColumns: [tenants.id],
     name: "touches_tenantId_fkey",
   }).onUpdate("cascade").onDelete("cascade"),
   foreignKey({
-    columns: [table.campaignId],
-    foreignColumns: [campaigns.id],
-    name: "touches_campaignId_fkey",
-  }).onUpdate("cascade").onDelete("set null"),
-  foreignKey({
-    columns: [table.contactId],
-    foreignColumns: [contacts.id],
-    name: "touches_contactId_fkey",
+    columns: [table.leadId],
+    foreignColumns: [leads.id],
+    name: "touches_leadId_fkey",
   }).onUpdate("cascade").onDelete("cascade"),
-  foreignKey({
-    columns: [table.templateId],
-    foreignColumns: [templates.id],
-    name: "touches_templateId_fkey",
-  }).onUpdate("cascade").onDelete("set null"),
 ])
 
-export const replies = pgTable("replies", {
+// ---------------------------------------------------------------------------
+// replies — inbox triage. Written by Gmail processor.
+// ---------------------------------------------------------------------------
+
+export const replies = pgTable("outreach_replies", {
   id: uuid().primaryKey().default(sql`gen_random_uuid()`).notNull(),
   tenantId: uuid().notNull(),
-  // Nullable — replies can be unsolicited (no originating touch).
   touchId: uuid(),
-  contactId: uuid().notNull(),
-  receivedAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+  leadId: uuid().notNull(),
+  receivedAt: timestamp({ precision: 3, mode: "date" }).default(sql`CURRENT_TIMESTAMP`).notNull(),
   subject: text(),
   body: text(),
-  classifiedAs: text(),
+  sentiment: outreachReplySentimentEnum(),
   classifiedBy: outreachClassifierEnum(),
-  classificationConfidence: numeric({ precision: 5, scale: 4 }),
   needsReview: boolean().default(true).notNull(),
   handled: boolean().default(false).notNull(),
-  handledAt: timestamp({ precision: 3, mode: 'date' }),
+  handledAt: timestamp({ precision: 3, mode: "date" }),
   rawEventId: uuid(),
-  createdAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+  createdAt: timestamp({ precision: 3, mode: "date" }).default(sql`CURRENT_TIMESTAMP`).notNull(),
 }, (table) => [
   index("replies_tenantId_needsReview_idx")
     .on(table.tenantId)
     .where(sql`"needsReview" = true`),
+  index("replies_tenantId_leadId_receivedAt_idx")
+    .on(table.tenantId, table.leadId, table.receivedAt.desc()),
   index("replies_touchId_idx").on(table.touchId),
-  index("replies_contactId_receivedAt_idx").on(table.contactId, table.receivedAt.desc()),
   foreignKey({
     columns: [table.tenantId],
     foreignColumns: [tenants.id],
@@ -266,24 +298,23 @@ export const replies = pgTable("replies", {
     name: "replies_touchId_fkey",
   }).onUpdate("cascade").onDelete("set null"),
   foreignKey({
-    columns: [table.contactId],
-    foreignColumns: [contacts.id],
-    name: "replies_contactId_fkey",
+    columns: [table.leadId],
+    foreignColumns: [leads.id],
+    name: "replies_leadId_fkey",
   }).onUpdate("cascade").onDelete("cascade"),
-  foreignKey({
-    columns: [table.rawEventId],
-    foreignColumns: [rawEvents.id],
-    name: "replies_rawEventId_fkey",
-  }).onUpdate("cascade").onDelete("set null"),
 ])
 
-export const dncList = pgTable("dnc_list", {
+// ---------------------------------------------------------------------------
+// dnc_list — suppression
+// ---------------------------------------------------------------------------
+
+export const dncList = pgTable("outreach_dnc_list", {
   id: uuid().primaryKey().default(sql`gen_random_uuid()`).notNull(),
   tenantId: uuid().notNull(),
   email: text(),
   domain: text(),
   reason: text(),
-  addedAt: timestamp({ precision: 3, mode: 'date' }).default(sql`CURRENT_TIMESTAMP`).notNull(),
+  addedAt: timestamp({ precision: 3, mode: "date" }).default(sql`CURRENT_TIMESTAMP`).notNull(),
   addedBy: text(),
 }, (table) => [
   uniqueIndex("dnc_list_tenantId_email_key")
@@ -303,10 +334,15 @@ export const dncList = pgTable("dnc_list", {
 // Type aliases
 // ---------------------------------------------------------------------------
 
-export type CompanyRow = typeof companies.$inferSelect
-export type ContactRow = typeof contacts.$inferSelect
-export type CampaignRow = typeof campaigns.$inferSelect
-export type TemplateRow = typeof templates.$inferSelect
+export type LeadRow = typeof leads.$inferSelect
+export type LeadInsert = typeof leads.$inferInsert
+export type DailyActivityRow = typeof dailyActivity.$inferSelect
+export type DailyActivityInsert = typeof dailyActivity.$inferInsert
+export type WeeklyHypothesisRow = typeof weeklyHypothesis.$inferSelect
+export type WeeklyHypothesisInsert = typeof weeklyHypothesis.$inferInsert
 export type TouchRow = typeof touches.$inferSelect
+export type TouchInsert = typeof touches.$inferInsert
 export type ReplyRow = typeof replies.$inferSelect
+export type ReplyInsert = typeof replies.$inferInsert
 export type DncListRow = typeof dncList.$inferSelect
+export type DncListInsert = typeof dncList.$inferInsert

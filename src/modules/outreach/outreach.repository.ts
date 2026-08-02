@@ -2,40 +2,44 @@ import { db } from "@/shared/db"
 import { logger } from "@/shared/logger"
 import { NotFoundError } from "@/shared/errors"
 import {
-  companies,
-  contacts,
-  campaigns,
-  templates,
+  leads,
+  dailyActivity,
+  weeklyHypothesis,
   touches,
   replies,
   dncList,
 } from "@/shared/db/schemas/outreach.schema"
 import {
-  eq,
   and,
-  or,
-  desc,
   asc,
+  desc,
+  eq,
+  gte,
   ilike,
+  lte,
+  or,
   sql,
-  inArray,
 } from "drizzle-orm"
 import type {
-  CompanyRecord,
-  ContactRecord,
-  CampaignRecord,
-  TemplateRecord,
+  LeadRecord,
+  DailyActivityRecord,
+  WeeklyHypothesisRecord,
   TouchRecord,
   ReplyRecord,
+  DncRecord,
   EnrichedReplyRecord,
-  DncListRecord,
-  CreateCompanyInput,
-  UpdateCompanyInput,
-  CreateContactInput,
-  UpdateContactInput,
-  CreateCampaignInput,
-  CreateTemplateInput,
-  OutreachDeliveryStatus,
+  CreateLeadInput,
+  UpdateLeadInput,
+  ListLeadsInput,
+  ListDailyActivityInput,
+  UpsertDailyActivityInput,
+  CreateHypothesisInput,
+  AddDncInput,
+  OutreachLeadOwner,
+  OutreachReplySentiment,
+  OutreachHypothesisStatus,
+  OutreachChannel,
+  OutreachClassifier,
 } from "./outreach.types"
 
 const log = logger.child({ module: "outreach.repository" })
@@ -50,906 +54,658 @@ function domainFromEmail(email: string): string | null {
   return email.slice(at + 1).toLowerCase()
 }
 
-// ===============================================================
+function leadFilterConditions(
+  tenantId: string,
+  input: Omit<ListLeadsInput, "limit" | "offset">,
+) {
+  const conditions = [eq(leads.tenantId, tenantId)]
+  if (input.status) conditions.push(eq(leads.status, input.status))
+  if (input.owner) conditions.push(eq(leads.owner, input.owner))
+  if (input.category) conditions.push(eq(leads.category, input.category))
+  if (input.researched !== undefined)
+    conditions.push(eq(leads.researched, input.researched))
+  if (input.hypothesisWeekId)
+    conditions.push(eq(leads.hypothesisWeekId, input.hypothesisWeekId))
+  if (input.search) {
+    const pat = `%${input.search}%`
+    conditions.push(
+      or(
+        ilike(leads.name, pat),
+        ilike(leads.company, pat),
+        ilike(leads.email, pat),
+      )!,
+    )
+  }
+  if (input.excludeDnc) {
+    // Hard suppression gate: drop any lead whose email or email-domain is on
+    // the DNC list. Correlated NOT EXISTS so it holds regardless of the lead's
+    // own status field. DNC emails/domains are stored lowercased (see addDnc).
+    conditions.push(
+      sql`NOT EXISTS (
+        SELECT 1 FROM ${dncList}
+        WHERE ${dncList.tenantId} = ${tenantId}
+          AND ${leads.email} IS NOT NULL
+          AND (
+            ${dncList.email} = lower(${leads.email})
+            OR (
+              ${dncList.domain} IS NOT NULL
+              AND ${dncList.domain} = split_part(lower(${leads.email}), '@', 2)
+            )
+          )
+      )`,
+    )
+  }
+  return conditions
+}
+
+// ===========================================================================
 // OUTREACH REPOSITORY
-// ===============================================================
+// ===========================================================================
 
 export const outreachRepository = {
-  // -------------------------------------------------------------------
-  // COMPANIES
-  // -------------------------------------------------------------------
+  // -------------------------------------------------------------------------
+  // LEADS
+  // -------------------------------------------------------------------------
 
-  async listCompanies(
+  async listLeads(
     tenantId: string,
-    opts: {
-      search?: string
-      city?: string
-      doNotContact?: boolean
-      limit: number
-      cursor?: string
-    },
-  ): Promise<{ rows: CompanyRecord[]; hasMore: boolean }> {
-    const conditions = [eq(companies.tenantId, tenantId)]
-
-    if (opts.search) {
-      const pat = `%${opts.search}%`
-      conditions.push(
-        or(ilike(companies.name, pat), ilike(companies.domain, pat))!,
-      )
-    }
-    if (opts.city) conditions.push(eq(companies.city, opts.city))
-    if (opts.doNotContact !== undefined)
-      conditions.push(eq(companies.doNotContact, opts.doNotContact))
-    if (opts.cursor)
-      conditions.push(sql`${companies.createdAt} <= ${new Date(opts.cursor)}`)
-
-    const rows = await db
+    input: ListLeadsInput,
+  ): Promise<LeadRecord[]> {
+    const conditions = leadFilterConditions(tenantId, input)
+    const limit = input.limit ?? 50
+    const offset = input.offset ?? 0
+    return db
       .select()
-      .from(companies)
+      .from(leads)
       .where(and(...conditions))
-      .orderBy(desc(companies.createdAt))
-      .limit(opts.limit + 1)
-
-    const hasMore = rows.length > opts.limit
-    return {
-      rows: hasMore ? rows.slice(0, opts.limit) : rows,
-      hasMore,
-    }
+      .orderBy(asc(leads.number))
+      .limit(limit)
+      .offset(offset)
   },
 
-  async findCompanyById(
+  async countLeads(
     tenantId: string,
-    companyId: string,
-  ): Promise<CompanyRecord | null> {
+    input: Omit<ListLeadsInput, "limit" | "offset">,
+  ): Promise<number> {
+    const conditions = leadFilterConditions(tenantId, input)
+    const [row] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(leads)
+      .where(and(...conditions))
+    return row?.count ?? 0
+  },
+
+  async getLead(tenantId: string, id: string): Promise<LeadRecord | null> {
     const [row] = await db
       .select()
-      .from(companies)
-      .where(and(eq(companies.id, companyId), eq(companies.tenantId, tenantId)))
+      .from(leads)
+      .where(and(eq(leads.tenantId, tenantId), eq(leads.id, id)))
       .limit(1)
     return row ?? null
   },
 
-  async findCompanyByDomain(
+  async createLead(
     tenantId: string,
-    domain: string,
-  ): Promise<CompanyRecord | null> {
-    const [row] = await db
-      .select()
-      .from(companies)
-      .where(and(eq(companies.tenantId, tenantId), eq(companies.domain, domain)))
-      .limit(1)
-    return row ?? null
-  },
-
-  async createCompany(
-    tenantId: string,
-    input: CreateCompanyInput,
-  ): Promise<CompanyRecord> {
-    const [row] = await db
-      .insert(companies)
-      .values({
-        tenantId,
-        name: input.name,
-        domain: input.domain ?? null,
-        industry: input.industry ?? null,
-        employeeBand: input.employeeBand ?? null,
-        city: input.city ?? null,
-        country: input.country ?? null,
-        ownerLed: input.ownerLed ?? false,
-        source: input.source ?? "cold",
-        notes: input.notes ?? null,
-        enrichment: input.enrichment ?? {},
-      })
-      .returning()
-    log.info({ tenantId, companyId: row!.id }, "Company created")
-    return row!
-  },
-
-  async updateCompany(
-    tenantId: string,
-    companyId: string,
-    input: UpdateCompanyInput,
-  ): Promise<CompanyRecord> {
-    const updateData: Record<string, unknown> = { updatedAt: new Date() }
-    for (const [k, v] of Object.entries(input)) {
-      if (v !== undefined) updateData[k] = v
-    }
-
-    const [updated] = await db
-      .update(companies)
-      .set(updateData as Partial<typeof companies.$inferInsert>)
-      .where(and(eq(companies.id, companyId), eq(companies.tenantId, tenantId)))
-      .returning()
-
-    if (!updated) throw new NotFoundError("Company", companyId)
-    return updated
-  },
-
-  async bulkInsertCompanies(
-    tenantId: string,
-    rows: CreateCompanyInput[],
-  ): Promise<CompanyRecord[]> {
-    if (rows.length === 0) return []
-    const inserted = await db
-      .insert(companies)
-      .values(
-        rows.map((r) => ({
+    input: CreateLeadInput,
+  ): Promise<LeadRecord> {
+    return db.transaction(async (tx) => {
+      const [{ next }] = await tx
+        .select({
+          next: sql<number>`COALESCE(MAX(${leads.number}), 0) + 1`,
+        })
+        .from(leads)
+        .where(eq(leads.tenantId, tenantId))
+      const [row] = await tx
+        .insert(leads)
+        .values({
           tenantId,
-          name: r.name,
-          domain: r.domain ?? null,
-          industry: r.industry ?? null,
-          employeeBand: r.employeeBand ?? null,
-          city: r.city ?? null,
-          country: r.country ?? null,
-          ownerLed: r.ownerLed ?? false,
-          source: r.source ?? "cold",
-          notes: r.notes ?? null,
-          enrichment: r.enrichment ?? {},
-        })),
-      )
-      .returning()
-    log.info({ tenantId, count: inserted.length }, "Companies bulk-inserted")
-    return inserted
+          number: next,
+          owner: input.owner,
+          status: input.status ?? "ready",
+          name: input.name,
+          company: input.company,
+          category: input.category ?? null,
+          email: input.email ?? null,
+          website: input.website ?? null,
+          source: input.source ?? null,
+          researched: input.researched ?? false,
+          followUpFlag: input.followUpFlag ?? false,
+          researchNotes: input.researchNotes ?? null,
+          notes: input.notes ?? null,
+          hypothesisWeekId: input.hypothesisWeekId ?? null,
+        })
+        .returning()
+      return row
+    })
   },
 
-  // -------------------------------------------------------------------
-  // CONTACTS
-  // -------------------------------------------------------------------
-
-  async listContacts(
+  async updateLead(
     tenantId: string,
-    opts: {
-      companyId?: string
-      search?: string
-      doNotContact?: boolean
-      bounced?: boolean
-      limit: number
-      cursor?: string
-    },
-  ): Promise<{ rows: ContactRecord[]; hasMore: boolean }> {
-    const conditions = [eq(contacts.tenantId, tenantId)]
-    if (opts.companyId) conditions.push(eq(contacts.companyId, opts.companyId))
-    if (opts.doNotContact !== undefined)
-      conditions.push(eq(contacts.doNotContact, opts.doNotContact))
-    if (opts.bounced !== undefined)
-      conditions.push(eq(contacts.bounced, opts.bounced))
-    if (opts.search) {
-      const pat = `%${opts.search}%`
-      conditions.push(
-        or(ilike(contacts.fullName, pat), ilike(contacts.email, pat))!,
-      )
-    }
-    if (opts.cursor)
-      conditions.push(sql`${contacts.createdAt} <= ${new Date(opts.cursor)}`)
-
-    const rows = await db
-      .select()
-      .from(contacts)
-      .where(and(...conditions))
-      .orderBy(desc(contacts.createdAt))
-      .limit(opts.limit + 1)
-
-    const hasMore = rows.length > opts.limit
-    return { rows: hasMore ? rows.slice(0, opts.limit) : rows, hasMore }
-  },
-
-  async findContactById(
-    tenantId: string,
-    contactId: string,
-  ): Promise<ContactRecord | null> {
+    input: UpdateLeadInput,
+  ): Promise<LeadRecord> {
+    const { id, ...rest } = input
     const [row] = await db
-      .select()
-      .from(contacts)
-      .where(and(eq(contacts.id, contactId), eq(contacts.tenantId, tenantId)))
-      .limit(1)
-    return row ?? null
+      .update(leads)
+      .set({ ...rest, updatedAt: new Date() })
+      .where(and(eq(leads.tenantId, tenantId), eq(leads.id, id)))
+      .returning()
+    if (!row) throw new NotFoundError("Lead", id)
+    return row
   },
 
-  async findContactByEmail(
+  async findLeadByEmail(
     tenantId: string,
     email: string,
-  ): Promise<ContactRecord | null> {
+  ): Promise<LeadRecord | null> {
     const [row] = await db
       .select()
-      .from(contacts)
-      .where(and(eq(contacts.tenantId, tenantId), eq(contacts.email, email)))
+      .from(leads)
+      .where(and(eq(leads.tenantId, tenantId), eq(leads.email, email)))
       .limit(1)
     return row ?? null
   },
 
-  async createContact(
-    tenantId: string,
-    input: CreateContactInput,
-  ): Promise<ContactRecord> {
-    const [row] = await db
-      .insert(contacts)
-      .values({
-        tenantId,
-        companyId: input.companyId,
-        fullName: input.fullName,
-        role: input.role ?? null,
-        email: input.email ?? null,
-        phone: input.phone ?? null,
-        linkedinUrl: input.linkedinUrl ?? null,
-        isOwner: input.isOwner ?? false,
-        isDecisionMaker: input.isDecisionMaker ?? false,
+  async tabCounts(tenantId: string): Promise<{
+    ready: number
+    sent: number
+    draft: number
+    skipped: number
+    dnc: number
+    total: number
+    alex: number
+    luke: number
+  }> {
+    const rows = await db
+      .select({
+        status: leads.status,
+        owner: leads.owner,
+        count: sql<number>`count(*)::int`,
       })
-      .returning()
-    log.info({ tenantId, contactId: row!.id }, "Contact created")
-    return row!
-  },
+      .from(leads)
+      .where(eq(leads.tenantId, tenantId))
+      .groupBy(leads.status, leads.owner)
 
-  async updateContact(
-    tenantId: string,
-    contactId: string,
-    input: UpdateContactInput,
-  ): Promise<ContactRecord> {
-    const updateData: Record<string, unknown> = { updatedAt: new Date() }
-    for (const [k, v] of Object.entries(input)) {
-      if (v !== undefined) updateData[k] = v
+    const out = {
+      ready: 0,
+      sent: 0,
+      draft: 0,
+      skipped: 0,
+      dnc: 0,
+      total: 0,
+      alex: 0,
+      luke: 0,
     }
-    const [updated] = await db
-      .update(contacts)
-      .set(updateData as Partial<typeof contacts.$inferInsert>)
-      .where(and(eq(contacts.id, contactId), eq(contacts.tenantId, tenantId)))
-      .returning()
-    if (!updated) throw new NotFoundError("Contact", contactId)
-    return updated
+    for (const r of rows) {
+      out[r.status] += r.count
+      out[r.owner] += r.count
+      out.total += r.count
+    }
+    return out
   },
 
-  async markContactBounced(
-    tenantId: string,
-    contactId: string,
-  ): Promise<ContactRecord> {
-    const [updated] = await db
-      .update(contacts)
-      .set({ bounced: true, updatedAt: new Date() })
-      .where(and(eq(contacts.id, contactId), eq(contacts.tenantId, tenantId)))
-      .returning()
-    if (!updated) throw new NotFoundError("Contact", contactId)
-    return updated
-  },
+  // -------------------------------------------------------------------------
+  // DAILY ACTIVITY
+  // -------------------------------------------------------------------------
 
-  async bulkInsertContacts(
+  async listDailyActivity(
     tenantId: string,
-    rows: CreateContactInput[],
-  ): Promise<ContactRecord[]> {
-    if (rows.length === 0) return []
-    const inserted = await db
-      .insert(contacts)
-      .values(
-        rows.map((r) => ({
-          tenantId,
-          companyId: r.companyId,
-          fullName: r.fullName,
-          role: r.role ?? null,
-          email: r.email ?? null,
-          phone: r.phone ?? null,
-          linkedinUrl: r.linkedinUrl ?? null,
-          isOwner: r.isOwner ?? false,
-          isDecisionMaker: r.isDecisionMaker ?? false,
-        })),
-      )
-      .returning()
-    log.info({ tenantId, count: inserted.length }, "Contacts bulk-inserted")
-    return inserted
-  },
-
-  async findContactsByEmails(
-    tenantId: string,
-    emails: string[],
-  ): Promise<ContactRecord[]> {
-    if (emails.length === 0) return []
+    input: ListDailyActivityInput,
+  ): Promise<DailyActivityRecord[]> {
+    const conditions = [
+      eq(dailyActivity.tenantId, tenantId),
+      gte(dailyActivity.date, input.startDate),
+      lte(dailyActivity.date, input.endDate),
+    ]
+    if (input.owner) conditions.push(eq(dailyActivity.owner, input.owner))
     return db
       .select()
-      .from(contacts)
-      .where(
-        and(
-          eq(contacts.tenantId, tenantId),
-          inArray(contacts.email, emails),
-        ),
-      )
-  },
-
-  // -------------------------------------------------------------------
-  // CAMPAIGNS
-  // -------------------------------------------------------------------
-
-  async listCampaigns(
-    tenantId: string,
-    opts: {
-      status?: CampaignRecord["status"]
-      channel?: CampaignRecord["channel"]
-      limit: number
-      cursor?: string
-    },
-  ): Promise<{ rows: CampaignRecord[]; hasMore: boolean }> {
-    const conditions = [eq(campaigns.tenantId, tenantId)]
-    if (opts.status) conditions.push(eq(campaigns.status, opts.status))
-    if (opts.channel) conditions.push(eq(campaigns.channel, opts.channel))
-    if (opts.cursor)
-      conditions.push(sql`${campaigns.createdAt} <= ${new Date(opts.cursor)}`)
-
-    const rows = await db
-      .select()
-      .from(campaigns)
+      .from(dailyActivity)
       .where(and(...conditions))
-      .orderBy(desc(campaigns.createdAt))
-      .limit(opts.limit + 1)
-
-    const hasMore = rows.length > opts.limit
-    return { rows: hasMore ? rows.slice(0, opts.limit) : rows, hasMore }
+      .orderBy(desc(dailyActivity.date))
   },
 
-  async findCampaignById(
+  async upsertDailyActivity(
     tenantId: string,
-    campaignId: string,
-  ): Promise<CampaignRecord | null> {
+    input: UpsertDailyActivityInput,
+  ): Promise<DailyActivityRecord> {
     const [row] = await db
-      .select()
-      .from(campaigns)
-      .where(
-        and(eq(campaigns.id, campaignId), eq(campaigns.tenantId, tenantId)),
-      )
-      .limit(1)
-    return row ?? null
-  },
-
-  async createCampaign(
-    tenantId: string,
-    input: CreateCampaignInput,
-  ): Promise<CampaignRecord> {
-    const [row] = await db
-      .insert(campaigns)
+      .insert(dailyActivity)
       .values({
         tenantId,
-        name: input.name,
-        channel: input.channel,
-        city: input.city ?? null,
-        industryFocus: input.industryFocus ?? null,
-        status: input.status ?? "draft",
-        startedAt: input.startedAt ?? null,
-        endedAt: input.endedAt ?? null,
+        date: input.date,
+        owner: input.owner,
+        channel: input.channel ?? "email",
+        hypothesisWeekId: input.hypothesisWeekId ?? null,
+        sent: input.sent ?? 0,
+        replies: input.replies ?? 0,
+        positive: input.positive ?? 0,
+        meetingsBooked: input.meetingsBooked ?? 0,
+        meetingsTaken: input.meetingsTaken ?? 0,
+        interested: input.interested ?? 0,
+        closed: input.closed ?? 0,
+        newUpfront: input.newUpfront != null ? String(input.newUpfront) : "0",
+        newRetainer:
+          input.newRetainer != null ? String(input.newRetainer) : "0",
+        notes: input.notes ?? null,
+      })
+      .onConflictDoUpdate({
+        target: [dailyActivity.tenantId, dailyActivity.date, dailyActivity.owner],
+        set: {
+          channel: input.channel ?? sql`${dailyActivity.channel}`,
+          hypothesisWeekId:
+            input.hypothesisWeekId !== undefined
+              ? input.hypothesisWeekId
+              : sql`${dailyActivity.hypothesisWeekId}`,
+          sent: input.sent ?? sql`${dailyActivity.sent}`,
+          replies: input.replies ?? sql`${dailyActivity.replies}`,
+          positive: input.positive ?? sql`${dailyActivity.positive}`,
+          meetingsBooked:
+            input.meetingsBooked ?? sql`${dailyActivity.meetingsBooked}`,
+          meetingsTaken:
+            input.meetingsTaken ?? sql`${dailyActivity.meetingsTaken}`,
+          interested: input.interested ?? sql`${dailyActivity.interested}`,
+          closed: input.closed ?? sql`${dailyActivity.closed}`,
+          newUpfront:
+            input.newUpfront != null
+              ? String(input.newUpfront)
+              : sql`${dailyActivity.newUpfront}`,
+          newRetainer:
+            input.newRetainer != null
+              ? String(input.newRetainer)
+              : sql`${dailyActivity.newRetainer}`,
+          notes: input.notes !== undefined ? input.notes : sql`${dailyActivity.notes}`,
+          updatedAt: new Date(),
+        },
       })
       .returning()
-    log.info({ tenantId, campaignId: row!.id }, "Campaign created")
-    return row!
+    return row
   },
 
-  // -------------------------------------------------------------------
-  // TEMPLATES
-  // -------------------------------------------------------------------
-
-  async listTemplates(
+  async incrementDailyActivity(
     tenantId: string,
-    opts: {
-      channel?: TemplateRecord["channel"]
-      active?: boolean
-      limit: number
-      cursor?: string
-    },
-  ): Promise<{ rows: TemplateRecord[]; hasMore: boolean }> {
-    const conditions = [eq(templates.tenantId, tenantId)]
-    if (opts.channel) conditions.push(eq(templates.channel, opts.channel))
-    if (opts.active !== undefined)
-      conditions.push(eq(templates.active, opts.active))
-    if (opts.cursor)
-      conditions.push(sql`${templates.createdAt} <= ${new Date(opts.cursor)}`)
+    date: string,
+    owner: OutreachLeadOwner,
+    field: "sent" | "replies" | "positive",
+    delta: number = 1,
+  ): Promise<void> {
+    // Atomic upsert: creates the row at zero with the delta applied, or adds delta to the existing row.
+    await db.execute(sql`
+      INSERT INTO outreach_daily_activity ("tenantId", date, owner, ${sql.raw(field)})
+      VALUES (${tenantId}, ${date}, ${owner}, ${delta})
+      ON CONFLICT ("tenantId", date, owner) DO UPDATE
+        SET ${sql.raw(field)} = outreach_daily_activity.${sql.raw(field)} + ${delta},
+            "updatedAt" = NOW()
+    `)
+  },
 
-    const rows = await db
+  // -------------------------------------------------------------------------
+  // WEEKLY HYPOTHESIS
+  // -------------------------------------------------------------------------
+
+  async listHypotheses(
+    tenantId: string,
+    opts: { status?: OutreachHypothesisStatus; limit?: number } = {},
+  ): Promise<WeeklyHypothesisRecord[]> {
+    const conditions = [eq(weeklyHypothesis.tenantId, tenantId)]
+    if (opts.status) conditions.push(eq(weeklyHypothesis.status, opts.status))
+    return db
       .select()
-      .from(templates)
+      .from(weeklyHypothesis)
       .where(and(...conditions))
-      .orderBy(desc(templates.createdAt))
-      .limit(opts.limit + 1)
-
-    const hasMore = rows.length > opts.limit
-    return { rows: hasMore ? rows.slice(0, opts.limit) : rows, hasMore }
+      .orderBy(desc(weeklyHypothesis.startDate))
+      .limit(opts.limit ?? 20)
   },
 
-  async findTemplateById(
+  async getActiveHypothesis(
     tenantId: string,
-    templateId: string,
-  ): Promise<TemplateRecord | null> {
+  ): Promise<WeeklyHypothesisRecord | null> {
     const [row] = await db
       .select()
-      .from(templates)
+      .from(weeklyHypothesis)
       .where(
-        and(eq(templates.id, templateId), eq(templates.tenantId, tenantId)),
+        and(
+          eq(weeklyHypothesis.tenantId, tenantId),
+          eq(weeklyHypothesis.status, "active"),
+        ),
+      )
+      .orderBy(desc(weeklyHypothesis.startDate))
+      .limit(1)
+    return row ?? null
+  },
+
+  async getHypothesis(
+    tenantId: string,
+    id: string,
+  ): Promise<WeeklyHypothesisRecord | null> {
+    const [row] = await db
+      .select()
+      .from(weeklyHypothesis)
+      .where(
+        and(
+          eq(weeklyHypothesis.tenantId, tenantId),
+          eq(weeklyHypothesis.id, id),
+        ),
       )
       .limit(1)
     return row ?? null
   },
 
-  async createTemplate(
+  async createHypothesis(
     tenantId: string,
-    input: CreateTemplateInput,
-  ): Promise<TemplateRecord> {
+    input: CreateHypothesisInput,
+  ): Promise<WeeklyHypothesisRecord> {
     const [row] = await db
-      .insert(templates)
+      .insert(weeklyHypothesis)
       .values({
         tenantId,
-        name: input.name,
-        channel: input.channel,
-        subject: input.subject ?? null,
+        week: input.week,
+        startDate: input.startDate,
+        endDate: input.endDate,
+        title: input.title,
         body: input.body,
-        variables: input.variables ?? {},
-        parentId: input.parentId ?? null,
-        active: input.active ?? true,
+        targetSample: input.targetSample,
+        targetReplyPct: String(input.targetReplyPct),
+        targetPositivePct: String(input.targetPositivePct),
+        targetBooked: input.targetBooked ?? 0,
+        replaces: input.replaces ?? null,
+        prevWeekId: input.prevWeekId ?? null,
       })
       .returning()
-    log.info({ tenantId, templateId: row!.id }, "Template created")
-    return row!
+    return row
   },
 
-  // -------------------------------------------------------------------
-  // TOUCHES
-  // -------------------------------------------------------------------
-
-  async listTouches(
+  async updateHypothesisStatus(
     tenantId: string,
-    opts: {
-      contactId?: string
-      campaignId?: string
-      deliveryStatus?: OutreachDeliveryStatus
-      awaitingReplyOnly?: boolean
-      limit: number
-      cursor?: string
-    },
-  ): Promise<{ rows: TouchRecord[]; hasMore: boolean }> {
-    const conditions = [eq(touches.tenantId, tenantId)]
-    if (opts.contactId) conditions.push(eq(touches.contactId, opts.contactId))
-    if (opts.campaignId)
-      conditions.push(eq(touches.campaignId, opts.campaignId))
-    if (opts.deliveryStatus)
-      conditions.push(eq(touches.deliveryStatus, opts.deliveryStatus))
-    if (opts.awaitingReplyOnly)
-      conditions.push(eq(touches.replyStatus, "none"))
-    if (opts.cursor)
-      conditions.push(sql`${touches.createdAt} <= ${new Date(opts.cursor)}`)
-
-    const rows = await db
-      .select()
-      .from(touches)
-      .where(and(...conditions))
-      .orderBy(desc(touches.createdAt))
-      .limit(opts.limit + 1)
-
-    const hasMore = rows.length > opts.limit
-    return { rows: hasMore ? rows.slice(0, opts.limit) : rows, hasMore }
-  },
-
-  async findTouchById(
-    tenantId: string,
-    touchId: string,
-  ): Promise<TouchRecord | null> {
+    id: string,
+    status: OutreachHypothesisStatus,
+    verdict?: string,
+    resultSummary?: string,
+  ): Promise<WeeklyHypothesisRecord> {
+    const set: Partial<typeof weeklyHypothesis.$inferInsert> = {
+      status,
+      updatedAt: new Date(),
+    }
+    if (verdict !== undefined) {
+      // Verdict enum is validated at the zod boundary; cast here.
+      set.verdict = verdict as typeof weeklyHypothesis.$inferInsert.verdict
+    }
+    if (resultSummary !== undefined) set.resultSummary = resultSummary
     const [row] = await db
-      .select()
-      .from(touches)
-      .where(and(eq(touches.id, touchId), eq(touches.tenantId, tenantId)))
-      .limit(1)
-    return row ?? null
-  },
-
-  async listOpenTouches(
-    tenantId: string,
-    contactId: string,
-  ): Promise<TouchRecord[]> {
-    return db
-      .select()
-      .from(touches)
+      .update(weeklyHypothesis)
+      .set(set)
       .where(
         and(
-          eq(touches.tenantId, tenantId),
-          eq(touches.contactId, contactId),
-          eq(touches.replyStatus, "none"),
+          eq(weeklyHypothesis.tenantId, tenantId),
+          eq(weeklyHypothesis.id, id),
         ),
       )
-      .orderBy(desc(touches.sentAt))
+      .returning()
+    if (!row) throw new NotFoundError("WeeklyHypothesis", id)
+    return row
   },
+
+  // -------------------------------------------------------------------------
+  // TOUCHES
+  // -------------------------------------------------------------------------
 
   async findTouchByExternalMessageId(
+    tenantId: string,
     externalMessageId: string,
   ): Promise<TouchRecord | null> {
     const [row] = await db
       .select()
       .from(touches)
-      .where(eq(touches.externalMessageId, externalMessageId))
+      .where(
+        and(
+          eq(touches.tenantId, tenantId),
+          eq(touches.externalMessageId, externalMessageId),
+        ),
+      )
       .limit(1)
     return row ?? null
   },
 
-  async insertTouch(
+  async createTouch(
     tenantId: string,
     input: {
-      contactId: string
-      campaignId?: string | null
-      templateId?: string | null
-      channel: TouchRecord["channel"]
-      subjectRendered?: string | null
-      bodyRendered?: string | null
-      externalMessageId?: string | null
-      deliveryStatus?: OutreachDeliveryStatus
+      leadId: string
+      channel: OutreachChannel
+      sentAt?: Date
+      subjectRendered?: string
+      bodyRendered?: string
+      externalMessageId?: string
     },
   ): Promise<TouchRecord> {
     const [row] = await db
       .insert(touches)
       .values({
         tenantId,
-        contactId: input.contactId,
-        campaignId: input.campaignId ?? null,
-        templateId: input.templateId ?? null,
+        leadId: input.leadId,
         channel: input.channel,
+        sentAt: input.sentAt ?? null,
         subjectRendered: input.subjectRendered ?? null,
         bodyRendered: input.bodyRendered ?? null,
         externalMessageId: input.externalMessageId ?? null,
-        deliveryStatus: input.deliveryStatus ?? "queued",
+        deliveryStatus: input.sentAt ? "sent" : "queued",
       })
       .returning()
-    return row!
+    return row
   },
 
-  async updateTouch(
-    tenantId: string,
-    touchId: string,
-    patch: Partial<typeof touches.$inferInsert>,
-  ): Promise<TouchRecord> {
-    const [updated] = await db
-      .update(touches)
-      .set({ ...patch, updatedAt: new Date() })
-      .where(and(eq(touches.id, touchId), eq(touches.tenantId, tenantId)))
-      .returning()
-    if (!updated) throw new NotFoundError("Touch", touchId)
-    return updated
-  },
-
-  // -------------------------------------------------------------------
+  // -------------------------------------------------------------------------
   // REPLIES
-  // -------------------------------------------------------------------
+  // -------------------------------------------------------------------------
 
-  async listReplies(
-    tenantId: string,
-    opts: {
-      needsReview?: boolean
-      handled?: boolean
-      contactId?: string
-      limit: number
-      cursor?: string
-    },
-  ): Promise<{ rows: ReplyRecord[]; hasMore: boolean }> {
-    const conditions = [eq(replies.tenantId, tenantId)]
-    if (opts.needsReview !== undefined)
-      conditions.push(eq(replies.needsReview, opts.needsReview))
-    if (opts.handled !== undefined)
-      conditions.push(eq(replies.handled, opts.handled))
-    if (opts.contactId) conditions.push(eq(replies.contactId, opts.contactId))
-    if (opts.cursor)
-      conditions.push(sql`${replies.createdAt} <= ${new Date(opts.cursor)}`)
-
-    const rows = await db
-      .select()
-      .from(replies)
-      .where(and(...conditions))
-      .orderBy(desc(replies.receivedAt))
-      .limit(opts.limit + 1)
-
-    const hasMore = rows.length > opts.limit
-    return { rows: hasMore ? rows.slice(0, opts.limit) : rows, hasMore }
-  },
-
-  /**
-   * Enriched listing of replies with embedded contact, company, and originating
-   * touch context — for the triage inbox UI.
-   */
-  async listRepliesEnriched(
-    tenantId: string,
-    opts: {
-      needsReview?: boolean
-      handled?: boolean
-      contactId?: string
-      sinceDays?: number
-      limit: number
-      cursor?: string
-    },
-  ): Promise<{ rows: EnrichedReplyRecord[]; hasMore: boolean }> {
-    const conditions = [eq(replies.tenantId, tenantId)]
-    if (opts.needsReview !== undefined)
-      conditions.push(eq(replies.needsReview, opts.needsReview))
-    if (opts.handled !== undefined)
-      conditions.push(eq(replies.handled, opts.handled))
-    if (opts.contactId) conditions.push(eq(replies.contactId, opts.contactId))
-    if (opts.sinceDays && opts.sinceDays > 0) {
-      const cutoff = new Date(Date.now() - opts.sinceDays * 24 * 60 * 60 * 1000)
-      conditions.push(sql`${replies.receivedAt} >= ${cutoff}`)
-    }
-    if (opts.cursor)
-      conditions.push(sql`${replies.receivedAt} <= ${new Date(opts.cursor)}`)
-
-    const rows = await db
-      .select({
-        reply: replies,
-        contact: contacts,
-        company: companies,
-        touch: touches,
-      })
-      .from(replies)
-      .innerJoin(contacts, eq(contacts.id, replies.contactId))
-      .innerJoin(companies, eq(companies.id, contacts.companyId))
-      .leftJoin(touches, eq(touches.id, replies.touchId))
-      .where(and(...conditions))
-      .orderBy(desc(replies.receivedAt))
-      .limit(opts.limit + 1)
-
-    const hasMore = rows.length > opts.limit
-    const sliced = hasMore ? rows.slice(0, opts.limit) : rows
-
-    const enriched: EnrichedReplyRecord[] = sliced.map((r) => ({
-      ...r.reply,
-      contact: {
-        id: r.contact.id,
-        fullName: r.contact.fullName,
-        role: r.contact.role,
-        email: r.contact.email,
-      },
-      company: {
-        id: r.company.id,
-        name: r.company.name,
-        domain: r.company.domain,
-      },
-      touch: r.touch
-        ? {
-            id: r.touch.id,
-            sentAt: r.touch.sentAt,
-            subjectRendered: r.touch.subjectRendered,
-            channel: r.touch.channel,
-          }
-        : null,
-    }))
-
-    return { rows: enriched, hasMore }
-  },
-
-  async findReplyById(
-    tenantId: string,
-    replyId: string,
-  ): Promise<ReplyRecord | null> {
-    const [row] = await db
-      .select()
-      .from(replies)
-      .where(and(eq(replies.id, replyId), eq(replies.tenantId, tenantId)))
-      .limit(1)
-    return row ?? null
-  },
-
-  async listRepliesNeedingReview(
-    tenantId: string,
-    limit = 50,
-  ): Promise<ReplyRecord[]> {
-    return db
-      .select()
-      .from(replies)
-      .where(
-        and(eq(replies.tenantId, tenantId), eq(replies.needsReview, true)),
-      )
-      .orderBy(asc(replies.receivedAt))
-      .limit(limit)
-  },
-
-  async insertReply(
+  async createReply(
     tenantId: string,
     input: {
-      contactId: string
+      leadId: string
       touchId?: string | null
       receivedAt?: Date
       subject?: string | null
       body?: string | null
-      classifiedAs?: string | null
-      classifiedBy?: ReplyRecord["classifiedBy"]
-      classificationConfidence?: number | null
+      sentiment?: OutreachReplySentiment | null
+      classifiedBy?: OutreachClassifier | null
       rawEventId?: string | null
-      needsReview?: boolean
     },
   ): Promise<ReplyRecord> {
     const [row] = await db
       .insert(replies)
       .values({
         tenantId,
-        contactId: input.contactId,
+        leadId: input.leadId,
         touchId: input.touchId ?? null,
         receivedAt: input.receivedAt ?? new Date(),
         subject: input.subject ?? null,
         body: input.body ?? null,
-        classifiedAs: input.classifiedAs ?? null,
+        sentiment: input.sentiment ?? null,
         classifiedBy: input.classifiedBy ?? null,
-        classificationConfidence:
-          input.classificationConfidence != null
-            ? String(input.classificationConfidence)
-            : null,
         rawEventId: input.rawEventId ?? null,
-        needsReview: input.needsReview ?? true,
       })
       .returning()
-    return row!
+    return row
   },
 
-  async updateReply(
+  async listReplies(
     tenantId: string,
-    replyId: string,
-    patch: Partial<typeof replies.$inferInsert>,
-  ): Promise<ReplyRecord> {
-    const [updated] = await db
-      .update(replies)
-      .set(patch)
-      .where(and(eq(replies.id, replyId), eq(replies.tenantId, tenantId)))
-      .returning()
-    if (!updated) throw new NotFoundError("Reply", replyId)
-    return updated
+    opts: {
+      needsReview?: boolean
+      handled?: boolean
+      leadId?: string
+      sinceDays?: number
+      limit?: number
+    },
+  ): Promise<ReplyRecord[]> {
+    const conditions = [eq(replies.tenantId, tenantId)]
+    if (opts.needsReview !== undefined)
+      conditions.push(eq(replies.needsReview, opts.needsReview))
+    if (opts.handled !== undefined)
+      conditions.push(eq(replies.handled, opts.handled))
+    if (opts.leadId) conditions.push(eq(replies.leadId, opts.leadId))
+    if (opts.sinceDays) {
+      const since = new Date(Date.now() - opts.sinceDays * 86_400_000)
+      conditions.push(gte(replies.receivedAt, since))
+    }
+    return db
+      .select()
+      .from(replies)
+      .where(and(...conditions))
+      .orderBy(desc(replies.receivedAt))
+      .limit(opts.limit ?? 50)
+  },
+
+  async listRepliesEnriched(
+    tenantId: string,
+    opts: { needsReview?: boolean; sinceDays?: number; limit?: number },
+  ): Promise<EnrichedReplyRecord[]> {
+    const conditions = [eq(replies.tenantId, tenantId)]
+    if (opts.needsReview !== undefined)
+      conditions.push(eq(replies.needsReview, opts.needsReview))
+    if (opts.sinceDays) {
+      const since = new Date(Date.now() - opts.sinceDays * 86_400_000)
+      conditions.push(gte(replies.receivedAt, since))
+    }
+    const rows = await db
+      .select({
+        reply: replies,
+        leadId: leads.id,
+        leadName: leads.name,
+        leadCompany: leads.company,
+        leadEmail: leads.email,
+        leadOwner: leads.owner,
+        touchId: touches.id,
+        touchSentAt: touches.sentAt,
+        touchSubject: touches.subjectRendered,
+        touchChannel: touches.channel,
+      })
+      .from(replies)
+      .innerJoin(leads, eq(replies.leadId, leads.id))
+      .leftJoin(touches, eq(replies.touchId, touches.id))
+      .where(and(...conditions))
+      .orderBy(desc(replies.receivedAt))
+      .limit(opts.limit ?? 50)
+
+    return rows.map((r) => ({
+      ...r.reply,
+      lead: {
+        id: r.leadId,
+        name: r.leadName,
+        company: r.leadCompany,
+        email: r.leadEmail,
+        owner: r.leadOwner,
+      },
+      touch: r.touchId
+        ? {
+            id: r.touchId,
+            sentAt: r.touchSentAt,
+            subjectRendered: r.touchSubject,
+            channel: r.touchChannel!,
+          }
+        : null,
+    }))
   },
 
   async markReplyHandled(
     tenantId: string,
-    replyId: string,
-  ): Promise<ReplyRecord> {
-    const [updated] = await db
+    id: string,
+    sentiment?: OutreachReplySentiment,
+  ): Promise<void> {
+    const set: Partial<typeof replies.$inferInsert> = {
+      handled: true,
+      handledAt: new Date(),
+      needsReview: false,
+    }
+    if (sentiment) set.sentiment = sentiment
+    const res = await db
       .update(replies)
-      .set({ handled: true, handledAt: new Date(), needsReview: false })
-      .where(and(eq(replies.id, replyId), eq(replies.tenantId, tenantId)))
-      .returning()
-    if (!updated) throw new NotFoundError("Reply", replyId)
-    return updated
+      .set(set)
+      .where(and(eq(replies.tenantId, tenantId), eq(replies.id, id)))
+      .returning({ id: replies.id })
+    if (res.length === 0) throw new NotFoundError("Reply", id)
   },
 
-  // -------------------------------------------------------------------
+  // -------------------------------------------------------------------------
   // DNC
-  // -------------------------------------------------------------------
+  // -------------------------------------------------------------------------
+
+  async addDnc(
+    tenantId: string,
+    input: AddDncInput,
+    addedBy?: string,
+  ): Promise<DncRecord> {
+    const [row] = await db
+      .insert(dncList)
+      .values({
+        // Store canonical (lowercased) so matching in isOnDnc / the excludeDnc
+        // gate is reliable regardless of how the address was typed.
+        tenantId,
+        email: input.email?.toLowerCase() ?? null,
+        domain: input.domain?.toLowerCase() ?? null,
+        reason: input.reason ?? null,
+        addedBy: addedBy ?? null,
+      })
+      .returning()
+    return row
+  },
+
+  /**
+   * Flip any lead rows matching an email or email-domain to status "dnc", so
+   * the roster and counts reflect suppression. The send path is already
+   * protected by the excludeDnc query gate; this just keeps stored state
+   * coherent with the DNC list.
+   */
+  async suppressMatchingLeads(
+    tenantId: string,
+    email?: string | null,
+    domain?: string | null,
+  ): Promise<void> {
+    const matchers = []
+    if (email) matchers.push(sql`lower(${leads.email}) = ${email.toLowerCase()}`)
+    const dmn = domain ?? (email ? domainFromEmail(email) : null)
+    if (dmn)
+      matchers.push(
+        sql`split_part(lower(${leads.email}), '@', 2) = ${dmn.toLowerCase()}`,
+      )
+    if (matchers.length === 0) return
+    await db
+      .update(leads)
+      .set({ status: "dnc", updatedAt: new Date() })
+      .where(and(eq(leads.tenantId, tenantId), or(...matchers)!))
+  },
+
+  async isOnDnc(tenantId: string, email: string): Promise<boolean> {
+    const domain = domainFromEmail(email)
+    const conditions = [eq(dncList.tenantId, tenantId)]
+    const matchers = [eq(dncList.email, email.toLowerCase())]
+    if (domain) matchers.push(eq(dncList.domain, domain))
+    conditions.push(or(...matchers)!)
+    const [row] = await db
+      .select({ id: dncList.id })
+      .from(dncList)
+      .where(and(...conditions))
+      .limit(1)
+    return Boolean(row)
+  },
 
   async listDnc(
     tenantId: string,
-    opts: { search?: string; limit: number; cursor?: string },
-  ): Promise<{ rows: DncListRecord[]; hasMore: boolean }> {
+    opts: { search?: string; limit?: number },
+  ): Promise<DncRecord[]> {
     const conditions = [eq(dncList.tenantId, tenantId)]
     if (opts.search) {
       const pat = `%${opts.search}%`
       conditions.push(or(ilike(dncList.email, pat), ilike(dncList.domain, pat))!)
     }
-    if (opts.cursor)
-      conditions.push(sql`${dncList.addedAt} <= ${new Date(opts.cursor)}`)
-
-    const rows = await db
+    return db
       .select()
       .from(dncList)
       .where(and(...conditions))
       .orderBy(desc(dncList.addedAt))
-      .limit(opts.limit + 1)
-
-    const hasMore = rows.length > opts.limit
-    return { rows: hasMore ? rows.slice(0, opts.limit) : rows, hasMore }
-  },
-
-  async insertDnc(
-    tenantId: string,
-    input: {
-      email?: string | null
-      domain?: string | null
-      reason?: string | null
-      addedBy?: string | null
-    },
-  ): Promise<DncListRecord> {
-    const [row] = await db
-      .insert(dncList)
-      .values({
-        tenantId,
-        email: input.email ?? null,
-        domain: input.domain ?? null,
-        reason: input.reason ?? null,
-        addedBy: input.addedBy ?? null,
-      })
-      .returning()
-    return row!
-  },
-
-  async flipMatchingContactsDnc(
-    tenantId: string,
-    opts: { email?: string | null; domain?: string | null },
-  ): Promise<number> {
-    if (!opts.email && !opts.domain) return 0
-
-    if (opts.email) {
-      const r = await db
-        .update(contacts)
-        .set({ doNotContact: true, updatedAt: new Date() })
-        .where(
-          and(
-            eq(contacts.tenantId, tenantId),
-            eq(contacts.email, opts.email),
-          ),
-        )
-        .returning({ id: contacts.id })
-      return r.length
-    }
-
-    // Domain: match contacts whose email ends with @domain
-    const pat = `%@${opts.domain}`
-    const r = await db
-      .update(contacts)
-      .set({ doNotContact: true, updatedAt: new Date() })
-      .where(
-        and(eq(contacts.tenantId, tenantId), ilike(contacts.email, pat)),
-      )
-      .returning({ id: contacts.id })
-    return r.length
-  },
-
-  async flipMatchingCompaniesDnc(
-    tenantId: string,
-    domain: string,
-    reason?: string | null,
-  ): Promise<number> {
-    const r = await db
-      .update(companies)
-      .set({
-        doNotContact: true,
-        dncReason: reason ?? null,
-        dncAt: new Date(),
-        updatedAt: new Date(),
-      })
-      .where(
-        and(eq(companies.tenantId, tenantId), eq(companies.domain, domain)),
-      )
-      .returning({ id: companies.id })
-    return r.length
-  },
-
-  /**
-   * True if the email is on the DNC list (by email or domain), OR if the
-   * matching contact is do_not_contact, OR if the contact's company is
-   * do_not_contact.
-   */
-  async isDoNotContact(tenantId: string, email: string): Promise<boolean> {
-    const lower = email.toLowerCase()
-    const domain = domainFromEmail(lower)
-
-    // 1. dnc_list by email or domain
-    const dncConds = [eq(dncList.tenantId, tenantId)]
-    const dncMatch = domain
-      ? or(eq(dncList.email, lower), eq(dncList.domain, domain))!
-      : eq(dncList.email, lower)
-    const [dnc] = await db
-      .select({ id: dncList.id })
-      .from(dncList)
-      .where(and(...dncConds, dncMatch))
-      .limit(1)
-    if (dnc) return true
-
-    // 2. contact flag
-    const [c] = await db
-      .select({ doNotContact: contacts.doNotContact, companyId: contacts.companyId })
-      .from(contacts)
-      .where(and(eq(contacts.tenantId, tenantId), eq(contacts.email, lower)))
-      .limit(1)
-    if (c?.doNotContact) return true
-
-    // 3. company flag (either via the contact's company OR by matching domain)
-    if (c?.companyId) {
-      const [co] = await db
-        .select({ doNotContact: companies.doNotContact })
-        .from(companies)
-        .where(
-          and(eq(companies.tenantId, tenantId), eq(companies.id, c.companyId)),
-        )
-        .limit(1)
-      if (co?.doNotContact) return true
-    } else if (domain) {
-      const [co] = await db
-        .select({ doNotContact: companies.doNotContact })
-        .from(companies)
-        .where(
-          and(eq(companies.tenantId, tenantId), eq(companies.domain, domain)),
-        )
-        .limit(1)
-      if (co?.doNotContact) return true
-    }
-
-    return false
+      .limit(opts.limit ?? 50)
   },
 }
+
+export type OutreachRepository = typeof outreachRepository
+
+// Suppress unused logger import warning — kept for parity with other repos
+void log

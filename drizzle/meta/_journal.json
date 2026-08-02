@@ -36,6 +36,13 @@
       "when": 1780247483749,
       "tag": "0004_event-framework",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1781427887194,
+      "tag": "0005_outreach-strip",
+      "breakpoints": true
     }
   ]
 }
