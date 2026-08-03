@@ -26,13 +26,10 @@ import { logger } from "@/shared/logger"
 
 const log = logger.child({ module: "outreach.activity-sync" })
 
-const STAGE_BOOKED = new Set([
-  "SCREENING",
-  "MEETING",
-  "FINDINGS",
-  "PROPOSAL",
-  "CUSTOMER",
-])
+// booked = the deal EXISTS. In this sales process an opportunity is only
+// opened once a real conversation/call happens, and deals that later went
+// LOST still had their meeting (e.g. "met, no fit") — counting by current
+// stage erased every meeting that didn't convert.
 const STAGE_INTERESTED = new Set(["FINDINGS", "PROPOSAL", "CUSTOMER"])
 
 interface TwentyOpp {
@@ -102,7 +99,7 @@ function warmByDate(opps: TwentyOpp[]): Map<
     const date = o.createdAt.slice(0, 10) // YYYY-MM-DD, safe (ISO from Twenty)
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) continue
     const cur = m.get(date) ?? { booked: 0, interested: 0, closed: 0 }
-    if (STAGE_BOOKED.has(o.stage)) cur.booked += 1
+    cur.booked += 1
     if (STAGE_INTERESTED.has(o.stage)) cur.interested += 1
     if (o.stage === "CUSTOMER") cur.closed += 1
     m.set(date, cur)
