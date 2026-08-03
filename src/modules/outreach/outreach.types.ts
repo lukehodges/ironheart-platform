@@ -144,6 +144,8 @@ export interface ListLeadsInput {
    * status field drifted out of sync with the DNC table.
    */
   excludeDnc?: boolean
+  /** Exclude leads linked to a Twenty opportunity (live deal — never cold-pull). */
+  excludeWarm?: boolean
 }
 
 // ---------------------------------------------------------------------------

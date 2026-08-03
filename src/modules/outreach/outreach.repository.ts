@@ -91,6 +91,11 @@ function leadFilterConditions(
   // Tier ilike on notes field (e.g. "gold" matches "tier: gold" anywhere in notes)
   if (input.tier)
     conditions.push(ilike(leads.notes, `%${input.tier}%`))
+  // Warm guard: a lead linked to a Twenty opportunity has a live deal — it
+  // must never be pulled into a cold batch, whatever its status says.
+  // (2026-08-03: fedro@ was cold-emailed while at SCREENING because this
+  // gate didn't exist.)
+  if (input.excludeWarm) conditions.push(isNull(leads.twentyOppId))
   if (input.excludeDnc) {
     // Hard suppression gate: drop any lead whose email or email-domain is on
     // the DNC list. Correlated NOT EXISTS so it holds regardless of the lead's

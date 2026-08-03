@@ -407,6 +407,7 @@ export const outreachService = {
       researched: true,
       hypothesisWeekId: input.hypothesisId,
       excludeDnc: true, // hard suppression gate — never pull a DNC'd lead
+      excludeWarm: true, // never pull a lead with a live Twenty deal
       limit: input.count,
       offset: 0,
     })
