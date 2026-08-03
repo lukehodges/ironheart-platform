@@ -26,10 +26,11 @@ import { logger } from "@/shared/logger"
 
 const log = logger.child({ module: "outreach.activity-sync" })
 
-// booked = the deal EXISTS. In this sales process an opportunity is only
-// opened once a real conversation/call happens, and deals that later went
-// LOST still had their meeting (e.g. "met, no fit") — counting by current
-// stage erased every meeting that didn't convert.
+// booked = a call was actually arranged, i.e. the deal reached SCREENING+.
+// NEW-stage opps are enquiries/deal records with no call booked — counting
+// them made booked (28) wildly exceed meetings taken (~12). Without stage
+// history booked ≈ taken; they diverge only when a distinct booking source
+// (e.g. Cal.com) feeds booked directly.
 // taken = a meeting demonstrably happened (deal progressed past NEW);
 // interested = live pipeline (past the first call, not yet won/lost);
 // closed = paying customer.
@@ -103,8 +104,10 @@ function warmByDate(opps: TwentyOpp[]): Map<
     const date = o.createdAt.slice(0, 10) // YYYY-MM-DD, safe (ISO from Twenty)
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) continue
     const cur = m.get(date) ?? { booked: 0, taken: 0, interested: 0, closed: 0 }
-    cur.booked += 1
-    if (STAGE_TAKEN.has(o.stage)) cur.taken += 1
+    if (STAGE_TAKEN.has(o.stage)) {
+      cur.booked += 1
+      cur.taken += 1
+    }
     if (STAGE_INTERESTED.has(o.stage)) cur.interested += 1
     if (o.stage === "CUSTOMER") cur.closed += 1
     m.set(date, cur)
