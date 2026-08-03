@@ -36,6 +36,7 @@ const STAGE_BOOKED = new Set([
 const STAGE_INTERESTED = new Set(["FINDINGS", "PROPOSAL", "CUSTOMER"])
 
 interface TwentyOpp {
+  id: string
   stage: string
   createdAt: string
 }
@@ -70,13 +71,13 @@ async function fetchTwentyOpps(): Promise<TwentyOpp[]> {
       break
     }
     const body = (await res.json()) as {
-      data?: { opportunities?: Array<{ stage?: string; createdAt?: string }> }
+      data?: { opportunities?: Array<{ id?: string; stage?: string; createdAt?: string }> }
       pageInfo?: { hasNextPage?: boolean; endCursor?: string }
     }
     const recs = body?.data?.opportunities ?? []
     for (const r of recs) {
-      if (r.stage && r.createdAt) {
-        opps.push({ stage: r.stage, createdAt: r.createdAt })
+      if (r.id && r.stage && r.createdAt) {
+        opps.push({ id: r.id, stage: r.stage, createdAt: r.createdAt })
       }
     }
     if (body?.pageInfo?.hasNextPage && body.pageInfo.endCursor) {
@@ -119,7 +120,16 @@ export async function syncOutreachActivity(
   tenantId: string,
 ): Promise<{ coldDays: number; warmDays: number; opps: number }> {
   const opps = await fetchTwentyOpps()
-  const warm = warmByDate(opps)
+  // COLD-ORIGIN ONLY: the Observatory funnel tracks the outreach stream, so an
+  // opp counts as booked/interested/closed here only if a cold lead carries its
+  // id (twentyOppId). All-channel pipeline (inbound/referrals) lives in Twenty
+  // itself — mixing it in made booked(17) exceed positive replies(5).
+  const linked = await db.execute(sql`
+    SELECT DISTINCT "twentyOppId" AS id FROM outreach_leads
+    WHERE "tenantId" = ${tenantId} AND "twentyOppId" IS NOT NULL
+  `)
+  const linkedIds = new Set(linked.map((r) => String((r as { id: string }).id)))
+  const warm = warmByDate(opps.filter((o) => linkedIds.has(o.id)))
 
   await db.transaction(async (tx) => {
     // 1. Wipe + rebuild the COLD funnel from leads + replies.
