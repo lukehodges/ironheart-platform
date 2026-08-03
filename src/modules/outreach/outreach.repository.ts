@@ -16,6 +16,8 @@ import {
   eq,
   gte,
   ilike,
+  isNotNull,
+  isNull,
   lte,
   or,
   sql,
@@ -56,7 +58,7 @@ function domainFromEmail(email: string): string | null {
 
 function leadFilterConditions(
   tenantId: string,
-  input: Omit<ListLeadsInput, "limit" | "offset">,
+  input: Omit<ListLeadsInput, "limit" | "offset" | "sortBy" | "sortDir">,
 ) {
   const conditions = [eq(leads.tenantId, tenantId)]
   if (input.status) conditions.push(eq(leads.status, input.status))
@@ -76,6 +78,19 @@ function leadFilterConditions(
       )!,
     )
   }
+  // Date-range filters on lastContactedAt
+  if (input.contactedFrom)
+    conditions.push(gte(leads.lastContactedAt, input.contactedFrom))
+  if (input.contactedTo)
+    conditions.push(lte(leads.lastContactedAt, input.contactedTo))
+  // NULL / NOT NULL gate on lastContactedAt
+  if (input.hasContactDate === true)
+    conditions.push(isNotNull(leads.lastContactedAt))
+  else if (input.hasContactDate === false)
+    conditions.push(isNull(leads.lastContactedAt))
+  // Tier ilike on notes field (e.g. "gold" matches "tier: gold" anywhere in notes)
+  if (input.tier)
+    conditions.push(ilike(leads.notes, `%${input.tier}%`))
   if (input.excludeDnc) {
     // Hard suppression gate: drop any lead whose email or email-domain is on
     // the DNC list. Correlated NOT EXISTS so it holds regardless of the lead's
@@ -114,11 +129,29 @@ export const outreachRepository = {
     const conditions = leadFilterConditions(tenantId, input)
     const limit = input.limit ?? 50
     const offset = input.offset ?? 0
+
+    // Build order-by from sortBy/sortDir; default to number asc
+    const dir = input.sortDir === "desc" ? desc : asc
+    let orderCol
+    switch (input.sortBy) {
+      case "company":
+        orderCol = dir(leads.company)
+        break
+      case "status":
+        orderCol = dir(leads.status)
+        break
+      case "lastContactedAt":
+        orderCol = dir(leads.lastContactedAt)
+        break
+      default:
+        orderCol = dir(leads.number)
+    }
+
     return db
       .select()
       .from(leads)
       .where(and(...conditions))
-      .orderBy(asc(leads.number))
+      .orderBy(orderCol)
       .limit(limit)
       .offset(offset)
   },

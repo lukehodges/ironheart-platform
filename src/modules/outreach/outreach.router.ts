@@ -21,6 +21,7 @@ import { promoteLeadToTwenty, dueForFollowUp } from "./twenty-bridge.service"
 import {
   // leads
   listLeadsSchema,
+  countLeadsSchema,
   createLeadSchema,
   updateLeadSchema,
   markLeadSentSchema,
@@ -55,7 +56,7 @@ export const outreachRouter = router({
     .query(({ ctx, input }) => outreachService.listLeads(ctx, input)),
 
   countLeads: moduleProcedure
-    .input(listLeadsSchema.omit({ limit: true, offset: true }))
+    .input(countLeadsSchema)
     .query(({ ctx, input }) => outreachService.countLeads(ctx, input)),
 
   tabCounts: moduleProcedure

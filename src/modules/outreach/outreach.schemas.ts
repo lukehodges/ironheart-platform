@@ -46,16 +46,32 @@ const dateStr = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Expected YYYY-MM-DD")
 // Leads
 // ---------------------------------------------------------------------------
 
-export const listLeadsSchema = z.object({
+export const listLeadsFilterSchema = z.object({
   status: outreachLeadStatusEnum.optional(),
   owner: outreachLeadOwnerEnum.optional(),
   category: z.string().optional(),
   researched: z.boolean().optional(),
   search: z.string().optional(),
   hypothesisWeekId: uuid.optional(),
+  // Date-range filter on lastContactedAt (ISO date strings YYYY-MM-DD)
+  contactedFrom: z.string().optional(),
+  contactedTo: z.string().optional(),
+  // When true: only leads WITH a lastContactedAt; when false: only leads without
+  hasContactDate: z.boolean().optional(),
+  // Tier filter: ilike on notes field (e.g. "gold", "silver")
+  tier: z.string().optional(),
+  // Server-side sort
+  sortBy: z.enum(["number", "company", "status", "lastContactedAt"]).optional(),
+  sortDir: z.enum(["asc", "desc"]).optional(),
+})
+
+export const listLeadsSchema = listLeadsFilterSchema.extend({
   limit: z.number().int().min(1).max(500).default(50),
   offset: z.number().int().min(0).default(0),
 })
+
+// countLeads accepts all the same filters (no pagination needed)
+export const countLeadsSchema = listLeadsFilterSchema
 
 export const createLeadSchema = z.object({
   owner: outreachLeadOwnerEnum,

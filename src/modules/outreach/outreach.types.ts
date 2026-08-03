@@ -125,6 +125,18 @@ export interface ListLeadsInput {
   hypothesisWeekId?: string
   limit?: number
   offset?: number
+  /** Date-range lower bound on lastContactedAt (YYYY-MM-DD inclusive) */
+  contactedFrom?: string
+  /** Date-range upper bound on lastContactedAt (YYYY-MM-DD inclusive) */
+  contactedTo?: string
+  /** When true: only leads WITH lastContactedAt; when false: only leads without */
+  hasContactDate?: boolean
+  /** ilike filter on notes field, e.g. "gold" to match "tier: gold" */
+  tier?: string
+  /** Column to sort by (server-side); defaults to number asc */
+  sortBy?: "number" | "company" | "status" | "lastContactedAt"
+  /** Sort direction; defaults to asc */
+  sortDir?: "asc" | "desc"
   /**
    * When true, exclude any lead whose email (or email-domain) is on the DNC
    * list — a hard suppression gate applied at the query layer. Set on the

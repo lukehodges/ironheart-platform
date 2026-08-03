@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useEffect } from "react"
+import { useState, useMemo, useEffect, useRef } from "react"
 import { api } from "@/lib/trpc/react"
 import type {
   LeadRecord,
@@ -24,8 +24,9 @@ import DailyActivityEditModal from "./_components/DailyActivityEditModal"
 type Timeframe = "7d" | "14d" | "30d" | "q2" | "ytd" | "all"
 type StrategyFilter = "all" | OutreachLeadOwner
 type RosterTab = OutreachLeadStatus
-type RosterSortCol = "number" | "name" | "company" | "lastContactedAt"
+type RosterSortCol = "number" | "company" | "status" | "lastContactedAt"
 type DaySortCol = "date" | "sent" | "replies" | "positive"
+type TierFilter = "" | "gold" | "silver" | "platinum"
 type TopTab = "today" | "funnel" | "leads" | "inbox" | "hypothesis"
 const TOP_TABS: readonly TopTab[] = ["today", "funnel", "leads", "inbox", "hypothesis"] as const
 const TOP_TAB_LABELS: Record<TopTab, string> = {
@@ -113,6 +114,18 @@ function sumFunnel(rows: DailyActivityRecord[]): Funnel {
     }),
     { sent: 0, replies: 0, positive: 0, booked: 0, taken: 0, interested: 0, closed: 0, money: 0 },
   )
+}
+
+function fmtDateISO(s: string | Date | null): string {
+  if (!s) return "—"
+  const d = typeof s === "string" ? new Date(s) : s
+  return d.toISOString().slice(0, 10)
+}
+
+function parseTierFromNotes(notes: string | null | undefined): string {
+  if (!notes) return ""
+  const m = notes.match(/tier[:\s]+([a-z]+)/i)
+  return m ? m[1].toLowerCase() : ""
 }
 
 function isoWeek(d: Date): string {
@@ -335,6 +348,23 @@ const OBSERVATORY_CSS = `
 .obs .drawer .dbody .notes{background:var(--obs-surface-2);border-radius:8px;padding:12px 14px;font-size:12.5px;line-height:1.55;color:var(--obs-ink);white-space:pre-line}
 .obs .drawer .dfoot{padding:14px 22px;border-top:1px solid var(--obs-line);display:flex;gap:8px;background:var(--obs-surface-2);justify-content:flex-end}
 @media(max-width:1280px){.obs .funnel{grid-template-columns:repeat(4,1fr)}.obs .duo{grid-template-columns:1fr}}
+.obs .roster input[type=date]{border:1px solid var(--obs-line);background:var(--obs-surface-2);padding:6px 10px;border-radius:7px;font-size:12px;color:var(--obs-ink);outline:none;font-family:var(--obs-mono)}
+.obs .roster input[type=date]:focus{border-color:var(--obs-accent)}
+.obs .roster select.filter-sel{border:1px solid var(--obs-line);background:var(--obs-surface-2);padding:6px 10px;border-radius:7px;font-size:12px;color:var(--obs-ink);outline:none;font-family:var(--obs-mono);cursor:pointer}
+.obs .roster select.filter-sel:focus{border-color:var(--obs-accent)}
+.obs .toggle-btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--obs-line-2);background:var(--obs-surface-2);color:var(--obs-ink-65);font-size:11.5px;padding:5px 10px;border-radius:7px;cursor:pointer;font-family:var(--obs-mono)}
+.obs .toggle-btn.active{background:var(--obs-info-soft);border-color:var(--obs-info);color:var(--obs-info)}
+.obs .toggle-btn:hover:not(.active){border-color:var(--obs-ink-30);color:var(--obs-ink)}
+.obs .filter-label{font-family:var(--obs-mono);font-size:9.5px;letter-spacing:0.1em;text-transform:uppercase;color:var(--obs-ink-50);white-space:nowrap}
+.obs .filter-group{display:flex;align-items:center;gap:6px;flex-wrap:nowrap}
+.obs .tier-pill{display:inline-block;font-family:var(--obs-mono);font-size:9.5px;letter-spacing:0.06em;text-transform:uppercase;padding:2px 7px;border-radius:4px;font-weight:500}
+.obs .tier-pill.gold{background:rgba(184,134,11,0.12);color:var(--obs-warn)}
+.obs .tier-pill.silver{background:var(--obs-surface-3);color:var(--obs-ink-65)}
+.obs .tier-pill.platinum{background:var(--obs-info-soft);color:var(--obs-info)}
+.obs .reply-pill{display:inline-flex;align-items:center;font-family:var(--obs-mono);font-size:9.5px;letter-spacing:0.04em;padding:2px 7px;border-radius:4px;white-space:nowrap}
+.obs .reply-pill.positive{background:var(--obs-ok-soft);color:var(--obs-ok)}
+.obs .reply-pill.negative{background:var(--obs-danger-soft);color:var(--obs-danger)}
+.obs .reply-pill.neutral{background:var(--obs-surface-3);color:var(--obs-ink-65)}
 `
 
 // ─── Sub-components ─────────────────────────────────────────────────────────
@@ -444,6 +474,58 @@ function HypothesisBanner({
   )
 }
 
+/** Two-step confirm button: first click arms ("Sure?"), second click fires.
+ *  Disarms on blur or after 3s. Disabled while pending — no double-fire. */
+function ConfirmButton({
+  label,
+  className = "btn",
+  style,
+  disabled,
+  onConfirm,
+}: {
+  label: string
+  className?: string
+  style?: React.CSSProperties
+  disabled?: boolean
+  onConfirm: () => void
+}) {
+  const [armed, setArmed] = useState(false)
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const clearTimer = () => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current)
+      timerRef.current = null
+    }
+  }
+  useEffect(() => clearTimer, [])
+  return (
+    <button
+      type="button"
+      className={className}
+      style={armed ? { ...style, borderColor: "var(--obs-warn)", color: "var(--obs-warn)", background: "var(--obs-warn-soft)" } : style}
+      disabled={disabled}
+      onBlur={() => {
+        clearTimer()
+        setArmed(false)
+      }}
+      onClick={(e) => {
+        e.stopPropagation()
+        if (!armed) {
+          setArmed(true)
+          clearTimer()
+          timerRef.current = setTimeout(() => setArmed(false), 3000)
+          return
+        }
+        clearTimer()
+        setArmed(false)
+        onConfirm()
+      }}
+    >
+      {armed ? "Sure?" : label}
+    </button>
+  )
+}
+
 function FunnelCards({ s, prev }: { s: Funnel; prev: Funnel }) {
   const delta = (cur: number, prev: number) => {
     if (prev === 0 && cur === 0) return { txt: "— flat", cls: "delta-flat" }
@@ -536,7 +618,12 @@ export default function OutreachObservatoryPage() {
   const [rosterResearchedOpen, setRosterResearchedOpen] = useState(false)
   const [rosterSort, setRosterSort] = useState<{ col: RosterSortCol; dir: "asc" | "desc" }>({ col: "number", dir: "asc" })
   const [rosterPage, setRosterPage] = useState(1)
-  const ROSTER_PAGE_SIZE = 10
+  const ROSTER_PAGE_SIZE = 50
+  // New filter state — date range, never-contacted toggle, tier
+  const [leadsContactedFrom, setLeadsContactedFrom] = useState("")
+  const [leadsContactedTo, setLeadsContactedTo] = useState("")
+  const [leadsNeverContacted, setLeadsNeverContacted] = useState(false)
+  const [leadsTier, setLeadsTier] = useState<TierFilter>("")
   const [daySort, setDaySort] = useState<{ col: DaySortCol; dir: "asc" | "desc" }>({ col: "date", dir: "desc" })
   const [showAllWeeks, setShowAllWeeks] = useState(false)
   const [toasts, setToasts] = useState<Toast[]>([])
@@ -590,20 +677,25 @@ export default function OutreachObservatoryPage() {
   const hyposQ = api.outreach.listHypotheses.useQuery({ limit: 20 }, { enabled: topTab === "hypothesis" })
   const activeQ = api.outreach.getActiveHypothesis.useQuery()
   const tabCountsQ = api.outreach.tabCounts.useQuery()
-  const rosterQ = api.outreach.listLeads.useQuery({
+  // Shared filter params for both listLeads and countLeads
+  const rosterFilters = {
     status: rosterTab,
     owner: rosterOwner === "all" ? undefined : rosterOwner,
     researched: rosterResearched === "any" ? undefined : rosterResearched === "yes",
     search: rosterSearch || undefined,
+    contactedFrom: (!leadsNeverContacted && leadsContactedFrom) ? leadsContactedFrom : undefined,
+    contactedTo: (!leadsNeverContacted && leadsContactedTo) ? leadsContactedTo : undefined,
+    hasContactDate: leadsNeverContacted ? false : undefined,
+    tier: leadsTier || undefined,
+    sortBy: rosterSort.col,
+    sortDir: rosterSort.dir,
+  } as const
+  const rosterQ = api.outreach.listLeads.useQuery({
+    ...rosterFilters,
     limit: ROSTER_PAGE_SIZE,
     offset: (rosterPage - 1) * ROSTER_PAGE_SIZE,
   })
-  const rosterCountQ = api.outreach.countLeads.useQuery({
-    status: rosterTab,
-    owner: rosterOwner === "all" ? undefined : rosterOwner,
-    researched: rosterResearched === "any" ? undefined : rosterResearched === "yes",
-    search: rosterSearch || undefined,
-  })
+  const rosterCountQ = api.outreach.countLeads.useQuery(rosterFilters)
   const drawerLeadQ = api.outreach.getLead.useQuery(
     { id: activeDrawerLeadId ?? "00000000-0000-0000-0000-000000000000" },
     { enabled: !!activeDrawerLeadId },
@@ -617,9 +709,6 @@ export default function OutreachObservatoryPage() {
       utils.outreach.listDailyActivity.invalidate()
       toast("Lead marked sent — activity log updated", "ok")
     },
-  })
-  const updateLead = api.outreach.updateLead.useMutation({
-    onSuccess: () => utils.outreach.listLeads.invalidate(),
   })
   const endWeekMutation = api.outreach.endWeek.useMutation({
     onSuccess: (_data, variables) => {
@@ -700,7 +789,7 @@ export default function OutreachObservatoryPage() {
 
   useEffect(() => {
     setRosterPage(1)
-  }, [rosterTab, rosterSearch, rosterOwner, rosterResearched])
+  }, [rosterTab, rosterSearch, rosterOwner, rosterResearched, leadsContactedFrom, leadsContactedTo, leadsNeverContacted, leadsTier, rosterSort])
 
   // ─── Export CSV ───────────────────────────────────────────────────────────
   function exportDaily() {
@@ -1034,14 +1123,17 @@ export default function OutreachObservatoryPage() {
           <span className="sub">SOURCE: PLATFORM.DB</span>
         </div>
         <div className="card roster">
+          {/* Status tabs */}
           <div className="tabs">
             {(["ready", "sent", "draft", "skipped", "dnc"] as const).map((t) => (
-              <button key={t} className={rosterTab === t ? "on" : ""} onClick={() => setRosterTab(t)}>
+              <button key={t} type="button" className={rosterTab === t ? "on" : ""} onClick={() => setRosterTab(t)}>
                 {t === "dnc" ? "Do not contact" : t.charAt(0).toUpperCase() + t.slice(1)} <span className="ct">{tabCounts[t]}</span>
               </button>
             ))}
             <span className="total">{tabCounts.total} total · {tabCounts.alex} Alex · {tabCounts.luke} Luke</span>
           </div>
+
+          {/* Filter bar — row 1: search + owner + researched + action buttons */}
           <div className="search-row">
             <input
               type="text"
@@ -1056,7 +1148,7 @@ export default function OutreachObservatoryPage() {
               {rosterOwnerOpen && (
                 <div className="pill-menu" onClick={(e) => e.stopPropagation()}>
                   {(["all", "luke", "alex"] as const).map((o) => (
-                    <button key={o} className={rosterOwner === o ? "on" : ""} onClick={() => { setRosterOwner(o); setRosterOwnerOpen(false) }}>
+                    <button key={o} type="button" className={rosterOwner === o ? "on" : ""} onClick={() => { setRosterOwner(o); setRosterOwnerOpen(false) }}>
                       {o === "all" ? "Both" : o.charAt(0).toUpperCase() + o.slice(1)}
                     </button>
                   ))}
@@ -1070,16 +1162,17 @@ export default function OutreachObservatoryPage() {
               {rosterResearchedOpen && (
                 <div className="pill-menu" onClick={(e) => e.stopPropagation()}>
                   {(["any", "yes", "no"] as const).map((r) => (
-                    <button key={r} className={rosterResearched === r ? "on" : ""} onClick={() => { setRosterResearched(r); setRosterResearchedOpen(false) }}>
+                    <button key={r} type="button" className={rosterResearched === r ? "on" : ""} onClick={() => { setRosterResearched(r); setRosterResearchedOpen(false) }}>
                       {r === "any" ? "Any" : r.charAt(0).toUpperCase() + r.slice(1)}
                     </button>
                   ))}
                 </div>
               )}
             </div>
-            <button className="btn btn-ghost" onClick={() => setLeadAddOpen(true)}>⊕ New lead</button>
-            <button className="btn btn-ghost" onClick={() => setLeadBulkOpen(true)}>⤓ CSV import</button>
+            <button type="button" className="btn btn-ghost" onClick={() => setLeadAddOpen(true)}>⊕ New lead</button>
+            <button type="button" className="btn btn-ghost" onClick={() => setLeadBulkOpen(true)}>⤓ CSV import</button>
             <button
+              type="button"
               className="btn btn-primary"
               onClick={() => setSendListOpen(true)}
               disabled={rosterTab !== "ready"}
@@ -1088,76 +1181,212 @@ export default function OutreachObservatoryPage() {
               ✉ Pull 25 → batch
             </button>
           </div>
-          <div className="tbl-wrap" style={{ maxHeight: 600 }}>
+
+          {/* Filter bar — row 2: date range, never-contacted, tier, clear */}
+          <div className="search-row" style={{ borderTop: "none", paddingTop: 6, paddingBottom: 8, gap: 10 }}>
+            <div className="filter-group">
+              <span className="filter-label">Contacted from</span>
+              <input
+                type="date"
+                value={leadsContactedFrom}
+                onChange={(e) => { setLeadsContactedFrom(e.target.value); setLeadsNeverContacted(false) }}
+                disabled={leadsNeverContacted}
+                style={{ opacity: leadsNeverContacted ? 0.4 : 1 }}
+              />
+              <span className="filter-label">to</span>
+              <input
+                type="date"
+                value={leadsContactedTo}
+                onChange={(e) => { setLeadsContactedTo(e.target.value); setLeadsNeverContacted(false) }}
+                disabled={leadsNeverContacted}
+                style={{ opacity: leadsNeverContacted ? 0.4 : 1 }}
+              />
+            </div>
+            <button
+              type="button"
+              className={`toggle-btn ${leadsNeverContacted ? "active" : ""}`}
+              onClick={() => {
+                const next = !leadsNeverContacted
+                setLeadsNeverContacted(next)
+                if (next) { setLeadsContactedFrom(""); setLeadsContactedTo("") }
+              }}
+            >
+              {leadsNeverContacted ? "✓ " : ""}Never contacted
+            </button>
+            <div className="filter-group">
+              <span className="filter-label">Tier</span>
+              <select
+                className="filter-sel"
+                value={leadsTier}
+                onChange={(e) => setLeadsTier(e.target.value as TierFilter)}
+              >
+                <option value="">All</option>
+                <option value="gold">Gold</option>
+                <option value="silver">Silver</option>
+                <option value="platinum">Platinum</option>
+              </select>
+            </div>
+            {(leadsContactedFrom || leadsContactedTo || leadsNeverContacted || leadsTier || rosterSearch || rosterOwner !== "all" || rosterResearched !== "any") && (
+              <button
+                type="button"
+                className="btn btn-ghost"
+                style={{ marginLeft: "auto", fontSize: 11 }}
+                onClick={() => {
+                  setRosterSearch("")
+                  setRosterOwner("all")
+                  setRosterResearched("any")
+                  setLeadsContactedFrom("")
+                  setLeadsContactedTo("")
+                  setLeadsNeverContacted(false)
+                  setLeadsTier("")
+                  setRosterSort({ col: "number", dir: "asc" })
+                  setRosterPage(1)
+                }}
+              >
+                ✕ Clear filters
+              </button>
+            )}
+          </div>
+
+          {/* Table */}
+          <div className="tbl-wrap" style={{ maxHeight: 620 }}>
             <table>
               <thead>
                 <tr>
-                  <th>#</th>
-                  <th>Status</th>
-                  <th>★</th>
-                  <th>R</th>
-                  <th className={`sortable ${rosterSort.col === "name" ? "active" : ""}`} onClick={() => setRosterSort((s) => ({ col: "name", dir: s.col === "name" && s.dir === "asc" ? "desc" : "asc" }))}>
-                    Name {rosterSort.col === "name" ? (rosterSort.dir === "asc" ? "↑" : "↓") : ""}
+                  {/* Sortable: # */}
+                  <th
+                    className={`sortable ${rosterSort.col === "number" ? "active" : ""}`}
+                    onClick={() => setRosterSort((s) => ({
+                      col: "number",
+                      dir: s.col === "number" ? (s.dir === "asc" ? "desc" : "asc") : "asc",
+                    }))}
+                  >
+                    # {rosterSort.col === "number" ? (rosterSort.dir === "asc" ? "▲" : "▼") : ""}
                   </th>
-                  <th className={`sortable ${rosterSort.col === "company" ? "active" : ""}`} onClick={() => setRosterSort((s) => ({ col: "company", dir: s.col === "company" && s.dir === "asc" ? "desc" : "asc" }))}>
-                    Company {rosterSort.col === "company" ? (rosterSort.dir === "asc" ? "↑" : "↓") : ""}
+                  {/* Name · Company combined */}
+                  <th
+                    className={`sortable ${rosterSort.col === "company" ? "active" : ""}`}
+                    onClick={() => setRosterSort((s) => ({
+                      col: "company",
+                      dir: s.col === "company" ? (s.dir === "asc" ? "desc" : "asc") : "asc",
+                    }))}
+                  >
+                    Name · Company {rosterSort.col === "company" ? (rosterSort.dir === "asc" ? "▲" : "▼") : ""}
                   </th>
-                  <th>Category</th>
                   <th>Email</th>
-                  <th>Website</th>
-                  <th>Last cont.</th>
-                  <th>Reply</th>
-                  <th>Sentiment</th>
                   <th>Owner</th>
-                  <th>Source</th>
+                  {/* Sortable: Status */}
+                  <th
+                    className={`sortable ${rosterSort.col === "status" ? "active" : ""}`}
+                    onClick={() => setRosterSort((s) => ({
+                      col: "status",
+                      dir: s.col === "status" ? (s.dir === "asc" ? "desc" : "asc") : "asc",
+                    }))}
+                  >
+                    Status {rosterSort.col === "status" ? (rosterSort.dir === "asc" ? "▲" : "▼") : ""}
+                  </th>
+                  <th>Tier</th>
+                  {/* Sortable: Last contacted */}
+                  <th
+                    className={`sortable ${rosterSort.col === "lastContactedAt" ? "active" : ""}`}
+                    onClick={() => setRosterSort((s) => ({
+                      col: "lastContactedAt",
+                      dir: s.col === "lastContactedAt" ? (s.dir === "asc" ? "desc" : "asc") : "desc",
+                    }))}
+                  >
+                    Last contacted {rosterSort.col === "lastContactedAt" ? (rosterSort.dir === "asc" ? "▲" : "▼") : ""}
+                  </th>
+                  <th>Reply</th>
                 </tr>
               </thead>
               <tbody>
                 {rosterQ.isLoading ? (
-                  <tr><td colSpan={13} style={{ textAlign: "center", padding: 24, color: "var(--obs-ink-40)" }}>Loading…</td></tr>
+                  <tr><td colSpan={8} style={{ textAlign: "center", padding: 24, color: "var(--obs-ink-40)" }}>Loading…</td></tr>
                 ) : rosterRows.length === 0 ? (
-                  <tr className="empty"><td colSpan={13}>No leads match. Clear a filter or try a different tab.</td></tr>
+                  <tr className="empty"><td colSpan={8}>No leads match. Clear a filter or try a different tab.</td></tr>
                 ) : (
-                  rosterRows.map((lead) => (
-                    <tr key={lead.id} className="clickable" onClick={() => setActiveDrawerLeadId(lead.id)}>
-                      <td className="mono" style={{ color: "var(--obs-ink-40)" }}>{String(lead.number).padStart(3, "0")}</td>
-                      <td onClick={(e) => e.stopPropagation()}>
-                        <RowStatusDropdown
-                          leadId={lead.id}
-                          currentStatus={lead.status}
-                          onRequestDnc={() => setDncTarget({ id: lead.id, name: lead.name, company: lead.company, email: lead.email })}
-                        />
-                      </td>
-                      <td>
-                        <span
-                          className={`star-flag ${lead.followUpFlag ? "" : "off"}`}
-                          onClick={(e) => { e.stopPropagation(); updateLead.mutate({ id: lead.id, followUpFlag: !lead.followUpFlag }) }}
-                        >★</span>
-                      </td>
-                      <td>{lead.researched ? <span className="check">✓</span> : <span className="x">·</span>}</td>
-                      <td>{lead.name}</td>
-                      <td>{lead.company}</td>
-                      <td><span className="source-tag">{lead.category || "—"}</span></td>
-                      <td className="mono" style={{ fontSize: 11 }}>{lead.email || "—"}</td>
-                      <td className="mono" style={{ fontSize: 11, color: "var(--obs-info)" }}>{lead.website ? `${lead.website} ↗` : "—"}</td>
-                      <td className="mono" style={{ fontSize: 11 }}>{fmtDate(lead.lastContactedAt)}</td>
-                      <td>{lead.reply ? <span className="check">✓</span> : <span className="dash">—</span>}</td>
-                      <td>{lead.replySentiment ? <span className={`sentiment-chip ${lead.replySentiment}`}>{lead.replySentiment}</span> : <span className="dash">—</span>}</td>
-                      <td><span className={`owner-chip ${lead.owner}`}>{lead.owner.toUpperCase()}</span></td>
-                      <td><span className="source-tag">{lead.source || "—"}</span></td>
-                    </tr>
-                  ))
+                  rosterRows.map((lead) => {
+                    const tier = parseTierFromNotes(lead.notes)
+                    return (
+                      <tr key={lead.id} className="clickable" onClick={() => setActiveDrawerLeadId(lead.id)}>
+                        {/* # */}
+                        <td className="mono" style={{ color: "var(--obs-ink-40)", whiteSpace: "nowrap" }}>{String(lead.number).padStart(3, "0")}</td>
+                        {/* Name · Company */}
+                        <td style={{ maxWidth: 220 }}>
+                          <span style={{ fontWeight: 500 }}>{lead.name}</span>
+                          {lead.company && (
+                            <span style={{ color: "var(--obs-ink-50)", marginLeft: 4 }}>· {lead.company}</span>
+                          )}
+                        </td>
+                        {/* Email */}
+                        <td className="mono" style={{ fontSize: 11, color: "var(--obs-ink-65)" }}>{lead.email || "—"}</td>
+                        {/* Owner */}
+                        <td onClick={(e) => e.stopPropagation()}>
+                          <span className={`owner-chip ${lead.owner}`}>{lead.owner.toUpperCase()}</span>
+                        </td>
+                        {/* Status — uses RowStatusDropdown (already has two-step-via-dropdown UX and stopPropagation) */}
+                        <td onClick={(e) => e.stopPropagation()}>
+                          <RowStatusDropdown
+                            leadId={lead.id}
+                            currentStatus={lead.status}
+                            onRequestDnc={() => setDncTarget({ id: lead.id, name: lead.name, company: lead.company, email: lead.email })}
+                          />
+                        </td>
+                        {/* Tier */}
+                        <td>
+                          {tier ? (
+                            <span className={`tier-pill ${tier}`}>{tier}</span>
+                          ) : (
+                            <span className="dash">—</span>
+                          )}
+                        </td>
+                        {/* Last contacted */}
+                        <td className="mono" style={{ fontSize: 11 }}>{fmtDateISO(lead.lastContactedAt)}</td>
+                        {/* Reply */}
+                        <td>
+                          {lead.reply && lead.replySentiment === "positive" && (
+                            <span className="reply-pill positive">+ positive</span>
+                          )}
+                          {lead.reply && lead.replySentiment === "negative" && (
+                            <span className="reply-pill negative">− negative</span>
+                          )}
+                          {lead.reply && lead.replySentiment === "neutral" && (
+                            <span className="reply-pill neutral">~ neutral</span>
+                          )}
+                          {lead.reply && !lead.replySentiment && (
+                            <span className="reply-pill neutral">replied</span>
+                          )}
+                          {!lead.reply && <span className="dash">—</span>}
+                        </td>
+                      </tr>
+                    )
+                  })
                 )}
               </tbody>
             </table>
           </div>
+
+          {/* Pagination */}
           <div className="pager">
-            <span>Showing {rosterRows.length ? (rosterPage - 1) * ROSTER_PAGE_SIZE + 1 : 0}–{(rosterPage - 1) * ROSTER_PAGE_SIZE + rosterRows.length} / {rosterTotal}</span>
-            <span>Click row → drawer with research notes</span>
+            <span>
+              {rosterRows.length
+                ? `${(rosterPage - 1) * ROSTER_PAGE_SIZE + 1}–${(rosterPage - 1) * ROSTER_PAGE_SIZE + rosterRows.length} · ${rosterTotal} leads`
+                : "0 leads"}
+            </span>
+            <span style={{ color: "var(--obs-ink-40)" }}>Page {rosterPage} of {rosterPages} · click row to open drawer</span>
             <div className="ctrl">
-              <button className="btn btn-ghost" disabled={rosterPage <= 1} onClick={() => setRosterPage((p) => p - 1)}>◀</button>
-              <span style={{ padding: "4px 8px" }}>{rosterPage} / {rosterPages}</span>
-              <button className="btn btn-ghost" disabled={rosterPage >= rosterPages} onClick={() => setRosterPage((p) => p + 1)}>▶</button>
+              <button
+                type="button"
+                className="btn btn-ghost"
+                disabled={rosterPage <= 1 || rosterQ.isLoading}
+                onClick={() => setRosterPage((p) => p - 1)}
+              >◀ Prev</button>
+              <button
+                type="button"
+                className="btn btn-ghost"
+                disabled={rosterPage >= rosterPages || rosterQ.isLoading}
+                onClick={() => setRosterPage((p) => p + 1)}
+              >Next ▶</button>
             </div>
           </div>
         </div>
@@ -1219,14 +1448,15 @@ export default function OutreachObservatoryPage() {
                 >⊘ Add to DNC</button>
               )}
               {drawerLead.status === "ready" && (
-                <button
+                <ConfirmButton
                   className="btn btn-primary"
+                  label="✓ Mark sent"
                   disabled={markSent.isPending}
-                  onClick={() => {
+                  onConfirm={() => {
                     markSent.mutate({ id: drawerLead.id })
                     setActiveDrawerLeadId(null)
                   }}
-                >✓ Mark sent</button>
+                />
               )}
               <button className="btn" onClick={() => setActiveDrawerLeadId(null)}>Close</button>
             </div>
