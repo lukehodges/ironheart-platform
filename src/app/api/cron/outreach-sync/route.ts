@@ -14,6 +14,7 @@
 
 import { type NextRequest, NextResponse } from "next/server"
 import { syncOutreachActivity } from "@/modules/outreach/activity-sync.service"
+import { syncFromInstantly } from "@/modules/outreach/instantly-sync.service"
 import { logger } from "@/shared/logger"
 
 export const runtime = "nodejs"
@@ -47,8 +48,11 @@ async function handle(req: NextRequest): Promise<Response> {
   }
 
   try {
-    const result = await syncOutreachActivity(tenantId)
-    return NextResponse.json({ ok: true, ...result })
+    // 1. Instantly log → touches + lead sent-state + replies (the send truth).
+    // 2. Rebuild the daily rollup from the now-fresh lead/reply state.
+    const instantly = await syncFromInstantly(tenantId)
+    const rollup = await syncOutreachActivity(tenantId)
+    return NextResponse.json({ ok: true, instantly, rollup })
   } catch (err) {
     log.error({ err }, "Outreach activity sync failed")
     return NextResponse.json({ error: "sync failed" }, { status: 500 })
