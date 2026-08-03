@@ -30,7 +30,11 @@ const log = logger.child({ module: "outreach.activity-sync" })
 // opened once a real conversation/call happens, and deals that later went
 // LOST still had their meeting (e.g. "met, no fit") — counting by current
 // stage erased every meeting that didn't convert.
-const STAGE_INTERESTED = new Set(["FINDINGS", "PROPOSAL", "CUSTOMER"])
+// taken = a meeting demonstrably happened (deal progressed past NEW);
+// interested = live pipeline (past the first call, not yet won/lost);
+// closed = paying customer.
+const STAGE_TAKEN = new Set(["SCREENING", "MEETING", "FINDINGS", "PROPOSAL", "CUSTOMER"])
+const STAGE_INTERESTED = new Set(["SCREENING", "MEETING", "FINDINGS", "PROPOSAL"])
 
 interface TwentyOpp {
   id: string
@@ -89,17 +93,18 @@ async function fetchTwentyOpps(): Promise<TwentyOpp[]> {
 /** Aggregate opportunities into per-day warm-funnel counts. */
 function warmByDate(opps: TwentyOpp[]): Map<
   string,
-  { booked: number; interested: number; closed: number }
+  { booked: number; taken: number; interested: number; closed: number }
 > {
   const m = new Map<
     string,
-    { booked: number; interested: number; closed: number }
+    { booked: number; taken: number; interested: number; closed: number }
   >()
   for (const o of opps) {
     const date = o.createdAt.slice(0, 10) // YYYY-MM-DD, safe (ISO from Twenty)
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) continue
-    const cur = m.get(date) ?? { booked: 0, interested: 0, closed: 0 }
+    const cur = m.get(date) ?? { booked: 0, taken: 0, interested: 0, closed: 0 }
     cur.booked += 1
+    if (STAGE_TAKEN.has(o.stage)) cur.taken += 1
     if (STAGE_INTERESTED.has(o.stage)) cur.interested += 1
     if (o.stage === "CUSTOMER") cur.closed += 1
     m.set(date, cur)
@@ -158,11 +163,12 @@ export async function syncOutreachActivity(
       await tx.execute(sql`
         INSERT INTO outreach_daily_activity
           (id,"tenantId",date,owner,channel,sent,replies,positive,
-           "meetingsBooked",interested,closed,"createdAt","updatedAt")
+           "meetingsBooked","meetingsTaken",interested,closed,"createdAt","updatedAt")
         VALUES (gen_random_uuid(), ${tenantId}, ${date}, 'luke', 'phone', 0,0,0,
-           ${w.booked}, ${w.interested}, ${w.closed}, now(), now())
+           ${w.booked}, ${w.taken}, ${w.interested}, ${w.closed}, now(), now())
         ON CONFLICT ("tenantId",date,owner) DO UPDATE SET
           "meetingsBooked" = ${w.booked},
+          "meetingsTaken" = ${w.taken},
           interested = ${w.interested},
           closed = ${w.closed},
           "updatedAt" = now()
